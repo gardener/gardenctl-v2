@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+# SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener contributors
+#
+# SPDX-License-Identifier: Apache-2.0
+
+set -o errexit
+set -o pipefail
+
+# For the check step concourse will set the following environment variables:
+# MAIN_REPO_DIR - path to the main repository
+
+if [[ -z "${MAIN_REPO_DIR}" ]]; then
+  export MAIN_REPO_DIR="$(readlink -f "$(dirname ${0})/..")"
+else
+  export MAIN_REPO_DIR="$(readlink -f ${MAIN_REPO_DIR})"
+fi
+
+"${MAIN_REPO_DIR}"/hack/golangci-lint.sh
