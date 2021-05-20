@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+# SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener contributors
+#
+# SPDX-License-Identifier: Apache-2.0
+
+set -e
+
+# For the build step concourse will set the following environment variables:
+# MAIN_REPO_DIR - path to the main repository
+
+if [[ -z "${MAIN_REPO_DIR}" ]]; then
+  export MAIN_REPO_DIR="$(readlink -f $(dirname ${0})/..)"
+else
+  export MAIN_REPO_DIR="$(readlink -f "${MAIN_REPO_DIR}")"
+fi
+
+if [[ -z "${LD_FLAGS}" ]]; then
+  export LD_FLAGS=$("${MAIN_REPO_DIR}"/hack/get-build-ld-flags.sh)
+fi
+
+###############################################################################
+
+"${MAIN_REPO_DIR}"/hack/build-linux-amd64.sh
+"${MAIN_REPO_DIR}"/hack/build-darwin-amd64.sh
+

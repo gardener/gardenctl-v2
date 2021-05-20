@@ -1,0 +1,45 @@
+gardenctl-v2:
+  template: 'default'
+  base_definition:
+    repo: ~
+    traits:
+      version:
+        preprocess:
+          'inject-commit-hash'
+        inject_effective_version: true
+    steps:
+      check:
+        image: 'golang:1.16'
+      test:
+        image: 'golang:1.16'
+      build:
+        image: 'golang:1.16'
+        output_dir: 'binary'
+        timeout: '5m'
+
+  jobs:
+    head-update:
+      traits:
+        component_descriptor: ~
+        draft_release: ~
+    pull-request:
+      traits:
+        pull-request: ~
+    release:
+      traits:
+        component_descriptor: ~
+        version:
+          preprocess: 'finalize'
+        release:
+          release_callback: './.ci/update_latest_version'
+        slack:
+          channel_cfgs:
+          - channel_name: 'C01BKP30K1U' #sap-tech-gardenctl
+            slack_cfg_name: 'ti_workspace'
+      steps:
+        update-release:
+          execute: 'update-release.py'
+          depends:
+          - 'release'
+          inputs:
+            BINARY_PATH: 'binary_path'
