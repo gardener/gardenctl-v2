@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
+
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"k8s.io/component-base/version"
