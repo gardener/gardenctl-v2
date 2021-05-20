@@ -7,11 +7,15 @@ Source: https://github.com/gardener/gardenctl-v2
 # source code
 
 Files:
+  .ci/*
   .github/*
+  logo/*
+  .dockerignore
   .gitignore
   CODEOWNERS
   go.mod
   go.sum
+  LATEST
   VERSION
 Copyright: 2020 SAP SE or an SAP affiliate company and Gardener contributors
 License: Apache-2.0
