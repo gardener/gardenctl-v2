@@ -143,6 +143,7 @@ func (m *managerImpl) updateSeedKubeconfig(ctx context.Context, gardenClient cli
 	// fetch kubeconfig secret
 	secret := corev1.Secret{}
 	key := types.NamespacedName{Name: seed.Spec.SecretRef.Name, Namespace: seed.Spec.SecretRef.Namespace}
+
 	if err := gardenClient.Get(ctx, key, &secret); err != nil {
 		return fmt.Errorf("failed to retrieve seed kubeconfig: %w", err)
 	}
@@ -153,6 +154,7 @@ func (m *managerImpl) updateSeedKubeconfig(ctx context.Context, gardenClient cli
 func (m *managerImpl) resolveSeedName(ctx context.Context, gardenClient client.Client, seedName string) (*gardencorev1beta1.Seed, error) {
 	seed := &gardencorev1beta1.Seed{}
 	key := types.NamespacedName{Name: seedName}
+
 	if err := gardenClient.Get(ctx, key, seed); err != nil {
 		return nil, err
 	}
@@ -266,6 +268,7 @@ func (m *managerImpl) updateShootKubeconfig(
 		Name:      fmt.Sprintf("%s.kubeconfig", shoot.Name),
 		Namespace: shoot.Namespace,
 	}
+
 	if err := gardenClient.Get(ctx, key, &secret); err != nil {
 		return fmt.Errorf("failed to retrieve shoot kubeconfig: %w", err)
 	}
@@ -305,6 +308,7 @@ func (m *managerImpl) ProjectClient(t Target) (client.Client, error) {
 	if t.GardenName() == "" {
 		return nil, ErrNoGardenTargeted
 	}
+
 	if t.ProjectName() == "" {
 		return nil, ErrNoProjectTargeted
 	}
@@ -323,6 +327,7 @@ func (m *managerImpl) SeedClient(t Target) (client.Client, error) {
 	if t.GardenName() == "" {
 		return nil, ErrNoGardenTargeted
 	}
+
 	if t.SeedName() == "" {
 		return nil, ErrNoSeedTargeted
 	}
@@ -348,9 +353,11 @@ func (m *managerImpl) ShootClusterClient(t Target) (client.Client, error) {
 	if t.GardenName() == "" {
 		return nil, ErrNoGardenTargeted
 	}
+
 	if t.SeedName() == "" && t.ProjectName() == "" {
 		return nil, errors.New("neither project nor seed are targeted")
 	}
+
 	if t.ShootName() == "" {
 		return nil, ErrNoShootTargeted
 	}

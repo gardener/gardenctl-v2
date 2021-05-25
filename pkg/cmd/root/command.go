@@ -112,6 +112,7 @@ func initConfig() {
 	if len(home) == 0 {
 		home, err = homedir.Dir()
 		cobra.CheckErr(err)
+
 		home = filepath.Join(home, gardenHomeFolder)
 	}
 
@@ -120,7 +121,6 @@ func initConfig() {
 	targetFile := os.Getenv(envTargetFile)
 	if len(targetFile) == 0 {
 		targetFile = filepath.Join(home, targetFilename)
-		cobra.CheckErr(err)
 	}
 
 	factory.ConfigFile = viper.ConfigFileUsed()

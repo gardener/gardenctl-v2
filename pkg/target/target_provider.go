@@ -13,6 +13,7 @@ import (
 )
 
 // TargetProvider can read and write targets.
+//nolint
 type TargetProvider interface {
 	// Read returns the current target. If no target exists yet, a default
 	// (empty) target is returned.
@@ -27,7 +28,7 @@ type fsTargetProvider struct {
 
 var _ TargetProvider = &fsTargetProvider{}
 
-// NewFilesystemTargetProvider returns a new TargetProvider that
+// NewFilesystemTargetProvider returns a new Provider that
 // reads and writes from the local filesystem.
 func NewFilesystemTargetProvider(targetFile string) TargetProvider {
 	return &fsTargetProvider{

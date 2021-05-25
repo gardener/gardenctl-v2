@@ -18,6 +18,10 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
+// TargetKind is representing the type of things that can be targeted
+// by this cobra command. While this may sound stuttery, the alternative
+// of just calling it "Kind" is even worse, hence the nolint.
+// nolint
 type TargetKind string
 
 const (
@@ -65,6 +69,7 @@ func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 // Validate validates the provided options
 func (o *Options) Validate() error {
 	validKind := false
+
 	for _, kind := range AllTargetKinds {
 		if kind == o.Kind {
 			validKind = true

@@ -75,7 +75,7 @@ var _ = Describe("Command", func() {
 		project := &gardencorev1beta1.Project{}
 		project.Name = projectName
 
-		fakeGardenClient := fake.NewFakeClient(project)
+		fakeGardenClient := fake.NewClientBuilder().WithObjects(project).Build()
 
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
