@@ -28,6 +28,9 @@ type Target interface {
 	SeedName() string
 	// ShootName returns the currently targeted shoot cluster name.
 	ShootName() string
+	// Validate checks for semantical correctness of the target, without
+	// actually connecting to the targeted clusters.
+	Validate() error
 }
 
 type targetImpl struct {
@@ -57,6 +60,10 @@ func NewTarget(gardenName, projectName, seedName, shootName string) Target {
 func (t *targetImpl) Validate() error {
 	if len(t.Project) > 0 && len(t.Seed) > 0 {
 		return errors.New("seed and project must not be configured at the same time")
+	}
+
+	if len(t.Shoot) > 0 && len(t.Project) == 0 && len(t.Seed) == 0 {
+		return errors.New("either a seed or a project must be targeted when targeting a shoot")
 	}
 
 	return nil

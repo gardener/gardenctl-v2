@@ -14,7 +14,8 @@ import (
 
 // TargetProvider can read and write targets.
 type TargetProvider interface {
-	// Read returns the current target.
+	// Read returns the current target. If no target exists yet, a default
+	// (empty) target is returned.
 	Read() (Target, error)
 	// Write takes a target and saves it permanently.
 	Write(t Target) error

@@ -11,14 +11,14 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	. "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/target"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func init() {
