@@ -40,6 +40,18 @@ type targetImpl struct {
 
 var _ Target = &targetImpl{}
 
+// NewTarget should mostly be used in tests. Regular program code should always
+// use the Manager to read/save the current target. This function does not
+// perform any validation, so the returned target can be invalid.
+func NewTarget(gardenName, projectName, seedName, shootName string) Target {
+	return &targetImpl{
+		Garden:  gardenName,
+		Project: projectName,
+		Seed:    seedName,
+		Shoot:   shootName,
+	}
+}
+
 // Validate checks that the target is not malformed and all required
 // steps are configured correctly.
 func (t *targetImpl) Validate() error {

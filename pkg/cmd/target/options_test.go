@@ -18,7 +18,18 @@ var _ = Describe("Options", func() {
 	It("should validate", func() {
 		streams, _, _, _ := genericclioptions.NewTestIOStreams()
 		o := NewOptions(streams)
-		err := o.Validate()
-		Expect(err).ToNot(HaveOccurred())
+		o.Kind = TargetKindGarden
+		o.TargetName = "foo"
+
+		Expect(o.Validate()).To(Succeed())
+	})
+
+	It("should reject invalid kinds", func() {
+		streams, _, _, _ := genericclioptions.NewTestIOStreams()
+		o := NewOptions(streams)
+		o.Kind = TargetKind("not a kind")
+		o.TargetName = "foo"
+
+		Expect(o.Validate()).NotTo(Succeed())
 	})
 })
