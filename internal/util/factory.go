@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
@@ -40,8 +41,10 @@ type FactoryImpl struct {
 	TargetFile string
 }
 
+var _ Factory = &FactoryImpl{}
+
 func (f *FactoryImpl) Manager() (target.Manager, error) {
-	config, err := target.LoadConfigFromFile(f.ConfigFile)
+	cfg, err := config.LoadFromFile(f.ConfigFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
@@ -50,7 +53,7 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 	kubeconfigCache := target.NewFilesystemKubeconfigCache(filepath.Join(f.GardenHomeDirectory, "cache", "kubeconfigs"))
 	clientProvider := target.NewClientProvider()
 
-	return target.NewManager(config, targetProvider, clientProvider, kubeconfigCache)
+	return target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
 }
 
 func (f *FactoryImpl) HomeDir() string {

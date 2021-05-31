@@ -8,6 +8,7 @@ package fake
 
 import (
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
@@ -18,7 +19,7 @@ type Factory struct {
 	ManagerImpl target.Manager
 
 	// Override these to customize the created manager.
-	Config              *target.Config
+	Config              *config.Config
 	ClientProviderImpl  target.ClientProvider
 	KubeconfigCacheImpl target.KubeconfigCache
 	TargetProviderImpl  target.TargetProvider
@@ -31,15 +32,9 @@ type Factory struct {
 	// different locations, cache files will always be placed inside
 	// the garden home.
 	GardenHomeDirectory string
-
-	// ConfigFile is the location of the gardenctlv2 configuration file.
-	// This can be overriden via a CLI flag and defaults to ~/.garden/gardenctlv2.yaml
-	// if empty.
-	ConfigFile string
-
-	// TargetFile is the filename where the currently active target is located.
-	TargetFile string
 }
+
+var _ util.Factory = &Factory{}
 
 func NewFakeManagerFactory(manager target.Manager) util.Factory {
 	return &Factory{
@@ -47,9 +42,9 @@ func NewFakeManagerFactory(manager target.Manager) util.Factory {
 	}
 }
 
-func NewFakeFactory(config *target.Config, clientProvider target.ClientProvider, kubeconfigCache target.KubeconfigCache, targetProvider target.TargetProvider) util.Factory {
-	if config == nil {
-		config = &target.Config{}
+func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider target.ClientProvider, kubeconfigCache target.KubeconfigCache, targetProvider target.TargetProvider) util.Factory {
+	if cfg == nil {
+		cfg = &config.Config{}
 	}
 
 	if clientProvider == nil {
@@ -64,8 +59,13 @@ func NewFakeFactory(config *target.Config, clientProvider target.ClientProvider,
 		targetProvider = NewFakeTargetProvider(nil)
 	}
 
+	if clock == nil {
+		clock = &util.RealClock{}
+	}
+
 	return &Factory{
-		Config:              config,
+		Config:              cfg,
+		ClockImpl:           clock,
 		ClientProviderImpl:  clientProvider,
 		KubeconfigCacheImpl: kubeconfigCache,
 		TargetProviderImpl:  targetProvider,
@@ -85,9 +85,5 @@ func (f *Factory) HomeDir() string {
 }
 
 func (f *Factory) Clock() util.Clock {
-	if f.ClockImpl != nil {
-		return f.ClockImpl
-	}
-
-	return &util.RealClock{}
+	return f.ClockImpl
 }

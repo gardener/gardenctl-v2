@@ -10,6 +10,7 @@ import (
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	. "github.com/gardener/gardenctl-v2/pkg/cmd/target"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -38,14 +39,14 @@ var _ = Describe("Command", func() {
 		streams, _, out, _ := genericclioptions.NewTestIOStreams()
 
 		gardenName := "mygarden"
-		config := &target.Config{
-			Gardens: []target.Garden{{
+		cfg := &config.Config{
+			Gardens: []config.Garden{{
 				Name:       gardenName,
 				Kubeconfig: "",
 			}},
 		}
 		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget("", "", "", ""))
-		factory := internalfake.NewFakeFactory(config, nil, nil, targetProvider)
+		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
 		cmd := NewCommand(factory, NewOptions(streams))
 
 		Expect(cmd.RunE(cmd, []string{"garden", gardenName})).To(Succeed())
@@ -60,8 +61,8 @@ var _ = Describe("Command", func() {
 		streams, _, _, _ := genericclioptions.NewTestIOStreams()
 
 		gardenName := "mygarden"
-		config := &target.Config{
-			Gardens: []target.Garden{{
+		cfg := &config.Config{
+			Gardens: []config.Garden{{
 				Name:       gardenName,
 				Kubeconfig: "",
 			}},
@@ -80,7 +81,7 @@ var _ = Describe("Command", func() {
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider(fakeGardenClient)
-		factory := internalfake.NewFakeFactory(config, clientProvider, nil, targetProvider)
+		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
 		cmd := NewCommand(factory, NewOptions(streams))
 
 		// run command

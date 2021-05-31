@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -39,7 +40,7 @@ type Manager interface {
 }
 
 type managerImpl struct {
-	config          *Config
+	config          *config.Config
 	targetProvider  TargetProvider
 	clientProvider  ClientProvider
 	kubeconfigCache KubeconfigCache
@@ -47,7 +48,7 @@ type managerImpl struct {
 
 var _ Manager = &managerImpl{}
 
-func NewManager(config *Config, targetProvider TargetProvider, clientProvider ClientProvider, kubeconfigCache KubeconfigCache) (Manager, error) {
+func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider ClientProvider, kubeconfigCache KubeconfigCache) (Manager, error) {
 	return &managerImpl{
 		config:          config,
 		targetProvider:  targetProvider,
@@ -89,8 +90,14 @@ func (m *managerImpl) TargetProject(ctx context.Context, projectName string) err
 		}
 
 		// validate that the project exists
-		if _, err := m.resolveProjectName(ctx, gardenClient, projectName); err != nil {
-			return fmt.Errorf("failed to validate project: %w", err)
+		project, err := m.resolveProjectName(ctx, gardenClient, projectName)
+		if err != nil {
+			return fmt.Errorf("failed to resolve project: %w", err)
+		}
+
+		// validate the project
+		if err := m.validateProject(ctx, project); err != nil {
+			return fmt.Errorf("invalid project: %w", err)
 		}
 
 		t.Seed = ""
@@ -110,6 +117,14 @@ func (m *managerImpl) resolveProjectName(ctx context.Context, gardenClient clien
 	return project, err
 }
 
+func (m *managerImpl) validateProject(ctx context.Context, project *gardencorev1beta1.Project) error {
+	if project.Spec.Namespace == nil || *project.Spec.Namespace == "" {
+		return errors.New("project has not yet been fully created")
+	}
+
+	return nil
+}
+
 func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 	return m.patchTarget(func(t *targetImpl) error {
 		if t.Garden == "" {
@@ -124,7 +139,12 @@ func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 		// validate that the seed exists
 		seed, err := m.resolveSeedName(ctx, gardenClient, seedName)
 		if err != nil {
-			return fmt.Errorf("failed to validate seed: %w", err)
+			return fmt.Errorf("failed to resolve seed: %w", err)
+		}
+
+		// validate the seed
+		if err := m.validateSeed(ctx, seed); err != nil {
+			return fmt.Errorf("invalid seed: %w", err)
 		}
 
 		t.Seed = seedName
@@ -159,21 +179,21 @@ func (m *managerImpl) resolveSeedName(ctx context.Context, gardenClient client.C
 		return nil, err
 	}
 
+	return seed, nil
+}
+
+func (m *managerImpl) validateSeed(ctx context.Context, seed *gardencorev1beta1.Seed) error {
 	if seed.Spec.SecretRef == nil {
-		return nil, errors.New("spec.SecretRef is missing in this seed, seed not reachable")
+		return errors.New("spec.SecretRef is missing in this seed, seed not reachable")
 	}
 
-	return seed, nil
+	return nil
 }
 
 func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 	return m.patchTarget(func(t *targetImpl) error {
 		if t.Garden == "" {
 			return ErrNoGardenTargeted
-		}
-
-		if t.Project == "" && t.Seed == "" {
-			return errors.New("must target project or seed first")
 		}
 
 		gardenClient, err := m.clientForGarden(t.Garden)
@@ -186,21 +206,32 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 			seed    *gardencorev1beta1.Seed
 		)
 
+		// *if* project or seed are set, resolve them to aid in finding the shoot later on
 		if t.Project != "" {
 			project, err = m.resolveProjectName(ctx, gardenClient, t.Project)
 			if err != nil {
 				return fmt.Errorf("failed to validate project: %w", err)
 			}
-		} else {
+		} else if t.Seed != "" {
 			seed, err = m.resolveSeedName(ctx, gardenClient, t.Seed)
 			if err != nil {
 				return fmt.Errorf("failed to fetch kubeconfig for seed cluster: %w", err)
 			}
 		}
 
+		shoot, err := m.resolveShootName(ctx, gardenClient, project, seed, shootName)
+		if err != nil {
+			return fmt.Errorf("failed to resolve shoot: %w", err)
+		}
+
+		// validate the shoot
+		if err := m.validateShoot(ctx, shoot); err != nil {
+			return fmt.Errorf("invalid shoot: %w", err)
+		}
+
 		t.Shoot = shootName
 
-		if err := m.updateShootKubeconfig(ctx, gardenClient, project, seed, t); err != nil {
+		if err := m.updateShootKubeconfig(ctx, gardenClient, t, shoot); err != nil {
 			return fmt.Errorf("failed to fetch kubeconfig for shoot cluster: %w", err)
 		}
 
@@ -208,60 +239,75 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 	})
 }
 
-// updateShootKubeconfig must be called with *either* project or seed, but never both
-// and never neither.
-func (m *managerImpl) updateShootKubeconfig(
+func (m *managerImpl) resolveShootName(
 	ctx context.Context,
 	gardenClient client.Client,
 	project *gardencorev1beta1.Project,
 	seed *gardencorev1beta1.Seed,
-	t Target,
-) error {
+	shootName string,
+) (*gardencorev1beta1.Shoot, error) {
 	shoot := &gardencorev1beta1.Shoot{}
 
-	// If a shoot is targeted via a project, we fetch the project and find
-	// the shoot by listing all shoots in the project's spec.namespace.
+	// If a shoot is targeted via a project, we fetch it based on the project's namespace.
 	// If the target uses a seed, _all_ shoots in the garden are filtered
-	// for shoots with matching seed and name. It's an error if no or multiple
-	// matching shoots are found.
+	// for shoots with matching seed and name.
+	// If neither project nor seed are given, _all_ shoots in the garden are filtered by
+	// their name.
+	// It's an error if no or multiple matching shoots are found.
 
 	if project != nil {
 		// fetch shoot from project namespace
-		// TODO: a project's spec.namespace can be nil, what to do about those cases?
-		key := types.NamespacedName{Name: t.ShootName(), Namespace: *project.Spec.Namespace}
+		key := types.NamespacedName{Name: shootName, Namespace: *project.Spec.Namespace}
 
 		if err := gardenClient.Get(ctx, key, shoot); err != nil {
-			return fmt.Errorf("invalid shoot %q: %w", key.Name, err)
+			return nil, fmt.Errorf("invalid shoot %q: %w", key.Name, err)
 		}
-	} else if seed != nil {
-		// list all shoots, filter by spec.seedName
+	} else {
+		// list all shoots, filter by their name and possibly spec.seedName (if seed is set)
 		shootList := gardencorev1beta1.ShootList{}
 		if err := gardenClient.List(ctx, &shootList, &client.ListOptions{}); err != nil {
-			return fmt.Errorf("failed to list shoot clusters: %w", err)
+			return nil, fmt.Errorf("failed to list shoot clusters: %w", err)
 		}
 
-		// filter found shoots; if multiple shoots have the same name, but are in different
-		// projects, we have to warn the user about their ambiguous targeting
+		// filter found shoots
 		matchingShoots := []*gardencorev1beta1.Shoot{}
 		for i, s := range shootList.Items {
-			if s.Name == t.ShootName() && s.Spec.SeedName != nil && *s.Spec.SeedName == seed.Name {
-				matchingShoots = append(matchingShoots, &shootList.Items[i])
+			if s.Name != shootName {
+				continue
 			}
+
+			// if filtering by seed, ignore shoot's whose seed name doesn't matchh
+			if seed != nil && (s.Spec.SeedName == nil || *s.Spec.SeedName != seed.Name) {
+				continue
+			}
+
+			matchingShoots = append(matchingShoots, &shootList.Items[i])
 		}
 
 		if len(matchingShoots) == 0 {
-			return fmt.Errorf("invalid shoot %q: not found on seed %q", t.ShootName(), seed.Name)
+			return nil, fmt.Errorf("invalid shoot %q: not found", shootName)
 		}
 
 		if len(matchingShoots) > 1 {
-			return fmt.Errorf("there are multiple shoots named %q on this garden, please target via project to make your choice unambiguous", t.ShootName())
+			return nil, fmt.Errorf("there are multiple shoots named %q on this garden, please target a project or seed to make your choice unambiguous", shootName)
 		}
 
 		shoot = matchingShoots[0]
-	} else {
-		return errors.New("neither project nor seed were provided to filter the shoot by")
 	}
 
+	return shoot, nil
+}
+
+func (m *managerImpl) validateShoot(ctx context.Context, seed *gardencorev1beta1.Shoot) error {
+	return nil
+}
+
+func (m *managerImpl) updateShootKubeconfig(
+	ctx context.Context,
+	gardenClient client.Client,
+	t Target,
+	shoot *gardencorev1beta1.Shoot,
+) error {
 	// fetch kubeconfig secret
 	secret := corev1.Secret{}
 	key := types.NamespacedName{
@@ -354,6 +400,11 @@ func (m *managerImpl) ShootClusterClient(t Target) (client.Client, error) {
 		return nil, ErrNoGardenTargeted
 	}
 
+	// Even if a user targets a shoot directly, without specifying a seed/project,
+	// during that operation a seed/project will be selected and saved in the
+	// target file; that's why this check can still demand a parent target for
+	// the shoot, which is also needed because we need to locate the kubeconfig
+	// on disk.
 	if t.SeedName() == "" && t.ProjectName() == "" {
 		return nil, errors.New("neither project nor seed are targeted")
 	}

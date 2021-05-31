@@ -76,7 +76,7 @@ var _ = Describe("Kubeconfig Cache", func() {
 		Expect(readBack).To(Equal(dataB))
 	})
 
-	It("should separate pased on the path", func() {
+	It("should separate based on the path", func() {
 		targetA := target.NewTarget("garden", "project", "", "shoot")
 		targetB := target.NewTarget("garden", "", "seed", "shoot")
 		dataA := []byte("hello A")

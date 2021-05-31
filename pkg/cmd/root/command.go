@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	envPrefix        = "GL"
+	envPrefix        = "GCTL"
 	envGardenHomeDir = envPrefix + "_HOME"
 	envConfigName    = envPrefix + "_CONFIG_NAME"
 	envTargetFile    = envPrefix + "_TARGET_FILE"
@@ -116,14 +116,17 @@ func initConfig() {
 		home = filepath.Join(home, gardenHomeFolder)
 	}
 
-	// prefer an explicit GL_HOME env,
+	// prefer -session, then an explicit GL_HOME env,
 	// but fallback to the system-defined home directory
-	targetFile := os.Getenv(envTargetFile)
-	if len(targetFile) == 0 {
-		targetFile = filepath.Join(home, targetFilename)
+	if factory.TargetFile == "" {
+		targetFile := os.Getenv(envTargetFile)
+		if len(targetFile) == 0 {
+			targetFile = filepath.Join(home, targetFilename)
+		}
+
+		factory.TargetFile = targetFile
 	}
 
 	factory.ConfigFile = viper.ConfigFileUsed()
-	factory.TargetFile = targetFile
 	factory.GardenHomeDirectory = home
 }
