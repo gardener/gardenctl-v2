@@ -16,9 +16,11 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -73,8 +75,14 @@ var _ = Describe("Command", func() {
 
 		// garden cluster contains the targeted project
 		projectName := "myproject"
-		project := &gardencorev1beta1.Project{}
-		project.Name = projectName
+		project := &gardencorev1beta1.Project{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: projectName,
+			},
+			Spec: gardencorev1beta1.ProjectSpec{
+				Namespace: pointer.String("garden-prod1"),
+			},
+		}
 
 		fakeGardenClient := fake.NewClientBuilder().WithObjects(project).Build()
 

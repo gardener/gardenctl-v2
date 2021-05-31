@@ -11,6 +11,8 @@ import (
 	"fmt"
 
 	"github.com/gardener/gardenctl-v2/pkg/config"
+
+	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -219,7 +221,7 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 			}
 		}
 
-		shoot, err := m.resolveShootName(ctx, gardenClient, project, seed, shootName)
+		project, seed, shoot, err := m.resolveShootName(ctx, gardenClient, project, seed, shootName)
 		if err != nil {
 			return fmt.Errorf("failed to resolve shoot: %w", err)
 		}
@@ -231,6 +233,21 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 
 		t.Shoot = shootName
 
+		// update the target path to the shoot; this is primarily important
+		// when so far neither project nor seed were set. By updating the
+		// target, we persist the result of the resolving step earlier and make
+		// it easier to other gardenctl commands to ingest the target without
+		// having to re-resolve the shoot name again.
+		// resolveShootName will only ever return either a project or a seed,
+		// never both. The decision what to prefer happens there as well.
+		if project != nil {
+			t.Project = project.Name
+		}
+
+		if seed != nil {
+			t.Seed = seed.Name
+		}
+
 		if err := m.updateShootKubeconfig(ctx, gardenClient, t, shoot); err != nil {
 			return fmt.Errorf("failed to fetch kubeconfig for shoot cluster: %w", err)
 		}
@@ -239,13 +256,21 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 	})
 }
 
+// resolveShootName takes a shoot name and tries to find the matching shoot
+// on the given garden. Either project or seed can be supplied to help in
+// finding the Shoot. If no or multiple Shoots match the given criteria, an
+// error is returned.
+// If a project or a seed are given, they are returned directly (unless an
+// error is returned). If neither are given, the function will decide how
+// to best find the Shoot later by returning either a project or a seed,
+// never both.
 func (m *managerImpl) resolveShootName(
 	ctx context.Context,
 	gardenClient client.Client,
 	project *gardencorev1beta1.Project,
 	seed *gardencorev1beta1.Seed,
 	shootName string,
-) (*gardencorev1beta1.Shoot, error) {
+) (*gardencorev1beta1.Project, *gardencorev1beta1.Seed, *gardencorev1beta1.Shoot, error) {
 	shoot := &gardencorev1beta1.Shoot{}
 
 	// If a shoot is targeted via a project, we fetch it based on the project's namespace.
@@ -260,42 +285,94 @@ func (m *managerImpl) resolveShootName(
 		key := types.NamespacedName{Name: shootName, Namespace: *project.Spec.Namespace}
 
 		if err := gardenClient.Get(ctx, key, shoot); err != nil {
-			return nil, fmt.Errorf("invalid shoot %q: %w", key.Name, err)
-		}
-	} else {
-		// list all shoots, filter by their name and possibly spec.seedName (if seed is set)
-		shootList := gardencorev1beta1.ShootList{}
-		if err := gardenClient.List(ctx, &shootList, &client.ListOptions{}); err != nil {
-			return nil, fmt.Errorf("failed to list shoot clusters: %w", err)
+			return nil, nil, nil, fmt.Errorf("invalid shoot %q: %w", key.Name, err)
 		}
 
-		// filter found shoots
-		matchingShoots := []*gardencorev1beta1.Shoot{}
-		for i, s := range shootList.Items {
-			if s.Name != shootName {
-				continue
-			}
-
-			// if filtering by seed, ignore shoot's whose seed name doesn't matchh
-			if seed != nil && (s.Spec.SeedName == nil || *s.Spec.SeedName != seed.Name) {
-				continue
-			}
-
-			matchingShoots = append(matchingShoots, &shootList.Items[i])
-		}
-
-		if len(matchingShoots) == 0 {
-			return nil, fmt.Errorf("invalid shoot %q: not found", shootName)
-		}
-
-		if len(matchingShoots) > 1 {
-			return nil, fmt.Errorf("there are multiple shoots named %q on this garden, please target a project or seed to make your choice unambiguous", shootName)
-		}
-
-		shoot = matchingShoots[0]
+		return project, nil, shoot, nil
 	}
 
-	return shoot, nil
+	// list all shoots, filter by their name and possibly spec.seedName (if seed is set)
+	shootList := gardencorev1beta1.ShootList{}
+	if err := gardenClient.List(ctx, &shootList, &client.ListOptions{}); err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to list shoot clusters: %w", err)
+	}
+
+	// filter found shoots
+	matchingShoots := []*gardencorev1beta1.Shoot{}
+	for i, s := range shootList.Items {
+		if s.Name != shootName {
+			continue
+		}
+
+		// if filtering by seed, ignore shoot's whose seed name doesn't matchh
+		if seed != nil && (s.Status.SeedName == nil || *s.Status.SeedName != seed.Name) {
+			continue
+		}
+
+		matchingShoots = append(matchingShoots, &shootList.Items[i])
+	}
+
+	if len(matchingShoots) == 0 {
+		return nil, nil, nil, fmt.Errorf("invalid shoot %q: not found", shootName)
+	}
+
+	if len(matchingShoots) > 1 {
+		return nil, nil, nil, fmt.Errorf("there are multiple shoots named %q on this garden, please target a project or seed to make your choice unambiguous", shootName)
+	}
+
+	shoot = matchingShoots[0]
+
+	// if the user specifically targeted via a seed, keep their choice
+	if seed != nil {
+		return nil, seed, shoot, nil
+	}
+
+	// given how fast we can resolve shoots by project and that shoots
+	// always have a project, but not always a seed (yet), we prefer
+	// for users later to use the project path in their target
+	projectList := &gardencorev1beta1.ProjectList{}
+	if err := gardenClient.List(ctx, projectList, client.MatchingFields{gardencore.ProjectNamespace: shoot.Namespace}); err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to fetch parent project for shoot: %v", err)
+	}
+
+	// ctrl-runtime doesn't support FieldSelectors in fake clients
+	// ( https://github.com/kubernetes-sigs/controller-runtime/issues/1376 )
+	// yet, which affects the unit tests. To ensure proper filtering,
+	// the projectList is filtered again. In production this does
+	// not hurt much, as the FieldSelector is already applied, and
+	// in tests very few projects exist anyway.
+	projectList.Items = filterProjectsByNamespace(projectList.Items, shoot.Namespace)
+
+	if len(projectList.Items) == 0 {
+		// this should never happen, but to aid in inspecting broken
+		// installations, try to find the seed instead as a fallback
+		if shoot.Status.SeedName != nil && *shoot.Status.SeedName != "" {
+			var err error
+
+			seed, err = m.resolveSeedName(ctx, gardenClient, *shoot.Status.SeedName)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("failed to fetch project or seed for shoot: %v", err)
+			}
+		}
+	} else {
+		project = &projectList.Items[0]
+	}
+
+	// only project or seed will be non-nil at this point
+
+	return project, seed, shoot, nil
+}
+
+func filterProjectsByNamespace(items []gardencorev1beta1.Project, namespace string) []gardencorev1beta1.Project {
+	result := []gardencorev1beta1.Project{}
+
+	for i, project := range items {
+		if project.Spec.Namespace != nil && *project.Spec.Namespace == namespace {
+			result = append(result, items[i])
+		}
+	}
+
+	return result
 }
 
 func (m *managerImpl) validateShoot(ctx context.Context, seed *gardencorev1beta1.Shoot) error {
