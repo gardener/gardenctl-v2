@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/version"
 
@@ -51,6 +52,7 @@ func Execute() {
 		SilenceUsage: true,
 	}
 
+	rootCmd.AddCommand(ssh.NewCommand(&factory, ssh.NewOptions(ioStreams)))
 	rootCmd.AddCommand(target.NewCommand(&factory, target.NewOptions(ioStreams)))
 	rootCmd.AddCommand(version.NewCommand(&factory, version.NewOptions(ioStreams)))
 
