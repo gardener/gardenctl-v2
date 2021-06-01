@@ -347,7 +347,7 @@ func (m *managerImpl) resolveShootName(
 		return nil, nil, nil, fmt.Errorf("failed to fetch parent project for shoot: %v", err)
 	}
 
-	// see note about on why we have to filter again because ctrl-runtime doesn't support FieldSelectors in tests
+	// see note above on why we have to filter again because ctrl-runtime doesn't support FieldSelectors in tests
 	projectList.Items = filterProjectsByNamespace(projectList.Items, shoot.Namespace)
 
 	if len(projectList.Items) == 0 {
