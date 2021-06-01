@@ -32,7 +32,7 @@ require (
 	k8s.io/component-base v0.21.1
 	k8s.io/klog/v2 v2.8.0
 	k8s.io/kube-openapi v0.0.0-20210421082810-95288971da7e // indirect
-	k8s.io/utils v0.0.0-20210517184530-5a248b5acedc // indirect
+	k8s.io/utils v0.0.0-20210517184530-5a248b5acedc
 	sigs.k8s.io/controller-runtime v0.8.3
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.1 // indirect
 )
