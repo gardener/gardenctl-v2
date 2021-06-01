@@ -111,7 +111,6 @@ func (m *managerImpl) TargetProject(ctx context.Context, projectName string) err
 }
 
 func (m *managerImpl) resolveProjectName(ctx context.Context, gardenClient client.Client, projectName string) (*gardencorev1beta1.Project, error) {
-	// validate that the project exists
 	project := &gardencorev1beta1.Project{}
 	key := types.NamespacedName{Name: projectName}
 	err := gardenClient.Get(ctx, key, project)
@@ -121,7 +120,7 @@ func (m *managerImpl) resolveProjectName(ctx context.Context, gardenClient clien
 
 func (m *managerImpl) validateProject(ctx context.Context, project *gardencorev1beta1.Project) error {
 	if project.Spec.Namespace == nil || *project.Spec.Namespace == "" {
-		return errors.New("project has not yet been fully created")
+		return errors.New("project does not have a corresponding namespace set; most likely it has not yet been fully created")
 	}
 
 	return nil
@@ -293,7 +292,19 @@ func (m *managerImpl) resolveShootName(
 
 	// list all shoots, filter by their name and possibly spec.seedName (if seed is set)
 	shootList := gardencorev1beta1.ShootList{}
-	if err := gardenClient.List(ctx, &shootList, &client.ListOptions{}); err != nil {
+	listOpts := []client.ListOption{}
+
+	if seed != nil {
+		// ctrl-runtime doesn't support FieldSelectors in fake clients
+		// ( https://github.com/kubernetes-sigs/controller-runtime/issues/1376 )
+		// yet, which affects the unit tests. To ensure proper filtering,
+		// the shootList (and projectList later on) are filtered again.
+		// In production this does not hurt much, as the FieldSelector is
+		// already applied, and in tests very few objects exist anyway.
+		listOpts = append(listOpts, client.MatchingFields{gardencore.ShootSeedName: shoot.Namespace})
+	}
+
+	if err := gardenClient.List(ctx, &shootList, listOpts...); err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to list shoot clusters: %w", err)
 	}
 
@@ -304,7 +315,8 @@ func (m *managerImpl) resolveShootName(
 			continue
 		}
 
-		// if filtering by seed, ignore shoot's whose seed name doesn't matchh
+		// if filtering by seed, ignore shoot's whose seed name doesn't match
+		// (if ctrl-runntime supported FieldSelectors in tests, this if statement could go away)
 		if seed != nil && (s.Status.SeedName == nil || *s.Status.SeedName != seed.Name) {
 			continue
 		}
@@ -335,12 +347,7 @@ func (m *managerImpl) resolveShootName(
 		return nil, nil, nil, fmt.Errorf("failed to fetch parent project for shoot: %v", err)
 	}
 
-	// ctrl-runtime doesn't support FieldSelectors in fake clients
-	// ( https://github.com/kubernetes-sigs/controller-runtime/issues/1376 )
-	// yet, which affects the unit tests. To ensure proper filtering,
-	// the projectList is filtered again. In production this does
-	// not hurt much, as the FieldSelector is already applied, and
-	// in tests very few projects exist anyway.
+	// see note about on why we have to filter again because ctrl-runtime doesn't support FieldSelectors in tests
 	projectList.Items = filterProjectsByNamespace(projectList.Items, shoot.Namespace)
 
 	if len(projectList.Items) == 0 {

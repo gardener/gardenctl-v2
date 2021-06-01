@@ -15,14 +15,6 @@ import (
 type Config struct {
 	// Gardens is a list of known Garden clusters
 	Gardens []Garden `yaml:"gardens"`
-	// CloneKubeconfigs controls whether gardenctl will create
-	// a copy of the canonical kubeconfig for a target. This makes
-	// it easier to have context-based settings (think of multiple
-	// shell instances, each having a clone of a shoot's kubeconfig,
-	// but with different namespaces set in each of them), but
-	// leads to orphaned temporary kubeconfig files that need
-	// cleanup.
-	CloneKubeconfigs bool `yaml:"cloneKubeconfigs"`
 }
 
 type Garden struct {
