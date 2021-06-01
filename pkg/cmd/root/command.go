@@ -83,7 +83,7 @@ func initConfig() {
 
 		configPath := filepath.Join(home, gardenHomeFolder)
 
-		// Search config in $HOME/.garden or in path provided with the env variable GL_HOME with name ".garden-login" (without extension) or name from env variable GL_CONFIG_NAME.
+		// Search config in $HOME/.garden or in path provided with the env variable GCTL_HOME with name ".garden-login" (without extension) or name from env variable GCTL_CONFIG_NAME.
 		envHomeDir, err := homedir.Expand(os.Getenv(envGardenHomeDir))
 		cobra.CheckErr(err)
 
@@ -106,7 +106,7 @@ func initConfig() {
 
 	// initialize the factory
 
-	// prefer an explicit GL_HOME env,
+	// prefer an explicit GCTL_HOME env,
 	// but fallback to the system-defined home directory
 	home := os.Getenv(envGardenHomeDir)
 	if len(home) == 0 {
@@ -116,7 +116,7 @@ func initConfig() {
 		home = filepath.Join(home, gardenHomeFolder)
 	}
 
-	// prefer -session, then an explicit GL_HOME env,
+	// prefer -session, then an explicit GCTL_HOME env,
 	// but fallback to the system-defined home directory
 	if factory.TargetFile == "" {
 		targetFile := os.Getenv(envTargetFile)
