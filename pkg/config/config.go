@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v3"
 )
 
@@ -39,6 +40,16 @@ func LoadFromFile(filename string) (*Config, error) {
 	if stat.Size() > 0 {
 		if err := yaml.NewDecoder(f).Decode(config); err != nil {
 			return nil, fmt.Errorf("failed to decode as YAML: %w", err)
+		}
+
+		// be nice and handle ~ in paths
+		for i, g := range config.Gardens {
+			expanded, err := homedir.Expand(g.Kubeconfig)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve ~ in kubeconfig path: %w", err)
+			}
+
+			config.Gardens[i].Kubeconfig = expanded
 		}
 	}
 
