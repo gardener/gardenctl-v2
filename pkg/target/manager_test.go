@@ -148,7 +148,7 @@ var _ = Describe("Manager", func() {
 		prod2AmbiguousShoot, prod2AmbiguousShootKubeconfig = createFakeShoot("ambiguous-shoot", *prod2Project.Spec.Namespace, pointer.String(seed.Name))
 		prod1PendingShoot, prod1PendingShootKubeconfig = createFakeShoot("pending-shoot", *prod1Project.Spec.Namespace, nil)
 
-		gardenClient = fakeclient.NewFakeClient(
+		gardenClient = fakeclient.NewClientBuilder().WithObjects(
 			prod1Project,
 			prod2Project,
 			unreadyProject,
@@ -162,7 +162,7 @@ var _ = Describe("Manager", func() {
 			prod2AmbiguousShootKubeconfig,
 			prod1PendingShoot,
 			prod1PendingShootKubeconfig,
-		)
+		).Build()
 		clientProvider = fake.NewFakeClientProvider(gardenClient)
 		kubeconfigCache = fake.NewFakeKubeconfigCache()
 	})

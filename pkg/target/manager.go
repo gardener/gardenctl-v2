@@ -310,6 +310,7 @@ func (m *managerImpl) resolveShootName(
 
 	// filter found shoots
 	matchingShoots := []*gardencorev1beta1.Shoot{}
+
 	for i, s := range shootList.Items {
 		if s.Name != shootName {
 			continue
