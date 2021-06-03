@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package fake
 
 import (
+	"context"
+
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -80,10 +82,14 @@ func (f *Factory) Manager() (target.Manager, error) {
 	return target.NewManager(f.Config, f.TargetProviderImpl, f.ClientProviderImpl, f.KubeconfigCacheImpl)
 }
 
-func (f *Factory) HomeDir() string {
+func (f *Factory) GardenHomeDir() string {
 	return f.GardenHomeDirectory
 }
 
 func (f *Factory) Clock() util.Clock {
 	return f.ClockImpl
+}
+
+func (f *Factory) PublicIP(ctx context.Context) (string, error) {
+	return "192.0.2.42", nil
 }

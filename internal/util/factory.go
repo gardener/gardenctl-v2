@@ -7,8 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package util
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -18,10 +23,13 @@ import (
 type Factory interface {
 	// Clock returns a clock that provides access to the current time.
 	Clock() Clock
-	// HomeDir returns the home directory for the executing user.
-	HomeDir() string
+	// GardenHomeDir returns the home directory for the executing user.
+	GardenHomeDir() string
 	// Manager returns the target manager used to read and change the currently targeted system.
 	Manager() (target.Manager, error)
+	// PublicIP returns the current host's public IP address. It's
+	// recommended to provide a context with a timeout/deadline.
+	PublicIP(context.Context) (string, error)
 }
 
 // FactoryImpl implements util.Factory interface
@@ -56,10 +64,38 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 	return target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
 }
 
-func (f *FactoryImpl) HomeDir() string {
+func (f *FactoryImpl) GardenHomeDir() string {
 	return f.GardenHomeDirectory
 }
 
 func (f *FactoryImpl) Clock() Clock {
 	return &RealClock{}
+}
+
+func (f *FactoryImpl) PublicIP(ctx context.Context) (string, error) {
+	req, err := http.NewRequest("GET", "https://api64.ipify.org/", nil)
+	if err != nil {
+		return "", err
+	}
+
+	req = req.WithContext(ctx)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	ip, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	ipAddress := strings.TrimSpace(string(ip))
+
+	if net.ParseIP(ipAddress) == nil {
+		return "", fmt.Errorf("API returned an invalid IP (%q)", ipAddress)
+	}
+
+	return ipAddress, nil
 }
