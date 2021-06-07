@@ -69,9 +69,9 @@ func (c *fsKubeconfigCache) filename(t Target) (string, error) {
 
 	if t.ShootName() != "" {
 		if t.ProjectName() != "" {
-			directory = filepath.Join(directory, "projects", t.ProjectName(), "shoots", t.ShootName(), "kubeconfig")
+			directory = filepath.Join(directory, "projects", t.ProjectName(), "shoots", t.ShootName())
 		} else if t.SeedName() != "" {
-			directory = filepath.Join(directory, "seeds", t.SeedName(), "shoots", t.ShootName(), "kubeconfig")
+			directory = filepath.Join(directory, "seeds", t.SeedName(), "shoots", t.ShootName())
 		} else {
 			return "", errors.New("shoot targets need either project or seed name specified")
 		}
