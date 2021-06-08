@@ -12,9 +12,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
+	"strconv"
 	"strings"
 	"time"
 
@@ -41,6 +43,8 @@ const (
 	SSHBastionUsername = "gardener"
 	// SSHNodeUsername is the system username on any of the shoot cluster nodes.
 	SSHNodeUsername = "gardener"
+	// SSHPort is the TCP port on a bastion instance that allows incoming SSH.
+	SSHPort = 22
 )
 
 // NewCommand returns a new ssh command.
@@ -62,7 +66,7 @@ func NewCommand(f util.Factory, o *Options) *cobra.Command {
 
 	cmd.Flags().BoolVar(&o.Interactive, "interactive", o.Interactive, "Open an SSH connection instead of just providing the bastion host.")
 	cmd.Flags().StringArrayVar(&o.CIDRs, "cidr", nil, "CIDRs to allow access to the bastion host; if not given, the host's public IP is auto-detected.")
-	cmd.Flags().StringVar(&o.SSHPublicKeyFile, "public-key-file", "", "Path to the file that contains your public SSH key.")
+	cmd.Flags().StringVar(&o.SSHPublicKeyFile, "public-key-file", "", "Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.")
 	cmd.Flags().DurationVar(&o.WaitTimeout, "wait-timeout", o.WaitTimeout, "Maximum duration to wait for the bastion to become available.")
 
 	return cmd
@@ -164,18 +168,7 @@ func runCommand(f util.Factory, o *Options) error {
 
 	fmt.Fprintf(o.IOStreams.Out, "Waiting up to %v for bastion to be ready…", o.WaitTimeout)
 
-	err = wait.Poll(5*time.Second, o.WaitTimeout, func() (bool, error) {
-		key := types.NamespacedName{Name: bastion.Name, Namespace: bastion.Namespace}
-
-		if err := gardenClient.Get(ctx, key, bastion); err != nil {
-			return false, err
-		}
-
-		// TODO: update gardener dependency and use operationsv1alpha1.BastionReady const
-		cond := corev1alpha1helper.GetCondition(bastion.Status.Conditions, "BastionReady")
-
-		return cond != nil && cond.Status == v1alpha1.ConditionTrue, nil
-	})
+	err = waitForBastion(ctx, o, gardenClient, bastion)
 
 	fmt.Fprintln(o.IOStreams.Out, "")
 
@@ -190,36 +183,26 @@ func runCommand(f util.Factory, o *Options) error {
 		return errors.New("precondition failed")
 	}
 
-	// Bastions can have both an IP and a hostname; we want to
-	// display both, but use only one to actually connect to it.
-	var (
-		printAddr string
-		connectTo string
-	)
-
 	ingress := bastion.Status.Ingress
+	printAddr := ""
+
 	if ingress.Hostname != "" && ingress.IP != "" {
 		printAddr = fmt.Sprintf("%s (%s)", ingress.IP, ingress.Hostname)
-		connectTo = ingress.IP
 	} else if ingress.Hostname != "" {
 		printAddr = ingress.Hostname
-		connectTo = ingress.Hostname
 	} else {
 		printAddr = ingress.IP
-		connectTo = ingress.IP
 	}
 
-	fmt.Fprintf(o.IOStreams.Out, "Bastion host became ready at %s.\n", printAddr)
-
-	time.Sleep(3 * time.Minute)
+	fmt.Fprintf(o.IOStreams.Out, "Bastion host became available at %s.\n", printAddr)
 
 	// continuously keep the bastion alive by renewing its annotation
 	go keepBastionAlive(ctx, gardenClient, bastion, o.IOStreams.ErrOut)
 
 	if node != nil && o.Interactive {
-		err = remoteShell(o, connectTo, nodePrivateKeyFile, node)
+		err = remoteShell(ctx, o, bastion, nodePrivateKeyFile, node)
 	} else {
-		err = waitForSignal(o, connectTo, nodePrivateKeyFile, node)
+		err = waitForSignal(o, bastion, nodePrivateKeyFile, node)
 	}
 
 	fmt.Fprintln(o.IOStreams.Out, "Exiting…")
@@ -227,6 +210,56 @@ func runCommand(f util.Factory, o *Options) error {
 	// stop keeping the bastion alive
 	cancel()
 	<-ctx.Done()
+
+	return err
+}
+
+func preferedBastionAddress(bastion *operationsv1alpha1.Bastion) string {
+	if ingress := bastion.Status.Ingress; ingress != nil {
+		if ingress.IP != "" {
+			return ingress.IP
+		}
+
+		return ingress.Hostname
+	}
+
+	return ""
+}
+
+func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client, bastion *operationsv1alpha1.Bastion) error {
+	return wait.Poll(5*time.Second, o.WaitTimeout, func() (bool, error) {
+		key := client.ObjectKeyFromObject(bastion)
+
+		if err := gardenClient.Get(ctx, key, bastion); err != nil {
+			return false, err
+		}
+
+		// TODO: update gardener dependency and use operationsv1alpha1.BastionReady const
+		cond := corev1alpha1helper.GetCondition(bastion.Status.Conditions, "BastionReady")
+
+		if cond == nil || cond.Status != v1alpha1.ConditionTrue {
+			return false, nil
+		}
+
+		checkCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		if err := checkPortAvailable(checkCtx, preferedBastionAddress(bastion), SSHPort); err != nil {
+			return false, nil
+		}
+
+		return true, nil
+	})
+}
+
+// checkPortAvailable check whether the host with port is reachable within certain period of time
+func checkPortAvailable(ctx context.Context, hostname string, port int) error {
+	var dialer net.Dialer
+
+	conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(hostname, strconv.Itoa(port)))
+	if conn != nil {
+		conn.Close()
+	}
 
 	return err
 }
@@ -249,14 +282,28 @@ func getShootNode(ctx context.Context, o *Options, manager target.Manager, curre
 	return node, nil
 }
 
-func remoteShell(o *Options, bastionAddr string, nodePrivateKeyFile string, node *corev1.Node) error {
+func remoteShell(ctx context.Context, o *Options, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFile string, node *corev1.Node) error {
 	nodeHostname, err := getNodeHostname(node)
 	if err != nil {
 		return err
 	}
 
+	bastionAddr := preferedBastionAddress(bastion)
+	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFile, nodeHostname)
+
+	fmt.Fprintln(o.IOStreams.Out, "You can open additional SSH sessions using the command below:")
+	fmt.Fprintln(o.IOStreams.Out, "")
+	fmt.Fprintln(o.IOStreams.Out, connectCmd)
+	fmt.Fprintln(o.IOStreams.Out, "")
+
+	proxyPrivateKeyFlag := ""
+	if o.SSHPrivateKeyFile != "" {
+		proxyPrivateKeyFlag = fmt.Sprintf(" -o IdentitiesOnly=yes -i %s", o.SSHPrivateKeyFile)
+	}
+
 	proxyCmd := fmt.Sprintf(
-		"ssh -W%%h:%%p -o StrictHostKeyChecking=no %s@%s",
+		"ssh -W%%h:%%p -o StrictHostKeyChecking=no%s %s@%s",
+		proxyPrivateKeyFlag,
 		SSHBastionUsername,
 		bastionAddr,
 	)
@@ -269,7 +316,7 @@ func remoteShell(o *Options, bastionAddr string, nodePrivateKeyFile string, node
 		fmt.Sprintf("%s@%s", SSHNodeUsername, nodeHostname),
 	}
 
-	cmd := exec.Command("ssh", args...)
+	cmd := exec.CommandContext(ctx, "ssh", args...)
 	cmd.Stdout = o.IOStreams.Out
 	cmd.Stdin = o.IOStreams.In
 	cmd.Stderr = o.IOStreams.ErrOut
@@ -279,7 +326,7 @@ func remoteShell(o *Options, bastionAddr string, nodePrivateKeyFile string, node
 
 // waitForSignal informs the user about their options and keeps the
 // bastion alive until gardenctl exits.
-func waitForSignal(o *Options, bastionAddr string, nodePrivateKeyFile string, node *corev1.Node) error {
+func waitForSignal(o *Options, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFile string, node *corev1.Node) error {
 	nodeHostname := "SHOOT_NODE"
 	if node != nil {
 		var err error
@@ -290,19 +337,8 @@ func waitForSignal(o *Options, bastionAddr string, nodePrivateKeyFile string, no
 		}
 	}
 
-	proxyCmd := fmt.Sprintf(
-		"ssh -W%%h:%%p -o IdentitiesOnly=yes -o StrictHostKeyChecking=no %s@%s",
-		SSHBastionUsername,
-		bastionAddr,
-	)
-
-	connectCmd := fmt.Sprintf(
-		`ssh -o "StrictHostKeyChecking=no" -o "IdentitiesOnly=yes" -i %s -o "ProxyCommand=%s" %s@%s`,
-		nodePrivateKeyFile,
-		proxyCmd,
-		SSHNodeUsername,
-		nodeHostname,
-	)
+	bastionAddr := preferedBastionAddress(bastion)
+	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFile, nodeHostname)
 
 	fmt.Fprintln(o.IOStreams.Out, "Connect to Shoot nodes by using the bastion as a proxy/jump host, for example:")
 	fmt.Fprintln(o.IOStreams.Out, "")
@@ -315,6 +351,30 @@ func waitForSignal(o *Options, bastionAddr string, nodePrivateKeyFile string, no
 	<-signalChan
 
 	return nil
+}
+
+func sshCommandLine(o *Options, bastionAddr string, nodePrivateKeyFile string, nodeName string) string {
+	proxyPrivateKeyFlag := ""
+	if o.SSHPrivateKeyFile != "" {
+		proxyPrivateKeyFlag = fmt.Sprintf(" -o IdentitiesOnly=yes -i %s", o.SSHPrivateKeyFile)
+	}
+
+	proxyCmd := fmt.Sprintf(
+		"ssh -W%%h:%%p -o StrictHostKeyChecking=no%s %s@%s",
+		proxyPrivateKeyFlag,
+		SSHBastionUsername,
+		bastionAddr,
+	)
+
+	connectCmd := fmt.Sprintf(
+		`ssh -o "StrictHostKeyChecking=no" -o "IdentitiesOnly=yes" -i %s -o "ProxyCommand=%s" %s@%s`,
+		nodePrivateKeyFile,
+		proxyCmd,
+		SSHNodeUsername,
+		nodeName,
+	)
+
+	return connectCmd
 }
 
 func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, stderr io.Writer) {

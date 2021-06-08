@@ -8,6 +8,10 @@ package ssh
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -20,9 +24,10 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardener/pkg/utils"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh"
 	cryptossh "golang.org/x/crypto/ssh"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
@@ -48,9 +53,13 @@ type Options struct {
 	CIDRs []string
 
 	// SSHPublicKeyFile is the full path to the file containing the user's
-	// public SSH key. If not given, gardenctl will try ~/.ssh/id_rsa.pub and then
-	// ~/.ssh/id_ed25519.pub.
+	// public SSH key. If not given, gardenctl will create a new temporary keypair.
 	SSHPublicKeyFile string
+
+	// SSHPrivateKeyFile is the full path to the file containing the user's
+	// private SSH key. This is only set if no key was given and a temporary keypair
+	// was generated. Otherwise gardenctl relies on the user's SSH agent.
+	SSHPrivateKeyFile string
 
 	// WaitTimeout is the maximum time to wait for a bastion to become ready.
 	WaitTimeout time.Duration
@@ -75,7 +84,7 @@ func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string, st
 
 		publicIP, err := f.PublicIP(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to determine your system's public IP address: %v", err)
+			return fmt.Errorf("failed to determine your system's public IP address: %w", err)
 		}
 
 		fmt.Fprintf(stdout, "Auto-detected public IP as %s\n", publicIP)
@@ -84,17 +93,13 @@ func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string, st
 	}
 
 	if len(o.SSHPublicKeyFile) == 0 {
-		if home, err := homedir.Dir(); err == nil {
-			for _, filename := range []string{"id_rsa.pub", "id_ed25519.pub"} {
-				fullFilename := filepath.Join(home, ".ssh", filename)
-
-				if _, err := os.Stat(fullFilename); err == nil {
-					fmt.Fprintf(stdout, "Using SSH public key %s\n", fullFilename)
-					o.SSHPublicKeyFile = fullFilename
-					break
-				}
-			}
+		privateKeyFile, publicKeyFile, err := createSSHKeypair("", "")
+		if err != nil {
+			return fmt.Errorf("failed to generate SSH keypair: %w", err)
 		}
+
+		o.SSHPublicKeyFile = publicKeyFile
+		o.SSHPrivateKeyFile = privateKeyFile
 	}
 
 	if len(args) > 0 {
@@ -134,21 +139,89 @@ func (o *Options) Validate() error {
 
 	for _, cidr := range o.CIDRs {
 		if _, _, err := net.ParseCIDR(cidr); err != nil {
-			return fmt.Errorf("CIDR %q is invalid: %v", cidr, err)
+			return fmt.Errorf("CIDR %q is invalid: %w", cidr, err)
 		}
-	}
-
-	if len(o.SSHPublicKeyFile) == 0 {
-		return errors.New("no SSH key found, please specify public key file explicitly")
 	}
 
 	content, err := ioutil.ReadFile(o.SSHPublicKeyFile)
 	if err != nil {
-		return fmt.Errorf("invalid SSH key file: %v", err)
+		return fmt.Errorf("invalid SSH public key file: %w", err)
 	}
 
 	if _, _, _, _, err := cryptossh.ParseAuthorizedKey(content); err != nil {
-		return fmt.Errorf("invalid SSH key file: %v", err)
+		return fmt.Errorf("invalid SSH public key file: %w", err)
+	}
+
+	return nil
+}
+
+func createSSHKeypair(tempDir string, keyName string) (string, string, error) {
+	if keyName == "" {
+		id, err := utils.GenerateRandomString(8)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to create key name: %v", err)
+		}
+
+		keyName = fmt.Sprintf("gen_id_rsa_%s", strings.ToLower(id))
+	}
+
+	privateKey, err := createSSHPrivateKey()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create private key: %w", err)
+	}
+
+	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create public key: %w", err)
+	}
+
+	if tempDir == "" {
+		tempDir = os.TempDir()
+	}
+
+	privateKeyFile := filepath.Join(tempDir, keyName)
+	if err := writeKeyFile(privateKeyFile, encodePrivateKey(privateKey)); err != nil {
+		return "", "", fmt.Errorf("failed to write private key: %w", err)
+	}
+
+	publicKeyFile := filepath.Join(tempDir, fmt.Sprintf("%s.pub", keyName))
+	if err := writeKeyFile(publicKeyFile, encodePublicKey(publicKey)); err != nil {
+		return "", "", fmt.Errorf("failed to write public key: %w", err)
+	}
+
+	return privateKeyFile, publicKeyFile, nil
+}
+
+func createSSHPrivateKey() (*rsa.PrivateKey, error) {
+	// Private Key generation
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate Private Key
+	err = privateKey.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	return privateKey, nil
+}
+
+func encodePrivateKey(privateKey *rsa.PrivateKey) []byte {
+	return pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	})
+}
+
+func encodePublicKey(publicKey ssh.PublicKey) []byte {
+	return ssh.MarshalAuthorizedKey(publicKey)
+}
+
+func writeKeyFile(filename string, content []byte) error {
+	if err := ioutil.WriteFile(filename, content, 0600); err != nil {
+		return fmt.Errorf("failed to write %q: %w", filename, err)
 	}
 
 	return nil
