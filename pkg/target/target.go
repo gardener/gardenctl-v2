@@ -38,7 +38,6 @@ type targetImpl struct {
 	Project string `yaml:"project,omitempty"`
 	Seed    string `yaml:"seed,omitempty"`
 	Shoot   string `yaml:"shoot,omitempty"`
-	// TODO: Namespace
 }
 
 var _ Target = &targetImpl{}

@@ -358,19 +358,6 @@ var _ = Describe("Manager", func() {
 		Expect(newClient).NotTo(BeNil())
 	})
 
-	It("should provide a project client", func() {
-		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
-
-		newClient, err := manager.ProjectClient(t)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(newClient).NotTo(BeNil())
-	})
-
 	It("should provide a seed client", func() {
 		t := target.NewTarget(gardenName, "", seed.Name, "")
 		targetProvider := fake.NewFakeTargetProvider(t)
@@ -399,10 +386,6 @@ var _ = Describe("Manager", func() {
 		Expect(kubeconfigCache.Write(t, []byte("unused"))).To(Succeed())
 
 		newClient, err := manager.ShootClusterClient(t)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(newClient).NotTo(BeNil())
-
-		newClient, err = manager.ShootNamespaceClient(t)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(newClient).NotTo(BeNil())
 	})

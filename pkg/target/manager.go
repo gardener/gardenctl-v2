@@ -35,9 +35,7 @@ type Manager interface {
 	TargetShoot(ctx context.Context, name string) error
 
 	GardenClient(t Target) (client.Client, error)
-	ProjectClient(t Target) (client.Client, error)
 	SeedClient(t Target) (client.Client, error)
-	ShootNamespaceClient(t Target) (client.Client, error)
 	ShootClusterClient(t Target) (client.Client, error)
 }
 
@@ -430,25 +428,6 @@ func (m *managerImpl) clientForGarden(name string) (client.Client, error) {
 	return nil, fmt.Errorf("targeted garden cluster %q is not configured", name)
 }
 
-func (m *managerImpl) ProjectClient(t Target) (client.Client, error) {
-	t, err := m.getTarget(t)
-	if err != nil {
-		return nil, err
-	}
-
-	if t.GardenName() == "" {
-		return nil, ErrNoGardenTargeted
-	}
-
-	if t.ProjectName() == "" {
-		return nil, ErrNoProjectTargeted
-	}
-
-	// project clients point to the garden cluster, but should be pinned to
-	// the project namespace; pinning is still TODO
-	return m.GardenClient(t)
-}
-
 func (m *managerImpl) SeedClient(t Target) (client.Client, error) {
 	t, err := m.getTarget(t)
 	if err != nil {
@@ -469,10 +448,6 @@ func (m *managerImpl) SeedClient(t Target) (client.Client, error) {
 	}
 
 	return m.clientProvider.FromBytes(kubeconfig)
-}
-
-func (m *managerImpl) ShootNamespaceClient(t Target) (client.Client, error) {
-	return m.SeedClient(t) // TODO: pre-configure the client to use a certain namespace?
 }
 
 func (m *managerImpl) ShootClusterClient(t Target) (client.Client, error) {
