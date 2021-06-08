@@ -26,7 +26,6 @@ const (
 	envPrefix        = "GCTL"
 	envGardenHomeDir = envPrefix + "_HOME"
 	envConfigName    = envPrefix + "_CONFIG_NAME"
-	envTargetFile    = envPrefix + "_TARGET_FILE"
 
 	gardenHomeFolder = ".garden"
 	configName       = "gardenctl-v2"
@@ -59,7 +58,6 @@ func Execute() {
 	// usage where the current user has no home directory (which might _just_ be
 	// the reason the user chose to specify an explicit config file).
 	rootCmd.PersistentFlags().StringVar(&factory.ConfigFile, "config", "", fmt.Sprintf("config file (default is $HOME/%s/%s.yaml)", gardenHomeFolder, configName))
-	rootCmd.PersistentFlags().StringVar(&factory.TargetFile, "session", "", fmt.Sprintf("target session file (default is $HOME/%s/%s)", gardenHomeFolder, targetFilename))
 
 	cobra.OnInitialize(initConfig)
 
@@ -116,17 +114,7 @@ func initConfig() {
 		home = filepath.Join(home, gardenHomeFolder)
 	}
 
-	// prefer -session, then an explicit GCTL_HOME env,
-	// but fallback to the system-defined home directory
-	if factory.TargetFile == "" {
-		targetFile := os.Getenv(envTargetFile)
-		if len(targetFile) == 0 {
-			targetFile = filepath.Join(home, targetFilename)
-		}
-
-		factory.TargetFile = targetFile
-	}
-
 	factory.ConfigFile = viper.ConfigFileUsed()
+	factory.TargetFile = filepath.Join(home, targetFilename)
 	factory.GardenHomeDirectory = home
 }
