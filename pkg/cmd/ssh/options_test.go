@@ -67,7 +67,7 @@ var _ = Describe("Options", func() {
 	})
 
 	It("should require a valid public SSH key file", func() {
-		ioutil.WriteFile(publicSSHKeyFile, []byte("not a key"), 0644)
+		Expect(ioutil.WriteFile(publicSSHKeyFile, []byte("not a key"), 0644)).To(Succeed())
 
 		streams, _, _, _ := genericclioptions.NewTestIOStreams()
 		o := NewOptions(streams)
