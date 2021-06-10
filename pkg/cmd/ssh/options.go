@@ -32,7 +32,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
-// Options is a struct to support target command
+// Options is a struct to support ssh command
 type Options struct {
 	base.Options
 
@@ -43,7 +43,7 @@ type Options struct {
 	Interactive bool
 
 	// NodeName is the name of the Shoot cluster node that the user wants to
-	// connect to. If this is left empty, grdenctl will only establish the
+	// connect to. If this is left empty, gardenctl will only establish the
 	// bastion host, but leave it up to the user to SSH themselves.
 	NodeName string
 
@@ -85,7 +85,7 @@ func NewOptions(ioStreams genericclioptions.IOStreams) *Options {
 // Complete adapts from the command line args to the data required.
 func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string, stdout io.Writer) error {
 	if len(o.CIDRs) == 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 
 		publicIP, err := f.PublicIP(ctx)
@@ -93,7 +93,7 @@ func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string, st
 			return fmt.Errorf("failed to determine your system's public IP address: %w", err)
 		}
 
-		fmt.Fprintf(stdout, "Auto-detected public IP as %s\n", publicIP)
+		fmt.Fprintf(stdout, "Auto-detected your system's CIDR as %s\n", ipToCIDR(publicIP))
 
 		o.CIDRs = append(o.CIDRs, ipToCIDR(publicIP))
 	}

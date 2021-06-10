@@ -23,7 +23,7 @@ import (
 type Factory interface {
 	// Clock returns a clock that provides access to the current time.
 	Clock() Clock
-	// GardenHomeDir returns the home directory for the executing user.
+	// GardenHomeDir returns the gardenctl home directory for the executing user.
 	GardenHomeDir() string
 	// Manager returns the target manager used to read and change the currently targeted system.
 	Manager() (target.Manager, error)

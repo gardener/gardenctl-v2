@@ -18,60 +18,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// ShootForTarget returns the targeted shoot, if a shoot cluster is targeted,
+// otherwise an error.
 func ShootForTarget(ctx context.Context, gardenClient client.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
-	// If a shoot is targeted via a project, we fetch it based on the project's namespace.
-	// If the target uses a seed, _all_ shoots in the garden are filtered
-	// for shoots with matching seed and name.
-	// If neither project nor seed are given, _all_ shoots in the garden are filtered by
-	// their name.
-	// It's an error if no or multiple matching shoots are found.
 	if t.ProjectName() != "" {
 		return shootForTargetViaProject(ctx, gardenClient, t)
+	} else if t.SeedName() != "" {
+		return shootForTargetViaSeed(ctx, gardenClient, t)
 	}
 
-	// list all shoots, filter by their name and possibly spec.seedName (if seed is set)
-	shootList := gardencorev1beta1.ShootList{}
-	if err := gardenClient.List(ctx, &shootList, &client.ListOptions{}); err != nil {
-		return nil, fmt.Errorf("failed to list shoot clusters: %w", err)
-	}
-
-	var (
-		seed *gardencorev1beta1.Seed
-		err  error
-	)
-
-	if t.SeedName() != "" {
-		seed, err = SeedForTarget(ctx, gardenClient, t)
-		if err != nil {
-			return nil, fmt.Errorf("invalid seed %q: %v", t.SeedName(), err)
-		}
-	}
-
-	// filter found shoots
-	matchingShoots := []*gardencorev1beta1.Shoot{}
-
-	for i, s := range shootList.Items {
-		if s.Name != t.ShootName() {
-			continue
-		}
-
-		// if filtering by seed, ignore shoot's where seed name doesn't match
-		if seed != nil && (s.Spec.SeedName == nil || *s.Spec.SeedName != seed.Name) {
-			continue
-		}
-
-		matchingShoots = append(matchingShoots, &shootList.Items[i])
-	}
-
-	if len(matchingShoots) == 0 {
-		return nil, fmt.Errorf("invalid shoot %q: not found", t.ShootName())
-	}
-
-	if len(matchingShoots) > 1 {
-		return nil, fmt.Errorf("there are multiple shoots named %q on this garden, please target a project or seed to make your choice unambiguous", t.ShootName())
-	}
-
-	return matchingShoots[0], nil
+	return nil, errors.New("invalid target, must have either project or seed specified for targeting a shoot")
 }
 
 func shootForTargetViaProject(ctx context.Context, gardenClient client.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
@@ -93,6 +49,45 @@ func shootForTargetViaProject(ctx context.Context, gardenClient client.Client, t
 	}
 
 	return shoot, nil
+}
+
+func shootForTargetViaSeed(ctx context.Context, gardenClient client.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
+	seed, err := SeedForTarget(ctx, gardenClient, t)
+	if err != nil {
+		return nil, fmt.Errorf("invalid seed %q: %v", t.SeedName(), err)
+	}
+
+	// list all shoots, filter by their name and possibly spec.seedName (if seed is set)
+	shootList := gardencorev1beta1.ShootList{}
+	if err := gardenClient.List(ctx, &shootList, &client.ListOptions{}); err != nil {
+		return nil, fmt.Errorf("failed to list shoot clusters: %w", err)
+	}
+
+	// filter found shoots
+	matchingShoots := []*gardencorev1beta1.Shoot{}
+
+	for i, s := range shootList.Items {
+		if s.Name != t.ShootName() {
+			continue
+		}
+
+		// ignore shootss where seed name doesn't match
+		if s.Spec.SeedName == nil || *s.Spec.SeedName != seed.Name {
+			continue
+		}
+
+		matchingShoots = append(matchingShoots, &shootList.Items[i])
+	}
+
+	if len(matchingShoots) == 0 {
+		return nil, fmt.Errorf("invalid shoot %q: not found", t.ShootName())
+	}
+
+	if len(matchingShoots) > 1 {
+		return nil, fmt.Errorf("there are multiple shoots named %q on this garden, please target using a project to make your choice unambiguous", t.ShootName())
+	}
+
+	return matchingShoots[0], nil
 }
 
 func SeedForTarget(ctx context.Context, gardenClient client.Client, t target.Target) (*gardencorev1beta1.Seed, error) {

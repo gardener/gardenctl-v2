@@ -50,8 +50,9 @@ const (
 // NewCommand returns a new ssh command.
 func NewCommand(f util.Factory, o *Options) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "ssh",
+		Use:   "ssh [NODENAME]",
 		Short: "Establish an SSH connection to a Shoot cluster's node",
+
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := o.Complete(f, cmd, args, o.IOStreams.Out); err != nil {
 				return fmt.Errorf("failed to complete command options: %w", err)
@@ -65,7 +66,7 @@ func NewCommand(f util.Factory, o *Options) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&o.Interactive, "interactive", o.Interactive, "Open an SSH connection instead of just providing the bastion host.")
-	cmd.Flags().StringArrayVar(&o.CIDRs, "cidr", nil, "CIDRs to allow access to the bastion host; if not given, the host's public IP is auto-detected.")
+	cmd.Flags().StringArrayVar(&o.CIDRs, "cidr", nil, "CIDRs to allow access to the bastion host; if not given, your system's public IP is auto-detected.")
 	cmd.Flags().StringVar(&o.SSHPublicKeyFile, "public-key-file", "", "Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.")
 	cmd.Flags().DurationVar(&o.WaitTimeout, "wait-timeout", o.WaitTimeout, "Maximum duration to wait for the bastion to become available.")
 	cmd.Flags().BoolVar(&o.KeepBastion, "keep-bastion", o.KeepBastion, "Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)")
@@ -151,7 +152,7 @@ func runCommand(f util.Factory, o *Options) error {
 	bastion := &operationsv1alpha1.Bastion{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      bastionName,
-			Namespace: "garden-dev", // shoot.Namespace,
+			Namespace: shoot.Namespace,
 		},
 		Spec: operationsv1alpha1.BastionSpec{
 			ShootRef: corev1.LocalObjectReference{
@@ -168,6 +169,9 @@ func runCommand(f util.Factory, o *Options) error {
 		return fmt.Errorf("failed to create bastion: %v", err)
 	}
 
+	// continuously keep the bastion alive by renewing its annotation
+	go keepBastionAlive(ctx, gardenClient, bastion, o.IOStreams.ErrOut)
+
 	fmt.Fprintf(o.IOStreams.Out, "Waiting up to %v for bastion to be ready…", o.WaitTimeout)
 
 	err = waitForBastion(ctx, o, gardenClient, bastion)
@@ -177,7 +181,7 @@ func runCommand(f util.Factory, o *Options) error {
 	if err == wait.ErrWaitTimeout {
 		fmt.Fprintln(o.IOStreams.Out, "Timed out waiting for the bastion to be ready.")
 	} else if err != nil {
-		fmt.Fprintf(o.IOStreams.Out, "An error occured while waiting: %v", err)
+		fmt.Fprintf(o.IOStreams.Out, "An error occurred while waiting: %v", err)
 	}
 
 	if err != nil {
@@ -198,9 +202,6 @@ func runCommand(f util.Factory, o *Options) error {
 
 	fmt.Fprintf(o.IOStreams.Out, "Bastion host became available at %s.\n", printAddr)
 
-	// continuously keep the bastion alive by renewing its annotation
-	go keepBastionAlive(ctx, gardenClient, bastion, o.IOStreams.ErrOut)
-
 	if node != nil && o.Interactive {
 		err = remoteShell(ctx, o, bastion, nodePrivateKeyFile, node)
 	} else {
@@ -210,6 +211,8 @@ func runCommand(f util.Factory, o *Options) error {
 	fmt.Fprintln(o.IOStreams.Out, "Exiting…")
 
 	if !o.KeepBastion {
+		fmt.Fprintf(o.IOStreams.Out, "Deleting bastion %s…", bastion.Name)
+
 		if err := gardenClient.Delete(ctx, bastion); err != nil {
 			return fmt.Errorf("failed to delete bastion: %v", err)
 		}
@@ -222,7 +225,7 @@ func runCommand(f util.Factory, o *Options) error {
 	return err
 }
 
-func preferedBastionAddress(bastion *operationsv1alpha1.Bastion) string {
+func preferredBastionAddress(bastion *operationsv1alpha1.Bastion) string {
 	if ingress := bastion.Status.Ingress; ingress != nil {
 		if ingress.IP != "" {
 			return ingress.IP
@@ -252,7 +255,7 @@ func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client,
 		checkCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		if err := checkPortAvailable(checkCtx, preferedBastionAddress(bastion), SSHPort); err != nil {
+		if err := checkPortAvailable(checkCtx, preferredBastionAddress(bastion), SSHPort); err != nil {
 			return false, nil
 		}
 
@@ -260,7 +263,7 @@ func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client,
 	})
 }
 
-// checkPortAvailable check whether the host with port is reachable within certain period of time
+// checkPortAvailable checks whether the host with port is reachable within a certain period of time
 func checkPortAvailable(ctx context.Context, hostname string, port int) error {
 	var dialer net.Dialer
 
@@ -296,7 +299,7 @@ func remoteShell(ctx context.Context, o *Options, bastion *operationsv1alpha1.Ba
 		return err
 	}
 
-	bastionAddr := preferedBastionAddress(bastion)
+	bastionAddr := preferredBastionAddress(bastion)
 	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFile, nodeHostname)
 
 	fmt.Fprintln(o.IOStreams.Out, "You can open additional SSH sessions using the command below:")
@@ -346,7 +349,7 @@ func waitForSignal(o *Options, bastion *operationsv1alpha1.Bastion, nodePrivateK
 		}
 	}
 
-	bastionAddr := preferedBastionAddress(bastion)
+	bastionAddr := preferredBastionAddress(bastion)
 	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFile, nodeHostname)
 
 	fmt.Fprintln(o.IOStreams.Out, "Connect to Shoot nodes by using the bastion as a proxy/jump host, for example:")
