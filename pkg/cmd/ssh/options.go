@@ -47,7 +47,7 @@ type Options struct {
 	// bastion host, but leave it up to the user to SSH themselves.
 	NodeName string
 
-	// CIDRs is a list of IP address ranges to allowed for accessing the
+	// CIDRs is a list of IP address ranges to be allowed for accessing the
 	// created Bastion host. If not given, gardenctl will attempt to
 	// auto-detect the user's IP and allow only it (i.e. use a /32 netmask).
 	CIDRs []string
@@ -60,6 +60,10 @@ type Options struct {
 	// private SSH key. This is only set if no key was given and a temporary keypair
 	// was generated. Otherwise gardenctl relies on the user's SSH agent.
 	SSHPrivateKeyFile string
+
+	// generatedSSHKeys is true if the public and private SSH keys have been generated
+	// instead of being provided by the user. This will then be used for the cleanup.
+	generatedSSHKeys bool
 
 	// WaitTimeout is the maximum time to wait for a bastion to become ready.
 	WaitTimeout time.Duration
@@ -106,6 +110,7 @@ func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string, st
 
 		o.SSHPublicKeyFile = publicKeyFile
 		o.SSHPrivateKeyFile = privateKeyFile
+		o.generatedSSHKeys = true
 	}
 
 	if len(args) > 0 {

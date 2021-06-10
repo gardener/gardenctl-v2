@@ -50,9 +50,22 @@ const (
 // NewCommand returns a new ssh command.
 func NewCommand(f util.Factory, o *Options) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "ssh [NODENAME]",
+		Use:   "ssh [NODE_NAME]",
 		Short: "Establish an SSH connection to a Shoot cluster's node",
+		Args:  cobra.MaximumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) != 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
 
+			nodeNames, err := getNodeNamesFromShoot(f, o, toComplete)
+			if err != nil {
+				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			return nodeNames, cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := o.Complete(f, cmd, args, o.IOStreams.Out); err != nil {
 				return fmt.Errorf("failed to complete command options: %w", err)
@@ -65,7 +78,7 @@ func NewCommand(f util.Factory, o *Options) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&o.Interactive, "interactive", o.Interactive, "Open an SSH connection instead of just providing the bastion host.")
+	cmd.Flags().BoolVar(&o.Interactive, "interactive", o.Interactive, "Open an SSH connection instead of just providing the bastion host (only if NODE_NAME is provided).")
 	cmd.Flags().StringArrayVar(&o.CIDRs, "cidr", nil, "CIDRs to allow access to the bastion host; if not given, your system's public IP is auto-detected.")
 	cmd.Flags().StringVar(&o.SSHPublicKeyFile, "public-key-file", "", "Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.")
 	cmd.Flags().DurationVar(&o.WaitTimeout, "wait-timeout", o.WaitTimeout, "Maximum duration to wait for the bastion to become available.")
@@ -216,6 +229,11 @@ func runCommand(f util.Factory, o *Options) error {
 		if err := gardenClient.Delete(ctx, bastion); err != nil {
 			return fmt.Errorf("failed to delete bastion: %v", err)
 		}
+
+		if o.generatedSSHKeys {
+			_ = os.Remove(o.SSHPublicKeyFile)
+			_ = os.Remove(o.SSHPrivateKeyFile)
+		}
 	}
 
 	// stop keeping the bastion alive
@@ -223,6 +241,48 @@ func runCommand(f util.Factory, o *Options) error {
 	<-ctx.Done()
 
 	return err
+}
+
+func getNodeNamesFromShoot(f util.Factory, o *Options, prefix string) ([]string, error) {
+	ctx := context.Background()
+
+	manager, err := f.Manager()
+	if err != nil {
+		return nil, err
+	}
+
+	// validate the current target
+	currentTarget, err := manager.CurrentTarget()
+	if err != nil {
+		return nil, err
+	}
+
+	if currentTarget.ShootName() == "" {
+		return nil, errors.New("no Shoot cluster targeted")
+	}
+
+	// create client for the shoot cluster
+	shootClient, err := manager.ShootClusterClient(currentTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	// fetch all nodes
+	nodes, err := getShootNodes(ctx, shootClient)
+	if err != nil {
+		return nil, err
+	}
+
+	// collect names, filter by prefix
+	nodeNames := []string{}
+
+	for _, node := range nodes {
+		if strings.HasPrefix(node.Name, prefix) {
+			nodeNames = append(nodeNames, node.Name)
+		}
+	}
+
+	return nodeNames, nil
 }
 
 func preferredBastionAddress(bastion *operationsv1alpha1.Bastion) string {
@@ -423,6 +483,7 @@ func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *
 func getShootNodePrivateKey(ctx context.Context, gardenClient client.Client, shoot *gardencorev1beta1.Shoot) ([]byte, error) {
 	secret := &corev1.Secret{}
 	key := types.NamespacedName{
+		// TODO: use ShootProjectSecretSuffixSSHKeypair once Gardener supports ctrl-runtime 0.9
 		Name:      fmt.Sprintf("%s.ssh-keypair", shoot.Name),
 		Namespace: shoot.Namespace,
 	}
@@ -431,6 +492,7 @@ func getShootNodePrivateKey(ctx context.Context, gardenClient client.Client, sho
 		return nil, err
 	}
 
+	// TODO: use DataKeyRSAPrivateKey once Gardener supports ctrl-runtime 0.9
 	return secret.Data["id_rsa"], nil
 }
 
@@ -467,4 +529,13 @@ func getNodeHostname(node *corev1.Node) (string, error) {
 	}
 
 	return "", errors.New("node has no internal or external names")
+}
+
+func getShootNodes(ctx context.Context, shootClient client.Client) ([]corev1.Node, error) {
+	nodeList := corev1.NodeList{}
+	if err := shootClient.List(ctx, &nodeList, &client.ListOptions{}); err != nil {
+		return nil, fmt.Errorf("failed to list nodes: %w", err)
+	}
+
+	return nodeList.Items, nil
 }
