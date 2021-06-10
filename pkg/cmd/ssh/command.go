@@ -68,6 +68,7 @@ func NewCommand(f util.Factory, o *Options) *cobra.Command {
 	cmd.Flags().StringArrayVar(&o.CIDRs, "cidr", nil, "CIDRs to allow access to the bastion host; if not given, the host's public IP is auto-detected.")
 	cmd.Flags().StringVar(&o.SSHPublicKeyFile, "public-key-file", "", "Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.")
 	cmd.Flags().DurationVar(&o.WaitTimeout, "wait-timeout", o.WaitTimeout, "Maximum duration to wait for the bastion to become available.")
+	cmd.Flags().BoolVar(&o.KeepBastion, "keep-bastion", o.KeepBastion, "Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)")
 
 	return cmd
 }
@@ -161,7 +162,7 @@ func runCommand(f util.Factory, o *Options) error {
 		},
 	}
 
-	fmt.Fprintln(o.IOStreams.Out, "Creating bastion host…")
+	fmt.Fprintf(o.IOStreams.Out, "Creating bastion %s…", bastion.Name)
 
 	if err := gardenClient.Create(ctx, bastion); err != nil {
 		return fmt.Errorf("failed to create bastion: %v", err)
@@ -207,6 +208,12 @@ func runCommand(f util.Factory, o *Options) error {
 	}
 
 	fmt.Fprintln(o.IOStreams.Out, "Exiting…")
+
+	if !o.KeepBastion {
+		if err := gardenClient.Delete(ctx, bastion); err != nil {
+			return fmt.Errorf("failed to delete bastion: %v", err)
+		}
+	}
 
 	// stop keeping the bastion alive
 	cancel()

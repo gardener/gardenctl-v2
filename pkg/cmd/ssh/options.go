@@ -63,6 +63,11 @@ type Options struct {
 
 	// WaitTimeout is the maximum time to wait for a bastion to become ready.
 	WaitTimeout time.Duration
+
+	// KeepBastion will control whether or not gardenctl deletes the created
+	// bastion once it exits. By default it deletes it, but we allow the user to
+	// keep it for debugging purposes.
+	KeepBastion bool
 }
 
 // NewOptions returns initialized Options
@@ -73,6 +78,7 @@ func NewOptions(ioStreams genericclioptions.IOStreams) *Options {
 		},
 		Interactive: true,
 		WaitTimeout: 10 * time.Minute,
+		KeepBastion: false,
 	}
 }
 
