@@ -114,6 +114,7 @@ func runCommand(f util.Factory, o *Options) error {
 	if err != nil {
 		return err
 	}
+
 	defer os.Remove(nodePrivateKeyFile)
 
 	// if a node was given, check if the node exists
@@ -328,6 +329,7 @@ func remoteShell(ctx context.Context, o *Options, bastion *operationsv1alpha1.Ba
 // bastion alive until gardenctl exits.
 func waitForSignal(o *Options, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFile string, node *corev1.Node) error {
 	nodeHostname := "SHOOT_NODE"
+
 	if node != nil {
 		var err error
 
@@ -395,15 +397,14 @@ func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *
 
 			if err := gardenClient.Get(ctx, key, bastion); err != nil {
 				fmt.Fprintf(stderr, "Failed to keep bastion alive: %v\n", err)
-				// no return here, maybe on the next attempt it will work
 			}
 
 			// add the keepalive annotation
 			oldBastion := bastion.DeepCopy()
 			bastion.Annotations[v1beta1constants.GardenerOperation] = v1beta1constants.GardenerOperationKeepalive
+
 			if err := gardenClient.Patch(ctx, bastion, client.MergeFrom(oldBastion)); err != nil {
 				fmt.Fprintf(stderr, "Failed to keep bastion alive: %v\n", err)
-				// no return here, maybe on the next attempt it will work
 			}
 		}
 	}

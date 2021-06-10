@@ -19,15 +19,12 @@ import (
 )
 
 func ShootForTarget(ctx context.Context, gardenClient client.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
-	shoot := &gardencorev1beta1.Shoot{}
-
 	// If a shoot is targeted via a project, we fetch it based on the project's namespace.
 	// If the target uses a seed, _all_ shoots in the garden are filtered
 	// for shoots with matching seed and name.
 	// If neither project nor seed are given, _all_ shoots in the garden are filtered by
 	// their name.
 	// It's an error if no or multiple matching shoots are found.
-
 	if t.ProjectName() != "" {
 		return shootForTargetViaProject(ctx, gardenClient, t)
 	}
@@ -52,6 +49,7 @@ func ShootForTarget(ctx context.Context, gardenClient client.Client, t target.Ta
 
 	// filter found shoots
 	matchingShoots := []*gardencorev1beta1.Shoot{}
+
 	for i, s := range shootList.Items {
 		if s.Name != t.ShootName() {
 			continue
@@ -73,9 +71,7 @@ func ShootForTarget(ctx context.Context, gardenClient client.Client, t target.Ta
 		return nil, fmt.Errorf("there are multiple shoots named %q on this garden, please target a project or seed to make your choice unambiguous", t.ShootName())
 	}
 
-	shoot = matchingShoots[0]
-
-	return shoot, nil
+	return matchingShoots[0], nil
 }
 
 func shootForTargetViaProject(ctx context.Context, gardenClient client.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
