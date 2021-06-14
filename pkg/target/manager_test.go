@@ -64,7 +64,8 @@ func createFakeShoot(name string, namespace string, seedName *string) (*gardenco
 
 var _ = Describe("Manager", func() {
 	const (
-		gardenName = "testgarden"
+		gardenName       = "testgarden"
+		gardenKubeconfig = "/not/a/real/file"
 	)
 
 	var (
@@ -78,7 +79,7 @@ var _ = Describe("Manager", func() {
 		prod1PendingShoot   *gardencorev1beta1.Shoot
 		cfg                 *config.Config
 		gardenClient        client.Client
-		clientProvider      target.ClientProvider
+		clientProvider      *fake.ClientProvider
 		kubeconfigCache     target.KubeconfigCache
 	)
 
@@ -86,7 +87,7 @@ var _ = Describe("Manager", func() {
 		cfg = &config.Config{
 			Gardens: []config.Garden{{
 				Name:       gardenName,
-				Kubeconfig: "/does/not/matter",
+				Kubeconfig: gardenKubeconfig,
 			}},
 		}
 
@@ -163,7 +164,10 @@ var _ = Describe("Manager", func() {
 			prod1PendingShoot,
 			prod1PendingShootKubeconfig,
 		).Build()
-		clientProvider = fake.NewFakeClientProvider(gardenClient)
+
+		clientProvider = fake.NewFakeClientProvider()
+		clientProvider.WithClient(gardenKubeconfig, gardenClient)
+
 		kubeconfigCache = fake.NewFakeKubeconfigCache()
 	})
 
@@ -367,7 +371,10 @@ var _ = Describe("Manager", func() {
 		Expect(manager).NotTo(BeNil())
 
 		// provide a fake cached kubeconfig
-		Expect(kubeconfigCache.Write(t, []byte("unused"))).To(Succeed())
+		seedKubeconfig := "seed"
+		seedClient := fakeclient.NewClientBuilder().Build()
+		Expect(kubeconfigCache.Write(t, []byte(seedKubeconfig))).To(Succeed())
+		clientProvider.WithClient(seedKubeconfig, seedClient)
 
 		newClient, err := manager.SeedClient(t)
 		Expect(err).NotTo(HaveOccurred())
@@ -383,7 +390,10 @@ var _ = Describe("Manager", func() {
 		Expect(manager).NotTo(BeNil())
 
 		// provide a fake cached kubeconfig
-		Expect(kubeconfigCache.Write(t, []byte("unused"))).To(Succeed())
+		shootKubeconfig := "shoot"
+		shootClient := fakeclient.NewClientBuilder().Build()
+		Expect(kubeconfigCache.Write(t, []byte(shootKubeconfig))).To(Succeed())
+		clientProvider.WithClient(shootKubeconfig, shootClient)
 
 		newClient, err := manager.ShootClusterClient(t)
 		Expect(err).NotTo(HaveOccurred())

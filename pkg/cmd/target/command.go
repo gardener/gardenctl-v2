@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package target
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -42,7 +41,7 @@ func runCommand(f util.Factory, o *Options) error {
 		return err
 	}
 
-	ctx := context.Background()
+	ctx := f.Context()
 
 	switch o.Kind {
 	case TargetKindGarden:

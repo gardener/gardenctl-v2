@@ -63,10 +63,11 @@ var _ = Describe("Command", func() {
 		streams, _, _, _ := genericclioptions.NewTestIOStreams()
 
 		gardenName := "mygarden"
+		gardenKubeconfig := ""
 		cfg := &config.Config{
 			Gardens: []config.Garden{{
 				Name:       gardenName,
-				Kubeconfig: "",
+				Kubeconfig: gardenKubeconfig,
 			}},
 		}
 
@@ -88,7 +89,9 @@ var _ = Describe("Command", func() {
 
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
-		clientProvider := internalfake.NewFakeClientProvider(fakeGardenClient)
+		clientProvider := internalfake.NewFakeClientProvider()
+		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
+
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
 		cmd := NewCommand(factory, NewOptions(streams))
 

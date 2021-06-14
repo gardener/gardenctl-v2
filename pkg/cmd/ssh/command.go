@@ -22,7 +22,6 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/target"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener/pkg/apis/core/v1alpha1"
 	corev1alpha1helper "github.com/gardener/gardener/pkg/apis/core/v1alpha1/helper"
@@ -36,6 +35,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -45,6 +45,59 @@ const (
 	SSHNodeUsername = "gardener"
 	// SSHPort is the TCP port on a bastion instance that allows incoming SSH.
 	SSHPort = 22
+)
+
+// wrappers used for unit tests only
+var (
+	// keepAliveInterval is the interval in which bastions should be given the
+	// keep-alive annotation to prolong their lifetime.
+	keepAliveInterval = 3 * time.Minute
+
+	// pollBastionStatusInterval is the time inbetween status checks on the bastion object.
+	pollBastionStatusInterval = 5 * time.Second
+
+	// portAvailabilityChecker returns nil if the given hostname allows incoming
+	// connections on the SSHPort.
+	portAvailabilityChecker = func(ctx context.Context, hostname string) error {
+		var dialer net.Dialer
+
+		conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(hostname, strconv.Itoa(SSHPort)))
+		if conn != nil {
+			conn.Close()
+		}
+
+		return err
+	}
+
+	// bastionNameProvider generates the name for a newly creation bastion.
+	bastionNameProvider = func() (string, error) {
+		bastionID, err := utils.GenerateRandomString(8)
+		if err != nil {
+			return "", err
+		}
+
+		return fmt.Sprintf("cli-%s", strings.ToLower(bastionID)), nil
+	}
+
+	// createSignalChannel returns a chanel which receives OS signals.
+	createSignalChannel = func() <-chan os.Signal {
+		signalChan := make(chan os.Signal, 1)
+		signal.Notify(signalChan, os.Interrupt)
+
+		return signalChan
+	}
+
+	// execCommand executes the given command, using the in/out streams
+	// from the options. The function returns an error if the command
+	// fails.
+	execCommand = func(ctx context.Context, command string, args []string, o *Options) error {
+		cmd := exec.CommandContext(ctx, "ssh", args...)
+		cmd.Stdout = o.IOStreams.Out
+		cmd.Stdin = o.IOStreams.In
+		cmd.Stderr = o.IOStreams.ErrOut
+
+		return cmd.Run()
+	}
 )
 
 // NewCommand returns a new ssh command.
@@ -61,6 +114,7 @@ func NewCommand(f util.Factory, o *Options) *cobra.Command {
 			nodeNames, err := getNodeNamesFromShoot(f, toComplete)
 			if err != nil {
 				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
+				fmt.Println(err.Error())
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
@@ -110,7 +164,7 @@ func runCommand(f util.Factory, o *Options) error {
 	}
 
 	// fetch targeted shoot (ctx is cancellable to stop the keep alive goroutine later)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(f.Context())
 	defer cancel()
 
 	shoot, err := util.ShootForTarget(ctx, gardenClient, currentTarget)
@@ -156,12 +210,11 @@ func runCommand(f util.Factory, o *Options) error {
 	}
 
 	// avoid GenerateName because we want to immediately fetch and check the bastion
-	bastionID, err := utils.GenerateRandomString(8)
+	bastionName, err := bastionNameProvider()
 	if err != nil {
 		return fmt.Errorf("failed to create bastion name: %v", err)
 	}
 
-	bastionName := fmt.Sprintf("cli-%s", strings.ToLower(bastionID))
 	bastion := &operationsv1alpha1.Bastion{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      bastionName,
@@ -300,7 +353,7 @@ func preferredBastionAddress(bastion *operationsv1alpha1.Bastion) string {
 func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client, bastion *operationsv1alpha1.Bastion) error {
 	var lastCheckErr error
 
-	waitErr := wait.Poll(5*time.Second, o.WaitTimeout, func() (bool, error) {
+	waitErr := wait.Poll(pollBastionStatusInterval, o.WaitTimeout, func() (bool, error) {
 		key := client.ObjectKeyFromObject(bastion)
 
 		if err := gardenClient.Get(ctx, key, bastion); err != nil {
@@ -318,7 +371,7 @@ func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client,
 		checkCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		lastCheckErr = checkPortAvailable(checkCtx, preferredBastionAddress(bastion), SSHPort)
+		lastCheckErr = portAvailabilityChecker(checkCtx, preferredBastionAddress(bastion))
 		if lastCheckErr != nil {
 			return false, nil
 		}
@@ -331,18 +384,6 @@ func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client,
 	}
 
 	return waitErr
-}
-
-// checkPortAvailable checks whether the host with port is reachable within a certain period of time
-func checkPortAvailable(ctx context.Context, hostname string, port int) error {
-	var dialer net.Dialer
-
-	conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(hostname, strconv.Itoa(port)))
-	if conn != nil {
-		conn.Close()
-	}
-
-	return err
 }
 
 func getShootNode(ctx context.Context, o *Options, manager target.Manager, currentTarget target.Target) (*corev1.Node, error) {
@@ -397,12 +438,7 @@ func remoteShell(ctx context.Context, o *Options, bastion *operationsv1alpha1.Ba
 		fmt.Sprintf("%s@%s", SSHNodeUsername, nodeHostname),
 	}
 
-	cmd := exec.CommandContext(ctx, "ssh", args...)
-	cmd.Stdout = o.IOStreams.Out
-	cmd.Stdin = o.IOStreams.In
-	cmd.Stderr = o.IOStreams.ErrOut
-
-	return cmd.Run()
+	return execCommand(ctx, "ssh", args, o)
 }
 
 // waitForSignal informs the user about their options and keeps the
@@ -428,9 +464,7 @@ func waitForSignal(o *Options, bastion *operationsv1alpha1.Bastion, nodePrivateK
 	fmt.Fprintln(o.IOStreams.Out, "")
 	fmt.Fprintln(o.IOStreams.Out, "Press Ctrl-C to stop gardenctl, after which the bastion will be removed.")
 
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	<-signalChan
+	<-createSignalChannel()
 
 	return nil
 }
@@ -460,7 +494,7 @@ func sshCommandLine(o *Options, bastionAddr string, nodePrivateKeyFile string, n
 }
 
 func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, stderr io.Writer) {
-	ticker := time.NewTicker(3 * time.Minute)
+	ticker := time.NewTicker(keepAliveInterval)
 	defer ticker.Stop()
 
 	for {

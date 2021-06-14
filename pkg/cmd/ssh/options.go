@@ -24,8 +24,8 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
-	"github.com/gardener/gardener/pkg/utils"
 
+	"github.com/gardener/gardener/pkg/utils"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 	cryptossh "golang.org/x/crypto/ssh"

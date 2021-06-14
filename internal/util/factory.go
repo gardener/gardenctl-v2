@@ -21,6 +21,8 @@ import (
 
 // Factory provides abstractions that allow the command to be extended across multiple types of resources and different API sets.
 type Factory interface {
+	// Context returns the root context any command should use.
+	Context() context.Context
 	// Clock returns a clock that provides access to the current time.
 	Clock() Clock
 	// GardenHomeDir returns the gardenctl home directory for the executing user.
@@ -50,6 +52,10 @@ type FactoryImpl struct {
 }
 
 var _ Factory = &FactoryImpl{}
+
+func (f *FactoryImpl) Context() context.Context {
+	return context.Background()
+}
 
 func (f *FactoryImpl) Manager() (target.Manager, error) {
 	cfg, err := config.LoadFromFile(f.ConfigFile)
