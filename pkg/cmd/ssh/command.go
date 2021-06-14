@@ -58,7 +58,7 @@ func NewCommand(f util.Factory, o *Options) *cobra.Command {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			nodeNames, err := getNodeNamesFromShoot(f, o, toComplete)
+			nodeNames, err := getNodeNamesFromShoot(f, toComplete)
 			if err != nil {
 				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
 				return nil, cobra.ShellCompDirectiveNoFileComp
@@ -176,20 +176,33 @@ func runCommand(f util.Factory, o *Options) error {
 		},
 	}
 
-	fmt.Fprintf(o.IOStreams.Out, "Creating bastion %s…", bastion.Name)
+	fmt.Fprintf(o.IOStreams.Out, "Creating bastion %s…\n", bastion.Name)
 
 	if err := gardenClient.Create(ctx, bastion); err != nil {
 		return fmt.Errorf("failed to create bastion: %v", err)
 	}
 
-	// continuously keep the bastion alive by renewing its annotation
-	go keepBastionAlive(ctx, gardenClient, bastion, o.IOStreams.ErrOut)
+	defer func() {
+		if !o.KeepBastion {
+			fmt.Fprintf(o.IOStreams.Out, "Deleting bastion %s…\n", bastion.Name)
 
-	fmt.Fprintf(o.IOStreams.Out, "Waiting up to %v for bastion to be ready…", o.WaitTimeout)
+			if err := gardenClient.Delete(ctx, bastion); err != nil {
+				fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete bastion: %v", err)
+			}
+
+			if o.generatedSSHKeys {
+				_ = os.Remove(o.SSHPublicKeyFile)
+				_ = os.Remove(o.SSHPrivateKeyFile)
+			}
+		}
+	}()
+
+	// continuously keep the bastion alive by renewing its annotation
+	go keepBastionAlive(ctx, gardenClient, bastion.DeepCopy(), o.IOStreams.ErrOut)
+
+	fmt.Fprintf(o.IOStreams.Out, "Waiting up to %v for bastion to be ready…\n", o.WaitTimeout)
 
 	err = waitForBastion(ctx, o, gardenClient, bastion)
-
-	fmt.Fprintln(o.IOStreams.Out, "")
 
 	if err == wait.ErrWaitTimeout {
 		fmt.Fprintln(o.IOStreams.Out, "Timed out waiting for the bastion to be ready.")
@@ -223,19 +236,6 @@ func runCommand(f util.Factory, o *Options) error {
 
 	fmt.Fprintln(o.IOStreams.Out, "Exiting…")
 
-	if !o.KeepBastion {
-		fmt.Fprintf(o.IOStreams.Out, "Deleting bastion %s…", bastion.Name)
-
-		if err := gardenClient.Delete(ctx, bastion); err != nil {
-			return fmt.Errorf("failed to delete bastion: %v", err)
-		}
-
-		if o.generatedSSHKeys {
-			_ = os.Remove(o.SSHPublicKeyFile)
-			_ = os.Remove(o.SSHPrivateKeyFile)
-		}
-	}
-
 	// stop keeping the bastion alive
 	cancel()
 	<-ctx.Done()
@@ -243,7 +243,7 @@ func runCommand(f util.Factory, o *Options) error {
 	return err
 }
 
-func getNodeNamesFromShoot(f util.Factory, o *Options, prefix string) ([]string, error) {
+func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
 	ctx := context.Background()
 
 	manager, err := f.Manager()
@@ -268,7 +268,7 @@ func getNodeNamesFromShoot(f util.Factory, o *Options, prefix string) ([]string,
 	}
 
 	// fetch all nodes
-	nodes, err := getShootNodes(ctx, shootClient)
+	nodes, err := getNodes(ctx, shootClient)
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +298,9 @@ func preferredBastionAddress(bastion *operationsv1alpha1.Bastion) string {
 }
 
 func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client, bastion *operationsv1alpha1.Bastion) error {
-	return wait.Poll(5*time.Second, o.WaitTimeout, func() (bool, error) {
+	var lastCheckErr error
+
+	waitErr := wait.Poll(5*time.Second, o.WaitTimeout, func() (bool, error) {
 		key := client.ObjectKeyFromObject(bastion)
 
 		if err := gardenClient.Get(ctx, key, bastion); err != nil {
@@ -309,18 +311,26 @@ func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client,
 		cond := corev1alpha1helper.GetCondition(bastion.Status.Conditions, "BastionReady")
 
 		if cond == nil || cond.Status != v1alpha1.ConditionTrue {
+			lastCheckErr = errors.New("bastion does not have BastionReady=true condition")
 			return false, nil
 		}
 
 		checkCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		if err := checkPortAvailable(checkCtx, preferredBastionAddress(bastion), SSHPort); err != nil {
+		lastCheckErr = checkPortAvailable(checkCtx, preferredBastionAddress(bastion), SSHPort)
+		if lastCheckErr != nil {
 			return false, nil
 		}
 
 		return true, nil
 	})
+
+	if waitErr == wait.ErrWaitTimeout {
+		return fmt.Errorf("timed out waiting for the bastion to become ready: %w", lastCheckErr)
+	}
+
+	return waitErr
 }
 
 // checkPortAvailable checks whether the host with port is reachable within a certain period of time
@@ -531,9 +541,9 @@ func getNodeHostname(node *corev1.Node) (string, error) {
 	return "", errors.New("node has no internal or external names")
 }
 
-func getShootNodes(ctx context.Context, shootClient client.Client) ([]corev1.Node, error) {
+func getNodes(ctx context.Context, c client.Client) ([]corev1.Node, error) {
 	nodeList := corev1.NodeList{}
-	if err := shootClient.List(ctx, &nodeList, &client.ListOptions{}); err != nil {
+	if err := c.List(ctx, &nodeList, &client.ListOptions{}); err != nil {
 		return nil, fmt.Errorf("failed to list nodes: %w", err)
 	}
 
