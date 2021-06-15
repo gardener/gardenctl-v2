@@ -88,15 +88,12 @@ func (f *FactoryImpl) PublicIPs(ctx context.Context) ([]string, error) {
 
 	addresses := []string{ipv64.String()}
 
-	// if the above resolved to IPv6, we also try the IPv4-only;
-	// this assumes everyone who has IPv6 also has IPv4
+	// if the above resolved to IPv6, we also _try_ the IPv4-only;
+	// this is optional and failures are silently swallowed
 	if ipv64.To4() == nil {
-		ipv4, err := callIPify(ctx, "api.ipify.org")
-		if err != nil {
-			return nil, err
+		if ipv4, err := callIPify(ctx, "api.ipify.org"); err == nil {
+			addresses = append(addresses, ipv4.String())
 		}
-
-		addresses = append(addresses, ipv4.String())
 	}
 
 	return addresses, nil
