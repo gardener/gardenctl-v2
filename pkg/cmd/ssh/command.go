@@ -76,12 +76,10 @@ var (
 			if dialErr != nil {
 				return fmt.Errorf("could not open socket %q: %w", addr, dialErr)
 			}
+			defer socket.Close()
 
-			agentClient := agent.NewClient(socket)
-
-			signers, signersErr := agentClient.Signers()
+			signers, signersErr := agent.NewClient(socket).Signers()
 			if signersErr != nil {
-				socket.Close()
 				return fmt.Errorf("error when creating signer for SSH agent: %w", signersErr)
 			}
 
@@ -298,7 +296,7 @@ func runCommand(f util.Factory, o *Options) error {
 	if err == wait.ErrWaitTimeout {
 		fmt.Fprintln(o.IOStreams.Out, "Timed out waiting for the bastion to be ready.")
 	} else if err != nil {
-		fmt.Fprintf(o.IOStreams.Out, "An error occurred while waiting: %v", err)
+		fmt.Fprintf(o.IOStreams.Out, "An error occurred while waiting: %v\n", err)
 	}
 
 	if err != nil {

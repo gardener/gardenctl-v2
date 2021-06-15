@@ -29,6 +29,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 	cryptossh "golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -121,6 +122,13 @@ func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string, st
 		o.SSHPublicKeyFile = publicKeyFile
 		o.SSHPrivateKeyFile = privateKeyFile
 		o.generatedSSHKeys = true
+	} else {
+		count, err := countSSHAgentSigners()
+		if err != nil {
+			return fmt.Errorf("failed to check SSH agent status: %w", err)
+		} else if count == 0 {
+			return fmt.Errorf("a public key was provided, but no private key was found loaded into an SSH agent; this prevents gardenctl from validating the created bastion instance.")
+		}
 	}
 
 	if len(args) > 0 {
@@ -253,4 +261,24 @@ func writeKeyFile(filename string, content []byte) error {
 	}
 
 	return nil
+}
+
+func countSSHAgentSigners() (int, error) {
+	addr := os.Getenv("SSH_AUTH_SOCK")
+	if len(addr) == 0 {
+		return 0, nil
+	}
+
+	socket, err := net.Dial("unix", addr)
+	if err != nil {
+		return 0, fmt.Errorf("could not open SSH agent socket %q: %w", addr, err)
+	}
+	defer socket.Close()
+
+	signers, err := agent.NewClient(socket).Signers()
+	if err != nil {
+		return 0, fmt.Errorf("error when retrieving signers from SSH agent: %w", err)
+	}
+
+	return len(signers), nil
 }
