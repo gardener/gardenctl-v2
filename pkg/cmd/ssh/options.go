@@ -94,7 +94,7 @@ func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string, st
 
 		publicIPs, err := f.PublicIPs(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to determine your system's public IP address: %w", err)
+			return fmt.Errorf("failed to determine your system's public IP addresses: %w", err)
 		}
 
 		cidrs := []string{}
@@ -102,7 +102,12 @@ func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string, st
 			cidrs = append(cidrs, ipToCIDR(ip))
 		}
 
-		fmt.Fprintf(stdout, "Auto-detected your system's CIDR as %s\n", strings.Join(cidrs, ", "))
+		name := "CIDR"
+		if len(cidrs) != 1 {
+			name = "CIDRs"
+		}
+
+		fmt.Fprintf(stdout, "Auto-detected your system's %s as %s\n", name, strings.Join(cidrs, ", "))
 
 		o.CIDRs = cidrs
 	}
