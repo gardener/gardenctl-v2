@@ -22,6 +22,8 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/target"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/gardener/gardener/pkg/apis/core/v1alpha1"
 	corev1alpha1helper "github.com/gardener/gardener/pkg/apis/core/v1alpha1/helper"
@@ -56,14 +58,47 @@ var (
 	// pollBastionStatusInterval is the time inbetween status checks on the bastion object.
 	pollBastionStatusInterval = 5 * time.Second
 
-	// portAvailabilityChecker returns nil if the given hostname allows incoming
-	// connections on the SSHPort.
-	portAvailabilityChecker = func(ctx context.Context, hostname string) error {
-		var dialer net.Dialer
+	// bastionAvailabilityChecker returns nil if the given hostname allows incoming
+	// connections on the SSHPort and has a public key configured that matches the
+	// given private key.
+	bastionAvailabilityChecker = func(hostname string, privateKey []byte) error {
+		authMethods := []ssh.AuthMethod{}
 
-		conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(hostname, strconv.Itoa(SSHPort)))
-		if conn != nil {
-			conn.Close()
+		if len(privateKey) > 0 {
+			signer, err := ssh.ParsePrivateKey(privateKey)
+			if err != nil {
+				return fmt.Errorf("invalid private SSH key: %w", err)
+			}
+
+			authMethods = append(authMethods, ssh.PublicKeys(signer))
+		} else if addr := os.Getenv("SSH_AUTH_SOCK"); len(addr) > 0 {
+			socket, dialErr := net.Dial("unix", addr)
+			if dialErr != nil {
+				return fmt.Errorf("could not open socket %q: %w", addr, dialErr)
+			}
+
+			agentClient := agent.NewClient(socket)
+
+			signers, signersErr := agentClient.Signers()
+			if signersErr != nil {
+				socket.Close()
+				return fmt.Errorf("error when creating signer for SSH agent: %w", signersErr)
+			}
+
+			authMethods = append(authMethods, ssh.PublicKeys(signers...))
+		} else {
+			return errors.New("neither private key nor the environment variable SSH_AUTH_SOCK are defined, cannot connect to bastion")
+		}
+
+		client, err := ssh.Dial("tcp", net.JoinHostPort(hostname, strconv.Itoa(SSHPort)), &ssh.ClientConfig{
+			User:            SSHBastionUsername,
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			Auth:            authMethods,
+			Timeout:         10 * time.Second,
+		})
+
+		if client != nil {
+			client.Close()
 		}
 
 		return err
@@ -184,8 +219,6 @@ func runCommand(f util.Factory, o *Options) error {
 		return err
 	}
 
-	defer os.Remove(nodePrivateKeyFile)
-
 	// if a node was given, check if the node exists
 	// and if not, exit early and do not create a bastion
 	node, err := getShootNode(ctx, o, manager, currentTarget)
@@ -247,6 +280,11 @@ func runCommand(f util.Factory, o *Options) error {
 				_ = os.Remove(o.SSHPublicKeyFile)
 				_ = os.Remove(o.SSHPrivateKeyFile)
 			}
+
+			// though technically not used _on_ the bastion itself, without
+			// this file remaining, the user would not be able to use the SSH
+			// command we provided to connect to the shoot nodes
+			defer os.Remove(nodePrivateKeyFile)
 		}
 	}()
 
@@ -288,10 +326,6 @@ func runCommand(f util.Factory, o *Options) error {
 	}
 
 	fmt.Fprintln(o.IOStreams.Out, "Exiting…")
-
-	// stop keeping the bastion alive
-	cancel()
-	<-ctx.Done()
 
 	return err
 }
@@ -351,7 +385,18 @@ func preferredBastionAddress(bastion *operationsv1alpha1.Bastion) string {
 }
 
 func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client, bastion *operationsv1alpha1.Bastion) error {
-	var lastCheckErr error
+	var (
+		lastCheckErr    error
+		privateKeyBytes []byte
+		err             error
+	)
+
+	if o.SSHPrivateKeyFile != "" {
+		privateKeyBytes, err = ioutil.ReadFile(o.SSHPrivateKeyFile)
+		if err != nil {
+			return fmt.Errorf("failed to read SSH private key from %q: %w", o.SSHPrivateKeyFile, err)
+		}
+	}
 
 	waitErr := wait.Poll(pollBastionStatusInterval, o.WaitTimeout, func() (bool, error) {
 		key := client.ObjectKeyFromObject(bastion)
@@ -368,10 +413,7 @@ func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client,
 			return false, nil
 		}
 
-		checkCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
-
-		lastCheckErr = portAvailabilityChecker(checkCtx, preferredBastionAddress(bastion))
+		lastCheckErr = bastionAvailabilityChecker(preferredBastionAddress(bastion), privateKeyBytes)
 		if lastCheckErr != nil {
 			return false, nil
 		}

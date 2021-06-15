@@ -92,14 +92,19 @@ func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string, st
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 
-		publicIP, err := f.PublicIP(ctx)
+		publicIPs, err := f.PublicIPs(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to determine your system's public IP address: %w", err)
 		}
 
-		fmt.Fprintf(stdout, "Auto-detected your system's CIDR as %s\n", ipToCIDR(publicIP))
+		cidrs := []string{}
+		for _, ip := range publicIPs {
+			cidrs = append(cidrs, ipToCIDR(ip))
+		}
 
-		o.CIDRs = append(o.CIDRs, ipToCIDR(publicIP))
+		fmt.Fprintf(stdout, "Auto-detected your system's CIDR as %s\n", strings.Join(cidrs, ", "))
+
+		o.CIDRs = cidrs
 	}
 
 	if len(o.SSHPublicKeyFile) == 0 {
@@ -135,7 +140,14 @@ func ipToCIDR(address string) string {
 		Mask: mask,
 	}
 
-	return cidr.String()
+	// this is not yet normalized
+	full := cidr.String()
+
+	// normalize the CIDR
+	// (e.g. turn "2001:0db8:0000:0000:0000:8a2e:0370:7334 /64" into "2001:db8::8a2e:370:7334/64")
+	_, ipnet, _ := net.ParseCIDR(full)
+
+	return ipnet.String()
 }
 
 // Validate validates the provided options

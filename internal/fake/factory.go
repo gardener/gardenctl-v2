@@ -101,6 +101,6 @@ func (f *Factory) Clock() util.Clock {
 	return f.ClockImpl
 }
 
-func (f *Factory) PublicIP(ctx context.Context) (string, error) {
-	return "192.0.2.42", nil
+func (f *Factory) PublicIPs(ctx context.Context) ([]string, error) {
+	return []string{"192.0.2.42", "2001:db8::8a2e:370:7334"}, nil
 }

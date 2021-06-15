@@ -29,9 +29,11 @@ type Factory interface {
 	GardenHomeDir() string
 	// Manager returns the target manager used to read and change the currently targeted system.
 	Manager() (target.Manager, error)
-	// PublicIP returns the current host's public IP address. It's
-	// recommended to provide a context with a timeout/deadline.
-	PublicIP(context.Context) (string, error)
+	// PublicIP returns the current host's public IP addresses. It's
+	// recommended to provide a context with a timeout/deadline. The
+	// returned slice can contain IPv6, IPv4 or both, in no particular
+	// order.
+	PublicIPs(context.Context) ([]string, error)
 }
 
 // FactoryImpl implements util.Factory interface
@@ -78,30 +80,53 @@ func (f *FactoryImpl) Clock() Clock {
 	return &RealClock{}
 }
 
-func (f *FactoryImpl) PublicIP(ctx context.Context) (string, error) {
-	req, err := http.NewRequest("GET", "https://api64.ipify.org/", nil)
+func (f *FactoryImpl) PublicIPs(ctx context.Context) ([]string, error) {
+	ipv64, err := callIPify(ctx, "api64.ipify.org")
 	if err != nil {
-		return "", err
+		return nil, err
+	}
+
+	addresses := []string{ipv64.String()}
+
+	// if the above resolved to IPv6, we also try the IPv4-only;
+	// this assumes everyone who has IPv6 also has IPv4
+	if ipv64.To4() == nil {
+		ipv4, err := callIPify(ctx, "api.ipify.org")
+		if err != nil {
+			return nil, err
+		}
+
+		addresses = append(addresses, ipv4.String())
+	}
+
+	return addresses, nil
+}
+
+func callIPify(ctx context.Context, domain string) (*net.IP, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s/", domain), nil)
+	if err != nil {
+		return nil, err
 	}
 
 	req = req.WithContext(ctx)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	ip, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	ipAddress := strings.TrimSpace(string(ip))
+	netIP := net.ParseIP(ipAddress)
 
-	if net.ParseIP(ipAddress) == nil {
-		return "", fmt.Errorf("API returned an invalid IP (%q)", ipAddress)
+	if netIP == nil {
+		return nil, fmt.Errorf("API returned an invalid IP (%q)", ipAddress)
 	}
 
-	return ipAddress, nil
+	return &netIP, nil
 }

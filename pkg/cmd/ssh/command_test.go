@@ -87,7 +87,7 @@ var _ = Describe("Command", func() {
 
 	BeforeEach(func() {
 		// all fake bastions are always immediately available
-		portAvailabilityChecker = func(ctx context.Context, hostname string) error {
+		bastionAvailabilityChecker = func(hostname string, privateKey []byte) error {
 			return nil
 		}
 
