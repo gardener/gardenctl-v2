@@ -19,6 +19,7 @@ import (
 
 	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -362,6 +363,67 @@ var _ = Describe("Command", func() {
 
 		_, err = os.Stat(options.SSHPrivateKeyFile)
 		Expect(err).To(HaveOccurred())
+	})
+
+	It("should keep the bastion alive", func() {
+		streams, _, _, _ := genericclioptions.NewTestIOStreams()
+
+		ctxTimeout, cancelTimeout := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancelTimeout()
+
+		ctx, cancel := context.WithCancel(ctxTimeout)
+		defer cancel()
+
+		// setup fakes
+		currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name)
+		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
+		clientProvider := internalfake.NewFakeClientProvider()
+		clientProvider.WithClient(gardenKubeconfigFile, gardenClient)
+
+		// prepare command
+		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
+		factory.ContextImpl = ctx
+
+		options := NewOptions(streams)
+		options.KeepBastion = true // we need to assert its annotations later
+
+		cmd := NewCommand(factory, options)
+
+		// simulate an external controller processing the bastion and proving a successful status
+		go waitForBastionThenPatchStatus(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, func(status *operationsv1alpha1.BastionStatus) {
+			status.Ingress = &corev1.LoadBalancerIngress{
+				Hostname: bastionHostname,
+				IP:       bastionIP,
+			}
+			status.Conditions = []gardencorev1alpha1.Condition{{
+				Type:   "BastionReady",
+				Status: gardencorev1alpha1.ConditionTrue,
+				Reason: "Testing",
+			}}
+		})
+
+		// end the test after a couple of seconds (enough seconds for the keep-alive
+		// goroutine to do its thing)
+		keepAliveInterval = 1 * time.Second
+		createSignalChannel = func() <-chan os.Signal {
+			signalChan := make(chan os.Signal, 1)
+
+			go func() {
+				time.Sleep(5 * time.Second)
+				close(signalChan)
+			}()
+
+			return signalChan
+		}
+
+		// let the magic happen
+		Expect(cmd.RunE(cmd, nil)).To(Succeed())
+
+		key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
+		bastion := &operationsv1alpha1.Bastion{}
+
+		Expect(gardenClient.Get(ctx, key, bastion)).To(Succeed())
+		Expect(bastion.Annotations).To(HaveKeyWithValue(v1beta1constants.GardenerOperation, v1beta1constants.GardenerOperationKeepalive))
 	})
 
 	Describe("ValidArgsFunction", func() {
