@@ -63,6 +63,7 @@ func waitForBastionThenPatchStatus(ctx context.Context, gardenClient client.Clie
 			patcher(&bastion.Status)
 
 			Expect(gardenClient.Status().Patch(ctx, bastion, patch)).To(Succeed())
+
 			return
 		}
 	}

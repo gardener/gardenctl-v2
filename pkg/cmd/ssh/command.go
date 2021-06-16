@@ -22,8 +22,6 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/target"
-	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/gardener/gardener/pkg/apis/core/v1alpha1"
 	corev1alpha1helper "github.com/gardener/gardener/pkg/apis/core/v1alpha1/helper"
@@ -32,6 +30,8 @@ import (
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -282,6 +282,7 @@ func runCommand(f util.Factory, o *Options) error {
 				if err := os.Remove(o.SSHPublicKeyFile); err != nil {
 					fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete SSH public key file %q: %v", o.SSHPublicKeyFile, err)
 				}
+
 				if err := os.Remove(o.SSHPrivateKeyFile); err != nil {
 					fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete SSH private key file %q: %v", o.SSHPrivateKeyFile, err)
 				}

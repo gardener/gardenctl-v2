@@ -127,7 +127,7 @@ func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string, st
 		if err != nil {
 			return fmt.Errorf("failed to check SSH agent status: %w", err)
 		} else if count == 0 {
-			return fmt.Errorf("a public key was provided, but no private key was found loaded into an SSH agent; this prevents gardenctl from validating the created bastion instance.")
+			return fmt.Errorf("a public key was provided, but no private key was found loaded into an SSH agent; this prevents gardenctl from validating the created bastion instance")
 		}
 	}
 
