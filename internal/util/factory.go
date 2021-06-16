@@ -29,7 +29,7 @@ type Factory interface {
 	GardenHomeDir() string
 	// Manager returns the target manager used to read and change the currently targeted system.
 	Manager() (target.Manager, error)
-	// PublicIP returns the current host's public IP addresses. It's
+	// PublicIPs returns the current host's public IP addresses. It's
 	// recommended to provide a context with a timeout/deadline. The
 	// returned slice can contain IPv6, IPv4 or both, in no particular
 	// order.

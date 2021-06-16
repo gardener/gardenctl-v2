@@ -13,10 +13,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	gardenClientKey = "<garden>"
-)
-
 type ClientProvider struct {
 	fakeClients map[string]client.Client
 }
@@ -31,8 +27,8 @@ func NewFakeClientProvider() *ClientProvider {
 	}
 }
 
-// WithClient adds an additional client to the provider, which is will
-// return whenever a constumer requests a client with the same key.
+// WithClient adds an additional client to the provider, which it will
+// return whenever a consumer requests a client with the same key.
 func (p *ClientProvider) WithClient(key string, c client.Client) *ClientProvider {
 	p.fakeClients[key] = c
 	return p

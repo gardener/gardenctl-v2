@@ -55,8 +55,13 @@ var (
 	// keep-alive annotation to prolong their lifetime.
 	keepAliveInterval = 3 * time.Minute
 
-	// pollBastionStatusInterval is the time inbetween status checks on the bastion object.
+	// pollBastionStatusInterval is the time in-between status checks on the bastion object.
 	pollBastionStatusInterval = 5 * time.Second
+
+	// tempFileCreator creates and opens a temporary file
+	tempFileCreator = func() (*os.File, error) {
+		return os.CreateTemp(os.TempDir(), "gctlv2*")
+	}
 
 	// bastionAvailabilityChecker returns nil if the given hostname allows incoming
 	// connections on the SSHPort and has a public key configured that matches the
@@ -102,7 +107,7 @@ var (
 		return err
 	}
 
-	// bastionNameProvider generates the name for a newly creation bastion.
+	// bastionNameProvider generates the name for a new bastion.
 	bastionNameProvider = func() (string, error) {
 		bastionID, err := utils.GenerateRandomString(8)
 		if err != nil {
@@ -112,7 +117,7 @@ var (
 		return fmt.Sprintf("cli-%s", strings.ToLower(bastionID)), nil
 	}
 
-	// createSignalChannel returns a chanel which receives OS signals.
+	// createSignalChannel returns a channel which receives OS signals.
 	createSignalChannel = func() <-chan os.Signal {
 		signalChan := make(chan os.Signal, 1)
 		signal.Notify(signalChan, os.Interrupt)
@@ -124,7 +129,7 @@ var (
 	// from the options. The function returns an error if the command
 	// fails.
 	execCommand = func(ctx context.Context, command string, args []string, o *Options) error {
-		cmd := exec.CommandContext(ctx, "ssh", args...)
+		cmd := exec.CommandContext(ctx, command, args...)
 		cmd.Stdout = o.IOStreams.Out
 		cmd.Stdin = o.IOStreams.In
 		cmd.Stderr = o.IOStreams.ErrOut
@@ -147,7 +152,6 @@ func NewCommand(f util.Factory, o *Options) *cobra.Command {
 			nodeNames, err := getNodeNamesFromShoot(f, toComplete)
 			if err != nil {
 				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
-				fmt.Println(err.Error())
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
@@ -275,14 +279,20 @@ func runCommand(f util.Factory, o *Options) error {
 			}
 
 			if o.generatedSSHKeys {
-				_ = os.Remove(o.SSHPublicKeyFile)
-				_ = os.Remove(o.SSHPrivateKeyFile)
+				if err := os.Remove(o.SSHPublicKeyFile); err != nil {
+					fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete SSH public key file %q: %v", o.SSHPublicKeyFile, err)
+				}
+				if err := os.Remove(o.SSHPrivateKeyFile); err != nil {
+					fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete SSH private key file %q: %v", o.SSHPrivateKeyFile, err)
+				}
 			}
 
 			// though technically not used _on_ the bastion itself, without
 			// this file remaining, the user would not be able to use the SSH
 			// command we provided to connect to the shoot nodes
-			defer os.Remove(nodePrivateKeyFile)
+			if err := os.Remove(nodePrivateKeyFile); err != nil {
+				fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete node private key %q: %v", nodePrivateKeyFile, err)
+			}
 		}
 	}()
 
@@ -581,7 +591,7 @@ func getShootNodePrivateKey(ctx context.Context, gardenClient client.Client, sho
 }
 
 func savePublicKey(key []byte) (string, error) {
-	f, err := os.CreateTemp(os.TempDir(), "gctlv2*")
+	f, err := tempFileCreator()
 	if err != nil {
 		return "", err
 	}

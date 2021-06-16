@@ -41,12 +41,6 @@ type Factory struct {
 
 var _ util.Factory = &Factory{}
 
-func NewFakeManagerFactory(manager target.Manager) util.Factory {
-	return &Factory{
-		ManagerImpl: manager,
-	}
-}
-
 func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider target.ClientProvider, kubeconfigCache target.KubeconfigCache, targetProvider target.TargetProvider) *Factory {
 	if cfg == nil {
 		cfg = &config.Config{}

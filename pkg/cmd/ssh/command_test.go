@@ -83,12 +83,23 @@ var _ = Describe("Command", func() {
 		testShoot           *gardencorev1beta1.Shoot
 		testShootKubeconfig *corev1.Secret
 		gardenClient        client.Client
+		nodePrivateKeyFile  string
 	)
 
 	BeforeEach(func() {
 		// all fake bastions are always immediately available
 		bastionAvailabilityChecker = func(hostname string, privateKey []byte) error {
 			return nil
+		}
+
+		// put the node SSH key into a known location
+		tempFileCreator = func() (*os.File, error) {
+			f, err := os.CreateTemp(os.TempDir(), "gctlv2*")
+			Expect(err).ToNot(HaveOccurred())
+
+			nodePrivateKeyFile = f.Name()
+
+			return f, nil
 		}
 
 		// give all fake bastions a fixed name
@@ -236,7 +247,7 @@ var _ = Describe("Command", func() {
 		Expect(out.String()).To(ContainSubstring(bastionHostname))
 		Expect(out.String()).To(ContainSubstring(bastionIP))
 
-		// asser that the bastion has been cleaned up
+		// assert that the bastion has been cleaned up
 		key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
 		bastion := &operationsv1alpha1.Bastion{}
 
@@ -264,6 +275,7 @@ var _ = Describe("Command", func() {
 		clientProvider := internalfake.NewFakeClientProvider()
 
 		// create a fake shoot cluster with a single node in it
+		nodeHostname := "example.host.invalid"
 		testNode := &corev1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "node1",
@@ -271,7 +283,7 @@ var _ = Describe("Command", func() {
 			Status: corev1.NodeStatus{
 				Addresses: []corev1.NodeAddress{{
 					Type:    corev1.NodeExternalDNS,
-					Address: bastionHostname,
+					Address: nodeHostname,
 				}},
 			},
 		}
@@ -311,6 +323,21 @@ var _ = Describe("Command", func() {
 		executedCommands := 0
 		execCommand = func(ctx context.Context, command string, args []string, o *Options) error {
 			executedCommands++
+
+			Expect(command).To(Equal("ssh"))
+			Expect(args).To(Equal([]string{
+				"-o", "StrictHostKeyChecking=no",
+				"-o", "IdentitiesOnly=yes",
+				"-o", fmt.Sprintf(
+					"ProxyCommand=ssh -W%%h:%%p -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i %s %s@%s",
+					o.SSHPrivateKeyFile,
+					SSHBastionUsername,
+					bastionIP,
+				),
+				"-i", nodePrivateKeyFile,
+				fmt.Sprintf("%s@%s", SSHNodeUsername, nodeHostname),
+			}))
+
 			return nil
 		}
 
@@ -323,7 +350,7 @@ var _ = Describe("Command", func() {
 		Expect(out.String()).To(ContainSubstring(bastionHostname))
 		Expect(out.String()).To(ContainSubstring(bastionIP))
 
-		// asser that the bastion has been cleaned up
+		// assert that the bastion has been cleaned up
 		key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
 		bastion := &operationsv1alpha1.Bastion{}
 
@@ -351,29 +378,15 @@ var _ = Describe("Command", func() {
 			targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 			clientProvider := internalfake.NewFakeClientProvider()
 
-			// create a fake shoot cluster with a single node in it
 			monitoringNode := &corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "monitoring",
 				},
-				Status: corev1.NodeStatus{
-					Addresses: []corev1.NodeAddress{{
-						Type:    corev1.NodeExternalDNS,
-						Address: bastionHostname,
-					}},
-				},
 			}
 
-			workerHostname := "hostname.worker.invalid"
 			workerNode := &corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "worker",
-				},
-				Status: corev1.NodeStatus{
-					Addresses: []corev1.NodeAddress{{
-						Type:    corev1.NodeExternalDNS,
-						Address: workerHostname,
-					}},
 				},
 			}
 
@@ -399,6 +412,7 @@ var _ = Describe("Command", func() {
 			suggestions, directive := cmd.ValidArgsFunction(cmd, nil, "mon")
 			Expect(directive).To(Equal(cobra.ShellCompDirectiveNoFileComp))
 			Expect(suggestions).To(HaveLen(1))
+			Expect(suggestions).To(Equal([]string{"monitoring"}))
 		})
 	})
 })
