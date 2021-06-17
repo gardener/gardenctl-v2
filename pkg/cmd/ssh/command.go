@@ -338,6 +338,14 @@ func cleanup(ctx context.Context, o *Options, gardenClient client.Client, bastio
 		if err := os.Remove(nodePrivateKeyFile); err != nil {
 			fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete node private key %q: %v", nodePrivateKeyFile, err)
 		}
+	} else {
+		fmt.Fprintf(o.IOStreams.Out, "Keeping bastion %s in namespace %s.\n", bastion.Name, bastion.Namespace)
+
+		if o.generatedSSHKeys {
+			fmt.Fprintf(o.IOStreams.Out, "The SSH keypair for the bastion is stored at %s (public key) and %s (private key).\n", o.SSHPublicKeyFile, o.SSHPrivateKeyFile)
+		}
+
+		fmt.Fprintf(o.IOStreams.Out, "The private SSH key for shoot nodes is stored at %s.\n", nodePrivateKeyFile)
 	}
 }
 
