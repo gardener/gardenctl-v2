@@ -405,12 +405,12 @@ var _ = Describe("Command", func() {
 
 		// end the test after a couple of seconds (enough seconds for the keep-alive
 		// goroutine to do its thing)
-		keepAliveInterval = 1 * time.Second
+		keepAliveInterval = 100 * time.Millisecond
 		createSignalChannel = func() <-chan os.Signal {
 			signalChan := make(chan os.Signal, 1)
 
 			go func() {
-				time.Sleep(5 * time.Second)
+				time.Sleep(1 * time.Second)
 				close(signalChan)
 			}()
 

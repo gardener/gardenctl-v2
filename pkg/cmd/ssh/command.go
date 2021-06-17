@@ -270,32 +270,7 @@ func runCommand(f util.Factory, o *Options) error {
 		return fmt.Errorf("failed to create bastion: %v", err)
 	}
 
-	defer func() {
-		if !o.KeepBastion {
-			fmt.Fprintf(o.IOStreams.Out, "Deleting bastion %s…\n", bastion.Name)
-
-			if err := gardenClient.Delete(ctx, bastion); err != nil {
-				fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete bastion: %v", err)
-			}
-
-			if o.generatedSSHKeys {
-				if err := os.Remove(o.SSHPublicKeyFile); err != nil {
-					fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete SSH public key file %q: %v", o.SSHPublicKeyFile, err)
-				}
-
-				if err := os.Remove(o.SSHPrivateKeyFile); err != nil {
-					fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete SSH private key file %q: %v", o.SSHPrivateKeyFile, err)
-				}
-			}
-
-			// though technically not used _on_ the bastion itself, without
-			// this file remaining, the user would not be able to use the SSH
-			// command we provided to connect to the shoot nodes
-			if err := os.Remove(nodePrivateKeyFile); err != nil {
-				fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete node private key %q: %v", nodePrivateKeyFile, err)
-			}
-		}
-	}()
+	defer cleanup(ctx, o, gardenClient, bastion, nodePrivateKeyFile)
 
 	// continuously keep the bastion alive by renewing its annotation
 	go keepBastionAlive(ctx, gardenClient, bastion.DeepCopy(), o.IOStreams.ErrOut)
@@ -337,6 +312,33 @@ func runCommand(f util.Factory, o *Options) error {
 	fmt.Fprintln(o.IOStreams.Out, "Exiting…")
 
 	return err
+}
+
+func cleanup(ctx context.Context, o *Options, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFile string) {
+	if !o.KeepBastion {
+		fmt.Fprintf(o.IOStreams.Out, "Deleting bastion %s…\n", bastion.Name)
+
+		if err := gardenClient.Delete(ctx, bastion); err != nil {
+			fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete bastion: %v", err)
+		}
+
+		if o.generatedSSHKeys {
+			if err := os.Remove(o.SSHPublicKeyFile); err != nil {
+				fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete SSH public key file %q: %v", o.SSHPublicKeyFile, err)
+			}
+
+			if err := os.Remove(o.SSHPrivateKeyFile); err != nil {
+				fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete SSH private key file %q: %v", o.SSHPrivateKeyFile, err)
+			}
+		}
+
+		// though technically not used _on_ the bastion itself, without
+		// this file remaining, the user would not be able to use the SSH
+		// command we provided to connect to the shoot nodes
+		if err := os.Remove(nodePrivateKeyFile); err != nil {
+			fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete node private key %q: %v", nodePrivateKeyFile, err)
+		}
+	}
 }
 
 func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
