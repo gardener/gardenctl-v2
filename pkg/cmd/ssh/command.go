@@ -264,13 +264,21 @@ func runCommand(f util.Factory, o *Options) error {
 		},
 	}
 
+	// allow to cancel at any time, but with us still performing the cleanup
+	signalChan := createSignalChannel()
+	go func() {
+		<-signalChan
+		fmt.Fprintln(o.IOStreams.Out, "Caught signal, cancelling...")
+		cancel()
+	}()
+
+	defer cleanup(ctx, o, gardenClient, bastion, nodePrivateKeyFile)
+
 	fmt.Fprintf(o.IOStreams.Out, "Creating bastion %s…\n", bastion.Name)
 
 	if err := gardenClient.Create(ctx, bastion); err != nil {
 		return fmt.Errorf("failed to create bastion: %v", err)
 	}
-
-	defer cleanup(ctx, o, gardenClient, bastion, nodePrivateKeyFile)
 
 	// continuously keep the bastion alive by renewing its annotation
 	go keepBastionAlive(ctx, gardenClient, bastion.DeepCopy(), o.IOStreams.ErrOut)
@@ -306,7 +314,7 @@ func runCommand(f util.Factory, o *Options) error {
 	if node != nil && o.Interactive {
 		err = remoteShell(ctx, o, bastion, nodePrivateKeyFile, node)
 	} else {
-		err = waitForSignal(o, bastion, nodePrivateKeyFile, node)
+		err = waitForSignal(o, bastion, nodePrivateKeyFile, node, signalChan)
 	}
 
 	fmt.Fprintln(o.IOStreams.Out, "Exiting…")
@@ -506,7 +514,7 @@ func remoteShell(ctx context.Context, o *Options, bastion *operationsv1alpha1.Ba
 
 // waitForSignal informs the user about their options and keeps the
 // bastion alive until gardenctl exits.
-func waitForSignal(o *Options, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFile string, node *corev1.Node) error {
+func waitForSignal(o *Options, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFile string, node *corev1.Node, signalChan <-chan os.Signal) error {
 	nodeHostname := "SHOOT_NODE"
 
 	if node != nil {
@@ -527,7 +535,7 @@ func waitForSignal(o *Options, bastion *operationsv1alpha1.Bastion, nodePrivateK
 	fmt.Fprintln(o.IOStreams.Out, "")
 	fmt.Fprintln(o.IOStreams.Out, "Press Ctrl-C to stop gardenctl, after which the bastion will be removed.")
 
-	<-createSignalChannel()
+	<-signalChan
 
 	return nil
 }
