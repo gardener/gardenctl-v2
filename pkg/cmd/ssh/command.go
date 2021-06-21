@@ -266,13 +266,15 @@ func runCommand(f util.Factory, o *Options) error {
 
 	// allow to cancel at any time, but with us still performing the cleanup
 	signalChan := createSignalChannel()
+
 	go func() {
 		<-signalChan
 		fmt.Fprintln(o.IOStreams.Out, "Caught signal, cancelling...")
 		cancel()
 	}()
 
-	defer cleanup(ctx, o, gardenClient, bastion, nodePrivateKeyFile)
+	// do not use `ctx`, as it might be cancelled already when running the cleanup
+	defer cleanup(f.Context(), o, gardenClient, bastion, nodePrivateKeyFile)
 
 	fmt.Fprintf(o.IOStreams.Out, "Creating bastion %s…\n", bastion.Name)
 
@@ -358,8 +360,6 @@ func cleanup(ctx context.Context, o *Options, gardenClient client.Client, bastio
 }
 
 func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
-	ctx := context.Background()
-
 	manager, err := f.Manager()
 	if err != nil {
 		return nil, err
@@ -382,7 +382,7 @@ func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
 	}
 
 	// fetch all nodes
-	nodes, err := getNodes(ctx, shootClient)
+	nodes, err := getNodes(f.Context(), shootClient)
 	if err != nil {
 		return nil, err
 	}
