@@ -44,6 +44,8 @@ func init() {
 type bastionStatusPatch func(status *operationsv1alpha1.BastionStatus)
 
 func waitForBastionThenPatchStatus(ctx context.Context, gardenClient client.Client, bastionName string, namespace string, patcher bastionStatusPatch) {
+	defer GinkgoRecover()
+
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 

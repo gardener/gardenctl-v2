@@ -79,7 +79,7 @@ var (
 		} else if addr := os.Getenv("SSH_AUTH_SOCK"); len(addr) > 0 {
 			socket, dialErr := net.Dial("unix", addr)
 			if dialErr != nil {
-				return fmt.Errorf("could not open socket %q: %w", addr, dialErr)
+				return fmt.Errorf("could not open SSH agent socket %q: %w", addr, dialErr)
 			}
 			defer socket.Close()
 
@@ -429,11 +429,13 @@ func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client,
 
 		if cond == nil || cond.Status != v1alpha1.ConditionTrue {
 			lastCheckErr = errors.New("bastion does not have BastionReady=true condition")
+			fmt.Fprintf(o.IOStreams.ErrOut, "Still waiting: %v\n", lastCheckErr)
 			return false, nil
 		}
 
 		lastCheckErr = bastionAvailabilityChecker(preferredBastionAddress(bastion), privateKeyBytes)
 		if lastCheckErr != nil {
+			fmt.Fprintf(o.IOStreams.ErrOut, "Still waiting: cannot connect to bastion yet: %v\n", lastCheckErr)
 			return false, nil
 		}
 
