@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -53,16 +54,18 @@ func waitForBastionThenPatchStatus(ctx context.Context, gardenClient client.Clie
 
 		case <-ticker.C:
 			key := types.NamespacedName{Name: bastionName, Namespace: namespace}
-			bastion := &operationsv1alpha1.Bastion{}
 
-			if err := gardenClient.Get(ctx, key, bastion); err != nil {
-				break
-			}
+			Eventually(func() error {
+				bastion := &operationsv1alpha1.Bastion{}
+				if err := gardenClient.Get(ctx, key, bastion); err != nil {
+					return err
+				}
 
-			patch := client.MergeFrom(bastion.DeepCopy())
-			patcher(&bastion.Status)
+				patch := client.MergeFrom(bastion.DeepCopy())
+				patcher(&bastion.Status)
 
-			Expect(gardenClient.Status().Patch(ctx, bastion, patch)).To(Succeed())
+				return gardenClient.Status().Patch(ctx, bastion, patch)
+			}).Should(Succeed())
 
 			return
 		}
@@ -406,23 +409,32 @@ var _ = Describe("Command", func() {
 		// end the test after a couple of seconds (enough seconds for the keep-alive
 		// goroutine to do its thing)
 		keepAliveInterval = 100 * time.Millisecond
+		signalChan := make(chan os.Signal, 1)
 		createSignalChannel = func() <-chan os.Signal {
-			signalChan := make(chan os.Signal, 1)
-
-			go func() {
-				time.Sleep(1 * time.Second)
-				close(signalChan)
-			}()
-
 			return signalChan
 		}
+
+		key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
+
+		go func() {
+			defer GinkgoRecover()
+
+			Eventually(func() bool {
+				bastion := &operationsv1alpha1.Bastion{}
+				if err := gardenClient.Get(ctx, key, bastion); errors.IsNotFound(err) {
+					return false
+				}
+
+				return bastion.Annotations != nil && bastion.Annotations[v1beta1constants.GardenerOperation] == v1beta1constants.GardenerOperationKeepalive
+			}).Should(BeTrue())
+			close(signalChan)
+		}()
 
 		// let the magic happen
 		Expect(cmd.RunE(cmd, nil)).To(Succeed())
 
-		key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
+		// Double check that the annotation was really set
 		bastion := &operationsv1alpha1.Bastion{}
-
 		Expect(gardenClient.Get(ctx, key, bastion)).To(Succeed())
 		Expect(bastion.Annotations).To(HaveKeyWithValue(v1beta1constants.GardenerOperation, v1beta1constants.GardenerOperationKeepalive))
 	})

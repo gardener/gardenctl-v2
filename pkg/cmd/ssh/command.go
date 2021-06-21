@@ -324,11 +324,11 @@ func cleanup(ctx context.Context, o *Options, gardenClient client.Client, bastio
 
 		if o.generatedSSHKeys {
 			if err := os.Remove(o.SSHPublicKeyFile); err != nil {
-				fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete SSH public key file %q: %v", o.SSHPublicKeyFile, err)
+				fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete SSH public key file %q: %v\n", o.SSHPublicKeyFile, err)
 			}
 
 			if err := os.Remove(o.SSHPrivateKeyFile); err != nil {
-				fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete SSH private key file %q: %v", o.SSHPrivateKeyFile, err)
+				fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete SSH private key file %q: %v\n", o.SSHPrivateKeyFile, err)
 			}
 		}
 
@@ -336,7 +336,7 @@ func cleanup(ctx context.Context, o *Options, gardenClient client.Client, bastio
 		// this file remaining, the user would not be able to use the SSH
 		// command we provided to connect to the shoot nodes
 		if err := os.Remove(nodePrivateKeyFile); err != nil {
-			fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete node private key %q: %v", nodePrivateKeyFile, err)
+			fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete node private key %q: %v\n", nodePrivateKeyFile, err)
 		}
 	} else {
 		fmt.Fprintf(o.IOStreams.Out, "Keeping bastion %s in namespace %s.\n", bastion.Name, bastion.Namespace)
