@@ -269,12 +269,18 @@ func runCommand(f util.Factory, o *Options) error {
 
 	go func() {
 		<-signalChan
+
+		// If this goroutine caught the signal, the waitForSignal() might get
+		// stuck waiting for _another_ signal. To prevent this deadlock, we
+		// simply close the channel and "trigger" all who wait for it.
+		close(signalChan)
+
 		fmt.Fprintln(o.IOStreams.Out, "Caught signal, cancelling...")
 		cancel()
 	}()
 
 	// do not use `ctx`, as it might be cancelled already when running the cleanup
-	defer cleanup(f.Context(), o, gardenClient, bastion, nodePrivateKeyFile)
+	defer cleanup(f.Context(), o, gardenClient, bastion, shoot, nodePrivateKeyFile)
 
 	fmt.Fprintf(o.IOStreams.Out, "Creating bastion %s…\n", bastion.Name)
 
@@ -324,11 +330,11 @@ func runCommand(f util.Factory, o *Options) error {
 	return err
 }
 
-func cleanup(ctx context.Context, o *Options, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFile string) {
+func cleanup(ctx context.Context, o *Options, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, shoot *gardencorev1beta1.Shoot, nodePrivateKeyFile string) {
 	if !o.KeepBastion {
 		fmt.Fprintf(o.IOStreams.Out, "Deleting bastion %s…\n", bastion.Name)
 
-		if err := gardenClient.Delete(ctx, bastion); err != nil {
+		if err := gardenClient.Delete(ctx, bastion); client.IgnoreNotFound(err) != nil {
 			fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete bastion: %v", err)
 		}
 
@@ -349,7 +355,7 @@ func cleanup(ctx context.Context, o *Options, gardenClient client.Client, bastio
 			fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete node private key %q: %v\n", nodePrivateKeyFile, err)
 		}
 	} else {
-		fmt.Fprintf(o.IOStreams.Out, "Keeping bastion %s in namespace %s.\n", bastion.Name, bastion.Namespace)
+		fmt.Fprintf(o.IOStreams.Out, "Keeping bastion %s in namespace %s for shoot %s.\n", bastion.Name, bastion.Namespace, shoot.Name)
 
 		if o.generatedSSHKeys {
 			fmt.Fprintf(o.IOStreams.Out, "The SSH keypair for the bastion is stored at %s (public key) and %s (private key).\n", o.SSHPublicKeyFile, o.SSHPrivateKeyFile)
