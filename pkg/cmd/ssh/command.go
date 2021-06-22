@@ -35,8 +35,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -194,6 +196,8 @@ func runCommand(f util.Factory, o *Options) error {
 		return errors.New("no Shoot cluster targeted")
 	}
 
+	printTargetInformation(o.IOStreams.Out, currentTarget)
+
 	// create client for the garden cluster
 	gardenClient, err := manager.GardenClient(currentTarget)
 	if err != nil {
@@ -209,21 +213,32 @@ func runCommand(f util.Factory, o *Options) error {
 		return err
 	}
 
-	// fetch the SSH key for the shoot nodes
-	nodePrivateKey, err := getShootNodePrivateKey(ctx, gardenClient, shoot)
+	// fetch the SSH key(s) for the shoot nodes
+	nodePrivateKeys, err := getShootNodePrivateKeys(ctx, gardenClient, shoot)
 	if err != nil {
 		return err
 	}
 
-	// save the key into a temporary file that we try to clean up when exiting
-	nodePrivateKeyFile, err := savePublicKey(nodePrivateKey)
+	// save the keys into temporary files that we try to clean up when exiting
+	nodePrivateKeyFiles := []string{}
+
+	for _, pk := range nodePrivateKeys {
+		filename, err := writeToTemporaryFile(pk)
+		if err != nil {
+			return err
+		}
+
+		nodePrivateKeyFiles = append(nodePrivateKeyFiles, filename)
+	}
+
+	shootClient, err := manager.ShootClusterClient(currentTarget)
 	if err != nil {
 		return err
 	}
 
 	// if a node was given, check if the node exists
 	// and if not, exit early and do not create a bastion
-	node, err := getShootNode(ctx, o, manager, currentTarget)
+	node, err := getShootNode(ctx, o, shootClient, currentTarget)
 	if err != nil {
 		return err
 	}
@@ -280,7 +295,7 @@ func runCommand(f util.Factory, o *Options) error {
 	}()
 
 	// do not use `ctx`, as it might be cancelled already when running the cleanup
-	defer cleanup(f.Context(), o, gardenClient, bastion, shoot, nodePrivateKeyFile)
+	defer cleanup(f.Context(), o, gardenClient, bastion, nodePrivateKeyFiles)
 
 	fmt.Fprintf(o.IOStreams.Out, "Creating bastion %s…\n", bastion.Name)
 
@@ -320,9 +335,9 @@ func runCommand(f util.Factory, o *Options) error {
 	fmt.Fprintf(o.IOStreams.Out, "Bastion host became available at %s.\n", printAddr)
 
 	if node != nil && o.Interactive {
-		err = remoteShell(ctx, o, bastion, nodePrivateKeyFile, node)
+		err = remoteShell(ctx, o, bastion, nodePrivateKeyFiles, node)
 	} else {
-		err = waitForSignal(o, bastion, nodePrivateKeyFile, node, signalChan)
+		err = waitForSignal(ctx, o, shootClient, bastion, nodePrivateKeyFiles, node, ctx.Done())
 	}
 
 	fmt.Fprintln(o.IOStreams.Out, "Exiting…")
@@ -330,7 +345,19 @@ func runCommand(f util.Factory, o *Options) error {
 	return err
 }
 
-func cleanup(ctx context.Context, o *Options, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, shoot *gardencorev1beta1.Shoot, nodePrivateKeyFile string) {
+func printTargetInformation(out io.Writer, t target.Target) {
+	var step string
+
+	if t.ProjectName() != "" {
+		step = t.ProjectName()
+	} else {
+		step = t.SeedName()
+	}
+
+	fmt.Fprintf(out, "Preparing SSH access to %s/%s on %s…\n", step, t.ShootName(), t.GardenName())
+}
+
+func cleanup(ctx context.Context, o *Options, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string) {
 	if !o.KeepBastion {
 		fmt.Fprintf(o.IOStreams.Out, "Deleting bastion %s…\n", bastion.Name)
 
@@ -349,19 +376,21 @@ func cleanup(ctx context.Context, o *Options, gardenClient client.Client, bastio
 		}
 
 		// though technically not used _on_ the bastion itself, without
-		// this file remaining, the user would not be able to use the SSH
+		// these files remaining, the user would not be able to use the SSH
 		// command we provided to connect to the shoot nodes
-		if err := os.Remove(nodePrivateKeyFile); err != nil {
-			fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete node private key %q: %v\n", nodePrivateKeyFile, err)
+		for _, filename := range nodePrivateKeyFiles {
+			if err := os.Remove(filename); err != nil {
+				fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete node private key %q: %v\n", filename, err)
+			}
 		}
 	} else {
-		fmt.Fprintf(o.IOStreams.Out, "Keeping bastion %s in namespace %s for shoot %s.\n", bastion.Name, bastion.Namespace, shoot.Name)
+		fmt.Fprintf(o.IOStreams.Out, "Keeping bastion %s in namespace %s.\n", bastion.Name, bastion.Namespace)
 
 		if o.generatedSSHKeys {
 			fmt.Fprintf(o.IOStreams.Out, "The SSH keypair for the bastion is stored at %s (public key) and %s (private key).\n", o.SSHPublicKeyFile, o.SSHPrivateKeyFile)
 		}
 
-		fmt.Fprintf(o.IOStreams.Out, "The private SSH key for shoot nodes is stored at %s.\n", nodePrivateKeyFile)
+		fmt.Fprintf(o.IOStreams.Out, "The private SSH keys for shoot nodes are stored at %s.\n", strings.Join(nodePrivateKeyFiles, ", "))
 	}
 }
 
@@ -463,14 +492,9 @@ func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client,
 	return waitErr
 }
 
-func getShootNode(ctx context.Context, o *Options, manager target.Manager, currentTarget target.Target) (*corev1.Node, error) {
+func getShootNode(ctx context.Context, o *Options, shootClient client.Client, currentTarget target.Target) (*corev1.Node, error) {
 	if o.NodeName == "" {
 		return nil, nil
-	}
-
-	shootClient, err := manager.ShootClusterClient(currentTarget)
-	if err != nil {
-		return nil, err
 	}
 
 	node := &corev1.Node{}
@@ -481,14 +505,14 @@ func getShootNode(ctx context.Context, o *Options, manager target.Manager, curre
 	return node, nil
 }
 
-func remoteShell(ctx context.Context, o *Options, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFile string, node *corev1.Node) error {
+func remoteShell(ctx context.Context, o *Options, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string, node *corev1.Node) error {
 	nodeHostname, err := getNodeHostname(node)
 	if err != nil {
 		return err
 	}
 
 	bastionAddr := preferredBastionAddress(bastion)
-	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFile, nodeHostname)
+	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFiles, nodeHostname)
 
 	fmt.Fprintln(o.IOStreams.Out, "You can open additional SSH sessions using the command below:")
 	fmt.Fprintln(o.IOStreams.Out, "")
@@ -511,34 +535,117 @@ func remoteShell(ctx context.Context, o *Options, bastion *operationsv1alpha1.Ba
 		"-o", "StrictHostKeyChecking=no",
 		"-o", "IdentitiesOnly=yes",
 		"-o", fmt.Sprintf("ProxyCommand=%s", proxyCmd),
-		"-i", nodePrivateKeyFile,
-		fmt.Sprintf("%s@%s", SSHNodeUsername, nodeHostname),
 	}
+
+	for _, file := range nodePrivateKeyFiles {
+		args = append(args, "-i", file)
+	}
+
+	args = append(args, fmt.Sprintf("%s@%s", SSHNodeUsername, nodeHostname))
 
 	return execCommand(ctx, "ssh", args, o)
 }
 
 // waitForSignal informs the user about their options and keeps the
 // bastion alive until gardenctl exits.
-func waitForSignal(o *Options, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFile string, node *corev1.Node, signalChan <-chan os.Signal) error {
-	nodeHostname := "SHOOT_NODE"
+func waitForSignal(ctx context.Context, o *Options, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string, node *corev1.Node, signalChan <-chan struct{}) error {
+	nodeHostname := "IP_OR_HOSTNAME"
 
 	if node != nil {
 		var err error
 
 		nodeHostname, err = getNodeHostname(node)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to determine hostname for node: %w", err)
 		}
 	}
 
 	bastionAddr := preferredBastionAddress(bastion)
-	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFile, nodeHostname)
+	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFiles, nodeHostname)
 
-	fmt.Fprintln(o.IOStreams.Out, "Connect to Shoot nodes by using the bastion as a proxy/jump host, for example:")
+	if node == nil {
+		nodes, err := getNodes(ctx, shootClient)
+		if err != nil {
+			return fmt.Errorf("failed to list shoot cluster nodes: %w", err)
+		}
+
+		table := &metav1beta1.Table{
+			ColumnDefinitions: []metav1.TableColumnDefinition{
+				{
+					Name:   "Node Name",
+					Type:   "string",
+					Format: "name",
+				},
+				{
+					Name: "Status",
+					Type: "string",
+				},
+				{
+					Name: "IP",
+					Type: "string",
+				},
+				{
+					Name: "Hostname",
+					Type: "string",
+				},
+			},
+			Rows: []metav1.TableRow{},
+		}
+
+		for _, node := range nodes {
+			ip := ""
+			hostname := ""
+			status := "Ready"
+
+			if !isNodeReady(node) {
+				status = "Not Ready"
+			}
+
+			for _, addr := range node.Status.Addresses {
+				switch addr.Type {
+				case corev1.NodeInternalIP:
+					ip = addr.Address
+
+				case corev1.NodeInternalDNS:
+					hostname = addr.Address
+
+				// internal names have priority, as we jump via a bastion host,
+				// but in case the cloud provider does not offer internal IPs,
+				// we fallback to external values
+
+				case corev1.NodeExternalIP:
+					if ip == "" {
+						ip = addr.Address
+					}
+
+				case corev1.NodeExternalDNS:
+					if hostname == "" {
+						hostname = addr.Address
+					}
+				}
+			}
+
+			table.Rows = append(table.Rows, metav1.TableRow{
+				Cells: []interface{}{node.Name, status, ip, hostname},
+			})
+		}
+
+		fmt.Fprintln(o.IOStreams.Out, "The shoot cluster has the following nodes:")
+		fmt.Fprintln(o.IOStreams.Out, "")
+
+		printer := printers.NewTablePrinter(printers.PrintOptions{})
+		if err := printer.PrintObj(table, o.IOStreams.Out); err != nil {
+			return fmt.Errorf("failed to output node table: %w", err)
+		}
+
+		fmt.Fprintln(o.IOStreams.Out, "")
+	}
+
+	fmt.Fprintln(o.IOStreams.Out, "Connect to shoot nodes by using the bastion as a proxy/jump host, for example:")
 	fmt.Fprintln(o.IOStreams.Out, "")
 	fmt.Fprintln(o.IOStreams.Out, connectCmd)
 	fmt.Fprintln(o.IOStreams.Out, "")
+
 	fmt.Fprintln(o.IOStreams.Out, "Press Ctrl-C to stop gardenctl, after which the bastion will be removed.")
 
 	<-signalChan
@@ -546,7 +653,17 @@ func waitForSignal(o *Options, bastion *operationsv1alpha1.Bastion, nodePrivateK
 	return nil
 }
 
-func sshCommandLine(o *Options, bastionAddr string, nodePrivateKeyFile string, nodeName string) string {
+func isNodeReady(node corev1.Node) bool {
+	for _, cond := range node.Status.Conditions {
+		if cond.Type == corev1.NodeReady {
+			return cond.Status == corev1.ConditionTrue
+		}
+	}
+
+	return false
+}
+
+func sshCommandLine(o *Options, bastionAddr string, nodePrivateKeyFiles []string, nodeName string) string {
 	proxyPrivateKeyFlag := ""
 	if o.SSHPrivateKeyFile != "" {
 		proxyPrivateKeyFlag = fmt.Sprintf(" -o IdentitiesOnly=yes -i %s", o.SSHPrivateKeyFile)
@@ -559,9 +676,14 @@ func sshCommandLine(o *Options, bastionAddr string, nodePrivateKeyFile string, n
 		bastionAddr,
 	)
 
+	identities := []string{}
+	for _, filename := range nodePrivateKeyFiles {
+		identities = append(identities, fmt.Sprintf("-i %s", filename))
+	}
+
 	connectCmd := fmt.Sprintf(
-		`ssh -o "StrictHostKeyChecking=no" -o "IdentitiesOnly=yes" -i %s -o "ProxyCommand=%s" %s@%s`,
-		nodePrivateKeyFile,
+		`ssh -o "StrictHostKeyChecking=no" -o "IdentitiesOnly=yes" %s -o "ProxyCommand=%s" %s@%s`,
+		strings.Join(identities, " "),
 		proxyCmd,
 		SSHNodeUsername,
 		nodeName,
@@ -601,7 +723,7 @@ func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *
 	}
 }
 
-func getShootNodePrivateKey(ctx context.Context, gardenClient client.Client, shoot *gardencorev1beta1.Shoot) ([]byte, error) {
+func getShootNodePrivateKeys(ctx context.Context, gardenClient client.Client, shoot *gardencorev1beta1.Shoot) ([][]byte, error) {
 	secret := &corev1.Secret{}
 	key := types.NamespacedName{
 		// TODO: use ShootProjectSecretSuffixSSHKeypair once Gardener supports ctrl-runtime 0.9
@@ -614,10 +736,27 @@ func getShootNodePrivateKey(ctx context.Context, gardenClient client.Client, sho
 	}
 
 	// TODO: use DataKeyRSAPrivateKey once Gardener supports ctrl-runtime 0.9
-	return secret.Data["id_rsa"], nil
+	keys := [][]byte{secret.Data["id_rsa"]}
+
+	// with GEP-15, SSH keys are rotated on a regular basis; both the current and the previous
+	// SSH keypairs are available for each shoot. To prevent race conditions during the rotation,
+	// we try to return _both_ SSH keys, but if no old key exists yet, that's okay.
+
+	// TODO: use ShootProjectSecretSuffixOldSSHKeypair once Gardener supports ctrl-runtime 0.9
+	key.Name = fmt.Sprintf("%s.ssh-keypair.old", shoot.Name)
+
+	if err := gardenClient.Get(ctx, key, secret); client.IgnoreNotFound(err) != nil {
+		return nil, err
+	}
+
+	if secret.Name == key.Name {
+		keys = append(keys, secret.Data["id_rsa"])
+	}
+
+	return keys, nil
 }
 
-func savePublicKey(key []byte) (string, error) {
+func writeToTemporaryFile(key []byte) (string, error) {
 	f, err := tempFileCreator()
 	if err != nil {
 		return "", err

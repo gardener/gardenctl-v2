@@ -81,6 +81,7 @@ var _ = Describe("Command", func() {
 		bastionName          = "test-bastion"
 		bastionHostname      = "example.invalid"
 		bastionIP            = "0.0.0.0"
+		nodeHostname         = "example.host.invalid"
 	)
 
 	var (
@@ -89,7 +90,9 @@ var _ = Describe("Command", func() {
 		testSeed            *gardencorev1beta1.Seed
 		testShoot           *gardencorev1beta1.Shoot
 		testShootKubeconfig *corev1.Secret
+		testNode            *corev1.Node
 		gardenClient        client.Client
+		shootClient         client.Client
 		nodePrivateKeyFile  string
 	)
 
@@ -201,6 +204,21 @@ var _ = Describe("Command", func() {
 			testShootKubeconfig,
 			testShootKeypair,
 		).Build()
+
+		// create a fake shoot cluster with a single node in it
+		testNode = &corev1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "node1",
+			},
+			Status: corev1.NodeStatus{
+				Addresses: []corev1.NodeAddress{{
+					Type:    corev1.NodeExternalDNS,
+					Address: nodeHostname,
+				}},
+			},
+		}
+
+		shootClient = fakeclient.NewClientBuilder().WithObjects(testNode).Build()
 	})
 
 	It("should reject bad options", func() {
@@ -224,10 +242,18 @@ var _ = Describe("Command", func() {
 		currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name)
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider()
+
+		// simulate a cached shoot kubeconfig
+		fakeKubeconfig := "<not-a-shoot-kubeconfig>"
+		kubeconfigCache := internalfake.NewFakeKubeconfigCache()
+		Expect(kubeconfigCache.Write(currentTarget, []byte(fakeKubeconfig))).To(Succeed())
+
+		// ensure the clientprovider provides the proper clients to the manager
 		clientProvider.WithClient(gardenKubeconfigFile, gardenClient)
+		clientProvider.WithClient(fakeKubeconfig, shootClient)
 
 		// prepare command
-		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
+		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, kubeconfigCache, targetProvider)
 		factory.ContextImpl = ctx
 
 		options := NewOptions(streams)
@@ -280,22 +306,6 @@ var _ = Describe("Command", func() {
 		currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name)
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider()
-
-		// create a fake shoot cluster with a single node in it
-		nodeHostname := "example.host.invalid"
-		testNode := &corev1.Node{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "node1",
-			},
-			Status: corev1.NodeStatus{
-				Addresses: []corev1.NodeAddress{{
-					Type:    corev1.NodeExternalDNS,
-					Address: nodeHostname,
-				}},
-			},
-		}
-
-		shootClient := fakeclient.NewClientBuilder().WithObjects(testNode).Build()
 
 		// simulate a cached shoot kubeconfig
 		fakeKubeconfig := "<not-a-shoot-kubeconfig>"
@@ -384,10 +394,18 @@ var _ = Describe("Command", func() {
 		currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name)
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider()
+
+		// simulate a cached shoot kubeconfig
+		fakeKubeconfig := "<not-a-shoot-kubeconfig>"
+		kubeconfigCache := internalfake.NewFakeKubeconfigCache()
+		Expect(kubeconfigCache.Write(currentTarget, []byte(fakeKubeconfig))).To(Succeed())
+
+		// ensure the clientprovider provides the proper clients to the manager
 		clientProvider.WithClient(gardenKubeconfigFile, gardenClient)
+		clientProvider.WithClient(fakeKubeconfig, shootClient)
 
 		// prepare command
-		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
+		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, kubeconfigCache, targetProvider)
 		factory.ContextImpl = ctx
 
 		options := NewOptions(streams)

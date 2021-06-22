@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package fake
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -32,7 +31,7 @@ func (c *fakeKubeconfigCache) key(t target.Target) string {
 func (c *fakeKubeconfigCache) Read(t target.Target) ([]byte, error) {
 	kubeconfig, ok := c.kubeconfigs[c.key(t)]
 	if !ok {
-		return nil, errors.New("could not find kubeconfig")
+		return nil, fmt.Errorf("could not find kubeconfig for target %v", c.key(t))
 	}
 
 	return kubeconfig, nil
