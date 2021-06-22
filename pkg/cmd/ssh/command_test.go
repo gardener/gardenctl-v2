@@ -115,9 +115,9 @@ var _ = Describe("Command", func() {
 		}
 
 		// simulate the user immediately exiting via Ctrl-C
-		createSignalChannel = func() <-chan os.Signal {
+		createSignalChannel = func() chan os.Signal {
 			signalChan := make(chan os.Signal, 1)
-			close(signalChan)
+			signalChan <- os.Interrupt
 
 			return signalChan
 		}
@@ -412,7 +412,7 @@ var _ = Describe("Command", func() {
 		// goroutine to do its thing)
 		keepAliveInterval = 100 * time.Millisecond
 		signalChan := make(chan os.Signal, 1)
-		createSignalChannel = func() <-chan os.Signal {
+		createSignalChannel = func() chan os.Signal {
 			return signalChan
 		}
 
@@ -429,7 +429,8 @@ var _ = Describe("Command", func() {
 
 				return bastion.Annotations != nil && bastion.Annotations[v1beta1constants.GardenerOperation] == v1beta1constants.GardenerOperationKeepalive
 			}).Should(BeTrue())
-			close(signalChan)
+
+			signalChan <- os.Interrupt
 		}()
 
 		// let the magic happen

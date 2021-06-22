@@ -118,7 +118,7 @@ var (
 	}
 
 	// createSignalChannel returns a channel which receives OS signals.
-	createSignalChannel = func() <-chan os.Signal {
+	createSignalChannel = func() chan os.Signal {
 		signalChan := make(chan os.Signal, 1)
 		signal.Notify(signalChan, os.Interrupt)
 
