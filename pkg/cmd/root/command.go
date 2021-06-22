@@ -34,7 +34,10 @@ const (
 )
 
 var (
-	factory = util.FactoryImpl{}
+	targetProvider = &DynamicTargetProvider{}
+	factory        = util.FactoryImpl{
+		TargetProvider: targetProvider,
+	}
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -60,6 +63,12 @@ func Execute() {
 	// usage where the current user has no home directory (which might _just_ be
 	// the reason the user chose to specify an explicit config file).
 	rootCmd.PersistentFlags().StringVar(&factory.ConfigFile, "config", "", fmt.Sprintf("config file (default is $HOME/%s/%s.yaml)", gardenHomeFolder, configName))
+
+	// allow to temporarily re-target a different cluster
+	rootCmd.PersistentFlags().StringVar(&targetProvider.GardenNameFlag, "garden", "", "target the given garden cluster")
+	rootCmd.PersistentFlags().StringVar(&targetProvider.ProjectNameFlag, "project", "", "target the given project")
+	rootCmd.PersistentFlags().StringVar(&targetProvider.SeedNameFlag, "seed", "", "target the given seed cluster")
+	rootCmd.PersistentFlags().StringVar(&targetProvider.ShootNameFlag, "shoot", "", "target the given shoot cluster")
 
 	cobra.OnInitialize(initConfig)
 
@@ -117,6 +126,6 @@ func initConfig() {
 	}
 
 	factory.ConfigFile = viper.ConfigFileUsed()
-	factory.TargetFile = filepath.Join(home, targetFilename)
+	targetProvider.TargetFile = filepath.Join(home, targetFilename)
 	factory.GardenHomeDirectory = home
 }

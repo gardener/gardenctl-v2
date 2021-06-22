@@ -28,6 +28,18 @@ type Target interface {
 	SeedName() string
 	// ShootName returns the currently targeted shoot cluster name.
 	ShootName() string
+	// WithGardenName returns a copy of the target with the garden name updated.
+	// The returned target can be invalid.
+	WithGardenName(name string) Target
+	// WithProjectName returns a copy of the target with the project name updated.
+	// The returned target can be invalid.
+	WithProjectName(name string) Target
+	// WithSeedName returns a copy of the target with the seed name updated.
+	// The returned target can be invalid.
+	WithSeedName(name string) Target
+	// WithShootName returns a copy of the target with the shoot name updated.
+	// The returned target can be invalid.
+	WithShootName(name string) Target
 	// Validate checks for semantical correctness of the target, without
 	// actually connecting to the targeted clusters.
 	Validate() error
@@ -42,9 +54,8 @@ type targetImpl struct {
 
 var _ Target = &targetImpl{}
 
-// NewTarget should mostly be used in tests. Regular program code should always
-// use the Manager to read/save the current target. This function does not
-// perform any validation, so the returned target can be invalid.
+// NewTarget returns a new target. This function does not perform any validation,
+// so the returned target can be invalid.
 func NewTarget(gardenName, projectName, seedName, shootName string) Target {
 	return &targetImpl{
 		Garden:  gardenName,
@@ -86,4 +97,28 @@ func (t *targetImpl) SeedName() string {
 // ShootName returns the currently targeted shoot cluster name.
 func (t *targetImpl) ShootName() string {
 	return t.Shoot
+}
+
+// WithGardenName returns a copy of the target with the garden name updated.
+// The returned target can be invalid.
+func (t *targetImpl) WithGardenName(name string) Target {
+	return NewTarget(name, t.Project, t.Seed, t.Shoot)
+}
+
+// WithProjectName returns a copy of the target with the project name updated.
+// The returned target can be invalid.
+func (t *targetImpl) WithProjectName(name string) Target {
+	return NewTarget(t.Garden, name, t.Seed, t.Shoot)
+}
+
+// WithSeedName returns a copy of the target with the seed name updated.
+// The returned target can be invalid.
+func (t *targetImpl) WithSeedName(name string) Target {
+	return NewTarget(t.Garden, t.Project, name, t.Shoot)
+}
+
+// WithShootName returns a copy of the target with the shoot name updated.
+// The returned target can be invalid.
+func (t *targetImpl) WithShootName(name string) Target {
+	return NewTarget(t.Garden, t.Project, t.Seed, name)
 }
