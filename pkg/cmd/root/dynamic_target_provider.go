@@ -78,7 +78,6 @@ func (p *DynamicTargetProvider) Read() (target.Target, error) {
 		// user to "move up", e.g. when they have targeted a shoot, just
 		// specifying "--garden mygarden" should target the garden, not the same
 		// shoot on the garden mygarden.
-
 		if p.GardenNameFlag != "" {
 			current = current.WithGardenName(p.GardenNameFlag).WithProjectName("").WithSeedName("").WithShootName("")
 		}
