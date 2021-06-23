@@ -12,6 +12,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gardener/gardenctl-v2/internal/fake"
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/config"
@@ -29,7 +30,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -222,7 +222,7 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should reject bad options", func() {
-		streams, _, _, _ := genericclioptions.NewTestIOStreams()
+		streams, _, _, _ := fake.NewIOStreams()
 		o := NewOptions(streams)
 		cmd := NewCommand(&util.FactoryImpl{}, o)
 
@@ -230,7 +230,7 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should print the SSH command and then wait for user interrupt", func() {
-		streams, _, out, _ := genericclioptions.NewTestIOStreams()
+		streams, _, out, _ := fake.NewIOStreams()
 
 		ctxTimeout, cancelTimeout := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancelTimeout()
@@ -295,7 +295,7 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should connect to a given node", func() {
-		streams, _, out, _ := genericclioptions.NewTestIOStreams()
+		streams, _, out, _ := fake.NewIOStreams()
 
 		ctxTimeout, cancelTimeout := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancelTimeout()
@@ -382,7 +382,7 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should keep the bastion alive", func() {
-		streams, _, _, _ := genericclioptions.NewTestIOStreams()
+		streams, _, _, _ := fake.NewIOStreams()
 
 		ctxTimeout, cancelTimeout := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancelTimeout()
@@ -462,7 +462,7 @@ var _ = Describe("Command", func() {
 
 	Describe("ValidArgsFunction", func() {
 		It("should find nodes based on their prefix", func() {
-			streams, _, _, _ := genericclioptions.NewTestIOStreams()
+			streams, _, _, _ := fake.NewIOStreams()
 
 			ctxTimeout, cancelTimeout := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancelTimeout()
