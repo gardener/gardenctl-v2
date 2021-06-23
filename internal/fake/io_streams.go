@@ -39,6 +39,7 @@ type SafeBytesBuffer struct {
 func (s *SafeBytesBuffer) Read(p []byte) (n int, err error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	return s.buffer.Read(p)
 }
 
@@ -48,6 +49,7 @@ func (s *SafeBytesBuffer) Read(p []byte) (n int, err error) {
 func (s *SafeBytesBuffer) Write(p []byte) (n int, err error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	return s.buffer.Write(p)
 }
 
@@ -58,5 +60,6 @@ func (s *SafeBytesBuffer) Write(p []byte) (n int, err error) {
 func (s *SafeBytesBuffer) String() string {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	return s.buffer.String()
 }
