@@ -11,11 +11,11 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/gardener/gardenctl-v2/internal/util"
 	. "github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 var _ = Describe("Options", func() {
@@ -40,7 +40,7 @@ var _ = Describe("Options", func() {
 	})
 
 	It("should validate", func() {
-		streams, _, _, _ := genericclioptions.NewTestIOStreams()
+		streams, _, _, _ := util.NewTestIOStreams()
 		o := NewOptions(streams)
 		o.CIDRs = []string{"8.8.8.8/32"}
 		o.SSHPublicKeyFile = publicSSHKeyFile
@@ -49,7 +49,7 @@ var _ = Describe("Options", func() {
 	})
 
 	It("should require a non-zero wait time", func() {
-		streams, _, _, _ := genericclioptions.NewTestIOStreams()
+		streams, _, _, _ := util.NewTestIOStreams()
 		o := NewOptions(streams)
 		o.CIDRs = []string{"8.8.8.8/32"}
 		o.SSHPublicKeyFile = publicSSHKeyFile
@@ -59,7 +59,7 @@ var _ = Describe("Options", func() {
 	})
 
 	It("should require a public SSH key file", func() {
-		streams, _, _, _ := genericclioptions.NewTestIOStreams()
+		streams, _, _, _ := util.NewTestIOStreams()
 		o := NewOptions(streams)
 		o.CIDRs = []string{"8.8.8.8/32"}
 
@@ -69,7 +69,7 @@ var _ = Describe("Options", func() {
 	It("should require a valid public SSH key file", func() {
 		Expect(ioutil.WriteFile(publicSSHKeyFile, []byte("not a key"), 0644)).To(Succeed())
 
-		streams, _, _, _ := genericclioptions.NewTestIOStreams()
+		streams, _, _, _ := util.NewTestIOStreams()
 		o := NewOptions(streams)
 		o.CIDRs = []string{"8.8.8.8/32"}
 		o.SSHPublicKeyFile = publicSSHKeyFile
@@ -78,7 +78,7 @@ var _ = Describe("Options", func() {
 	})
 
 	It("should require at least one CIDR", func() {
-		streams, _, _, _ := genericclioptions.NewTestIOStreams()
+		streams, _, _, _ := util.NewTestIOStreams()
 		o := NewOptions(streams)
 		o.SSHPublicKeyFile = publicSSHKeyFile
 
@@ -86,7 +86,7 @@ var _ = Describe("Options", func() {
 	})
 
 	It("should reject invalid CIDRs", func() {
-		streams, _, _, _ := genericclioptions.NewTestIOStreams()
+		streams, _, _, _ := util.NewTestIOStreams()
 		o := NewOptions(streams)
 		o.CIDRs = []string{"8.8.8.8"}
 		o.SSHPublicKeyFile = publicSSHKeyFile

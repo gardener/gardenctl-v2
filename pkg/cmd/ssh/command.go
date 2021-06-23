@@ -29,6 +29,8 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"
+	gutil "github.com/gardener/gardener/pkg/utils/gardener"
+	"github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -467,8 +469,7 @@ func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client,
 			return false, err
 		}
 
-		// TODO: update gardener dependency and use operationsv1alpha1.BastionReady const
-		cond := corev1alpha1helper.GetCondition(bastion.Status.Conditions, "BastionReady")
+		cond := corev1alpha1helper.GetCondition(bastion.Status.Conditions, operationsv1alpha1.BastionReady)
 
 		if cond == nil || cond.Status != v1alpha1.ConditionTrue {
 			lastCheckErr = errors.New("bastion does not have BastionReady=true condition")
@@ -726,11 +727,11 @@ func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *
 func getShootNodePrivateKeys(ctx context.Context, gardenClient client.Client, shoot *gardencorev1beta1.Shoot) ([][]byte, error) {
 	keys := [][]byte{}
 
-	// TODO: use ShootProjectSecretSuffixSSHKeypair and ShootProjectSecretSuffixOldSSHKeypair once Gardener supports ctrl-runtime 0.9
-	for _, suffix := range []string{".ssh-keypair", ".ssh-keypair.old"} {
+	// TODO: use ShootProjectSecretSuffixOldSSHKeypair once Gardener releases a version with it
+	for _, suffix := range []string{gutil.ShootProjectSecretSuffixSSHKeypair, "ssh-keypair.old"} {
 		secret := &corev1.Secret{}
 		key := types.NamespacedName{
-			Name:      shoot.Name + suffix,
+			Name:      fmt.Sprintf("%s.%s", shoot.Name, suffix),
 			Namespace: shoot.Namespace,
 		}
 
@@ -739,8 +740,7 @@ func getShootNodePrivateKeys(ctx context.Context, gardenClient client.Client, sh
 		}
 
 		if secret.Name != "" {
-			// TODO: use DataKeyRSAPrivateKey once Gardener supports ctrl-runtime 0.9
-			keys = append(keys, secret.Data["id_rsa"])
+			keys = append(keys, secret.Data[secrets.DataKeyRSAPrivateKey])
 		}
 	}
 

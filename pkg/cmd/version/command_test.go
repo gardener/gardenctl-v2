@@ -12,12 +12,11 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 var _ = Describe("Command", func() {
 	It("should print version", func() {
-		streams, _, out, _ := genericclioptions.NewTestIOStreams()
+		streams, _, out, _ := util.NewTestIOStreams()
 		o := NewOptions(streams)
 		cmd := NewCommand(&util.FactoryImpl{}, o)
 
