@@ -30,7 +30,6 @@ import (
 	"golang.org/x/crypto/ssh"
 	cryptossh "golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 // Options is a struct to support ssh command
@@ -76,7 +75,7 @@ type Options struct {
 }
 
 // NewOptions returns initialized Options
-func NewOptions(ioStreams genericclioptions.IOStreams) *Options {
+func NewOptions(ioStreams util.IOStreams) *Options {
 	return &Options{
 		Options: base.Options{
 			IOStreams: ioStreams,

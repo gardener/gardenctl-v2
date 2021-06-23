@@ -12,7 +12,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/gardener/gardenctl-v2/internal/fake"
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/config"
@@ -222,7 +221,7 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should reject bad options", func() {
-		streams, _, _, _ := fake.NewIOStreams()
+		streams, _, _, _ := util.NewTestIOStreams()
 		o := NewOptions(streams)
 		cmd := NewCommand(&util.FactoryImpl{}, o)
 
@@ -230,7 +229,7 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should print the SSH command and then wait for user interrupt", func() {
-		streams, _, out, _ := fake.NewIOStreams()
+		streams, _, out, _ := util.NewTestIOStreams()
 
 		ctxTimeout, cancelTimeout := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancelTimeout()
@@ -295,7 +294,7 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should connect to a given node", func() {
-		streams, _, out, _ := fake.NewIOStreams()
+		streams, _, out, _ := util.NewTestIOStreams()
 
 		ctxTimeout, cancelTimeout := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancelTimeout()
@@ -382,7 +381,7 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should keep the bastion alive", func() {
-		streams, _, _, _ := fake.NewIOStreams()
+		streams, _, _, _ := util.NewTestIOStreams()
 
 		ctxTimeout, cancelTimeout := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancelTimeout()
@@ -462,7 +461,7 @@ var _ = Describe("Command", func() {
 
 	Describe("ValidArgsFunction", func() {
 		It("should find nodes based on their prefix", func() {
-			streams, _, _, _ := fake.NewIOStreams()
+			streams, _, _, _ := util.NewTestIOStreams()
 
 			ctxTimeout, cancelTimeout := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancelTimeout()

@@ -15,7 +15,6 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 
 	"github.com/spf13/cobra"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 // TargetKind is representing the type of things that can be targeted
@@ -46,7 +45,7 @@ type Options struct {
 }
 
 // NewOptions returns initialized Options
-func NewOptions(ioStreams genericclioptions.IOStreams) *Options {
+func NewOptions(ioStreams util.IOStreams) *Options {
 	return &Options{
 		Options: base.Options{
 			IOStreams: ioStreams,

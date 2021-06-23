@@ -18,7 +18,6 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -30,7 +29,7 @@ func init() {
 
 var _ = Describe("Command", func() {
 	It("should reject bad options", func() {
-		streams, _, _, _ := genericclioptions.NewTestIOStreams()
+		streams, _, _, _ := util.NewTestIOStreams()
 		o := NewOptions(streams)
 		cmd := NewCommand(&util.FactoryImpl{}, o)
 
@@ -38,7 +37,7 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should be able to target a garden", func() {
-		streams, _, out, _ := genericclioptions.NewTestIOStreams()
+		streams, _, out, _ := util.NewTestIOStreams()
 
 		gardenName := "mygarden"
 		cfg := &config.Config{
@@ -60,7 +59,7 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should be able to target a project", func() {
-		streams, _, _, _ := genericclioptions.NewTestIOStreams()
+		streams, _, _, _ := util.NewTestIOStreams()
 
 		gardenName := "mygarden"
 		gardenKubeconfig := ""

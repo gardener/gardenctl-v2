@@ -3,22 +3,42 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 
 SPDX-License-Identifier: Apache-2.0
 */
-package fake
+package util
 
 import (
 	"bytes"
+	"io"
+	"os"
 	"sync"
-
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
-// NewIOStreams returns a valid IOStreams and in, out, errout buffers for unit tests
-func NewIOStreams() (genericclioptions.IOStreams, *SafeBytesBuffer, *SafeBytesBuffer, *SafeBytesBuffer) {
+// IOStreams provides the standard names for iostreams. This is useful for embedding and for unit testing.
+// Inconsistent and different names make it hard to read and review code
+type IOStreams struct {
+	// In think, os.Stdin
+	In io.Reader
+	// Out think, os.Stdout
+	Out io.Writer
+	// ErrOut think, os.Stderr
+	ErrOut io.Writer
+}
+
+// NewIOStreams returns a valid IOStreams and with the default stdin/out/err streams.
+func NewIOStreams() IOStreams {
+	return IOStreams{
+		In:     os.Stdin,
+		Out:    os.Stdout,
+		ErrOut: os.Stderr,
+	}
+}
+
+// NewTestIOStreams returns a valid IOStreams and in, out, errout buffers for unit tests
+func NewTestIOStreams() (IOStreams, *SafeBytesBuffer, *SafeBytesBuffer, *SafeBytesBuffer) {
 	in := &SafeBytesBuffer{}
 	out := &SafeBytesBuffer{}
 	errOut := &SafeBytesBuffer{}
 
-	return genericclioptions.IOStreams{
+	return IOStreams{
 		In:     in,
 		Out:    out,
 		ErrOut: errOut,
