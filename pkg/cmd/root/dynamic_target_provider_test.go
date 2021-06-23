@@ -77,10 +77,10 @@ var _ = Describe("Dynamic Target Provider", func() {
 			Expect(readBack.SeedName()).To(Equal(dtp.SeedNameFlag))
 			Expect(readBack.ShootName()).To(Equal(dtp.ShootNameFlag))
 		},
-		Entry("just garden", root.DynamicTargetProvider{GardenNameFlag: "mygarden"}),
-		Entry("garden->project", root.DynamicTargetProvider{GardenNameFlag: "mygarden", ProjectNameFlag: "myproject"}),
-		Entry("garden->seed", root.DynamicTargetProvider{GardenNameFlag: "mygarden", SeedNameFlag: "myseed"}),
-		Entry("garden->project->shoot", root.DynamicTargetProvider{GardenNameFlag: "mygarden", ProjectNameFlag: "myproject", ShootNameFlag: "myshoot"}),
+		Entry("just garden", root.DynamicTargetProvider{GardenNameFlag: "newgarden"}),
+		Entry("garden->project", root.DynamicTargetProvider{GardenNameFlag: "newgarden", ProjectNameFlag: "newproject"}),
+		Entry("garden->seed", root.DynamicTargetProvider{GardenNameFlag: "newgarden", SeedNameFlag: "newseed"}),
+		Entry("garden->project->shoot", root.DynamicTargetProvider{GardenNameFlag: "newgarden", ProjectNameFlag: "newproject", ShootNameFlag: "newshoot"}),
 	)
 
 	DescribeTable(

@@ -724,33 +724,28 @@ func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *
 }
 
 func getShootNodePrivateKeys(ctx context.Context, gardenClient client.Client, shoot *gardencorev1beta1.Shoot) ([][]byte, error) {
-	secret := &corev1.Secret{}
-	key := types.NamespacedName{
-		// TODO: use ShootProjectSecretSuffixSSHKeypair once Gardener supports ctrl-runtime 0.9
-		Name:      fmt.Sprintf("%s.ssh-keypair", shoot.Name),
-		Namespace: shoot.Namespace,
+	keys := [][]byte{}
+
+	// TODO: use ShootProjectSecretSuffixSSHKeypair and ShootProjectSecretSuffixOldSSHKeypair once Gardener supports ctrl-runtime 0.9
+	for _, suffix := range []string{".ssh-keypair", ".ssh-keypair.old"} {
+		secret := &corev1.Secret{}
+		key := types.NamespacedName{
+			Name:      shoot.Name + suffix,
+			Namespace: shoot.Namespace,
+		}
+
+		if err := gardenClient.Get(ctx, key, secret); client.IgnoreNotFound(err) != nil {
+			return nil, err
+		}
+
+		if secret.Name != "" {
+			// TODO: use DataKeyRSAPrivateKey once Gardener supports ctrl-runtime 0.9
+			keys = append(keys, secret.Data["id_rsa"])
+		}
 	}
 
-	if err := gardenClient.Get(ctx, key, secret); err != nil {
-		return nil, err
-	}
-
-	// TODO: use DataKeyRSAPrivateKey once Gardener supports ctrl-runtime 0.9
-	keys := [][]byte{secret.Data["id_rsa"]}
-
-	// with GEP-15, SSH keys are rotated on a regular basis; both the current and the previous
-	// SSH keypairs are available for each shoot. To prevent race conditions during the rotation,
-	// we try to return _both_ SSH keys, but if no old key exists yet, that's okay.
-
-	// TODO: use ShootProjectSecretSuffixOldSSHKeypair once Gardener supports ctrl-runtime 0.9
-	key.Name = fmt.Sprintf("%s.ssh-keypair.old", shoot.Name)
-
-	if err := gardenClient.Get(ctx, key, secret); client.IgnoreNotFound(err) != nil {
-		return nil, err
-	}
-
-	if secret.Name == key.Name {
-		keys = append(keys, secret.Data["id_rsa"])
+	if len(keys) == 0 {
+		return nil, errors.New("no SSH keypair is available for the shoot nodes")
 	}
 
 	return keys, nil
