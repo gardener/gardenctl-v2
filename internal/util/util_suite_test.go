@@ -3,20 +3,24 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 
 SPDX-License-Identifier: Apache-2.0
 */
-package main
+
+package util_test
 
 import (
-	"github.com/gardener/gardenctl-v2/pkg/cmd/root"
+	"testing"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
-func main() {
+func init() {
 	utilruntime.Must(gardencorev1beta1.AddToScheme(scheme.Scheme))
-	utilruntime.Must(operationsv1alpha1.AddToScheme(scheme.Scheme))
+}
 
-	root.Execute()
+func TestCommand(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Util Test Suite")
 }

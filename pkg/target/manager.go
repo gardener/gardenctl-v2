@@ -282,7 +282,7 @@ func (m *managerImpl) resolveShootName(
 		key := types.NamespacedName{Name: shootName, Namespace: *project.Spec.Namespace}
 
 		if err := gardenClient.Get(ctx, key, shoot); err != nil {
-			return nil, nil, nil, fmt.Errorf("invalid shoot %q: %w", key.Name, err)
+			return nil, nil, nil, fmt.Errorf("failed to get shoot %v: %w", key, err)
 		}
 
 		return project, nil, shoot, nil
@@ -324,7 +324,7 @@ func (m *managerImpl) resolveShootName(
 	}
 
 	if len(matchingShoots) == 0 {
-		return nil, nil, nil, fmt.Errorf("invalid shoot %q: not found", shootName)
+		return nil, nil, nil, fmt.Errorf("no shoot named %q exists", shootName)
 	}
 
 	if len(matchingShoots) > 1 {
