@@ -147,7 +147,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 		Entry("seed and project", root.DynamicTargetProvider{ProjectNameFlag: "newproject", SeedNameFlag: "newseed"}),
 	)
 
-	It("should allow writes if no flags are given", func() {
+	It("should write changes as expected", func() {
 		// prepare target
 		dummy := target.NewTarget("mygarden", "myproject", "", "myshoot")
 
@@ -157,13 +157,5 @@ var _ = Describe("Dynamic Target Provider", func() {
 		readBack, err := provider.Read()
 		Expect(err).NotTo(HaveOccurred())
 		expectEqualTargets(readBack, dummy)
-	})
-
-	It("should forbid writes if flags are given", func() {
-		dtp := root.DynamicTargetProvider{
-			TargetFile:     tmpFile.Name(),
-			GardenNameFlag: "oops-a-flag",
-		}
-		Expect(dtp.Write(target.NewTarget("g", "p", "", "sh"))).NotTo(Succeed())
 	})
 })

@@ -22,9 +22,6 @@ import (
 // regular TargetProvider from NewFilesystemTargetProvider().
 //
 // Otherwise, the flags are used to augment the existing target.
-// In this mode, changing the target via Write() is not allowed,
-// so that commands do not accidentally overwrite the target on
-// disk.
 type DynamicTargetProvider struct {
 	// TargetFile is the file where the target is read from / written to
 	// when no CLI flags override the targeting.
@@ -108,9 +105,5 @@ func (p *DynamicTargetProvider) Read() (target.Target, error) {
 
 // Write takes a target and saves it permanently.
 func (p *DynamicTargetProvider) Write(t target.Target) error {
-	if p.hasCLIFlags() {
-		return errors.New("cannot update target when using command-line flags for targeting")
-	}
-
 	return target.NewFilesystemTargetProvider(p.TargetFile).Write(t)
 }
