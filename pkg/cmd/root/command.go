@@ -19,6 +19,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog/v2"
 )
 
@@ -66,10 +67,10 @@ func Execute() {
 	rootCmd.PersistentFlags().StringVar(&targetProvider.SeedNameFlag, "seed", "", "target the given seed cluster")
 	rootCmd.PersistentFlags().StringVar(&targetProvider.ShootNameFlag, "shoot", "", "target the given shoot cluster")
 
-	rootCmd.RegisterFlagCompletionFunc("garden", completionWrapper(gardenFlagCompletionFunc))
-	rootCmd.RegisterFlagCompletionFunc("project", completionWrapper(projectFlagCompletionFunc))
-	rootCmd.RegisterFlagCompletionFunc("seed", completionWrapper(seedFlagCompletionFunc))
-	rootCmd.RegisterFlagCompletionFunc("shoot", completionWrapper(shootFlagCompletionFunc))
+	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("garden", completionWrapper(gardenFlagCompletionFunc)))
+	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("project", completionWrapper(projectFlagCompletionFunc)))
+	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("seed", completionWrapper(seedFlagCompletionFunc)))
+	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("shoot", completionWrapper(shootFlagCompletionFunc)))
 
 	cobra.OnInitialize(initConfig)
 

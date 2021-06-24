@@ -68,17 +68,19 @@ func newCompletionCommand() *cobra.Command {
 		DisableFlagsInUseLine: true,
 		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 		Args:                  cobra.ExactValidArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			switch args[0] {
 			case "bash":
-				cmd.Root().GenBashCompletion(os.Stdout)
+				return cmd.Root().GenBashCompletion(os.Stdout)
 			case "zsh":
-				cmd.Root().GenZshCompletion(os.Stdout)
+				return cmd.Root().GenZshCompletion(os.Stdout)
 			case "fish":
-				cmd.Root().GenFishCompletion(os.Stdout, true)
+				return cmd.Root().GenFishCompletion(os.Stdout, true)
 			case "powershell":
-				cmd.Root().GenPowerShellCompletionWithDesc(os.Stdout)
+				return cmd.Root().GenPowerShellCompletionWithDesc(os.Stdout)
 			}
+
+			return nil
 		},
 	}
 }
@@ -232,6 +234,7 @@ func shootFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete strin
 	}
 
 	ctx := context.Background()
+
 	var listOpt client.ListOption
 
 	if currentTarget.ProjectName() != "" {
