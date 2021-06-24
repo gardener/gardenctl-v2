@@ -7,6 +7,8 @@ package target
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 )
 
 /*
@@ -121,4 +123,31 @@ func (t *targetImpl) WithSeedName(name string) Target {
 // The returned target can be invalid.
 func (t *targetImpl) WithShootName(name string) Target {
 	return NewTarget(t.Garden, t.Project, t.Seed, name)
+}
+
+// String returns a readable representation of the target.
+func (t *targetImpl) String() string {
+	steps := []string{}
+
+	if t.Garden != "" {
+		steps = append(steps, fmt.Sprintf("garden:%q", t.Garden))
+	}
+
+	if t.Project != "" {
+		steps = append(steps, fmt.Sprintf("project:%q", t.Project))
+	}
+
+	if t.Seed != "" {
+		steps = append(steps, fmt.Sprintf("seed:%q", t.Seed))
+	}
+
+	if t.Shoot != "" {
+		steps = append(steps, fmt.Sprintf("shoot:%q", t.Shoot))
+	}
+
+	if len(steps) == 0 {
+		return "<empty>"
+	}
+
+	return strings.Join(steps, ", ")
 }

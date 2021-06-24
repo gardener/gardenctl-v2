@@ -53,6 +53,7 @@ func Execute() {
 	rootCmd.AddCommand(ssh.NewCommand(&factory, ssh.NewOptions(ioStreams)))
 	rootCmd.AddCommand(target.NewCommand(&factory, target.NewOptions(ioStreams)))
 	rootCmd.AddCommand(version.NewCommand(&factory, version.NewOptions(ioStreams)))
+	rootCmd.AddCommand(newCompletionCommand())
 
 	// Do not precalculate what $HOME is for the help text, because it prevents
 	// usage where the current user has no home directory (which might _just_ be
@@ -64,6 +65,11 @@ func Execute() {
 	rootCmd.PersistentFlags().StringVar(&targetProvider.ProjectNameFlag, "project", "", "target the given project")
 	rootCmd.PersistentFlags().StringVar(&targetProvider.SeedNameFlag, "seed", "", "target the given seed cluster")
 	rootCmd.PersistentFlags().StringVar(&targetProvider.ShootNameFlag, "shoot", "", "target the given shoot cluster")
+
+	rootCmd.RegisterFlagCompletionFunc("garden", completionWrapper(gardenFlagCompletionFunc))
+	rootCmd.RegisterFlagCompletionFunc("project", completionWrapper(projectFlagCompletionFunc))
+	rootCmd.RegisterFlagCompletionFunc("seed", completionWrapper(seedFlagCompletionFunc))
+	rootCmd.RegisterFlagCompletionFunc("shoot", completionWrapper(shootFlagCompletionFunc))
 
 	cobra.OnInitialize(initConfig)
 
