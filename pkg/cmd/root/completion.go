@@ -218,18 +218,8 @@ func shootFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete strin
 		return nil, fmt.Errorf("failed to create manager: %w", err)
 	}
 
-	// respect the CLI flags and allow the user to overwrite their current target
-	var currentTarget target.Target
-
-	// if all required flags are given, we do not need to load the config file (which might
-	// even be missing or broken, being the reason why the user chose to use CLI flags in
-	// the first place); otherwise we load the config from disk and then augment it
-	if targetProvider.GardenNameFlag == "" || (targetProvider.ProjectNameFlag == "" && targetProvider.SeedNameFlag == "") {
-		currentTarget, err = manager.CurrentTarget()
-		if err != nil {
-			return nil, fmt.Errorf("failed to read current target: %w", err)
-		}
-	}
+	// for simplicity, always try to read the current target file and ignore any errors
+	currentTarget, _ := manager.CurrentTarget()
 
 	if targetProvider.GardenNameFlag != "" {
 		currentTarget = currentTarget.WithGardenName(targetProvider.GardenNameFlag)
