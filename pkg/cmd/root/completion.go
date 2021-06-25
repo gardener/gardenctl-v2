@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/config"
@@ -107,6 +108,18 @@ func completionWrapper(completer cobraCompletionFuncWithError) cobraCompletionFu
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return nil, cobra.ShellCompDirectiveDefault
+		}
+
+		if toComplete != "" {
+			filtered := []string{}
+
+			for _, item := range result {
+				if strings.HasPrefix(item, toComplete) {
+					filtered = append(filtered, item)
+				}
+			}
+
+			result = filtered
 		}
 
 		return result, cobra.ShellCompDirectiveDefault
