@@ -34,6 +34,16 @@ var (
 	AllTargetKinds = []TargetKind{TargetKindGarden, TargetKindProject, TargetKindSeed, TargetKindShoot}
 )
 
+func validateKind(kind TargetKind) error {
+	for _, k := range AllTargetKinds {
+		if k == kind {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("invalid target kind given, must be one of %v", AllTargetKinds)
+}
+
 // Options is a struct to support target command
 type Options struct {
 	base.Options
@@ -67,17 +77,8 @@ func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 
 // Validate validates the provided options
 func (o *Options) Validate() error {
-	validKind := false
-
-	for _, kind := range AllTargetKinds {
-		if kind == o.Kind {
-			validKind = true
-			break
-		}
-	}
-
-	if !validKind {
-		return fmt.Errorf("invalid target kind given, must be one of %v", AllTargetKinds)
+	if err := validateKind(o.Kind); err != nil {
+		return err
 	}
 
 	if len(o.TargetName) == 0 {

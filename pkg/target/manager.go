@@ -37,6 +37,8 @@ type Manager interface {
 	GardenClient(t Target) (client.Client, error)
 	SeedClient(ctx context.Context, t Target) (client.Client, error)
 	ShootClusterClient(ctx context.Context, t Target) (client.Client, error)
+
+	Configuration() *config.Config
 }
 
 type managerImpl struct {
@@ -59,6 +61,10 @@ func NewManager(config *config.Config, targetProvider TargetProvider, clientProv
 
 func (m *managerImpl) CurrentTarget() (Target, error) {
 	return m.targetProvider.Read()
+}
+
+func (m *managerImpl) Configuration() *config.Config {
+	return m.config
 }
 
 func (m *managerImpl) TargetGarden(gardenName string) error {

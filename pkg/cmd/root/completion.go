@@ -7,10 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package root
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/config"
@@ -110,19 +108,7 @@ func completionWrapper(completer cobraCompletionFuncWithError) cobraCompletionFu
 			return nil, cobra.ShellCompDirectiveDefault
 		}
 
-		if toComplete != "" {
-			filtered := []string{}
-
-			for _, item := range result {
-				if strings.HasPrefix(item, toComplete) {
-					filtered = append(filtered, item)
-				}
-			}
-
-			result = filtered
-		}
-
-		return result, cobra.ShellCompDirectiveDefault
+		return util.FilterStringsByPrefix(toComplete, result), cobra.ShellCompDirectiveDefault
 	}
 }
 
@@ -164,7 +150,7 @@ func projectFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete str
 	}
 
 	projectList := &gardencorev1beta1.ProjectList{}
-	if err := gardenClient.List(context.Background(), projectList); err != nil {
+	if err := gardenClient.List(factory.Context(), projectList); err != nil {
 		return nil, fmt.Errorf("failed to list projects on garden cluster %q: %w", currentTarget.GardenName(), err)
 	}
 
@@ -200,7 +186,7 @@ func seedFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 	}
 
 	seedList := &gardencorev1beta1.SeedList{}
-	if err := gardenClient.List(context.Background(), seedList); err != nil {
+	if err := gardenClient.List(factory.Context(), seedList); err != nil {
 		return nil, fmt.Errorf("failed to list seeds on garden cluster %q: %w", currentTarget.GardenName(), err)
 	}
 
@@ -236,7 +222,7 @@ func shootFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete strin
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", currentTarget.GardenName(), err)
 	}
 
-	ctx := context.Background()
+	ctx := factory.Context()
 
 	var listOpt client.ListOption
 
