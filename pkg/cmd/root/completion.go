@@ -14,11 +14,9 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
-	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func newCompletionCommand() *cobra.Command {
@@ -224,32 +222,13 @@ func shootFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete strin
 
 	ctx := factory.Context()
 
-	var listOpt client.ListOption
-
-	if currentTarget.ProjectName() != "" {
-		project, err := util.ProjectForTarget(ctx, gardenClient, currentTarget)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch project: %w", err)
-		}
-
-		if project.Spec.Namespace == nil {
-			return nil, nil
-		}
-
-		listOpt = &client.ListOptions{Namespace: *project.Spec.Namespace}
-	} else if currentTarget.SeedName() != "" {
-		listOpt = client.MatchingFields{gardencore.ShootSeedName: currentTarget.SeedName()}
-	} else {
-		return nil, nil
-	}
-
-	shootList := &gardencorev1beta1.ShootList{}
-	if err := gardenClient.List(ctx, shootList, listOpt); err != nil {
+	shoots, err := util.ShootsForTarget(ctx, gardenClient, currentTarget)
+	if err != nil {
 		return nil, fmt.Errorf("failed to list shoots on garden cluster %q: %w", currentTarget.GardenName(), err)
 	}
 
 	names := sets.NewString()
-	for _, shoot := range shootList.Items {
+	for _, shoot := range shoots {
 		names.Insert(shoot.Name)
 	}
 

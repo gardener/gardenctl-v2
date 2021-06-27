@@ -13,6 +13,7 @@ import (
 
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
+	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -88,6 +89,36 @@ func shootForTargetViaSeed(ctx context.Context, gardenClient client.Client, t ta
 	}
 
 	return matchingShoots[0], nil
+}
+
+// ShootsForTarget returns all possible shoots for a given target. The
+// target must either target a project or a seed (both including a garden).
+func ShootsForTarget(ctx context.Context, gardenClient client.Client, t target.Target) ([]gardencorev1beta1.Shoot, error) {
+	var listOpt client.ListOption
+
+	if t.ProjectName() != "" {
+		project, err := ProjectForTarget(ctx, gardenClient, t)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch project: %w", err)
+		}
+
+		if project.Spec.Namespace == nil {
+			return nil, nil
+		}
+
+		listOpt = &client.ListOptions{Namespace: *project.Spec.Namespace}
+	} else if t.SeedName() != "" {
+		listOpt = client.MatchingFields{gardencore.ShootSeedName: t.SeedName()}
+	} else {
+		return nil, errors.New("invalid target, must have either project or seed specified for targeting a shoot")
+	}
+
+	shootList := &gardencorev1beta1.ShootList{}
+	if err := gardenClient.List(ctx, shootList, listOpt); err != nil {
+		return nil, fmt.Errorf("failed to list shoots on garden cluster %q: %w", t.GardenName(), err)
+	}
+
+	return shootList.Items, nil
 }
 
 func SeedForTarget(ctx context.Context, gardenClient client.Client, t target.Target) (*gardencorev1beta1.Seed, error) {
