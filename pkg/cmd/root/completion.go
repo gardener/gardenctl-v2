@@ -103,10 +103,10 @@ func completionWrapper(completer cobraCompletionFuncWithError) cobraCompletionFu
 		result, err := completer(cmd, args, toComplete)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
-			return nil, cobra.ShellCompDirectiveDefault
+			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
-		return util.FilterStringsByPrefix(toComplete, result), cobra.ShellCompDirectiveDefault
+		return util.FilterStringsByPrefix(toComplete, result), cobra.ShellCompDirectiveNoFileComp
 	}
 }
 
