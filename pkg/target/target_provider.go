@@ -138,7 +138,7 @@ func (p *DynamicTargetProvider) Read() (Target, error) {
 
 	// user didn't specify anything at all or _some_ flags; in both
 	// cases we need to read the current target from disk
-	var current Target
+	current := NewTarget("", "", "", "")
 
 	if p.TargetFile != "" {
 		var err error
