@@ -202,7 +202,7 @@ func shootFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete strin
 		return nil, fmt.Errorf("failed to create manager: %w", err)
 	}
 
-	// for simplicity, always try to read the current target file and ignore any errors
+	// errors are okay here, as we patch the target anyway
 	currentTarget, _ := manager.CurrentTarget()
 
 	if targetProvider.GardenNameFlag != "" {
