@@ -11,7 +11,6 @@ import (
 	"os"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
-	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -83,9 +82,9 @@ func newCompletionCommand() *cobra.Command {
 }
 
 type cobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
-type cobraCompletionFuncWithError func(cmd *cobra.Command, args []string, toComplete string) ([]string, error)
+type cobraCompletionFuncWithError func(f util.Factory) ([]string, error)
 
-func completionWrapper(completer cobraCompletionFuncWithError) cobraCompletionFunc {
+func completionWrapper(f *util.FactoryImpl, completer cobraCompletionFuncWithError) cobraCompletionFunc {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		// By default, the factory will provide a target manager that uses the DynamicTargetProvider (DTP)
 		// implementation, i.e. is based on the file just as much as the CLI flags.
@@ -97,10 +96,10 @@ func completionWrapper(completer cobraCompletionFuncWithError) cobraCompletionFu
 		// Project and seed information however are important for the completion functions.
 		//
 		// To work around this, all completion functions use the regular filesystem based target provider.
-		factory.TargetFile = targetProvider.TargetFile
-		factory.TargetProvider = nil
+		f.TargetFile = targetProvider.TargetFile
+		f.TargetProvider = nil
 
-		result, err := completer(cmd, args, toComplete)
+		result, err := completer(f)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return nil, cobra.ShellCompDirectiveNoFileComp
@@ -110,22 +109,22 @@ func completionWrapper(completer cobraCompletionFuncWithError) cobraCompletionFu
 	}
 }
 
-func gardenFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, error) {
-	cfg, err := config.LoadFromFile(factory.ConfigFile)
+func gardenFlagCompletionFunc(f util.Factory) ([]string, error) {
+	manager, err := f.Manager()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load configuration: %w", err)
+		return nil, fmt.Errorf("failed to create manager: %w", err)
 	}
 
 	names := sets.NewString()
-	for _, garden := range cfg.Gardens {
+	for _, garden := range manager.Configuration().Gardens {
 		names.Insert(garden.Name)
 	}
 
 	return names.List(), nil
 }
 
-func projectFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, error) {
-	manager, err := factory.Manager()
+func projectFlagCompletionFunc(f util.Factory) ([]string, error) {
+	manager, err := f.Manager()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create manager: %w", err)
 	}
@@ -148,7 +147,7 @@ func projectFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete str
 	}
 
 	projectList := &gardencorev1beta1.ProjectList{}
-	if err := gardenClient.List(factory.Context(), projectList); err != nil {
+	if err := gardenClient.List(f.Context(), projectList); err != nil {
 		return nil, fmt.Errorf("failed to list projects on garden cluster %q: %w", currentTarget.GardenName(), err)
 	}
 
@@ -160,8 +159,8 @@ func projectFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete str
 	return names.List(), nil
 }
 
-func seedFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, error) {
-	manager, err := factory.Manager()
+func seedFlagCompletionFunc(f util.Factory) ([]string, error) {
+	manager, err := f.Manager()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create manager: %w", err)
 	}
@@ -184,7 +183,7 @@ func seedFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 	}
 
 	seedList := &gardencorev1beta1.SeedList{}
-	if err := gardenClient.List(factory.Context(), seedList); err != nil {
+	if err := gardenClient.List(f.Context(), seedList); err != nil {
 		return nil, fmt.Errorf("failed to list seeds on garden cluster %q: %w", currentTarget.GardenName(), err)
 	}
 
@@ -196,8 +195,8 @@ func seedFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 	return names.List(), nil
 }
 
-func shootFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, error) {
-	manager, err := factory.Manager()
+func shootFlagCompletionFunc(f util.Factory) ([]string, error) {
+	manager, err := f.Manager()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create manager: %w", err)
 	}
@@ -220,7 +219,7 @@ func shootFlagCompletionFunc(cmd *cobra.Command, args []string, toComplete strin
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", currentTarget.GardenName(), err)
 	}
 
-	ctx := factory.Context()
+	ctx := f.Context()
 
 	shoots, err := util.ShootsForTarget(ctx, gardenClient, currentTarget)
 	if err != nil {

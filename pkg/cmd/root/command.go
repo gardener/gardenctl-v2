@@ -67,10 +67,10 @@ func Execute() {
 	rootCmd.PersistentFlags().StringVar(&targetProvider.SeedNameFlag, "seed", "", "target the given seed cluster")
 	rootCmd.PersistentFlags().StringVar(&targetProvider.ShootNameFlag, "shoot", "", "target the given shoot cluster")
 
-	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("garden", completionWrapper(gardenFlagCompletionFunc)))
-	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("project", completionWrapper(projectFlagCompletionFunc)))
-	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("seed", completionWrapper(seedFlagCompletionFunc)))
-	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("shoot", completionWrapper(shootFlagCompletionFunc)))
+	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("garden", completionWrapper(&factory, gardenFlagCompletionFunc)))
+	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("project", completionWrapper(&factory, projectFlagCompletionFunc)))
+	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("seed", completionWrapper(&factory, seedFlagCompletionFunc)))
+	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("shoot", completionWrapper(&factory, shootFlagCompletionFunc)))
 
 	cobra.OnInitialize(initConfig)
 
