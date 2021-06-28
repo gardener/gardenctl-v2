@@ -11,12 +11,13 @@ import (
 	"fmt"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/target"
 
 	"github.com/spf13/cobra"
 )
 
 // NewCommand returns a new target command.
-func NewCommand(f util.Factory, o *Options) *cobra.Command {
+func NewCommand(f util.Factory, o *Options, targetProvider *target.DynamicTargetProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "target",
 		Short: "Set scope for next operations, e.g. \"gardenctl target garden garden_name\" to target garden with name of garden_name",
@@ -30,12 +31,21 @@ func NewCommand(f util.Factory, o *Options) *cobra.Command {
 			return util.FilterStringsByPrefix(toComplete, suggestions), cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// we never want to load existing target information from disk for completing
+			// the arguments, so we temporarily remove the filename; this prevents users
+			// from simply running "gardenctl target" and have it print unexpected messages
+			targetFile := targetProvider.TargetFile
+
+			targetProvider.TargetFile = ""
+
 			if err := o.Complete(f, cmd, args); err != nil {
 				return fmt.Errorf("failed to complete command options: %w", err)
 			}
 			if err := o.Validate(); err != nil {
 				return err
 			}
+
+			targetProvider.TargetFile = targetFile
 
 			return runCommand(f, o)
 		},
@@ -48,39 +58,6 @@ func runCommand(f util.Factory, o *Options) error {
 	manager, err := f.Manager()
 	if err != nil {
 		return err
-	}
-
-	// in case the user didn't specify all arguments, we fake them
-	// by looking at the CLI flags instead. This allows the user to do a
-	// "gardenctl target --shoot foo" and still have it working
-	currentTarget, err := manager.CurrentTarget()
-	if err != nil {
-		return err
-	}
-
-	if o.Kind == "" {
-		if currentTarget.ShootName() != "" {
-			o.Kind = TargetKindShoot
-		} else if currentTarget.ProjectName() != "" {
-			o.Kind = TargetKindProject
-		} else if currentTarget.SeedName() != "" {
-			o.Kind = TargetKindSeed
-		} else if currentTarget.GardenName() != "" {
-			o.Kind = TargetKindGarden
-		}
-	}
-
-	if o.TargetName == "" {
-		switch o.Kind {
-		case TargetKindGarden:
-			o.TargetName = currentTarget.GardenName()
-		case TargetKindProject:
-			o.TargetName = currentTarget.ProjectName()
-		case TargetKindSeed:
-			o.TargetName = currentTarget.SeedName()
-		case TargetKindShoot:
-			o.TargetName = currentTarget.ShootName()
-		}
 	}
 
 	ctx := f.Context()

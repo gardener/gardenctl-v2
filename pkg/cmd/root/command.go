@@ -13,8 +13,9 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/target"
+	targetcmd "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/version"
+	"github.com/gardener/gardenctl-v2/pkg/target"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -34,7 +35,7 @@ const (
 )
 
 var (
-	targetProvider = &DynamicTargetProvider{}
+	targetProvider = &target.DynamicTargetProvider{}
 	factory        = util.FactoryImpl{
 		TargetProvider: targetProvider,
 	}
@@ -52,7 +53,7 @@ func Execute() {
 	}
 
 	rootCmd.AddCommand(ssh.NewCommand(&factory, ssh.NewOptions(ioStreams)))
-	rootCmd.AddCommand(target.NewCommand(&factory, target.NewOptions(ioStreams)))
+	rootCmd.AddCommand(targetcmd.NewCommand(&factory, targetcmd.NewOptions(ioStreams), targetProvider))
 	rootCmd.AddCommand(version.NewCommand(&factory, version.NewOptions(ioStreams)))
 	rootCmd.AddCommand(newCompletionCommand())
 
