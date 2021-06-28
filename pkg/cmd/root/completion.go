@@ -7,15 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package root
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func newCompletionCommand() *cobra.Command {
@@ -82,7 +81,7 @@ func newCompletionCommand() *cobra.Command {
 }
 
 type cobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
-type cobraCompletionFuncWithError func(f util.Factory) ([]string, error)
+type cobraCompletionFuncWithError func(ctx context.Context, manager target.Manager) ([]string, error)
 
 func completionWrapper(f *util.FactoryImpl, completer cobraCompletionFuncWithError) cobraCompletionFunc {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -99,7 +98,13 @@ func completionWrapper(f *util.FactoryImpl, completer cobraCompletionFuncWithErr
 		f.TargetFile = targetProvider.TargetFile
 		f.TargetProvider = nil
 
-		result, err := completer(f)
+		manager, err := f.Manager()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		result, err := completer(f.Context(), manager)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return nil, cobra.ShellCompDirectiveNoFileComp
@@ -109,98 +114,46 @@ func completionWrapper(f *util.FactoryImpl, completer cobraCompletionFuncWithErr
 	}
 }
 
-func gardenFlagCompletionFunc(f util.Factory) ([]string, error) {
-	manager, err := f.Manager()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create manager: %w", err)
-	}
-
-	names := sets.NewString()
-	for _, garden := range manager.Configuration().Gardens {
-		names.Insert(garden.Name)
-	}
-
-	return names.List(), nil
+func gardenFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
+	return util.GardenNames(manager)
 }
 
-func projectFlagCompletionFunc(f util.Factory) ([]string, error) {
-	manager, err := f.Manager()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create manager: %w", err)
-	}
-
+func projectFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
 	// any --garden flag has precedence over the config file
 	var currentTarget target.Target
 
 	if targetProvider.GardenNameFlag != "" {
 		currentTarget = target.NewTarget(targetProvider.GardenNameFlag, "", "", "")
 	} else {
+		var err error
+
 		currentTarget, err = manager.CurrentTarget()
 		if err != nil {
 			return nil, fmt.Errorf("failed to read current target: %w", err)
 		}
 	}
 
-	gardenClient, err := manager.GardenClient(currentTarget)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", currentTarget.GardenName(), err)
-	}
-
-	projectList := &gardencorev1beta1.ProjectList{}
-	if err := gardenClient.List(f.Context(), projectList); err != nil {
-		return nil, fmt.Errorf("failed to list projects on garden cluster %q: %w", currentTarget.GardenName(), err)
-	}
-
-	names := sets.NewString()
-	for _, project := range projectList.Items {
-		names.Insert(project.Name)
-	}
-
-	return names.List(), nil
+	return util.ProjectNamesForTarget(ctx, manager, currentTarget)
 }
 
-func seedFlagCompletionFunc(f util.Factory) ([]string, error) {
-	manager, err := f.Manager()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create manager: %w", err)
-	}
-
+func seedFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
 	// any --garden flag has precedence over the config file
 	var currentTarget target.Target
 
 	if targetProvider.GardenNameFlag != "" {
 		currentTarget = target.NewTarget(targetProvider.GardenNameFlag, "", "", "")
 	} else {
+		var err error
 		currentTarget, err = manager.CurrentTarget()
 		if err != nil {
 			return nil, fmt.Errorf("failed to read current target: %w", err)
 		}
 	}
 
-	gardenClient, err := manager.GardenClient(currentTarget)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", currentTarget.GardenName(), err)
-	}
-
-	seedList := &gardencorev1beta1.SeedList{}
-	if err := gardenClient.List(f.Context(), seedList); err != nil {
-		return nil, fmt.Errorf("failed to list seeds on garden cluster %q: %w", currentTarget.GardenName(), err)
-	}
-
-	names := sets.NewString()
-	for _, seed := range seedList.Items {
-		names.Insert(seed.Name)
-	}
-
-	return names.List(), nil
+	return util.SeedNamesForTarget(ctx, manager, currentTarget)
 }
 
-func shootFlagCompletionFunc(f util.Factory) ([]string, error) {
-	manager, err := f.Manager()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create manager: %w", err)
-	}
-
+func shootFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
 	// errors are okay here, as we patch the target anyway
 	currentTarget, _ := manager.CurrentTarget()
 
@@ -214,22 +167,5 @@ func shootFlagCompletionFunc(f util.Factory) ([]string, error) {
 		currentTarget = currentTarget.WithSeedName(targetProvider.SeedNameFlag).WithProjectName("")
 	}
 
-	gardenClient, err := manager.GardenClient(currentTarget)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", currentTarget.GardenName(), err)
-	}
-
-	ctx := f.Context()
-
-	shoots, err := util.ShootsForTarget(ctx, gardenClient, currentTarget)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list shoots on garden cluster %q: %w", currentTarget.GardenName(), err)
-	}
-
-	names := sets.NewString()
-	for _, shoot := range shoots {
-		names.Insert(shoot.Name)
-	}
-
-	return names.List(), nil
+	return util.ShootNamesForTarget(ctx, manager, currentTarget)
 }

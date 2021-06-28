@@ -192,67 +192,6 @@ var _ = Describe("Completion", func() {
 		Expect(gardenClient).NotTo(BeNil())
 	})
 
-	Describe("getGardenArguments", func() {
-		It("should return all garden names", func() {
-			manager, err := factory.Manager()
-			Expect(err).NotTo(HaveOccurred())
-
-			values, err := getGardenArguments(manager)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values.List()).To(Equal([]string{"abc", gardenName}))
-		})
-	})
-
-	Describe("getProjectArguments", func() {
-		It("should return all project names", func() {
-			manager, err := factory.Manager()
-			Expect(err).NotTo(HaveOccurred())
-
-			t := target.NewTarget(gardenName, "", "", "")
-
-			values, err := getProjectArguments(factory.Context(), manager, t)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values.List()).To(Equal([]string{testProject1.Name, testProject2.Name}))
-		})
-	})
-
-	Describe("getSeedArguments", func() {
-		It("should return all seed names", func() {
-			manager, err := factory.Manager()
-			Expect(err).NotTo(HaveOccurred())
-
-			t := target.NewTarget(gardenName, "", "", "")
-
-			values, err := getSeedArguments(factory.Context(), manager, t)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values.List()).To(Equal([]string{testSeed2.Name, testSeed1.Name}))
-		})
-	})
-
-	Describe("getShootArguments", func() {
-		It("should return all shoot names when using a project", func() {
-			manager, err := factory.Manager()
-			Expect(err).NotTo(HaveOccurred())
-
-			t := target.NewTarget(gardenName, testProject1.Name, "", "")
-
-			values, err := getShootArguments(factory.Context(), manager, t)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values.List()).To(Equal([]string{testShoot2.Name, testShoot1.Name}))
-		})
-
-		It("should return all shoot names when using a seed", func() {
-			manager, err := factory.Manager()
-			Expect(err).NotTo(HaveOccurred())
-
-			t := target.NewTarget(gardenName, "", testSeed1.Name, "")
-
-			values, err := getShootArguments(factory.Context(), manager, t)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values.List()).To(Equal([]string{testShoot2.Name, testShoot1.Name}))
-		})
-	})
-
 	Describe("validArgsFunction", func() {
 		It("should return the allowed target types when no kind was given", func() {
 			values, err := validArgsFunction(factory, nil, nil, "")

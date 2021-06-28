@@ -7,7 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package root
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -51,6 +53,7 @@ var _ = Describe("Completion", func() {
 		gardenClient         client.Client
 		shootClient          client.Client
 		factory              util.Factory
+		configFile           string
 	)
 
 	BeforeEach(func() {
@@ -63,6 +66,13 @@ var _ = Describe("Completion", func() {
 				Kubeconfig: gardenKubeconfigFile,
 			}},
 		}
+
+		f, err := os.CreateTemp(os.TempDir(), "gctlv2*")
+		Expect(err).ToNot(HaveOccurred())
+		f.Close()
+
+		configFile = f.Name()
+		Expect(config.SaveToFile(configFile, cfg)).To(Succeed())
 
 		testProject1 = &gardencorev1beta1.Project{
 			ObjectMeta: metav1.ObjectMeta{
@@ -192,9 +202,16 @@ var _ = Describe("Completion", func() {
 		Expect(gardenClient).NotTo(BeNil())
 	})
 
+	AfterEach(func() {
+		Expect(os.Remove(configFile)).To(Succeed())
+	})
+
 	Describe("gardenFlagCompletionFunc", func() {
 		It("should return all garden names, alphabetically sorted", func() {
-			values, err := gardenFlagCompletionFunc(factory)
+			manager, err := factory.Manager()
+			Expect(err).NotTo(HaveOccurred())
+
+			values, err := gardenFlagCompletionFunc(factory.Context(), manager)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{"abc", gardenName}))
 		})
@@ -202,7 +219,10 @@ var _ = Describe("Completion", func() {
 
 	Describe("projectFlagCompletionFunc", func() {
 		It("should return all project names, alphabetically sorted", func() {
-			values, err := projectFlagCompletionFunc(factory)
+			manager, err := factory.Manager()
+			Expect(err).NotTo(HaveOccurred())
+
+			values, err := projectFlagCompletionFunc(factory.Context(), manager)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testProject1.Name, testProject2.Name}))
 		})
@@ -210,7 +230,10 @@ var _ = Describe("Completion", func() {
 
 	Describe("seedFlagCompletionFunc", func() {
 		It("should return all seed names, alphabetically sorted", func() {
-			values, err := seedFlagCompletionFunc(factory)
+			manager, err := factory.Manager()
+			Expect(err).NotTo(HaveOccurred())
+
+			values, err := seedFlagCompletionFunc(factory.Context(), manager)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testSeed2.Name, testSeed1.Name}))
 		})
@@ -218,7 +241,10 @@ var _ = Describe("Completion", func() {
 
 	Describe("shootFlagCompletionFunc", func() {
 		It("should return all shoot names, alphabetically sorted", func() {
-			values, err := shootFlagCompletionFunc(factory)
+			manager, err := factory.Manager()
+			Expect(err).NotTo(HaveOccurred())
+
+			values, err := shootFlagCompletionFunc(factory.Context(), manager)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testShoot2.Name, testShoot1.Name}))
 		})
@@ -226,7 +252,11 @@ var _ = Describe("Completion", func() {
 
 	Describe("completionWrapper", func() {
 		It("should respect the prefix", func() {
-			wrapped := completionWrapper(&util.FactoryImpl{}, func(f util.Factory) ([]string, error) {
+			factory := &util.FactoryImpl{
+				ConfigFile: configFile,
+			}
+
+			wrapped := completionWrapper(factory, func(ctx context.Context, manager target.Manager) ([]string, error) {
 				return []string{"foo", "bar"}, nil
 			})
 
