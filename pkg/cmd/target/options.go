@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package target
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -65,24 +64,23 @@ func NewOptions(ioStreams util.IOStreams) *Options {
 
 // Complete adapts from the command line args to the data required.
 func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	if len(args) != 2 {
-		return errors.New("expected exactly 2 arguments")
-	}
+	if len(args) > 0 {
+		o.Kind = TargetKind(strings.TrimSpace(args[0]))
 
-	o.Kind = TargetKind(strings.TrimSpace(args[0]))
-	o.TargetName = strings.TrimSpace(args[1])
+		if len(args) > 1 {
+			o.TargetName = strings.TrimSpace(args[1])
+		}
+	}
 
 	return nil
 }
 
 // Validate validates the provided options
 func (o *Options) Validate() error {
-	if err := validateKind(o.Kind); err != nil {
-		return err
-	}
-
-	if len(o.TargetName) == 0 {
-		return errors.New("target name must not be empty")
+	if o.Kind != "" {
+		if err := validateKind(o.Kind); err != nil {
+			return err
+		}
 	}
 
 	return nil

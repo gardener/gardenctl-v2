@@ -50,6 +50,39 @@ func runCommand(f util.Factory, o *Options) error {
 		return err
 	}
 
+	// in case the user didn't specify all arguments, we fake them
+	// by looking at the CLI flags instead. This allows the user to do a
+	// "gardenctl target --shoot foo" and still have it working
+	currentTarget, err := manager.CurrentTarget()
+	if err != nil {
+		return err
+	}
+
+	if o.Kind == "" {
+		if currentTarget.ShootName() != "" {
+			o.Kind = TargetKindShoot
+		} else if currentTarget.ProjectName() != "" {
+			o.Kind = TargetKindProject
+		} else if currentTarget.SeedName() != "" {
+			o.Kind = TargetKindSeed
+		} else if currentTarget.GardenName() != "" {
+			o.Kind = TargetKindGarden
+		}
+	}
+
+	if o.TargetName == "" {
+		switch o.Kind {
+		case TargetKindGarden:
+			o.TargetName = currentTarget.GardenName()
+		case TargetKindProject:
+			o.TargetName = currentTarget.ProjectName()
+		case TargetKindSeed:
+			o.TargetName = currentTarget.SeedName()
+		case TargetKindShoot:
+			o.TargetName = currentTarget.ShootName()
+		}
+	}
+
 	ctx := f.Context()
 
 	switch o.Kind {
@@ -62,7 +95,6 @@ func runCommand(f util.Factory, o *Options) error {
 	case TargetKindShoot:
 		err = manager.TargetShoot(ctx, o.TargetName)
 	default:
-		// because of the validation earlier, this should never happen
 		err = errors.New("invalid kind")
 	}
 

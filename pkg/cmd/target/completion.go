@@ -47,6 +47,7 @@ func validArgsFunction(f util.Factory, o *Options, args []string, toComplete str
 	}
 
 	ctx := f.Context()
+
 	var result sets.String
 
 	switch kind {
@@ -60,7 +61,7 @@ func validArgsFunction(f util.Factory, o *Options, args []string, toComplete str
 		result, err = getShootArguments(ctx, manager, currentTarget)
 	}
 
-	return result.List(), nil
+	return result.List(), err
 }
 
 func getGardenArguments(manager target.Manager) (sets.String, error) {
