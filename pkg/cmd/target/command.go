@@ -31,21 +31,13 @@ func NewCommand(f util.Factory, o *Options, targetProvider *target.DynamicTarget
 			return util.FilterStringsByPrefix(toComplete, suggestions), cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// we never want to load existing target information from disk for completing
-			// the arguments, so we temporarily remove the filename; this prevents users
-			// from simply running "gardenctl target" and have it print unexpected messages
-			targetFile := targetProvider.TargetFile
-
-			targetProvider.TargetFile = ""
-
-			if err := o.Complete(f, cmd, args); err != nil {
+			if err := o.Complete(f, cmd, args, targetProvider); err != nil {
 				return fmt.Errorf("failed to complete command options: %w", err)
 			}
+
 			if err := o.Validate(); err != nil {
 				return err
 			}
-
-			targetProvider.TargetFile = targetFile
 
 			return runCommand(f, o)
 		},
