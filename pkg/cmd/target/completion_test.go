@@ -215,7 +215,7 @@ var _ = Describe("Completion", func() {
 			Expect(values).To(Equal([]string{"abc", gardenName}))
 		})
 
-		It("should return all garden names", func() {
+		It("should return all project names", func() {
 			targetProvider.Target = target.NewTarget(gardenName, "", "", "")
 
 			values, err := validArgsFunction(factory, nil, []string{string(TargetKindProject)}, "")
