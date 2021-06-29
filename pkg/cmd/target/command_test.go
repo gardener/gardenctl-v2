@@ -31,7 +31,7 @@ var _ = Describe("Command", func() {
 	It("should reject bad options", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
 		o := NewOptions(streams)
-		cmd := NewCommand(&util.FactoryImpl{}, o)
+		cmd := NewCommand(&util.FactoryImpl{}, o, &target.DynamicTargetProvider{})
 
 		Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
 	})
@@ -48,7 +48,7 @@ var _ = Describe("Command", func() {
 		}
 		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget("", "", "", ""))
 		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
-		cmd := NewCommand(factory, NewOptions(streams))
+		cmd := NewCommand(factory, NewOptions(streams), &target.DynamicTargetProvider{})
 
 		Expect(cmd.RunE(cmd, []string{"garden", gardenName})).To(Succeed())
 		Expect(out.String()).To(ContainSubstring("Successfully targeted"))
@@ -92,7 +92,7 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := NewCommand(factory, NewOptions(streams))
+		cmd := NewCommand(factory, NewOptions(streams), &target.DynamicTargetProvider{})
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"project", projectName})).To(Succeed())

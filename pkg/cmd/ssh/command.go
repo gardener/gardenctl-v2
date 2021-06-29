@@ -233,7 +233,7 @@ func runCommand(f util.Factory, o *Options) error {
 		nodePrivateKeyFiles = append(nodePrivateKeyFiles, filename)
 	}
 
-	shootClient, err := manager.ShootClusterClient(currentTarget)
+	shootClient, err := manager.ShootClusterClient(ctx, currentTarget)
 	if err != nil {
 		return err
 	}
@@ -413,7 +413,7 @@ func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
 	}
 
 	// create client for the shoot cluster
-	shootClient, err := manager.ShootClusterClient(currentTarget)
+	shootClient, err := manager.ShootClusterClient(f.Context(), currentTarget)
 	if err != nil {
 		return nil, err
 	}

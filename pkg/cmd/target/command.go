@@ -11,22 +11,41 @@ import (
 	"fmt"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/target"
 
 	"github.com/spf13/cobra"
 )
 
 // NewCommand returns a new target command.
-func NewCommand(f util.Factory, o *Options) *cobra.Command {
+func NewCommand(f util.Factory, o *Options, targetProvider *target.DynamicTargetProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "target",
 		Short: "Set scope for next operations, e.g. \"gardenctl target garden garden_name\" to target garden with name of garden_name",
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			suggestions, err := validArgsFunction(f, o, args, toComplete)
+			if err != nil {
+				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			return util.FilterStringsByPrefix(toComplete, suggestions), cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// we never want to load existing target information from disk for completing
+			// the arguments, so we temporarily remove the filename; this prevents users
+			// from simply running "gardenctl target" and have it print unexpected messages
+			targetFile := targetProvider.TargetFile
+
+			targetProvider.TargetFile = ""
+
 			if err := o.Complete(f, cmd, args); err != nil {
 				return fmt.Errorf("failed to complete command options: %w", err)
 			}
 			if err := o.Validate(); err != nil {
 				return err
 			}
+
+			targetProvider.TargetFile = targetFile
 
 			return runCommand(f, o)
 		},
@@ -53,7 +72,6 @@ func runCommand(f util.Factory, o *Options) error {
 	case TargetKindShoot:
 		err = manager.TargetShoot(ctx, o.TargetName)
 	default:
-		// because of the validation earlier, this should never happen
 		err = errors.New("invalid kind")
 	}
 

@@ -35,8 +35,10 @@ type Manager interface {
 	TargetShoot(ctx context.Context, name string) error
 
 	GardenClient(t Target) (client.Client, error)
-	SeedClient(t Target) (client.Client, error)
-	ShootClusterClient(t Target) (client.Client, error)
+	SeedClient(ctx context.Context, t Target) (client.Client, error)
+	ShootClusterClient(ctx context.Context, t Target) (client.Client, error)
+
+	Configuration() *config.Config
 }
 
 type managerImpl struct {
@@ -59,6 +61,10 @@ func NewManager(config *config.Config, targetProvider TargetProvider, clientProv
 
 func (m *managerImpl) CurrentTarget() (Target, error) {
 	return m.targetProvider.Read()
+}
+
+func (m *managerImpl) Configuration() *config.Config {
+	return m.config
 }
 
 func (m *managerImpl) TargetGarden(gardenName string) error {
@@ -150,24 +156,8 @@ func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 		t.Project = ""
 		t.Shoot = ""
 
-		if err := m.updateSeedKubeconfig(ctx, gardenClient, t, seed); err != nil {
-			return fmt.Errorf("failed to fetch kubeconfig for seed cluster: %w", err)
-		}
-
 		return nil
 	})
-}
-
-func (m *managerImpl) updateSeedKubeconfig(ctx context.Context, gardenClient client.Client, t Target, seed *gardencorev1beta1.Seed) error {
-	// fetch kubeconfig secret
-	secret := corev1.Secret{}
-	key := types.NamespacedName{Name: seed.Spec.SecretRef.Name, Namespace: seed.Spec.SecretRef.Namespace}
-
-	if err := gardenClient.Get(ctx, key, &secret); err != nil {
-		return fmt.Errorf("failed to retrieve seed kubeconfig: %w", err)
-	}
-
-	return m.kubeconfigCache.Write(t, secret.Data["kubeconfig"])
 }
 
 func (m *managerImpl) resolveSeedName(ctx context.Context, gardenClient client.Client, seedName string) (*gardencorev1beta1.Seed, error) {
@@ -245,10 +235,6 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 			t.Seed = seed.Name
 		}
 
-		if err := m.updateShootKubeconfig(ctx, gardenClient, t, shoot); err != nil {
-			return fmt.Errorf("failed to fetch kubeconfig for shoot cluster: %w", err)
-		}
-
 		return nil
 	})
 }
@@ -299,7 +285,7 @@ func (m *managerImpl) resolveShootName(
 		// the shootList (and projectList later on) are filtered again.
 		// In production this does not hurt much, as the FieldSelector is
 		// already applied, and in tests very few objects exist anyway.
-		listOpts = append(listOpts, client.MatchingFields{gardencore.ShootSeedName: shoot.Namespace})
+		listOpts = append(listOpts, client.MatchingFields{gardencore.ShootSeedName: seed.Name})
 	}
 
 	if err := gardenClient.List(ctx, &shootList, listOpts...); err != nil {
@@ -385,26 +371,6 @@ func (m *managerImpl) validateShoot(ctx context.Context, seed *gardencorev1beta1
 	return nil
 }
 
-func (m *managerImpl) updateShootKubeconfig(
-	ctx context.Context,
-	gardenClient client.Client,
-	t Target,
-	shoot *gardencorev1beta1.Shoot,
-) error {
-	// fetch kubeconfig secret
-	secret := corev1.Secret{}
-	key := types.NamespacedName{
-		Name:      fmt.Sprintf("%s.kubeconfig", shoot.Name),
-		Namespace: shoot.Namespace,
-	}
-
-	if err := gardenClient.Get(ctx, key, &secret); err != nil {
-		return fmt.Errorf("failed to retrieve shoot kubeconfig: %w", err)
-	}
-
-	return m.kubeconfigCache.Write(t, secret.Data["kubeconfig"])
-}
-
 func (m *managerImpl) GardenClient(t Target) (client.Client, error) {
 	t, err := m.getTarget(t)
 	if err != nil {
@@ -428,7 +394,7 @@ func (m *managerImpl) clientForGarden(name string) (client.Client, error) {
 	return nil, fmt.Errorf("targeted garden cluster %q is not configured", name)
 }
 
-func (m *managerImpl) SeedClient(t Target) (client.Client, error) {
+func (m *managerImpl) SeedClient(ctx context.Context, t Target) (client.Client, error) {
 	t, err := m.getTarget(t)
 	if err != nil {
 		return nil, err
@@ -442,7 +408,7 @@ func (m *managerImpl) SeedClient(t Target) (client.Client, error) {
 		return nil, ErrNoSeedTargeted
 	}
 
-	kubeconfig, err := m.kubeconfigCache.Read(t)
+	kubeconfig, err := m.ensureSeedKubeconfig(ctx, t)
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +416,36 @@ func (m *managerImpl) SeedClient(t Target) (client.Client, error) {
 	return m.clientProvider.FromBytes(kubeconfig)
 }
 
-func (m *managerImpl) ShootClusterClient(t Target) (client.Client, error) {
+func (m *managerImpl) ensureSeedKubeconfig(ctx context.Context, t Target) ([]byte, error) {
+	if kubeconfig, err := m.kubeconfigCache.Read(t); err == nil {
+		return kubeconfig, nil
+	}
+
+	gardenClient, err := m.GardenClient(t)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
+	}
+
+	seed, err := m.resolveSeedName(ctx, gardenClient, t.SeedName())
+	if err != nil {
+		return nil, fmt.Errorf("invalid seed cluster: %w", err)
+	}
+
+	secret := corev1.Secret{}
+	key := types.NamespacedName{Name: seed.Spec.SecretRef.Name, Namespace: seed.Spec.SecretRef.Namespace}
+
+	if err := gardenClient.Get(ctx, key, &secret); err != nil {
+		return nil, fmt.Errorf("failed to retrieve seed kubeconfig: %w", err)
+	}
+
+	if err := m.kubeconfigCache.Write(t, secret.Data["kubeconfig"]); err != nil {
+		return nil, fmt.Errorf("failed to update kubeconfig cache: %w", err)
+	}
+
+	return secret.Data["kubeconfig"], nil
+}
+
+func (m *managerImpl) ShootClusterClient(ctx context.Context, t Target) (client.Client, error) {
 	t, err := m.getTarget(t)
 	if err != nil {
 		return nil, err
@@ -473,12 +468,62 @@ func (m *managerImpl) ShootClusterClient(t Target) (client.Client, error) {
 		return nil, ErrNoShootTargeted
 	}
 
-	kubeconfig, err := m.kubeconfigCache.Read(t)
+	kubeconfig, err := m.ensureShootKubeconfig(ctx, t)
 	if err != nil {
 		return nil, err
 	}
 
 	return m.clientProvider.FromBytes(kubeconfig)
+}
+
+func (m *managerImpl) ensureShootKubeconfig(ctx context.Context, t Target) ([]byte, error) {
+	if kubeconfig, err := m.kubeconfigCache.Read(t); err == nil {
+		return kubeconfig, nil
+	}
+
+	gardenClient, err := m.GardenClient(t)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
+	}
+
+	var (
+		project *gardencorev1beta1.Project
+		seed    *gardencorev1beta1.Seed
+	)
+
+	// *if* project or seed are set, resolve them to aid in finding the shoot later on
+	if t.ProjectName() != "" {
+		project, err = m.resolveProjectName(ctx, gardenClient, t.ProjectName())
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve project: %w", err)
+		}
+	} else if t.SeedName() != "" {
+		seed, err = m.resolveSeedName(ctx, gardenClient, t.SeedName())
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve seed: %w", err)
+		}
+	}
+
+	_, _, shoot, err := m.resolveShootName(ctx, gardenClient, project, seed, t.ShootName())
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve shoot: %w", err)
+	}
+
+	secret := corev1.Secret{}
+	key := types.NamespacedName{
+		Name:      fmt.Sprintf("%s.kubeconfig", shoot.Name),
+		Namespace: shoot.Namespace,
+	}
+
+	if err := gardenClient.Get(ctx, key, &secret); err != nil {
+		return nil, fmt.Errorf("failed to retrieve shoot kubeconfig: %w", err)
+	}
+
+	if err := m.kubeconfigCache.Write(t, secret.Data["kubeconfig"]); err != nil {
+		return nil, fmt.Errorf("failed to update kubeconfig cache: %w", err)
+	}
+
+	return secret.Data["kubeconfig"], nil
 }
 
 func (m *managerImpl) patchTarget(patch func(t *targetImpl) error) error {

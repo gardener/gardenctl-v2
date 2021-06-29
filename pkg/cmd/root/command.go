@@ -13,12 +13,14 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/target"
+	targetcmd "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/version"
+	"github.com/gardener/gardenctl-v2/pkg/target"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog/v2"
 )
 
@@ -33,7 +35,7 @@ const (
 )
 
 var (
-	targetProvider = &DynamicTargetProvider{}
+	targetProvider = &target.DynamicTargetProvider{}
 	factory        = util.FactoryImpl{
 		TargetProvider: targetProvider,
 	}
@@ -51,8 +53,9 @@ func Execute() {
 	}
 
 	rootCmd.AddCommand(ssh.NewCommand(&factory, ssh.NewOptions(ioStreams)))
-	rootCmd.AddCommand(target.NewCommand(&factory, target.NewOptions(ioStreams)))
+	rootCmd.AddCommand(targetcmd.NewCommand(&factory, targetcmd.NewOptions(ioStreams), targetProvider))
 	rootCmd.AddCommand(version.NewCommand(&factory, version.NewOptions(ioStreams)))
+	rootCmd.AddCommand(newCompletionCommand())
 
 	// Do not precalculate what $HOME is for the help text, because it prevents
 	// usage where the current user has no home directory (which might _just_ be
@@ -64,6 +67,11 @@ func Execute() {
 	rootCmd.PersistentFlags().StringVar(&targetProvider.ProjectNameFlag, "project", "", "target the given project")
 	rootCmd.PersistentFlags().StringVar(&targetProvider.SeedNameFlag, "seed", "", "target the given seed cluster")
 	rootCmd.PersistentFlags().StringVar(&targetProvider.ShootNameFlag, "shoot", "", "target the given shoot cluster")
+
+	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("garden", completionWrapper(&factory, gardenFlagCompletionFunc)))
+	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("project", completionWrapper(&factory, projectFlagCompletionFunc)))
+	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("seed", completionWrapper(&factory, seedFlagCompletionFunc)))
+	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("shoot", completionWrapper(&factory, shootFlagCompletionFunc)))
 
 	cobra.OnInitialize(initConfig)
 

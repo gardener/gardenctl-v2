@@ -376,7 +376,7 @@ var _ = Describe("Manager", func() {
 		Expect(kubeconfigCache.Write(t, []byte(seedKubeconfig))).To(Succeed())
 		clientProvider.WithClient(seedKubeconfig, seedClient)
 
-		newClient, err := manager.SeedClient(t)
+		newClient, err := manager.SeedClient(context.TODO(), t)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(newClient).NotTo(BeNil())
 	})
@@ -395,7 +395,7 @@ var _ = Describe("Manager", func() {
 		Expect(kubeconfigCache.Write(t, []byte(shootKubeconfig))).To(Succeed())
 		clientProvider.WithClient(shootKubeconfig, shootClient)
 
-		newClient, err := manager.ShootClusterClient(t)
+		newClient, err := manager.ShootClusterClient(context.TODO(), t)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(newClient).NotTo(BeNil())
 	})

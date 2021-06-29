@@ -11,32 +11,32 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
-type fakeTargetProvider struct {
-	t target.Target
+type TargetProvider struct {
+	Target target.Target
 }
 
-var _ target.TargetProvider = &fakeTargetProvider{}
+var _ target.TargetProvider = &TargetProvider{}
 
 // NewFakeTargetProvider returns a new TargetProvider that
 // reads and writes from memory.
-func NewFakeTargetProvider(t target.Target) target.TargetProvider {
-	return &fakeTargetProvider{
-		t: t,
+func NewFakeTargetProvider(t target.Target) *TargetProvider {
+	return &TargetProvider{
+		Target: t,
 	}
 }
 
 // Read returns the current target.
-func (p *fakeTargetProvider) Read() (target.Target, error) {
-	if p.t == nil {
+func (p *TargetProvider) Read() (target.Target, error) {
+	if p.Target == nil {
 		return nil, errors.New("no target set")
 	}
 
-	return p.t, nil
+	return p.Target, nil
 }
 
 // Write takes a target and saves it permanently.
-func (p *fakeTargetProvider) Write(t target.Target) error {
-	p.t = t
+func (p *TargetProvider) Write(t target.Target) error {
+	p.Target = t
 
 	return nil
 }

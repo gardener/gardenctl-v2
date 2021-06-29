@@ -13,8 +13,10 @@ import (
 
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
+	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -90,6 +92,57 @@ func shootForTargetViaSeed(ctx context.Context, gardenClient client.Client, t ta
 	return matchingShoots[0], nil
 }
 
+// ShootsForTarget returns all possible shoots for a given target. The
+// target must either target a project or a seed (both including a garden).
+func ShootsForTarget(ctx context.Context, gardenClient client.Client, t target.Target) ([]gardencorev1beta1.Shoot, error) {
+	var listOpt client.ListOption
+
+	if t.ProjectName() != "" {
+		project, err := ProjectForTarget(ctx, gardenClient, t)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch project: %w", err)
+		}
+
+		if project.Spec.Namespace == nil {
+			return nil, nil
+		}
+
+		listOpt = &client.ListOptions{Namespace: *project.Spec.Namespace}
+	} else if t.SeedName() != "" {
+		listOpt = client.MatchingFields{gardencore.ShootSeedName: t.SeedName()}
+	} else {
+		return nil, errors.New("invalid target, must have either project or seed specified for targeting a shoot")
+	}
+
+	shootList := &gardencorev1beta1.ShootList{}
+	if err := gardenClient.List(ctx, shootList, listOpt); err != nil {
+		return nil, fmt.Errorf("failed to list shoots on garden cluster %q: %w", t.GardenName(), err)
+	}
+
+	return shootList.Items, nil
+}
+
+// ShootNamesForTarget returns all possible shoots for a given target. The
+// target must either target a project or a seed (both including a garden).
+func ShootNamesForTarget(ctx context.Context, manager target.Manager, t target.Target) ([]string, error) {
+	gardenClient, err := manager.GardenClient(t)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
+	}
+
+	shoots, err := ShootsForTarget(ctx, gardenClient, t)
+	if err != nil {
+		return nil, err
+	}
+
+	names := sets.NewString()
+	for _, shoot := range shoots {
+		names.Insert(shoot.Name)
+	}
+
+	return names.List(), nil
+}
+
 func SeedForTarget(ctx context.Context, gardenClient client.Client, t target.Target) (*gardencorev1beta1.Seed, error) {
 	name := t.SeedName()
 	if name == "" {
@@ -106,6 +159,27 @@ func SeedForTarget(ctx context.Context, gardenClient client.Client, t target.Tar
 	return seed, nil
 }
 
+// SeedNamesForTarget returns all possible shoots for a given target. The
+// target must at least point to a garden.
+func SeedNamesForTarget(ctx context.Context, manager target.Manager, t target.Target) ([]string, error) {
+	gardenClient, err := manager.GardenClient(t)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
+	}
+
+	seedList := &gardencorev1beta1.SeedList{}
+	if err := gardenClient.List(ctx, seedList); err != nil {
+		return nil, fmt.Errorf("failed to list seeds on garden cluster %q: %w", t.GardenName(), err)
+	}
+
+	names := sets.NewString()
+	for _, seed := range seedList.Items {
+		names.Insert(seed.Name)
+	}
+
+	return names.List(), nil
+}
+
 func ProjectForTarget(ctx context.Context, gardenClient client.Client, t target.Target) (*gardencorev1beta1.Project, error) {
 	name := t.ProjectName()
 	if name == "" {
@@ -120,4 +194,34 @@ func ProjectForTarget(ctx context.Context, gardenClient client.Client, t target.
 	}
 
 	return project, nil
+}
+
+// ProjectNamesForTarget returns all possible shoots for a given target. The
+// target must at least point to a garden.
+func ProjectNamesForTarget(ctx context.Context, manager target.Manager, t target.Target) ([]string, error) {
+	gardenClient, err := manager.GardenClient(t)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
+	}
+
+	projectList := &gardencorev1beta1.ProjectList{}
+	if err := gardenClient.List(ctx, projectList); err != nil {
+		return nil, fmt.Errorf("failed to list projects on garden cluster %q: %w", t.GardenName(), err)
+	}
+
+	names := sets.NewString()
+	for _, project := range projectList.Items {
+		names.Insert(project.Name)
+	}
+
+	return names.List(), nil
+}
+
+func GardenNames(manager target.Manager) ([]string, error) {
+	names := sets.NewString()
+	for _, garden := range manager.Configuration().Gardens {
+		names.Insert(garden.Name)
+	}
+
+	return names.List(), nil
 }
