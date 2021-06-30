@@ -71,7 +71,7 @@ func runCommand(f util.Factory, o *Options) error {
 		return err
 	}
 
-	fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q.\n", o.Kind, o.TargetName)
+	fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
 
 	return nil
 }
