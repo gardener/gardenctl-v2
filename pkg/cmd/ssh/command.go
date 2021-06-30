@@ -23,10 +23,10 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
-	"github.com/gardener/gardener/pkg/apis/core/v1alpha1"
+	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
 	corev1alpha1helper "github.com/gardener/gardener/pkg/apis/core/v1alpha1/helper"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
@@ -471,7 +471,7 @@ func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client,
 
 		cond := corev1alpha1helper.GetCondition(bastion.Status.Conditions, operationsv1alpha1.BastionReady)
 
-		if cond == nil || cond.Status != v1alpha1.ConditionTrue {
+		if cond == nil || cond.Status != gardencorev1alpha1.ConditionTrue {
 			lastCheckErr = errors.New("bastion does not have BastionReady=true condition")
 			fmt.Fprintf(o.IOStreams.ErrOut, "Still waiting: %v\n", lastCheckErr)
 			return false, nil
@@ -715,7 +715,7 @@ func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *
 
 			// add the keepalive annotation
 			oldBastion := bastion.DeepCopy()
-			bastion.Annotations[v1beta1constants.GardenerOperation] = v1beta1constants.GardenerOperationKeepalive
+			bastion.Annotations[corev1beta1constants.GardenerOperation] = corev1beta1constants.GardenerOperationKeepalive
 
 			if err := gardenClient.Patch(ctx, bastion, client.MergeFrom(oldBastion)); err != nil {
 				fmt.Fprintf(stderr, "Failed to keep bastion alive: %v\n", err)

@@ -19,7 +19,7 @@ import (
 
 	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -444,7 +444,7 @@ var _ = Describe("Command", func() {
 					return false
 				}
 
-				return bastion.Annotations != nil && bastion.Annotations[v1beta1constants.GardenerOperation] == v1beta1constants.GardenerOperationKeepalive
+				return bastion.Annotations != nil && bastion.Annotations[corev1beta1constants.GardenerOperation] == corev1beta1constants.GardenerOperationKeepalive
 			}).Should(BeTrue())
 
 			signalChan <- os.Interrupt
@@ -456,7 +456,7 @@ var _ = Describe("Command", func() {
 		// Double check that the annotation was really set
 		bastion := &operationsv1alpha1.Bastion{}
 		Expect(gardenClient.Get(ctx, key, bastion)).To(Succeed())
-		Expect(bastion.Annotations).To(HaveKeyWithValue(v1beta1constants.GardenerOperation, v1beta1constants.GardenerOperationKeepalive))
+		Expect(bastion.Annotations).To(HaveKeyWithValue(corev1beta1constants.GardenerOperation, corev1beta1constants.GardenerOperationKeepalive))
 	})
 
 	Describe("ValidArgsFunction", func() {
