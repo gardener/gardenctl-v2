@@ -34,7 +34,6 @@ var _ = Describe("Completion", func() {
 	const (
 		gardenName           = "mygarden"
 		gardenKubeconfigFile = "/not/a/real/kubeconfig"
-		nodeHostname         = "example.host.invalid"
 	)
 
 	var (
@@ -46,9 +45,7 @@ var _ = Describe("Completion", func() {
 		testShoot1           *gardencorev1beta1.Shoot
 		testShoot2           *gardencorev1beta1.Shoot
 		testShoot1Kubeconfig *corev1.Secret
-		testNode             *corev1.Node
 		gardenClient         client.Client
-		shootClient          client.Client
 		factory              util.Factory
 		targetProvider       *internalfake.TargetProvider
 	)
@@ -162,21 +159,6 @@ var _ = Describe("Completion", func() {
 			testShoot1Keypair,
 		).Build()
 
-		// create a fake shoot cluster with a single node in it
-		testNode = &corev1.Node{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "node1",
-			},
-			Status: corev1.NodeStatus{
-				Addresses: []corev1.NodeAddress{{
-					Type:    corev1.NodeExternalDNS,
-					Address: nodeHostname,
-				}},
-			},
-		}
-
-		shootClient = fakeclient.NewClientBuilder().WithObjects(testNode).Build()
-
 		// setup fakes
 		currentTarget := target.NewTarget(gardenName, testProject1.Name, "", testShoot1.Name)
 		targetProvider = internalfake.NewFakeTargetProvider(currentTarget)
@@ -188,7 +170,6 @@ var _ = Describe("Completion", func() {
 		// prepare command
 		factory = internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
 
-		Expect(shootClient).NotTo(BeNil())
 		Expect(gardenClient).NotTo(BeNil())
 	})
 
