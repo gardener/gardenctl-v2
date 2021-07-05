@@ -55,7 +55,6 @@ func Execute() {
 	rootCmd.AddCommand(ssh.NewCommand(&factory, ssh.NewOptions(ioStreams)))
 	rootCmd.AddCommand(targetcmd.NewCommand(&factory, targetcmd.NewOptions(ioStreams), targetProvider))
 	rootCmd.AddCommand(version.NewCommand(&factory, version.NewOptions(ioStreams)))
-	rootCmd.AddCommand(newCompletionCommand())
 
 	// Do not precalculate what $HOME is for the help text, because it prevents
 	// usage where the current user has no home directory (which might _just_ be
