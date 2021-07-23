@@ -23,4 +23,5 @@ fi
 
 "${MAIN_REPO_DIR}"/hack/build-linux-amd64.sh
 "${MAIN_REPO_DIR}"/hack/build-darwin-amd64.sh
+"${MAIN_REPO_DIR}"/hack/build-windows-amd64.sh
 

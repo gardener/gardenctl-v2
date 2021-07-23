@@ -26,7 +26,7 @@ generate:
 	go generate ./...
 
 .PHONY: build
-build: build-darwin build-linux
+build: build-darwin build-linux build-windows
 
 .PHONY: build-linux
 build-linux:
@@ -35,3 +35,7 @@ build-linux:
 .PHONY: build-darwin
 build-darwin:
 	@./hack/build-darwin-amd64.sh
+
+.PHONY: build-windows
+build-windows:
+	@./hack/build-windows-amd64.sh
