@@ -399,4 +399,138 @@ var _ = Describe("Manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(newClient).NotTo(BeNil())
 	})
+
+	It("should be able to drop selected garden", func() {
+		t := target.NewTarget(gardenName, "", "", "")
+		targetProvider := fake.NewFakeTargetProvider(t)
+
+		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(manager).NotTo(BeNil())
+
+		Expect(manager.DropTargetGarden()).Should(Equal(gardenName))
+		assertTargetProvider(targetProvider, target.NewTarget("", "", "", ""))
+	})
+
+	It("should fail if no garden selected", func() {
+		t := target.NewTarget("", "", "", "")
+		targetProvider := fake.NewFakeTargetProvider(t)
+
+		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(manager).NotTo(BeNil())
+
+		res, dropErr := manager.DropTargetGarden()
+		Expect(dropErr).To(HaveOccurred())
+		Expect(res).To(BeEmpty())
+		assertTargetProvider(targetProvider, t)
+	})
+
+	It("should unset deeper target levels when dropping garden", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1AmbiguousShoot.Name)
+		targetProvider := fake.NewFakeTargetProvider(t)
+
+		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(manager).NotTo(BeNil())
+
+		// Drop Garden
+		Expect(manager.DropTargetGarden()).Should(Equal(gardenName))
+
+		// should also drop project, seed and shoot
+		assertTargetProvider(targetProvider, target.NewTarget("", "", "", ""))
+	})
+
+	It("should be able to drop selected project", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
+		targetProvider := fake.NewFakeTargetProvider(t)
+
+		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(manager).NotTo(BeNil())
+
+		Expect(manager.DropTargetProject()).Should(Equal(prod1Project.Name))
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
+	})
+
+	It("should fail if no project selected", func() {
+		t := target.NewTarget(gardenName, "", "", "")
+		targetProvider := fake.NewFakeTargetProvider(t)
+
+		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(manager).NotTo(BeNil())
+
+		res, dropErr := manager.DropTargetProject()
+		Expect(dropErr).To(HaveOccurred())
+		Expect(res).To(BeEmpty())
+		assertTargetProvider(targetProvider, t)
+	})
+
+	It("should unset deeper target levels when dropping project", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1AmbiguousShoot.Name)
+		targetProvider := fake.NewFakeTargetProvider(t)
+
+		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(manager).NotTo(BeNil())
+
+		// Drop Project
+		Expect(manager.DropTargetProject()).Should(Equal(prod1Project.Name))
+
+		// should also drop seed and shoot
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
+	})
+
+	It("should be able to drop selected shoot", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name)
+		targetProvider := fake.NewFakeTargetProvider(t)
+
+		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(manager).NotTo(BeNil())
+
+		Expect(manager.DropTargetShoot()).Should(Equal(prod1AmbiguousShoot.Name))
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
+	})
+
+	It("should fail if no shoot selected", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
+		targetProvider := fake.NewFakeTargetProvider(t)
+
+		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(manager).NotTo(BeNil())
+
+		res, dropErr := manager.DropTargetShoot()
+		Expect(dropErr).To(HaveOccurred())
+		Expect(res).To(BeEmpty())
+		assertTargetProvider(targetProvider, t)
+	})
+
+	It("should be able to drop selected seed", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, seed.Name, "")
+		targetProvider := fake.NewFakeTargetProvider(t)
+
+		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(manager).NotTo(BeNil())
+
+		Expect(manager.DropTargetSeed()).Should(Equal(seed.Name))
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
+	})
+
+	It("should fail if no seed selected", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
+		targetProvider := fake.NewFakeTargetProvider(t)
+
+		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(manager).NotTo(BeNil())
+
+		res, dropErr := manager.DropTargetSeed()
+		Expect(dropErr).To(HaveOccurred())
+		Expect(res).To(BeEmpty())
+		assertTargetProvider(targetProvider, t)
+	})
 })

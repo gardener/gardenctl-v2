@@ -30,9 +30,13 @@ type Manager interface {
 	CurrentTarget() (Target, error)
 
 	TargetGarden(name string) error
+	DropTargetGarden() (string, error)
 	TargetProject(ctx context.Context, name string) error
+	DropTargetProject() (string, error)
 	TargetSeed(ctx context.Context, name string) error
+	DropTargetSeed() (string, error)
 	TargetShoot(ctx context.Context, name string) error
+	DropTargetShoot() (string, error)
 
 	GardenClient(t Target) (client.Client, error)
 	SeedClient(ctx context.Context, t Target) (client.Client, error)
@@ -84,6 +88,27 @@ func (m *managerImpl) TargetGarden(gardenName string) error {
 	return fmt.Errorf("garden %q is not defined in gardenctl configuration", gardenName)
 }
 
+func (m *managerImpl) DropTargetGarden() (string, error) {
+	currentTarget, err := m.CurrentTarget()
+	if err != nil {
+		fmt.Errorf("failed to get current target: %v", err)
+		return "", nil
+	}
+	targetedName := currentTarget.GardenName()
+	if targetedName != "" {
+		return targetedName, m.patchTarget(func(t *targetImpl) error {
+			t.Garden = ""
+			t.Project = ""
+			t.Seed = ""
+			t.Shoot = ""
+
+			return nil
+		})
+	}
+
+	return "", fmt.Errorf("no garden targeted")
+}
+
 func (m *managerImpl) TargetProject(ctx context.Context, projectName string) error {
 	return m.patchTarget(func(t *targetImpl) error {
 		if t.Garden == "" {
@@ -112,6 +137,26 @@ func (m *managerImpl) TargetProject(ctx context.Context, projectName string) err
 
 		return nil
 	})
+}
+
+func (m *managerImpl) DropTargetProject() (string, error) {
+	currentTarget, err := m.CurrentTarget()
+	if err != nil {
+		fmt.Errorf("failed to get current target: %v", err)
+		return "", nil
+	}
+	targetedName := currentTarget.ProjectName()
+	if targetedName != "" {
+		return targetedName, m.patchTarget(func(t *targetImpl) error {
+			t.Project = ""
+			t.Seed = ""
+			t.Shoot = ""
+
+			return nil
+		})
+	}
+
+	return "", fmt.Errorf("no project targeted")
 }
 
 func (m *managerImpl) resolveProjectName(ctx context.Context, gardenClient client.Client, projectName string) (*gardencorev1beta1.Project, error) {
@@ -158,6 +203,24 @@ func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 
 		return nil
 	})
+}
+
+func (m *managerImpl) DropTargetSeed() (string, error) {
+	currentTarget, err := m.CurrentTarget()
+	if err != nil {
+		fmt.Errorf("failed to get current target: %v", err)
+		return "", nil
+	}
+	targetedName := currentTarget.SeedName()
+	if targetedName != "" {
+		return targetedName, m.patchTarget(func(t *targetImpl) error {
+			t.Seed = ""
+
+			return nil
+		})
+	}
+
+	return "", fmt.Errorf("no seed targeted")
 }
 
 func (m *managerImpl) resolveSeedName(ctx context.Context, gardenClient client.Client, seedName string) (*gardencorev1beta1.Seed, error) {
@@ -237,6 +300,24 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 
 		return nil
 	})
+}
+
+func (m *managerImpl) DropTargetShoot() (string, error) {
+	currentTarget, err := m.CurrentTarget()
+	if err != nil {
+		fmt.Errorf("failed to get current target: %v", err)
+		return "", nil
+	}
+	targetedName := currentTarget.ShootName()
+	if targetedName != "" {
+		return targetedName, m.patchTarget(func(t *targetImpl) error {
+			t.Shoot = ""
+
+			return nil
+		})
+	}
+
+	return "", fmt.Errorf("no shoot targeted")
 }
 
 // resolveShootName takes a shoot name and tries to find the matching shoot
