@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCommand returns a new target command.
+// NewCommand returns a new (target) drop command.
 func NewCommand(f util.Factory, o *Options, targetProvider *target.DynamicTargetProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "drop",

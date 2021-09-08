@@ -9,7 +9,7 @@ package target
 import (
 	"errors"
 	"fmt"
-	drop2 "github.com/gardener/gardenctl-v2/pkg/cmd/target/drop"
+	drop "github.com/gardener/gardenctl-v2/pkg/cmd/target/drop"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -45,7 +45,8 @@ func NewCommand(f util.Factory, o *Options, targetProvider *target.DynamicTarget
 	}
 
 	ioStreams := util.NewIOStreams()
-	cmd.AddCommand(drop2.NewCommand(f, drop2.NewOptions(ioStreams), targetProvider))
+
+	cmd.AddCommand(drop.NewCommand(f, drop.NewOptions(ioStreams), targetProvider))
 
 	return cmd
 }
