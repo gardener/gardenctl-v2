@@ -9,9 +9,10 @@ package drop
 import (
 	"errors"
 	"fmt"
-	"github.com/gardener/gardenctl-v2/pkg/target"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/target"
+
 	"github.com/spf13/cobra"
 )
 
