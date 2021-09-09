@@ -15,5 +15,5 @@ import (
 
 func TestCommand(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Target Command Test Suite")
+	RunSpecs(t, "Drop Command Test Suite")
 }

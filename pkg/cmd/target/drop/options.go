@@ -44,7 +44,7 @@ func validateKind(kind TargetKind) error {
 	return fmt.Errorf("invalid target kind given, must be one of %v", AllTargetKinds)
 }
 
-// Options is a struct to support target command
+// Options is a struct to support drop command
 type Options struct {
 	base.Options
 
