@@ -26,22 +26,43 @@ var (
 	ErrNoShootTargeted   = errors.New("no shoot targeted")
 )
 
+// Manager sets and gets the current target configuration
 type Manager interface {
+	// CurrentTarget contains the current target configuration
 	CurrentTarget() (Target, error)
 
+	// TargetGarden sets the garden target configuration
+	// This implicitly drops project, seed and shoot target configuration
 	TargetGarden(name string) error
+	// TargetProject sets the project target configuration
+	// This implicitly unsets seed and shoot target configuration
 	TargetProject(ctx context.Context, name string) error
+	// TargetSeed sets the seed target configuration
+	// This implicitly unsets project and shoot target configuration
 	TargetSeed(ctx context.Context, name string) error
+	// TargetShoot sets the shoot target configuration
+	// It will also configure appropriate project and seed values if not already set
 	TargetShoot(ctx context.Context, name string) error
+	// DropTargetGarden unsets the garden target configuration
+	// This implicitly unsets project and shoot target configuration
 	DropTargetGarden() (string, error)
+	// DropTargetProject unsets the project target configuration
+	// This implicitly unsets seed and shoot target configuration
 	DropTargetProject() (string, error)
+	// DropTargetSeed unsets the garden seed configuration
+	// This implicitly unsets project and shoot target configuration
 	DropTargetSeed() (string, error)
+	// DropTargetShoot unsets the garden shoot configuration
 	DropTargetShoot() (string, error)
 
+	// GardenClient controller-runtime client for accessing the configured garden cluster
 	GardenClient(t Target) (client.Client, error)
+	// SeedClient controller-runtime client for accessing the configured seed cluster
 	SeedClient(ctx context.Context, t Target) (client.Client, error)
+	// ShootClusterClient controller-runtime client for accessing the configured shoot cluster
 	ShootClusterClient(ctx context.Context, t Target) (client.Client, error)
 
+	// Configuration contains the current gardenctl configuration
 	Configuration() *config.Config
 }
 
@@ -215,6 +236,7 @@ func (m *managerImpl) DropTargetSeed() (string, error) {
 	if targetedName != "" {
 		return targetedName, m.patchTarget(func(t *targetImpl) error {
 			t.Seed = ""
+			t.Project = ""
 			t.Shoot = ""
 
 			return nil
