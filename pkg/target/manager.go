@@ -30,12 +30,12 @@ type Manager interface {
 	CurrentTarget() (Target, error)
 
 	TargetGarden(name string) error
-	DropTargetGarden() (string, error)
 	TargetProject(ctx context.Context, name string) error
-	DropTargetProject() (string, error)
 	TargetSeed(ctx context.Context, name string) error
-	DropTargetSeed() (string, error)
 	TargetShoot(ctx context.Context, name string) error
+	DropTargetGarden() (string, error)
+	DropTargetProject() (string, error)
+	DropTargetSeed() (string, error)
 	DropTargetShoot() (string, error)
 
 	GardenClient(t Target) (client.Client, error)
@@ -91,9 +91,9 @@ func (m *managerImpl) TargetGarden(gardenName string) error {
 func (m *managerImpl) DropTargetGarden() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		fmt.Errorf("failed to get current target: %v", err)
-		return "", nil
+		return "", fmt.Errorf("failed to get current target: %v", err)
 	}
+
 	targetedName := currentTarget.GardenName()
 	if targetedName != "" {
 		return targetedName, m.patchTarget(func(t *targetImpl) error {
@@ -142,9 +142,9 @@ func (m *managerImpl) TargetProject(ctx context.Context, projectName string) err
 func (m *managerImpl) DropTargetProject() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		fmt.Errorf("failed to get current target: %v", err)
-		return "", nil
+		return "", fmt.Errorf("failed to get current target: %v", err)
 	}
+
 	targetedName := currentTarget.ProjectName()
 	if targetedName != "" {
 		return targetedName, m.patchTarget(func(t *targetImpl) error {
@@ -208,13 +208,14 @@ func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 func (m *managerImpl) DropTargetSeed() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		fmt.Errorf("failed to get current target: %v", err)
-		return "", nil
+		return "", fmt.Errorf("failed to get current target: %v", err)
 	}
+
 	targetedName := currentTarget.SeedName()
 	if targetedName != "" {
 		return targetedName, m.patchTarget(func(t *targetImpl) error {
 			t.Seed = ""
+			t.Shoot = ""
 
 			return nil
 		})
@@ -305,9 +306,9 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 func (m *managerImpl) DropTargetShoot() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		fmt.Errorf("failed to get current target: %v", err)
-		return "", nil
+		return "", fmt.Errorf("failed to get current target: %v", err)
 	}
+
 	targetedName := currentTarget.ShootName()
 	if targetedName != "" {
 		return targetedName, m.patchTarget(func(t *targetImpl) error {

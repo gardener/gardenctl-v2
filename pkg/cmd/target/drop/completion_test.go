@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package drop
 
 import (
+	. "github.com/gardener/gardenctl-v2/pkg/cmd/common/target"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

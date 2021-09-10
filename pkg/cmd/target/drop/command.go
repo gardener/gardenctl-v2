@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
+	commonTarget "github.com/gardener/gardenctl-v2/pkg/cmd/common/target"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
 	"github.com/spf13/cobra"
@@ -52,14 +53,15 @@ func runCommand(f util.Factory, o *Options) error {
 	}
 
 	var targetName string
+
 	switch o.Kind {
-	case TargetKindGarden:
+	case commonTarget.TargetKindGarden:
 		targetName, err = manager.DropTargetGarden()
-	case TargetKindProject:
+	case commonTarget.TargetKindProject:
 		targetName, err = manager.DropTargetProject()
-	case TargetKindSeed:
+	case commonTarget.TargetKindSeed:
 		targetName, err = manager.DropTargetSeed()
-	case TargetKindShoot:
+	case commonTarget.TargetKindShoot:
 		targetName, err = manager.DropTargetShoot()
 	default:
 		err = errors.New("invalid kind")

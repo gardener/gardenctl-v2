@@ -10,19 +10,20 @@ import (
 	"strings"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
+	commonTarget "github.com/gardener/gardenctl-v2/pkg/cmd/common/target"
 )
 
 func validArgsFunction(f util.Factory, o *Options, args []string, toComplete string) ([]string, error) {
 	if len(args) == 0 {
 		return []string{
-			string(TargetKindGarden),
-			string(TargetKindProject),
-			string(TargetKindSeed),
-			string(TargetKindShoot),
+			string(commonTarget.TargetKindGarden),
+			string(commonTarget.TargetKindProject),
+			string(commonTarget.TargetKindSeed),
+			string(commonTarget.TargetKindShoot),
 		}, nil
 	}
 
-	kind := TargetKind(strings.TrimSpace(args[0]))
+	kind := commonTarget.TargetKind(strings.TrimSpace(args[0]))
 	if err := validateKind(kind); err != nil {
 		return nil, err
 	}
@@ -45,13 +46,13 @@ func validArgsFunction(f util.Factory, o *Options, args []string, toComplete str
 	var result []string
 
 	switch kind {
-	case TargetKindGarden:
+	case commonTarget.TargetKindGarden:
 		result, err = util.GardenNames(manager)
-	case TargetKindProject:
+	case commonTarget.TargetKindProject:
 		result, err = util.ProjectNamesForTarget(ctx, manager, currentTarget)
-	case TargetKindSeed:
+	case commonTarget.TargetKindSeed:
 		result, err = util.SeedNamesForTarget(ctx, manager, currentTarget)
-	case TargetKindShoot:
+	case commonTarget.TargetKindShoot:
 		result, err = util.ShootNamesForTarget(ctx, manager, currentTarget)
 	}
 

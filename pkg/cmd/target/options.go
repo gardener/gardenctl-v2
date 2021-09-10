@@ -13,36 +13,20 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	commonTarget "github.com/gardener/gardenctl-v2/pkg/cmd/common/target"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
 	"github.com/spf13/cobra"
 )
 
-// TargetKind is representing the type of things that can be targeted
-// by this cobra command. While this may sound stuttery, the alternative
-// of just calling it "Kind" is even worse, hence the nolint.
-// nolint
-type TargetKind string
-
-const (
-	TargetKindGarden  TargetKind = "garden"
-	TargetKindProject TargetKind = "project"
-	TargetKindSeed    TargetKind = "seed"
-	TargetKindShoot   TargetKind = "shoot"
-)
-
-var (
-	AllTargetKinds = []TargetKind{TargetKindGarden, TargetKindProject, TargetKindSeed, TargetKindShoot}
-)
-
-func validateKind(kind TargetKind) error {
-	for _, k := range AllTargetKinds {
+func validateKind(kind commonTarget.TargetKind) error {
+	for _, k := range commonTarget.AllTargetKinds {
 		if k == kind {
 			return nil
 		}
 	}
 
-	return fmt.Errorf("invalid target kind given, must be one of %v", AllTargetKinds)
+	return fmt.Errorf("invalid target kind given, must be one of %v", commonTarget.AllTargetKinds)
 }
 
 // Options is a struct to support target command
@@ -50,7 +34,7 @@ type Options struct {
 	base.Options
 
 	// Kind is the target kind, for example "garden" or "seed"
-	Kind TargetKind
+	Kind commonTarget.TargetKind
 	// TargetName is the object name of the targeted kind
 	TargetName string
 }
@@ -67,7 +51,7 @@ func NewOptions(ioStreams util.IOStreams) *Options {
 // Complete adapts from the command line args to the data required.
 func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string, targetProvider *target.DynamicTargetProvider) error {
 	if len(args) > 0 {
-		o.Kind = TargetKind(strings.TrimSpace(args[0]))
+		o.Kind = commonTarget.TargetKind(strings.TrimSpace(args[0]))
 	}
 
 	if len(args) > 1 {
@@ -76,25 +60,25 @@ func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string, ta
 
 	if o.Kind == "" {
 		if targetProvider.ShootNameFlag != "" {
-			o.Kind = TargetKindShoot
+			o.Kind = commonTarget.TargetKindShoot
 		} else if targetProvider.ProjectNameFlag != "" {
-			o.Kind = TargetKindProject
+			o.Kind = commonTarget.TargetKindProject
 		} else if targetProvider.SeedNameFlag != "" {
-			o.Kind = TargetKindSeed
+			o.Kind = commonTarget.TargetKindSeed
 		} else if targetProvider.GardenNameFlag != "" {
-			o.Kind = TargetKindGarden
+			o.Kind = commonTarget.TargetKindGarden
 		}
 	}
 
 	if o.TargetName == "" {
 		switch o.Kind {
-		case TargetKindGarden:
+		case commonTarget.TargetKindGarden:
 			o.TargetName = targetProvider.GardenNameFlag
-		case TargetKindProject:
+		case commonTarget.TargetKindProject:
 			o.TargetName = targetProvider.ProjectNameFlag
-		case TargetKindSeed:
+		case commonTarget.TargetKindSeed:
 			o.TargetName = targetProvider.SeedNameFlag
-		case TargetKindShoot:
+		case commonTarget.TargetKindShoot:
 			o.TargetName = targetProvider.ShootNameFlag
 		}
 	}

@@ -509,7 +509,7 @@ var _ = Describe("Manager", func() {
 	})
 
 	It("should be able to drop selected seed", func() {
-		t := target.NewTarget(gardenName, prod1Project.Name, seed.Name, "")
+		t := target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1AmbiguousShoot.Name)
 		targetProvider := fake.NewFakeTargetProvider(t)
 
 		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)

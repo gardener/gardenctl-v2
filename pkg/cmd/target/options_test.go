@@ -8,6 +8,7 @@ package target_test
 
 import (
 	"github.com/gardener/gardenctl-v2/internal/util"
+	. "github.com/gardener/gardenctl-v2/pkg/cmd/common/target"
 	. "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 
 	. "github.com/onsi/ginkgo"
