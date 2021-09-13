@@ -62,7 +62,7 @@ type Manager interface {
 	// ShootClusterClient controller-runtime client for accessing the configured shoot cluster
 	ShootClusterClient(ctx context.Context, t Target) (client.Client, error)
 
-	// Configuration contains the current gardenctl configuration
+	// Configuration returns the current gardenctl configuration
 	Configuration() *config.Config
 }
 
