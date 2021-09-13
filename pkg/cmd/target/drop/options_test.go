@@ -4,13 +4,12 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package target_test
+package drop_test
 
 import (
 	"github.com/gardener/gardenctl-v2/internal/util"
-	commonTarget "github.com/gardener/gardenctl-v2/pkg/cmd/common/target"
-	targetCmd "github.com/gardener/gardenctl-v2/pkg/cmd/target"
-
+	"github.com/gardener/gardenctl-v2/pkg/cmd/common/target"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/target/drop"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -18,19 +17,18 @@ import (
 var _ = Describe("Options", func() {
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := targetCmd.NewOptions(streams)
-		o.Kind = commonTarget.TargetKindGarden
-		o.TargetName = "foo"
+		o := drop.NewOptions(streams)
+		o.Kind = target.TargetKindGarden
 
 		Expect(o.Validate()).To(Succeed())
 	})
 
 	It("should reject invalid kinds", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := targetCmd.NewOptions(streams)
-		o.Kind = commonTarget.TargetKind("not a kind")
-		o.TargetName = "foo"
+		o := drop.NewOptions(streams)
+		o.Kind = target.TargetKind("not a kind")
 
-		Expect(o.Validate()).NotTo(Succeed())
+		err := o.Validate()
+		Expect(err).To(MatchError(ContainSubstring("invalid target kind given, must be one of")))
 	})
 })

@@ -4,12 +4,12 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package target_test
+package drop_test
 
 import (
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
-	targetCmd "github.com/gardener/gardenctl-v2/pkg/cmd/target"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/target/drop"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
@@ -31,13 +31,13 @@ func init() {
 var _ = Describe("Command", func() {
 	It("should reject bad options", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := targetCmd.NewOptions(streams)
-		cmd := targetCmd.NewCommand(&util.FactoryImpl{}, o, &target.DynamicTargetProvider{})
+		o := drop.NewOptions(streams)
+		cmd := drop.NewCommand(&util.FactoryImpl{}, o, &target.DynamicTargetProvider{})
 
 		Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
 	})
 
-	It("should be able to target a garden", func() {
+	It("should be able to drop a targeted garden", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		gardenName := "mygarden"
@@ -47,22 +47,23 @@ var _ = Describe("Command", func() {
 				Kubeconfig: "",
 			}},
 		}
-		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget("", "", "", ""))
+		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget(gardenName, "", "", ""))
 		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
-		cmd := targetCmd.NewCommand(factory, targetCmd.NewOptions(streams), &target.DynamicTargetProvider{})
+		cmd := drop.NewCommand(factory, drop.NewOptions(streams), &target.DynamicTargetProvider{})
 
-		Expect(cmd.RunE(cmd, []string{"garden", gardenName})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully targeted garden %q\n", gardenName))
+		Expect(cmd.RunE(cmd, []string{"garden"})).To(Succeed())
+		Expect(out.String()).To(ContainSubstring("Successfully dropped targeted garden %q\n", gardenName))
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(currentTarget.GardenName()).To(Equal(gardenName))
+		Expect(currentTarget.GardenName()).To(BeEmpty())
 	})
 
-	It("should be able to target a project", func() {
+	It("should be able to drop a targeted project", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		gardenName := "mygarden"
+		projectName := "myproject"
 		gardenKubeconfig := ""
 		cfg := &config.Config{
 			Gardens: []config.Garden{{
@@ -71,11 +72,10 @@ var _ = Describe("Command", func() {
 			}},
 		}
 
-		// user has already targeted a garden
-		currentTarget := target.NewTarget(gardenName, "", "", "")
+		// user has already targeted a garden and project
+		currentTarget := target.NewTarget(gardenName, projectName, "", "")
 
 		// garden cluster contains the targeted project
-		projectName := "myproject"
 		project := &gardencorev1beta1.Project{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: projectName,
@@ -93,22 +93,23 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := targetCmd.NewCommand(factory, targetCmd.NewOptions(streams), &target.DynamicTargetProvider{})
+		cmd := drop.NewCommand(factory, drop.NewOptions(streams), &target.DynamicTargetProvider{})
 
 		// run command
-		Expect(cmd.RunE(cmd, []string{"project", projectName})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully targeted project %q\n", projectName))
+		Expect(cmd.RunE(cmd, []string{"project"})).To(Succeed())
+		Expect(out.String()).To(ContainSubstring("Successfully dropped targeted project %q\n", projectName))
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(currentTarget.GardenName()).To(Equal(gardenName))
-		Expect(currentTarget.ProjectName()).To(Equal(projectName))
+		Expect(currentTarget.ProjectName()).To(BeEmpty())
 	})
 
-	It("should be able to target a seed", func() {
+	It("should be able to drop targeted seed", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		gardenName := "mygarden"
+		seedName := "myseed"
 		gardenKubeconfig := ""
 		cfg := &config.Config{
 			Gardens: []config.Garden{{
@@ -117,11 +118,10 @@ var _ = Describe("Command", func() {
 			}},
 		}
 
-		// user has already targeted a garden
-		currentTarget := target.NewTarget(gardenName, "", "", "")
+		// user has already targeted a garden and seed
+		currentTarget := target.NewTarget(gardenName, "", seedName, "")
 
 		// garden cluster contains the targeted seed
-		seedName := "myseed"
 		seed := &gardencorev1beta1.Seed{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: seedName,
@@ -142,23 +142,25 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := targetCmd.NewCommand(factory, targetCmd.NewOptions(streams), &target.DynamicTargetProvider{})
+		cmd := drop.NewCommand(factory, drop.NewOptions(streams), &target.DynamicTargetProvider{})
 
 		// run command
-		Expect(cmd.RunE(cmd, []string{"seed", seedName})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully targeted seed %q\n", seedName))
+		Expect(cmd.RunE(cmd, []string{"seed"})).To(Succeed())
+		Expect(out.String()).To(ContainSubstring("Successfully dropped targeted seed %q\n", seedName))
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(currentTarget.GardenName()).To(Equal(gardenName))
-		Expect(currentTarget.SeedName()).To(Equal(seedName))
+		Expect(currentTarget.SeedName()).To(BeEmpty())
 	})
 
-	It("should be able to target a shoot", func() {
+	It("should be able to drop targeted shoot", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		gardenName := "mygarden"
 		gardenKubeconfig := ""
+		projectName := "myproject"
+		shootName := "myshoot"
 		cfg := &config.Config{
 			Gardens: []config.Garden{{
 				Name:       gardenName,
@@ -168,7 +170,6 @@ var _ = Describe("Command", func() {
 
 		// garden cluster contains the targeted project and shoot
 		namespace := "garden-prod1"
-		projectName := "myproject"
 		project := &gardencorev1beta1.Project{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: projectName,
@@ -178,7 +179,6 @@ var _ = Describe("Command", func() {
 			},
 		}
 
-		shootName := "myshoot"
 		shoot := &gardencorev1beta1.Shoot{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      shootName,
@@ -186,8 +186,8 @@ var _ = Describe("Command", func() {
 			},
 		}
 
-		// user has already targeted a garden and project
-		currentTarget := target.NewTarget(gardenName, projectName, "", "")
+		// user has already targeted a garden, project and shoot
+		currentTarget := target.NewTarget(gardenName, projectName, "", shootName)
 
 		fakeGardenClient := fake.NewClientBuilder().WithObjects(project, shoot).Build()
 
@@ -197,17 +197,17 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := targetCmd.NewCommand(factory, targetCmd.NewOptions(streams), &target.DynamicTargetProvider{})
+		cmd := drop.NewCommand(factory, drop.NewOptions(streams), &target.DynamicTargetProvider{})
 
 		// run command
-		Expect(cmd.RunE(cmd, []string{"shoot", shootName})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q\n", shootName))
+		Expect(cmd.RunE(cmd, []string{"shoot"})).To(Succeed())
+		Expect(out.String()).To(ContainSubstring("Successfully dropped targeted shoot %q\n", shootName))
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(currentTarget.GardenName()).To(Equal(gardenName))
 		Expect(currentTarget.ProjectName()).To(Equal(projectName))
 		Expect(currentTarget.SeedName()).To(BeEmpty())
-		Expect(currentTarget.ShootName()).To(Equal(shootName))
+		Expect(currentTarget.ShootName()).To(BeEmpty())
 	})
 })
