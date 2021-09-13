@@ -11,7 +11,7 @@ import (
 
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
-	. "github.com/gardener/gardenctl-v2/pkg/cmd/common/target"
+	targetCmd "github.com/gardener/gardenctl-v2/pkg/cmd/common/target"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
@@ -179,10 +179,10 @@ var _ = Describe("Completion", func() {
 			values, err := validArgsFunction(factory, nil, nil, "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{
-				string(TargetKindGarden),
-				string(TargetKindProject),
-				string(TargetKindSeed),
-				string(TargetKindShoot),
+				string(targetCmd.TargetKindGarden),
+				string(targetCmd.TargetKindProject),
+				string(targetCmd.TargetKindSeed),
+				string(targetCmd.TargetKindShoot),
 			}))
 		})
 
@@ -192,7 +192,7 @@ var _ = Describe("Completion", func() {
 		})
 
 		It("should return all garden names", func() {
-			values, err := validArgsFunction(factory, nil, []string{string(TargetKindGarden)}, "")
+			values, err := validArgsFunction(factory, nil, []string{string(targetCmd.TargetKindGarden)}, "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{"abc", gardenName}))
 		})
@@ -200,7 +200,7 @@ var _ = Describe("Completion", func() {
 		It("should return all project names", func() {
 			targetProvider.Target = target.NewTarget(gardenName, "", "", "")
 
-			values, err := validArgsFunction(factory, nil, []string{string(TargetKindProject)}, "")
+			values, err := validArgsFunction(factory, nil, []string{string(targetCmd.TargetKindProject)}, "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testProject1.Name, testProject2.Name}))
 		})
@@ -208,7 +208,7 @@ var _ = Describe("Completion", func() {
 		It("should return all seed names", func() {
 			targetProvider.Target = target.NewTarget(gardenName, "", "", "")
 
-			values, err := validArgsFunction(factory, nil, []string{string(TargetKindSeed)}, "")
+			values, err := validArgsFunction(factory, nil, []string{string(targetCmd.TargetKindSeed)}, "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testSeed2.Name, testSeed1.Name}))
 		})
@@ -216,7 +216,7 @@ var _ = Describe("Completion", func() {
 		It("should return all shoot names when using a project", func() {
 			targetProvider.Target = target.NewTarget(gardenName, testProject1.Name, "", "")
 
-			values, err := validArgsFunction(factory, nil, []string{string(TargetKindShoot)}, "")
+			values, err := validArgsFunction(factory, nil, []string{string(targetCmd.TargetKindShoot)}, "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testShoot2.Name, testShoot1.Name}))
 		})
@@ -224,7 +224,7 @@ var _ = Describe("Completion", func() {
 		It("should return all shoot names when using a seed", func() {
 			targetProvider.Target = target.NewTarget(gardenName, "", testSeed1.Name, "")
 
-			values, err := validArgsFunction(factory, nil, []string{string(TargetKindShoot)}, "")
+			values, err := validArgsFunction(factory, nil, []string{string(targetCmd.TargetKindShoot)}, "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testShoot2.Name, testShoot1.Name}))
 		})

@@ -8,8 +8,8 @@ package target_test
 
 import (
 	"github.com/gardener/gardenctl-v2/internal/util"
-	. "github.com/gardener/gardenctl-v2/pkg/cmd/common/target"
-	. "github.com/gardener/gardenctl-v2/pkg/cmd/target"
+	commonTarget "github.com/gardener/gardenctl-v2/pkg/cmd/common/target"
+	targetCmd "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,8 +18,8 @@ import (
 var _ = Describe("Options", func() {
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := NewOptions(streams)
-		o.Kind = TargetKindGarden
+		o := targetCmd.NewOptions(streams)
+		o.Kind = commonTarget.TargetKindGarden
 		o.TargetName = "foo"
 
 		Expect(o.Validate()).To(Succeed())
@@ -27,8 +27,8 @@ var _ = Describe("Options", func() {
 
 	It("should reject invalid kinds", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := NewOptions(streams)
-		o.Kind = TargetKind("not a kind")
+		o := targetCmd.NewOptions(streams)
+		o.Kind = commonTarget.TargetKind("not a kind")
 		o.TargetName = "foo"
 
 		Expect(o.Validate()).NotTo(Succeed())
