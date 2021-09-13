@@ -53,7 +53,7 @@ func Execute() {
 	}
 
 	rootCmd.AddCommand(ssh.NewCommand(&factory, ssh.NewOptions(ioStreams)))
-	rootCmd.AddCommand(targetcmd.NewCommand(&factory, targetcmd.NewOptions(ioStreams), targetProvider))
+	rootCmd.AddCommand(targetcmd.NewTargetCommand(&factory, targetcmd.NewTargetOptions(ioStreams), targetProvider))
 	rootCmd.AddCommand(version.NewCommand(&factory, version.NewOptions(ioStreams)))
 
 	// Do not precalculate what $HOME is for the help text, because it prevents
