@@ -44,7 +44,7 @@ type Manager interface {
 	// It will also configure appropriate project and seed values if not already set
 	TargetShoot(ctx context.Context, name string) error
 	// DropTargetGarden unsets the garden target configuration
-	// This implicitly unsets project and shoot target configuration
+	// This implicitly unsets project, shoot and seed target configuration
 	DropTargetGarden() (string, error)
 	// DropTargetProject unsets the project target configuration
 	// This implicitly unsets seed and shoot target configuration
