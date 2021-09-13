@@ -28,6 +28,7 @@ var _ = Describe("Options", func() {
 		o := drop.NewOptions(streams)
 		o.Kind = target.TargetKind("not a kind")
 
-		Expect(o.Validate()).NotTo(Succeed())
+		err := o.Validate()
+		Expect(err).To(MatchError(ContainSubstring("invalid target kind given, must be one of")))
 	})
 })
