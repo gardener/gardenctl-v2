@@ -156,6 +156,7 @@ func validTargetArgsFunction(f util.Factory, o *TargetOptions, args []string, to
 }
 
 // TargetOptions is a struct to support target command
+// nolint
 type TargetOptions struct {
 	base.Options
 
