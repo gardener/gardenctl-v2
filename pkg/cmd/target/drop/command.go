@@ -22,14 +22,11 @@ func NewCommand(f util.Factory, o *Options, targetProvider *target.DynamicTarget
 	cmd := &cobra.Command{
 		Use:   "drop",
 		Short: "Drop target, e.g. \"gardenctl target drop shoot\" to drop currently targeted shoot",
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			suggestions, err := validArgsFunction(f, o, args, toComplete)
-			if err != nil {
-				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
-
-			return util.FilterStringsByPrefix(toComplete, suggestions), cobra.ShellCompDirectiveNoFileComp
+		ValidArgs: []string{
+			string(commonTarget.TargetKindGarden),
+			string(commonTarget.TargetKindProject),
+			string(commonTarget.TargetKindSeed),
+			string(commonTarget.TargetKindShoot),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := o.Complete(f, cmd, args, targetProvider); err != nil {

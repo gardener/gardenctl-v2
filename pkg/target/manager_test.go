@@ -517,7 +517,7 @@ var _ = Describe("Manager", func() {
 		Expect(manager).NotTo(BeNil())
 
 		Expect(manager.DropTargetSeed()).Should(Equal(seed.Name))
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
 	})
 
 	It("should fail if no seed selected", func() {

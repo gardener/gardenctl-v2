@@ -8,8 +8,8 @@ package drop_test
 
 import (
 	"github.com/gardener/gardenctl-v2/internal/util"
-	. "github.com/gardener/gardenctl-v2/pkg/cmd/common/target"
-	. "github.com/gardener/gardenctl-v2/pkg/cmd/target/drop"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/common/target"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/target/drop"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -17,16 +17,16 @@ import (
 var _ = Describe("Options", func() {
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := NewOptions(streams)
-		o.Kind = TargetKindGarden
+		o := drop.NewOptions(streams)
+		o.Kind = target.TargetKindGarden
 
 		Expect(o.Validate()).To(Succeed())
 	})
 
 	It("should reject invalid kinds", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := NewOptions(streams)
-		o.Kind = TargetKind("not a kind")
+		o := drop.NewOptions(streams)
+		o.Kind = target.TargetKind("not a kind")
 
 		Expect(o.Validate()).NotTo(Succeed())
 	})

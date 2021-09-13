@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package drop
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -17,16 +16,6 @@ import (
 
 	"github.com/spf13/cobra"
 )
-
-func validateKind(kind commonTarget.TargetKind) error {
-	for _, k := range commonTarget.AllTargetKinds {
-		if k == kind {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("invalid target kind given, must be one of %v", commonTarget.AllTargetKinds)
-}
 
 // Options is a struct to support drop command
 type Options struct {
@@ -56,7 +45,7 @@ func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string, ta
 
 // Validate validates the provided options
 func (o *Options) Validate() error {
-	if err := validateKind(o.Kind); err != nil {
+	if err := commonTarget.ValidateKind(o.Kind); err != nil {
 		return err
 	}
 

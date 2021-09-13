@@ -8,7 +8,6 @@ package target
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -18,16 +17,6 @@ import (
 
 	"github.com/spf13/cobra"
 )
-
-func validateKind(kind commonTarget.TargetKind) error {
-	for _, k := range commonTarget.AllTargetKinds {
-		if k == kind {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("invalid target kind given, must be one of %v", commonTarget.AllTargetKinds)
-}
 
 // Options is a struct to support target command
 type Options struct {
@@ -93,7 +82,7 @@ func (o *Options) Validate() error {
 		return errors.New("no target specified")
 	}
 
-	if err := validateKind(o.Kind); err != nil {
+	if err := commonTarget.ValidateKind(o.Kind); err != nil {
 		return err
 	}
 

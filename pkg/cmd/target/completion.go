@@ -24,7 +24,7 @@ func validArgsFunction(f util.Factory, o *Options, args []string, toComplete str
 	}
 
 	kind := commonTarget.TargetKind(strings.TrimSpace(args[0]))
-	if err := validateKind(kind); err != nil {
+	if err := commonTarget.ValidateKind(kind); err != nil {
 		return nil, err
 	}
 
