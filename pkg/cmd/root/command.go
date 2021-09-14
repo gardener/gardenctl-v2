@@ -13,7 +13,7 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
-	cmdTarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
+	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/version"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
@@ -53,7 +53,7 @@ func Execute() {
 	}
 
 	rootCmd.AddCommand(ssh.NewCommand(&factory, ssh.NewOptions(ioStreams)))
-	rootCmd.AddCommand(cmdTarget.NewCmdTarget(&factory, cmdTarget.NewTargetOptions(ioStreams), targetProvider))
+	rootCmd.AddCommand(cmdtarget.NewCmdTarget(&factory, cmdtarget.NewTargetOptions(ioStreams), targetProvider))
 	rootCmd.AddCommand(version.NewCommand(&factory, version.NewOptions(ioStreams)))
 
 	// Do not precalculate what $HOME is for the help text, because it prevents
