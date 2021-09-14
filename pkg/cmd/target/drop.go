@@ -18,8 +18,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewDropCommand returns a new (target) drop command.
-func NewDropCommand(f util.Factory, o *DropOptions, targetProvider *target.DynamicTargetProvider) *cobra.Command {
+// NewCmdDrop returns a new (target) drop command.
+func NewCmdDrop(f util.Factory, o *DropOptions, targetProvider *target.DynamicTargetProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "drop",
 		Short: "Drop target, e.g. \"gardenctl target drop shoot\" to drop currently targeted shoot",
@@ -37,14 +37,14 @@ func NewDropCommand(f util.Factory, o *DropOptions, targetProvider *target.Dynam
 				return err
 			}
 
-			return runDropCommand(f, o)
+			return runCmdDrop(f, o)
 		},
 	}
 
 	return cmd
 }
 
-func runDropCommand(f util.Factory, o *DropOptions) error {
+func runCmdDrop(f util.Factory, o *DropOptions) error {
 	manager, err := f.Manager()
 	if err != nil {
 		return err

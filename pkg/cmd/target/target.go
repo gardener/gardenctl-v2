@@ -18,8 +18,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewTargetCommand returns a new target command.
-func NewTargetCommand(f util.Factory, o *TargetOptions, targetProvider *target.DynamicTargetProvider) *cobra.Command {
+// NewCmdTarget returns a new target command.
+func NewCmdTarget(f util.Factory, o *TargetOptions, targetProvider *target.DynamicTargetProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "target",
 		Short: "Set scope for next operations, e.g. \"gardenctl target garden garden_name\" to target garden with name of garden_name",
@@ -41,18 +41,18 @@ func NewTargetCommand(f util.Factory, o *TargetOptions, targetProvider *target.D
 				return err
 			}
 
-			return runTargetCommand(f, o)
+			return runCmdTarget(f, o)
 		},
 	}
 
 	ioStreams := util.NewIOStreams()
 
-	cmd.AddCommand(NewDropCommand(f, NewDropOptions(ioStreams), targetProvider))
+	cmd.AddCommand(NewCmdDrop(f, NewDropOptions(ioStreams), targetProvider))
 
 	return cmd
 }
 
-func runTargetCommand(f util.Factory, o *TargetOptions) error {
+func runCmdTarget(f util.Factory, o *TargetOptions) error {
 	manager, err := f.Manager()
 	if err != nil {
 		return err
