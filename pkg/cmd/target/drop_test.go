@@ -9,7 +9,7 @@ package target_test
 import (
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
-	targetCmd "github.com/gardener/gardenctl-v2/pkg/cmd/target"
+	cmdTarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
@@ -31,8 +31,8 @@ func init() {
 var _ = Describe("Command", func() {
 	It("should reject bad options", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := targetCmd.NewDropOptions(streams)
-		cmd := targetCmd.NewCmdDrop(&util.FactoryImpl{}, o, &target.DynamicTargetProvider{})
+		o := cmdTarget.NewDropOptions(streams)
+		cmd := cmdTarget.NewCmdDrop(&util.FactoryImpl{}, o, &target.DynamicTargetProvider{})
 
 		Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
 	})
@@ -49,7 +49,7 @@ var _ = Describe("Command", func() {
 		}
 		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget(gardenName, "", "", ""))
 		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
-		cmd := targetCmd.NewCmdDrop(factory, targetCmd.NewDropOptions(streams), &target.DynamicTargetProvider{})
+		cmd := cmdTarget.NewCmdDrop(factory, cmdTarget.NewDropOptions(streams), &target.DynamicTargetProvider{})
 
 		Expect(cmd.RunE(cmd, []string{"garden"})).To(Succeed())
 		Expect(out.String()).To(ContainSubstring("Successfully dropped targeted garden %q\n", gardenName))
@@ -93,7 +93,7 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := targetCmd.NewCmdDrop(factory, targetCmd.NewDropOptions(streams), &target.DynamicTargetProvider{})
+		cmd := cmdTarget.NewCmdDrop(factory, cmdTarget.NewDropOptions(streams), &target.DynamicTargetProvider{})
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"project"})).To(Succeed())
@@ -142,7 +142,7 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := targetCmd.NewCmdDrop(factory, targetCmd.NewDropOptions(streams), &target.DynamicTargetProvider{})
+		cmd := cmdTarget.NewCmdDrop(factory, cmdTarget.NewDropOptions(streams), &target.DynamicTargetProvider{})
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"seed"})).To(Succeed())
@@ -197,7 +197,7 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := targetCmd.NewCmdDrop(factory, targetCmd.NewDropOptions(streams), &target.DynamicTargetProvider{})
+		cmd := cmdTarget.NewCmdDrop(factory, cmdTarget.NewDropOptions(streams), &target.DynamicTargetProvider{})
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"shoot"})).To(Succeed())
@@ -215,15 +215,15 @@ var _ = Describe("Command", func() {
 var _ = Describe("DropOptions", func() {
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := targetCmd.NewDropOptions(streams)
-		o.Kind = targetCmd.TargetKindGarden
+		o := cmdTarget.NewDropOptions(streams)
+		o.Kind = cmdTarget.TargetKindGarden
 
 		Expect(o.Validate()).To(Succeed())
 	})
 
 	It("should reject invalid kinds", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := targetCmd.NewDropOptions(streams)
+		o := cmdTarget.NewDropOptions(streams)
 		o.Kind = "not a kind"
 
 		err := o.Validate()
