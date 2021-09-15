@@ -225,7 +225,7 @@ var _ = Describe("Command", func() {
 	It("should reject bad options", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
 		o := NewOptions(streams)
-		cmd := NewCommand(&util.FactoryImpl{}, o)
+		cmd := NewCmdSSH(&util.FactoryImpl{}, o)
 
 		Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
 	})
@@ -258,7 +258,7 @@ var _ = Describe("Command", func() {
 		factory.ContextImpl = ctx
 
 		options := NewOptions(streams)
-		cmd := NewCommand(factory, options)
+		cmd := NewCmdSSH(factory, options)
 
 		// simulate an external controller processing the bastion and proving a successful status
 		go waitForBastionThenPatchStatus(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, func(status *operationsv1alpha1.BastionStatus) {
@@ -322,7 +322,7 @@ var _ = Describe("Command", func() {
 		factory.ContextImpl = ctx
 
 		options := NewOptions(streams)
-		cmd := NewCommand(factory, options)
+		cmd := NewCmdSSH(factory, options)
 
 		// simulate an external controller processing the bastion and proving a successful status
 		go waitForBastionThenPatchStatus(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, func(status *operationsv1alpha1.BastionStatus) {
@@ -412,7 +412,7 @@ var _ = Describe("Command", func() {
 		options := NewOptions(streams)
 		options.KeepBastion = true // we need to assert its annotations later
 
-		cmd := NewCommand(factory, options)
+		cmd := NewCmdSSH(factory, options)
 
 		// simulate an external controller processing the bastion and proving a successful status
 		go waitForBastionThenPatchStatus(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, func(status *operationsv1alpha1.BastionStatus) {
@@ -503,7 +503,7 @@ var _ = Describe("Command", func() {
 			factory.ContextImpl = ctx
 
 			options := NewOptions(streams)
-			cmd := NewCommand(factory, options)
+			cmd := NewCmdSSH(factory, options)
 
 			// let the magic happen; should find "monitoring" node based on this prefix
 			suggestions, directive := cmd.ValidArgsFunction(cmd, nil, "mon")

@@ -18,8 +18,8 @@ import (
 	"k8s.io/component-base/version"
 )
 
-// NewCommand returns a new version command.
-func NewCommand(f util.Factory, o *Options) *cobra.Command {
+// NewCmdVersion returns a new version command.
+func NewCmdVersion(f util.Factory, o *Options) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print the gardenctl version information",
@@ -31,7 +31,7 @@ func NewCommand(f util.Factory, o *Options) *cobra.Command {
 				return err
 			}
 
-			return runCommand(o)
+			return runCmdVersion(o)
 		},
 	}
 
@@ -41,7 +41,7 @@ func NewCommand(f util.Factory, o *Options) *cobra.Command {
 	return cmd
 }
 
-func runCommand(opt *Options) error {
+func runCmdVersion(opt *Options) error {
 	versionInfo := version.Get()
 
 	switch opt.Output {

@@ -149,8 +149,8 @@ var (
 	}
 )
 
-// NewCommand returns a new ssh command.
-func NewCommand(f util.Factory, o *Options) *cobra.Command {
+// NewCmdSSH returns a new ssh command.
+func NewCmdSSH(f util.Factory, o *Options) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ssh [NODE_NAME]",
 		Short: "Establish an SSH connection to a Shoot cluster's node",
@@ -176,7 +176,7 @@ func NewCommand(f util.Factory, o *Options) *cobra.Command {
 				return err
 			}
 
-			return runCommand(f, o)
+			return runCmdSSH(f, o)
 		},
 	}
 
@@ -189,7 +189,7 @@ func NewCommand(f util.Factory, o *Options) *cobra.Command {
 	return cmd
 }
 
-func runCommand(f util.Factory, o *Options) error {
+func runCmdSSH(f util.Factory, o *Options) error {
 	manager, err := f.Manager()
 	if err != nil {
 		return err

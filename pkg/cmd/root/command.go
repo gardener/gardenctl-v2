@@ -53,9 +53,9 @@ func Execute() {
 		SilenceUsage: true,
 	}
 
-	rootCmd.AddCommand(cmdssh.NewCommand(&factory, cmdssh.NewOptions(ioStreams)))
+	rootCmd.AddCommand(cmdssh.NewCmdSSH(&factory, cmdssh.NewOptions(ioStreams)))
 	rootCmd.AddCommand(cmdtarget.NewCmdTarget(&factory, cmdtarget.NewTargetOptions(ioStreams), targetProvider))
-	rootCmd.AddCommand(cmdversion.NewCommand(&factory, cmdversion.NewOptions(ioStreams)))
+	rootCmd.AddCommand(cmdversion.NewCmdVersion(&factory, cmdversion.NewOptions(ioStreams)))
 
 	// Do not precalculate what $HOME is for the help text, because it prevents
 	// usage where the current user has no home directory (which might _just_ be

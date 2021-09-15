@@ -18,7 +18,7 @@ var _ = Describe("Command", func() {
 	It("should print version", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 		o := NewOptions(streams)
-		cmd := NewCommand(&util.FactoryImpl{}, o)
+		cmd := NewCmdVersion(&util.FactoryImpl{}, o)
 
 		Expect(cmd.RunE(cmd, nil)).To(Succeed())
 		Expect(out.String()).To(ContainSubstring("GitVersion"))
