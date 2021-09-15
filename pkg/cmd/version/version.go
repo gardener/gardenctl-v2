@@ -78,6 +78,7 @@ func runCmdVersion(opt *VersionOptions) error {
 }
 
 // VersionOptions is a struct to support version command
+// nolint
 type VersionOptions struct {
 	base.Options
 

@@ -803,6 +803,7 @@ func getNodes(ctx context.Context, c client.Client) ([]corev1.Node, error) {
 }
 
 // SSHOptions is a struct to support ssh command
+// nolint
 type SSHOptions struct {
 	base.Options
 
