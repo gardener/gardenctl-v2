@@ -9,6 +9,7 @@ package version
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 
@@ -71,6 +72,39 @@ func runCommand(opt *Options) error {
 		// There is a bug in the program if we hit this case.
 		// However, we follow a policy of never panicking.
 		return fmt.Errorf("options were not validated: --output=%q should have been rejected", opt.Output)
+	}
+
+	return nil
+}
+
+// Options is a struct to support version command
+type Options struct {
+	base.Options
+
+	// Short indicates if just the version number should be printed
+	Short bool
+	// Output defines the output format of the version information. Either 'yaml' or 'json'
+	Output string
+}
+
+// NewOptions returns initialized Options
+func NewOptions(ioStreams util.IOStreams) *Options {
+	return &Options{
+		Options: base.Options{
+			IOStreams: ioStreams,
+		},
+	}
+}
+
+// Complete adapts from the command line args to the data required.
+func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+	return nil
+}
+
+// Validate validates the provided options
+func (o *Options) Validate() error {
+	if o.Output != "" && o.Output != "yaml" && o.Output != "json" {
+		return fmt.Errorf(`--output must be either 'yaml' or 'json'`)
 	}
 
 	return nil

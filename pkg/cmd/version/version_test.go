@@ -14,6 +14,17 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("Command", func() {
+	It("should print version", func() {
+		streams, _, out, _ := util.NewTestIOStreams()
+		o := NewOptions(streams)
+		cmd := NewCommand(&util.FactoryImpl{}, o)
+
+		Expect(cmd.RunE(cmd, nil)).To(Succeed())
+		Expect(out.String()).To(ContainSubstring("GitVersion"))
+	})
+})
+
 var _ = Describe("Options", func() {
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
