@@ -224,7 +224,7 @@ var _ = Describe("Command", func() {
 
 	It("should reject bad options", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := NewOptions(streams)
+		o := NewSSHOptions(streams)
 		cmd := NewCmdSSH(&util.FactoryImpl{}, o)
 
 		Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
@@ -257,7 +257,7 @@ var _ = Describe("Command", func() {
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, kubeconfigCache, targetProvider)
 		factory.ContextImpl = ctx
 
-		options := NewOptions(streams)
+		options := NewSSHOptions(streams)
 		cmd := NewCmdSSH(factory, options)
 
 		// simulate an external controller processing the bastion and proving a successful status
@@ -321,7 +321,7 @@ var _ = Describe("Command", func() {
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, kubeconfigCache, targetProvider)
 		factory.ContextImpl = ctx
 
-		options := NewOptions(streams)
+		options := NewSSHOptions(streams)
 		cmd := NewCmdSSH(factory, options)
 
 		// simulate an external controller processing the bastion and proving a successful status
@@ -339,7 +339,7 @@ var _ = Describe("Command", func() {
 
 		// do not actually execute any commands
 		executedCommands := 0
-		execCommand = func(ctx context.Context, command string, args []string, o *Options) error {
+		execCommand = func(ctx context.Context, command string, args []string, o *SSHOptions) error {
 			executedCommands++
 
 			Expect(command).To(Equal("ssh"))
@@ -409,7 +409,7 @@ var _ = Describe("Command", func() {
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, kubeconfigCache, targetProvider)
 		factory.ContextImpl = ctx
 
-		options := NewOptions(streams)
+		options := NewSSHOptions(streams)
 		options.KeepBastion = true // we need to assert its annotations later
 
 		cmd := NewCmdSSH(factory, options)
@@ -502,7 +502,7 @@ var _ = Describe("Command", func() {
 			factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, kubeconfigCache, targetProvider)
 			factory.ContextImpl = ctx
 
-			options := NewOptions(streams)
+			options := NewSSHOptions(streams)
 			cmd := NewCmdSSH(factory, options)
 
 			// let the magic happen; should find "monitoring" node based on this prefix
@@ -514,7 +514,7 @@ var _ = Describe("Command", func() {
 	})
 })
 
-var _ = Describe("Options", func() {
+var _ = Describe("SSHOptions", func() {
 	var (
 		publicSSHKeyFile string
 	)
@@ -537,7 +537,7 @@ var _ = Describe("Options", func() {
 
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := NewOptions(streams)
+		o := NewSSHOptions(streams)
 		o.CIDRs = []string{"8.8.8.8/32"}
 		o.SSHPublicKeyFile = publicSSHKeyFile
 
@@ -546,7 +546,7 @@ var _ = Describe("Options", func() {
 
 	It("should require a non-zero wait time", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := NewOptions(streams)
+		o := NewSSHOptions(streams)
 		o.CIDRs = []string{"8.8.8.8/32"}
 		o.SSHPublicKeyFile = publicSSHKeyFile
 		o.WaitTimeout = 0
@@ -556,7 +556,7 @@ var _ = Describe("Options", func() {
 
 	It("should require a public SSH key file", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := NewOptions(streams)
+		o := NewSSHOptions(streams)
 		o.CIDRs = []string{"8.8.8.8/32"}
 
 		Expect(o.Validate()).NotTo(Succeed())
@@ -566,7 +566,7 @@ var _ = Describe("Options", func() {
 		Expect(ioutil.WriteFile(publicSSHKeyFile, []byte("not a key"), 0644)).To(Succeed())
 
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := NewOptions(streams)
+		o := NewSSHOptions(streams)
 		o.CIDRs = []string{"8.8.8.8/32"}
 		o.SSHPublicKeyFile = publicSSHKeyFile
 
@@ -575,7 +575,7 @@ var _ = Describe("Options", func() {
 
 	It("should require at least one CIDR", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := NewOptions(streams)
+		o := NewSSHOptions(streams)
 		o.SSHPublicKeyFile = publicSSHKeyFile
 
 		Expect(o.Validate()).NotTo(Succeed())
@@ -583,7 +583,7 @@ var _ = Describe("Options", func() {
 
 	It("should reject invalid CIDRs", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := NewOptions(streams)
+		o := NewSSHOptions(streams)
 		o.CIDRs = []string{"8.8.8.8"}
 		o.SSHPublicKeyFile = publicSSHKeyFile
 

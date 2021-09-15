@@ -139,7 +139,7 @@ var (
 	// execCommand executes the given command, using the in/out streams
 	// from the options. The function returns an error if the command
 	// fails.
-	execCommand = func(ctx context.Context, command string, args []string, o *Options) error {
+	execCommand = func(ctx context.Context, command string, args []string, o *SSHOptions) error {
 		cmd := exec.CommandContext(ctx, command, args...)
 		cmd.Stdout = o.IOStreams.Out
 		cmd.Stdin = o.IOStreams.In
@@ -150,7 +150,7 @@ var (
 )
 
 // NewCmdSSH returns a new ssh command.
-func NewCmdSSH(f util.Factory, o *Options) *cobra.Command {
+func NewCmdSSH(f util.Factory, o *SSHOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ssh [NODE_NAME]",
 		Short: "Establish an SSH connection to a Shoot cluster's node",
@@ -189,7 +189,7 @@ func NewCmdSSH(f util.Factory, o *Options) *cobra.Command {
 	return cmd
 }
 
-func runCmdSSH(f util.Factory, o *Options) error {
+func runCmdSSH(f util.Factory, o *SSHOptions) error {
 	manager, err := f.Manager()
 	if err != nil {
 		return err
@@ -366,7 +366,7 @@ func printTargetInformation(out io.Writer, t target.Target) {
 	fmt.Fprintf(out, "Preparing SSH access to %s/%s on %s…\n", step, t.ShootName(), t.GardenName())
 }
 
-func cleanup(ctx context.Context, o *Options, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string) {
+func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string) {
 	if !o.KeepBastion {
 		fmt.Fprintf(o.IOStreams.Out, "Deleting bastion %s…\n", bastion.Name)
 
@@ -455,7 +455,7 @@ func preferredBastionAddress(bastion *operationsv1alpha1.Bastion) string {
 	return ""
 }
 
-func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client, bastion *operationsv1alpha1.Bastion) error {
+func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Client, bastion *operationsv1alpha1.Bastion) error {
 	var (
 		lastCheckErr    error
 		privateKeyBytes []byte
@@ -500,7 +500,7 @@ func waitForBastion(ctx context.Context, o *Options, gardenClient client.Client,
 	return waitErr
 }
 
-func getShootNode(ctx context.Context, o *Options, shootClient client.Client, currentTarget target.Target) (*corev1.Node, error) {
+func getShootNode(ctx context.Context, o *SSHOptions, shootClient client.Client, currentTarget target.Target) (*corev1.Node, error) {
 	if o.NodeName == "" {
 		return nil, nil
 	}
@@ -513,7 +513,7 @@ func getShootNode(ctx context.Context, o *Options, shootClient client.Client, cu
 	return node, nil
 }
 
-func remoteShell(ctx context.Context, o *Options, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string, node *corev1.Node) error {
+func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string, node *corev1.Node) error {
 	nodeHostname, err := getNodeHostname(node)
 	if err != nil {
 		return err
@@ -556,7 +556,7 @@ func remoteShell(ctx context.Context, o *Options, bastion *operationsv1alpha1.Ba
 
 // waitForSignal informs the user about their options and keeps the
 // bastion alive until gardenctl exits.
-func waitForSignal(ctx context.Context, o *Options, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string, node *corev1.Node, signalChan <-chan struct{}) error {
+func waitForSignal(ctx context.Context, o *SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string, node *corev1.Node, signalChan <-chan struct{}) error {
 	nodeHostname := "IP_OR_HOSTNAME"
 
 	if node != nil {
@@ -671,7 +671,7 @@ func isNodeReady(node corev1.Node) bool {
 	return false
 }
 
-func sshCommandLine(o *Options, bastionAddr string, nodePrivateKeyFiles []string, nodeName string) string {
+func sshCommandLine(o *SSHOptions, bastionAddr string, nodePrivateKeyFiles []string, nodeName string) string {
 	proxyPrivateKeyFlag := ""
 	if o.SSHPrivateKeyFile != "" {
 		proxyPrivateKeyFlag = fmt.Sprintf(" -o IdentitiesOnly=yes -i %s", o.SSHPrivateKeyFile)
@@ -802,8 +802,8 @@ func getNodes(ctx context.Context, c client.Client) ([]corev1.Node, error) {
 	return nodeList.Items, nil
 }
 
-// Options is a struct to support ssh command
-type Options struct {
+// SSHOptions is a struct to support ssh command
+type SSHOptions struct {
 	base.Options
 
 	// Interactive can be used to toggle between gardenctl just
@@ -844,9 +844,9 @@ type Options struct {
 	KeepBastion bool
 }
 
-// NewOptions returns initialized Options
-func NewOptions(ioStreams util.IOStreams) *Options {
-	return &Options{
+// NewSSHOptions returns initialized SSHOptions
+func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
+	return &SSHOptions{
 		Options: base.Options{
 			IOStreams: ioStreams,
 		},
@@ -857,7 +857,7 @@ func NewOptions(ioStreams util.IOStreams) *Options {
 }
 
 // Complete adapts from the command line args to the data required.
-func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string, stdout io.Writer) error {
+func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string, stdout io.Writer) error {
 	if len(o.CIDRs) == 0 {
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
@@ -933,7 +933,7 @@ func ipToCIDR(address string) string {
 }
 
 // Validate validates the provided options
-func (o *Options) Validate() error {
+func (o *SSHOptions) Validate() error {
 	if o.WaitTimeout == 0 {
 		return errors.New("the maximum wait duration must be non-zero")
 	}

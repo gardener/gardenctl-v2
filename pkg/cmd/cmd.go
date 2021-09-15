@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package root
+package cmd
 
 import (
 	"context"
@@ -53,9 +53,9 @@ func Execute() {
 		SilenceUsage: true,
 	}
 
-	rootCmd.AddCommand(cmdssh.NewCmdSSH(&factory, cmdssh.NewOptions(ioStreams)))
+	rootCmd.AddCommand(cmdssh.NewCmdSSH(&factory, cmdssh.NewSSHOptions(ioStreams)))
 	rootCmd.AddCommand(cmdtarget.NewCmdTarget(&factory, cmdtarget.NewTargetOptions(ioStreams), targetProvider))
-	rootCmd.AddCommand(cmdversion.NewCmdVersion(&factory, cmdversion.NewOptions(ioStreams)))
+	rootCmd.AddCommand(cmdversion.NewCmdVersion(&factory, cmdversion.NewVersionOptions(ioStreams)))
 
 	// Do not precalculate what $HOME is for the help text, because it prevents
 	// usage where the current user has no home directory (which might _just_ be

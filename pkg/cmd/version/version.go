@@ -19,7 +19,7 @@ import (
 )
 
 // NewCmdVersion returns a new version command.
-func NewCmdVersion(f util.Factory, o *Options) *cobra.Command {
+func NewCmdVersion(f util.Factory, o *VersionOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print the gardenctl version information",
@@ -41,7 +41,7 @@ func NewCmdVersion(f util.Factory, o *Options) *cobra.Command {
 	return cmd
 }
 
-func runCmdVersion(opt *Options) error {
+func runCmdVersion(opt *VersionOptions) error {
 	versionInfo := version.Get()
 
 	switch opt.Output {
@@ -77,8 +77,8 @@ func runCmdVersion(opt *Options) error {
 	return nil
 }
 
-// Options is a struct to support version command
-type Options struct {
+// VersionOptions is a struct to support version command
+type VersionOptions struct {
 	base.Options
 
 	// Short indicates if just the version number should be printed
@@ -87,9 +87,9 @@ type Options struct {
 	Output string
 }
 
-// NewOptions returns initialized Options
-func NewOptions(ioStreams util.IOStreams) *Options {
-	return &Options{
+// NewVersionOptions returns initialized VersionOptions
+func NewVersionOptions(ioStreams util.IOStreams) *VersionOptions {
+	return &VersionOptions{
 		Options: base.Options{
 			IOStreams: ioStreams,
 		},
@@ -97,12 +97,12 @@ func NewOptions(ioStreams util.IOStreams) *Options {
 }
 
 // Complete adapts from the command line args to the data required.
-func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+func (o *VersionOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
 	return nil
 }
 
 // Validate validates the provided options
-func (o *Options) Validate() error {
+func (o *VersionOptions) Validate() error {
 	if o.Output != "" && o.Output != "yaml" && o.Output != "json" {
 		return fmt.Errorf(`--output must be either 'yaml' or 'json'`)
 	}

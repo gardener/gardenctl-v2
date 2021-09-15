@@ -17,7 +17,7 @@ import (
 var _ = Describe("Command", func() {
 	It("should print version", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
-		o := NewOptions(streams)
+		o := NewVersionOptions(streams)
 		cmd := NewCmdVersion(&util.FactoryImpl{}, o)
 
 		Expect(cmd.RunE(cmd, nil)).To(Succeed())
@@ -25,10 +25,10 @@ var _ = Describe("Command", func() {
 	})
 })
 
-var _ = Describe("Options", func() {
+var _ = Describe("VersionOptions", func() {
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := NewOptions(streams)
+		o := NewVersionOptions(streams)
 		err := o.Validate()
 		Expect(err).ToNot(HaveOccurred())
 	})
