@@ -47,7 +47,8 @@ func NewCmdTarget(f util.Factory, o *TargetOptions, targetProvider *target.Dynam
 
 	ioStreams := util.NewIOStreams()
 
-	cmd.AddCommand(NewCmdDrop(f, NewDropOptions(ioStreams), targetProvider))
+	cmd.AddCommand(NewCmdDrop(f, NewDropOptions(ioStreams)))
+	cmd.AddCommand(NewCmdView(f, NewViewOptions(ioStreams)))
 
 	return cmd
 }
