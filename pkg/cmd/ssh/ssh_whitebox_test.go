@@ -9,6 +9,8 @@ package ssh
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"time"
 
@@ -222,8 +224,8 @@ var _ = Describe("Command", func() {
 
 	It("should reject bad options", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := NewOptions(streams)
-		cmd := NewCommand(&util.FactoryImpl{}, o)
+		o := NewSSHOptions(streams)
+		cmd := NewCmdSSH(&util.FactoryImpl{}, o)
 
 		Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
 	})
@@ -255,8 +257,8 @@ var _ = Describe("Command", func() {
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, kubeconfigCache, targetProvider)
 		factory.ContextImpl = ctx
 
-		options := NewOptions(streams)
-		cmd := NewCommand(factory, options)
+		options := NewSSHOptions(streams)
+		cmd := NewCmdSSH(factory, options)
 
 		// simulate an external controller processing the bastion and proving a successful status
 		go waitForBastionThenPatchStatus(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, func(status *operationsv1alpha1.BastionStatus) {
@@ -319,8 +321,8 @@ var _ = Describe("Command", func() {
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, kubeconfigCache, targetProvider)
 		factory.ContextImpl = ctx
 
-		options := NewOptions(streams)
-		cmd := NewCommand(factory, options)
+		options := NewSSHOptions(streams)
+		cmd := NewCmdSSH(factory, options)
 
 		// simulate an external controller processing the bastion and proving a successful status
 		go waitForBastionThenPatchStatus(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, func(status *operationsv1alpha1.BastionStatus) {
@@ -337,7 +339,7 @@ var _ = Describe("Command", func() {
 
 		// do not actually execute any commands
 		executedCommands := 0
-		execCommand = func(ctx context.Context, command string, args []string, o *Options) error {
+		execCommand = func(ctx context.Context, command string, args []string, o *SSHOptions) error {
 			executedCommands++
 
 			Expect(command).To(Equal("ssh"))
@@ -407,10 +409,10 @@ var _ = Describe("Command", func() {
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, kubeconfigCache, targetProvider)
 		factory.ContextImpl = ctx
 
-		options := NewOptions(streams)
+		options := NewSSHOptions(streams)
 		options.KeepBastion = true // we need to assert its annotations later
 
-		cmd := NewCommand(factory, options)
+		cmd := NewCmdSSH(factory, options)
 
 		// simulate an external controller processing the bastion and proving a successful status
 		go waitForBastionThenPatchStatus(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, func(status *operationsv1alpha1.BastionStatus) {
@@ -500,8 +502,8 @@ var _ = Describe("Command", func() {
 			factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, kubeconfigCache, targetProvider)
 			factory.ContextImpl = ctx
 
-			options := NewOptions(streams)
-			cmd := NewCommand(factory, options)
+			options := NewSSHOptions(streams)
+			cmd := NewCmdSSH(factory, options)
 
 			// let the magic happen; should find "monitoring" node based on this prefix
 			suggestions, directive := cmd.ValidArgsFunction(cmd, nil, "mon")
@@ -509,5 +511,82 @@ var _ = Describe("Command", func() {
 			Expect(suggestions).To(HaveLen(1))
 			Expect(suggestions).To(Equal([]string{"monitoring"}))
 		})
+	})
+})
+
+var _ = Describe("SSHOptions", func() {
+	var (
+		publicSSHKeyFile string
+	)
+
+	BeforeEach(func() {
+		tmpFile, err := os.CreateTemp("", "")
+		Expect(err).NotTo(HaveOccurred())
+		defer tmpFile.Close()
+
+		// write dummy SSH public key
+		_, err = io.WriteString(tmpFile, "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDouNkxsNuApuKVIfgL6Yz3Ep+DqX84Yde9DArwLBSWgLnl/pH9AbbcDcAmdB2CPVXAATo4qxK7xprvyyZp52SQRCcAZpAy4D6gAWwAG3OfzrRbxRiB5pQDaaWATSzNbLtoy0ecVwFeTJe2w71q+wxbI7tfxbvo9XbXIN4I0cQy2KLICzkYkQmygGnHztv1Mvi338+sgcG7Gwq2tdSyggDaAggwDIuT39S4/L7QpR27tWH79J4Ls8tTHud2eRbkOcF98vXlQAIzb6w8iHBXylOjMM/oODwoA7V4mtRL9o13AoocvZSsD1UvfOjGxDHuLrCfFXN+/rEw0hEiYo0cnj7F")
+		Expect(err).NotTo(HaveOccurred())
+
+		publicSSHKeyFile = tmpFile.Name()
+	})
+
+	AfterEach(func() {
+		os.Remove(publicSSHKeyFile)
+	})
+
+	It("should validate", func() {
+		streams, _, _, _ := util.NewTestIOStreams()
+		o := NewSSHOptions(streams)
+		o.CIDRs = []string{"8.8.8.8/32"}
+		o.SSHPublicKeyFile = publicSSHKeyFile
+
+		Expect(o.Validate()).To(Succeed())
+	})
+
+	It("should require a non-zero wait time", func() {
+		streams, _, _, _ := util.NewTestIOStreams()
+		o := NewSSHOptions(streams)
+		o.CIDRs = []string{"8.8.8.8/32"}
+		o.SSHPublicKeyFile = publicSSHKeyFile
+		o.WaitTimeout = 0
+
+		Expect(o.Validate()).NotTo(Succeed())
+	})
+
+	It("should require a public SSH key file", func() {
+		streams, _, _, _ := util.NewTestIOStreams()
+		o := NewSSHOptions(streams)
+		o.CIDRs = []string{"8.8.8.8/32"}
+
+		Expect(o.Validate()).NotTo(Succeed())
+	})
+
+	It("should require a valid public SSH key file", func() {
+		Expect(ioutil.WriteFile(publicSSHKeyFile, []byte("not a key"), 0644)).To(Succeed())
+
+		streams, _, _, _ := util.NewTestIOStreams()
+		o := NewSSHOptions(streams)
+		o.CIDRs = []string{"8.8.8.8/32"}
+		o.SSHPublicKeyFile = publicSSHKeyFile
+
+		Expect(o.Validate()).NotTo(Succeed())
+	})
+
+	It("should require at least one CIDR", func() {
+		streams, _, _, _ := util.NewTestIOStreams()
+		o := NewSSHOptions(streams)
+		o.SSHPublicKeyFile = publicSSHKeyFile
+
+		Expect(o.Validate()).NotTo(Succeed())
+	})
+
+	It("should reject invalid CIDRs", func() {
+		streams, _, _, _ := util.NewTestIOStreams()
+		o := NewSSHOptions(streams)
+		o.CIDRs = []string{"8.8.8.8"}
+		o.SSHPublicKeyFile = publicSSHKeyFile
+
+		Expect(o.Validate()).NotTo(Succeed())
 	})
 })
