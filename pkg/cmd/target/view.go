@@ -45,9 +45,7 @@ func runViewCommand(f util.Factory, opt *ViewOptions) error {
 		return fmt.Errorf("failed to get current target: %v", err)
 	}
 
-	opt.PrintObject(currentTarget)
-
-	return nil
+	return opt.PrintObject(currentTarget)
 }
 
 // ViewOptions is a struct to support version command

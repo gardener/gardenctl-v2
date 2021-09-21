@@ -50,10 +50,9 @@ func runCmdVersion(opt *VersionOptions) error {
 		}
 	} else {
 		if opt.Short {
-			opt.PrintObject(versionInfo.GitVersion)
-		} else {
-			opt.PrintObject(versionInfo)
+			return opt.PrintObject(versionInfo.GitVersion)
 		}
+		return opt.PrintObject(versionInfo)
 	}
 
 	return nil
