@@ -7,12 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package target
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
-	"gopkg.in/yaml.v3"
-
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +29,7 @@ func NewCmdView(f util.Factory, o *ViewOptions) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&o.Output, "output", "o", o.Output, "One of 'yaml' or 'json'.")
+	o.AddOutputFlags(cmd)
 
 	return cmd
 }
@@ -48,31 +45,7 @@ func runViewCommand(f util.Factory, opt *ViewOptions) error {
 		return fmt.Errorf("failed to get current target: %v", err)
 	}
 
-	switch opt.Output {
-	case "":
-		fmt.Fprintf(opt.IOStreams.Out, "%v", currentTarget)
-
-	case "yaml":
-		marshalled, err := yaml.Marshal(&currentTarget)
-		if err != nil {
-			return err
-		}
-
-		fmt.Fprintln(opt.IOStreams.Out, string(marshalled))
-
-	case "json":
-		marshalled, err := json.MarshalIndent(&currentTarget, "", "  ")
-		if err != nil {
-			return err
-		}
-
-		fmt.Fprintln(opt.IOStreams.Out, string(marshalled))
-
-	default:
-		// There is a bug in the program if we hit this case.
-		// However, we follow a policy of never panicking.
-		return fmt.Errorf("options were not validated: --output=%q should have been rejected", opt.Output)
-	}
+	opt.PrintObject(currentTarget)
 
 	return nil
 }
@@ -80,9 +53,6 @@ func runViewCommand(f util.Factory, opt *ViewOptions) error {
 // ViewOptions is a struct to support version command
 type ViewOptions struct {
 	base.Options
-
-	// Output defines the output format of the version information. Either 'yaml' or 'json'
-	Output string
 }
 
 // NewViewOptions returns initialized ViewOptions
@@ -96,14 +66,5 @@ func NewViewOptions(ioStreams util.IOStreams) *ViewOptions {
 
 // Complete adapts from the command line args to the data required.
 func (o *ViewOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	return nil
-}
-
-// Validate validates the provided options
-func (o *ViewOptions) Validate() error {
-	if o.Output != "" && o.Output != "yaml" && o.Output != "json" {
-		return fmt.Errorf(`--output must be either 'yaml' or 'json'`)
-	}
-
 	return nil
 }

@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package target_test
+package base
 
 import (
 	"testing"
@@ -15,5 +15,5 @@ import (
 
 func TestCommand(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Target Command Test Suite")
+	RunSpecs(t, "Base Command Test Suite")
 }
