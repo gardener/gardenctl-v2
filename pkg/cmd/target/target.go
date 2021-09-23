@@ -9,17 +9,17 @@ package target
 import (
 	"errors"
 	"fmt"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"strings"
 
+	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+
 	"github.com/gardener/gardenctl-v2/internal/util"
-	"github.com/gardener/gardenctl-v2/pkg/target"
 
 	"github.com/spf13/cobra"
 )
 
 // NewCmdTarget returns a new target command.
-func NewCmdTarget(f util.Factory, o *TargetOptions, targetProvider *target.DynamicTargetProvider) *cobra.Command {
+func NewCmdTarget(f util.Factory, o *TargetOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "target",
 		Short: "Set scope for next operations, e.g. \"gardenctl target garden garden_name\" to target garden with name of garden_name",
@@ -33,7 +33,7 @@ func NewCmdTarget(f util.Factory, o *TargetOptions, targetProvider *target.Dynam
 			return util.FilterStringsByPrefix(toComplete, suggestions), cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := o.Complete(f, cmd, args, targetProvider); err != nil {
+			if err := o.Complete(f, cmd, args); err != nil {
 				return fmt.Errorf("failed to complete command options: %w", err)
 			}
 
@@ -47,7 +47,7 @@ func NewCmdTarget(f util.Factory, o *TargetOptions, targetProvider *target.Dynam
 
 	ioStreams := util.NewIOStreams()
 
-	cmd.AddCommand(NewCmdDrop(f, NewDropOptions(ioStreams), targetProvider))
+	cmd.AddCommand(NewCmdDrop(f, NewDropOptions(ioStreams)))
 
 	return cmd
 }
@@ -176,7 +176,7 @@ func NewTargetOptions(ioStreams util.IOStreams) *TargetOptions {
 }
 
 // Complete adapts from the command line args to the data required.
-func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []string, targetProvider *target.DynamicTargetProvider) error {
+func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		o.Kind = TargetKind(strings.TrimSpace(args[0]))
 	}
@@ -185,14 +185,20 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 		o.TargetName = strings.TrimSpace(args[1])
 	}
 
+	manager, err := f.Manager()
+	if err != nil {
+		return err
+	}
+
+	tf := manager.TargetFlags()
 	if o.Kind == "" {
-		if targetProvider.ShootNameFlag != "" {
+		if tf.ShootName() != "" {
 			o.Kind = TargetKindShoot
-		} else if targetProvider.ProjectNameFlag != "" {
+		} else if tf.ProjectName() != "" {
 			o.Kind = TargetKindProject
-		} else if targetProvider.SeedNameFlag != "" {
+		} else if tf.SeedName() != "" {
 			o.Kind = TargetKindSeed
-		} else if targetProvider.GardenNameFlag != "" {
+		} else if tf.GardenName() != "" {
 			o.Kind = TargetKindGarden
 		}
 	}
@@ -200,13 +206,13 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 	if o.TargetName == "" {
 		switch o.Kind {
 		case TargetKindGarden:
-			o.TargetName = targetProvider.GardenNameFlag
+			o.TargetName = tf.GardenName()
 		case TargetKindProject:
-			o.TargetName = targetProvider.ProjectNameFlag
+			o.TargetName = tf.ProjectName()
 		case TargetKindSeed:
-			o.TargetName = targetProvider.SeedNameFlag
+			o.TargetName = tf.SeedName()
 		case TargetKindShoot:
-			o.TargetName = targetProvider.ShootNameFlag
+			o.TargetName = tf.ShootName()
 		}
 	}
 

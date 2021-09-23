@@ -31,6 +31,9 @@ type Manager interface {
 	// CurrentTarget contains the current target configuration
 	CurrentTarget() (Target, error)
 
+	// TargetFlags returns the global target flags
+	TargetFlags() TargetFlags
+
 	// TargetGarden sets the garden target configuration
 	// This implicitly drops project, seed and shoot target configuration
 	TargetGarden(name string) error
@@ -86,6 +89,22 @@ func NewManager(config *config.Config, targetProvider TargetProvider, clientProv
 
 func (m *managerImpl) CurrentTarget() (Target, error) {
 	return m.targetProvider.Read()
+}
+
+func (m *managerImpl) TargetFlags() TargetFlags {
+	var tf TargetFlags
+
+	if m.targetProvider != nil {
+		if dtp, ok := m.targetProvider.(*dynamicTargetProvider); ok {
+			tf = dtp.targetFlags
+		}
+	}
+
+	if tf == nil {
+		tf = NewTargetFlags("", "", "", "")
+	}
+
+	return tf
 }
 
 func (m *managerImpl) Configuration() *config.Config {
