@@ -1,7 +1,9 @@
 ---
 name: Bug Report
 about: Report a bug
-labels: kind/bug
+title: ''
+labels: component/gardenctl, kind/bug
+assignees: ''
 
 ---
 
