@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // TargetFlags represents the target cobra flags.
@@ -24,7 +24,7 @@ type TargetFlags interface {
 	// ShootName returns the value that is tied to the corresponding cobra flag.
 	ShootName() string
 	// AddFlags binds target configuration flags to a given flagset
-	AddFlags(cmd *cobra.Command)
+	AddFlags(flags *pflag.FlagSet)
 	// ToTarget converts the flags to a target
 	ToTarget() Target
 	// IsTargetValid returns true if the set of given CLI flags is enough
@@ -69,8 +69,7 @@ func (tf *targetFlagsImpl) ShootName() string {
 	return tf.shootName
 }
 
-func (tf *targetFlagsImpl) AddFlags(cmd *cobra.Command) {
-	flags := cmd.PersistentFlags()
+func (tf *targetFlagsImpl) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&tf.gardenName, "garden", "", "target the given garden cluster")
 	flags.StringVar(&tf.projectName, "project", "", "target the given project")
 	flags.StringVar(&tf.seedName, "seed", "", "target the given seed cluster")

@@ -62,7 +62,7 @@ func Execute() {
 	flags.StringVar(&factory.ConfigFile, "config", "", fmt.Sprintf("config file (default is $HOME/%s/%s.yaml)", gardenHomeFolder, configName))
 
 	// allow to temporarily re-target a different cluster
-	targetFlags.AddFlags(cmd)
+	targetFlags.AddFlags(flags)
 
 	cobra.OnInitialize(initConfig, func() {
 		registerFlagCompletions(cmd)
