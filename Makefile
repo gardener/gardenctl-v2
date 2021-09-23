@@ -30,7 +30,7 @@ help: ## Display this help.
 ##@ Development
 
 .PHONY: test
-test: generate lint ## Run tests.
+test: lint ## Run tests.
 	go test ./... -coverprofile cover.out
 
 .PHONY: lint
