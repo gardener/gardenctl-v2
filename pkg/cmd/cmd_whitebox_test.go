@@ -72,7 +72,7 @@ var _ = Describe("Completion", func() {
 		f.Close()
 
 		configFile = f.Name()
-		Expect(config.SaveToFile(configFile, cfg)).To(Succeed())
+		Expect(cfg.SaveToFile(configFile)).To(Succeed())
 
 		testProject1 = &gardencorev1beta1.Project{
 			ObjectMeta: metav1.ObjectMeta{

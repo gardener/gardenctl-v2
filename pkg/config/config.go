@@ -56,7 +56,7 @@ func LoadFromFile(filename string) (*Config, error) {
 	return config, nil
 }
 
-func SaveToFile(filename string, config *Config) error {
+func (config *Config) SaveToFile(filename string) error {
 	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
