@@ -141,7 +141,7 @@ var _ TargetProvider = &dynamicTargetProvider{}
 // otherwise.
 func (p *dynamicTargetProvider) Read() (Target, error) {
 	// user gave everything we needed
-	if p.targetFlags != nil && p.targetFlags.IsTargetValid() {
+	if p.targetFlags != nil && p.targetFlags.isTargetValid() {
 		return p.targetFlags.ToTarget(), nil
 	}
 
@@ -165,7 +165,7 @@ func (p *dynamicTargetProvider) Read() (Target, error) {
 		// user to "move up", e.g. when they have targeted a shoot, just
 		// specifying "--garden mygarden" should target the garden, not the same
 		// shoot on the garden mygarden.
-		return p.targetFlags.OverrideTarget(current)
+		return p.targetFlags.overrideTarget(current)
 	}
 
 	return current, nil

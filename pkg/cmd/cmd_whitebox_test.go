@@ -255,10 +255,7 @@ var _ = Describe("Completion", func() {
 			factory := &util.FactoryImpl{
 				ConfigFile: configFile,
 			}
-			manager, err := factory.Manager()
-			Expect(err).NotTo(HaveOccurred())
-
-			wrapped := completionWrapper(factory.Context(), manager, func(ctx context.Context, manager target.Manager) ([]string, error) {
+			wrapped := completionWrapper(factory, func(ctx context.Context, manager target.Manager) ([]string, error) {
 				return []string{"foo", "bar"}, nil
 			})
 

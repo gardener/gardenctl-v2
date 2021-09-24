@@ -27,14 +27,14 @@ type TargetFlags interface {
 	AddFlags(flags *pflag.FlagSet)
 	// ToTarget converts the flags to a target
 	ToTarget() Target
-	// IsTargetValid returns true if the set of given CLI flags is enough
+	// isTargetValid returns true if the set of given CLI flags is enough
 	// to create a meaningful target. For example, if only the SeedName is
 	// given, false is returned because for targeting a seed, the GardenName
 	// must also be given. If ShootName and GardenName are set, false is
 	// returned because either project or seed have to be given as well.
-	IsTargetValid() bool
-	// OverrideTarget overrides the given target with the values of the target flags
-	OverrideTarget(current Target) (Target, error)
+	isTargetValid() bool
+	// overrideTarget overrides the given target with the values of the target flags
+	overrideTarget(current Target) (Target, error)
 }
 
 func NewTargetFlags(garden, project, seed, shoot string) TargetFlags {
@@ -84,7 +84,7 @@ func (tf *targetFlagsImpl) isEmpty() bool {
 	return tf.gardenName == "" && tf.projectName == "" && tf.seedName == "" && tf.shootName == ""
 }
 
-func (tf *targetFlagsImpl) OverrideTarget(current Target) (Target, error) {
+func (tf *targetFlagsImpl) overrideTarget(current Target) (Target, error) {
 	if !tf.isEmpty() {
 		if tf.gardenName != "" {
 			current = current.WithGardenName(tf.gardenName).WithProjectName("").WithSeedName("").WithShootName("")
@@ -114,7 +114,7 @@ func (tf *targetFlagsImpl) OverrideTarget(current Target) (Target, error) {
 	return current, nil
 }
 
-func (tf *targetFlagsImpl) IsTargetValid() bool {
+func (tf *targetFlagsImpl) isTargetValid() bool {
 	// garden name is always required for a complete set of flags
 	if tf.gardenName == "" {
 		return false

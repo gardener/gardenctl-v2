@@ -136,3 +136,13 @@ func callIPify(ctx context.Context, domain string) (*net.IP, error) {
 
 	return &netIP, nil
 }
+
+// WithFilesystemTargetProvider returns a copy of the factory with a fsTargetProvider
+func (f *FactoryImpl) WithFilesystemTargetProvider() Factory {
+	return &FactoryImpl{
+		GardenHomeDirectory: f.GardenHomeDirectory,
+		ConfigFile:          f.ConfigFile,
+		TargetFile:          f.TargetFile,
+		TargetProvider:      target.NewFilesystemTargetProvider(f.TargetFile),
+	}
+}

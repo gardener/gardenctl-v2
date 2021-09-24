@@ -64,9 +64,10 @@ func Execute() {
 	// allow to temporarily re-target a different cluster
 	targetFlags.AddFlags(flags)
 
-	cobra.OnInitialize(initConfig, func() {
-		registerFlagCompletions(cmd)
-	})
+	// register completion function for target flags
+	registerFlagCompletions(factory.WithFilesystemTargetProvider(), cmd)
+
+	cobra.OnInitialize(initConfig)
 
 	// any error would already be printed, so avoid doing it again here
 	if cmd.Execute() != nil {
@@ -129,29 +130,26 @@ func initConfig() {
 }
 
 // registerFlagCompletions register completion functions for cobra flags
-func registerFlagCompletions(cmd *cobra.Command) {
-	f := util.FactoryImpl{
-		GardenHomeDirectory: factory.GardenHomeDirectory,
-		ConfigFile:          factory.ConfigFile,
-		TargetFile:          factory.TargetFile,
-		TargetProvider:      nil,
-	}
-	if manager, err := f.Manager(); err != nil {
-		klog.Errorf("failed to create target manager: %v", err)
-	} else {
-		utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(f.Context(), manager, gardenFlagCompletionFunc)))
-		utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(f.Context(), manager, projectFlagCompletionFunc)))
-		utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(f.Context(), manager, seedFlagCompletionFunc)))
-		utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(f.Context(), manager, shootFlagCompletionFunc)))
-	}
+func registerFlagCompletions(f util.Factory, cmd *cobra.Command) {
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(f, gardenFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(f, projectFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(f, seedFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(f, shootFlagCompletionFunc)))
 }
 
 type cobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
 type cobraCompletionFuncWithError func(ctx context.Context, manager target.Manager) ([]string, error)
 
-func completionWrapper(ctx context.Context, manager target.Manager, completer cobraCompletionFuncWithError) cobraCompletionFunc {
+func completionWrapper(f util.Factory, completer cobraCompletionFuncWithError) cobraCompletionFunc {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		result, err := completer(ctx, manager)
+		manager, err := f.Manager()
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		result, err := completer(f.Context(), manager)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return nil, cobra.ShellCompDirectiveNoFileComp
