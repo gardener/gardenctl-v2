@@ -53,6 +53,7 @@ var _ = Describe("Completion", func() {
 		gardenClient         client.Client
 		shootClient          client.Client
 		factory              util.Factory
+		targetFlags          target.TargetFlags
 		configFile           string
 	)
 
@@ -198,6 +199,9 @@ var _ = Describe("Completion", func() {
 		// prepare command
 		factory = internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
 
+		// prepare CLI flags
+		targetFlags = target.NewTargetFlags("", "", "", "")
+
 		Expect(shootClient).NotTo(BeNil())
 		Expect(gardenClient).NotTo(BeNil())
 	})
@@ -211,7 +215,7 @@ var _ = Describe("Completion", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
-			values, err := gardenFlagCompletionFunc(factory.Context(), manager)
+			values, err := gardenFlagCompletionFunc(factory.Context(), manager, targetFlags)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{"abc", gardenName}))
 		})
@@ -222,7 +226,7 @@ var _ = Describe("Completion", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
-			values, err := projectFlagCompletionFunc(factory.Context(), manager)
+			values, err := projectFlagCompletionFunc(factory.Context(), manager, targetFlags)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testProject1.Name, testProject2.Name}))
 		})
@@ -233,7 +237,7 @@ var _ = Describe("Completion", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
-			values, err := seedFlagCompletionFunc(factory.Context(), manager)
+			values, err := seedFlagCompletionFunc(factory.Context(), manager, targetFlags)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testSeed2.Name, testSeed1.Name}))
 		})
@@ -244,7 +248,7 @@ var _ = Describe("Completion", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
-			values, err := shootFlagCompletionFunc(factory.Context(), manager)
+			values, err := shootFlagCompletionFunc(factory.Context(), manager, targetFlags)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testShoot2.Name, testShoot1.Name}))
 		})
@@ -255,7 +259,7 @@ var _ = Describe("Completion", func() {
 			factory := &util.FactoryImpl{
 				ConfigFile: configFile,
 			}
-			wrapped := completionWrapper(factory, func(ctx context.Context, manager target.Manager) ([]string, error) {
+			wrapped := completionWrapper(factory, func(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
 				return []string{"foo", "bar"}, nil
 			})
 

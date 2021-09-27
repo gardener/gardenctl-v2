@@ -34,21 +34,14 @@ type TargetProvider interface {
 	TargetWriter
 }
 
+// fsTargetProvider is a TragetProvider that
+// reads and writes from the local filesystem.
 type fsTargetProvider struct {
 	targetFile string
 }
 
 var _ TargetProvider = &fsTargetProvider{}
 
-// NewFilesystemTargetProvider returns a new Provider that
-// reads and writes from the local filesystem.
-func NewFilesystemTargetProvider(targetFile string) TargetProvider {
-	return &fsTargetProvider{
-		targetFile: targetFile,
-	}
-}
-
-// Read returns the current target.
 func (p *fsTargetProvider) Read() (Target, error) {
 	f, err := os.Open(p.targetFile)
 	if err != nil {
@@ -94,20 +87,11 @@ func (p *fsTargetProvider) Write(t Target) error {
 	return nil
 }
 
-// NewDynamicTargetProvider returns a wrapper that combines the basic
-// file-based TargetProvider with CLI flags, to allow the user
-// to change the target for individual gardenctl commands
-// on-the-fly without changing the file on disk every time.
-//
-// If no CLI flags are given, this functions identical to the
-// regular TargetProvider from NewFilesystemTargetProvider().
-//
-// Otherwise, the flags are used to augment the existing target.
-func NewDynamicTargetProvider(targetFile string, targetFlags TargetFlags) TargetProvider {
-	var delegate TargetProvider
-
-	if targetFile != "" {
-		delegate = NewFilesystemTargetProvider(targetFile)
+// NewTargetProvider returns a new TargetProvider that
+// reads and writes the current Target.
+func NewTargetProvider(targetFile string, targetFlags TargetFlags) TargetProvider {
+	delegate := &fsTargetProvider{
+		targetFile: targetFile,
 	}
 
 	if targetFlags == nil {
@@ -120,7 +104,7 @@ func NewDynamicTargetProvider(targetFile string, targetFlags TargetFlags) Target
 	}
 }
 
-// DynamicTargetProvider is a wrapper that combines the basic
+// dynamicTargetProvider is a wrapper that combines the basic
 // file-based TargetProvider with CLI flags, to allow the user
 // to change the target for individual gardenctl commands
 // on-the-fly without changing the file on disk every time.
@@ -141,34 +125,18 @@ var _ TargetProvider = &dynamicTargetProvider{}
 // otherwise.
 func (p *dynamicTargetProvider) Read() (Target, error) {
 	// user gave everything we needed
-	if p.targetFlags != nil && p.targetFlags.isTargetValid() {
+	if p.targetFlags.IsTargetValid() {
 		return p.targetFlags.ToTarget(), nil
 	}
 
-	// user didn't specify anything at all or _some_ flags; in both
-	// cases we need to read the current target from disk
-	current := NewTarget("", "", "", "")
-
-	if p.delegate != nil {
-		var err error
-
-		current, err = p.delegate.Read()
-		if err != nil {
-			return nil, err
-		}
+	// user didn't specify anything at all or _some_ flags;
+	// in both cases we need to read the current target from disk
+	current, err := p.delegate.Read()
+	if err != nil {
+		return nil, err
 	}
 
-	// user gave _some_ flags; we use those to override the current target
-	// (e.g. to quickly change a shoot while keeping garden/project names)
-	if p.targetFlags != nil {
-		// note that "deeper" levels of targets are reset, as to allow the
-		// user to "move up", e.g. when they have targeted a shoot, just
-		// specifying "--garden mygarden" should target the garden, not the same
-		// shoot on the garden mygarden.
-		return p.targetFlags.overrideTarget(current)
-	}
-
-	return current, nil
+	return p.targetFlags.OverrideTarget(current)
 }
 
 // Write takes a target and saves it permanently.

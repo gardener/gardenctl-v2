@@ -94,10 +94,8 @@ func (m *managerImpl) CurrentTarget() (Target, error) {
 func (m *managerImpl) TargetFlags() TargetFlags {
 	var tf TargetFlags
 
-	if m.targetProvider != nil {
-		if dtp, ok := m.targetProvider.(*dynamicTargetProvider); ok {
-			tf = dtp.targetFlags
-		}
+	if dtp, ok := m.targetProvider.(*dynamicTargetProvider); ok {
+		tf = dtp.targetFlags
 	}
 
 	if tf == nil {

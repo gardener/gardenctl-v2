@@ -36,7 +36,7 @@ var _ = Describe("Target Provider", func() {
 		tmpFile, err = ioutil.TempFile("", "gardenertarget*")
 		Expect(err).NotTo(HaveOccurred())
 
-		provider = target.NewFilesystemTargetProvider(tmpFile.Name())
+		provider = target.NewTargetProvider(tmpFile.Name(), nil)
 	})
 
 	AfterEach(func() {
@@ -91,7 +91,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 		tmpFile, err = ioutil.TempFile("", "gardenertarget*")
 		Expect(err).NotTo(HaveOccurred())
 
-		provider = target.NewFilesystemTargetProvider(tmpFile.Name())
+		provider = target.NewTargetProvider(tmpFile.Name(), nil)
 	})
 
 	AfterEach(func() {
@@ -107,7 +107,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 		Expect(provider.Write(dummy)).To(Succeed())
 
 		tf := target.NewTargetFlags("", "", "", "")
-		dtp := target.NewDynamicTargetProvider(tmpFile.Name(), tf)
+		dtp := target.NewTargetProvider(tmpFile.Name(), tf)
 
 		readBack, err := dtp.Read()
 		Expect(err).NotTo(HaveOccurred())
@@ -121,7 +121,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 			dummy := target.NewTarget("mygarden", "myproject", "", "myshoot")
 			Expect(provider.Write(dummy)).To(Succeed())
 
-			dtp := target.NewDynamicTargetProvider(tmpFile.Name(), tf)
+			dtp := target.NewTargetProvider(tmpFile.Name(), tf)
 
 			readBack, err := dtp.Read()
 			Expect(err).NotTo(HaveOccurred())
@@ -139,7 +139,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 			dummy := target.NewTarget("mygarden", "myproject", "", "myshoot")
 			Expect(provider.Write(dummy)).To(Succeed())
 
-			dtp := target.NewDynamicTargetProvider(tmpFile.Name(), tf)
+			dtp := target.NewTargetProvider(tmpFile.Name(), tf)
 
 			readBack, err := dtp.Read()
 			Expect(err).NotTo(HaveOccurred())
@@ -188,7 +188,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 			dummy := target.NewTarget("mygarden", "myproject", "", "myshoot")
 			Expect(provider.Write(dummy)).To(Succeed())
 
-			dtp := target.NewDynamicTargetProvider(tmpFile.Name(), tf)
+			dtp := target.NewTargetProvider(tmpFile.Name(), tf)
 
 			readBack, err := dtp.Read()
 			Expect(readBack).To(BeNil())
@@ -202,7 +202,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 		dummy := target.NewTarget("mygarden", "myproject", "", "myshoot")
 
 		tf := target.NewTargetFlags("", "", "", "")
-		dtp := target.NewDynamicTargetProvider(tmpFile.Name(), tf)
+		dtp := target.NewTargetProvider(tmpFile.Name(), tf)
 		Expect(dtp.Write(dummy)).To(Succeed())
 
 		readBack, err := provider.Read()
