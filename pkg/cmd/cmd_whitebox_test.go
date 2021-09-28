@@ -10,6 +10,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -36,6 +38,7 @@ var _ = Describe("Completion", func() {
 
 	const (
 		gardenName           = "mygarden"
+		projectName          = "myproject"
 		gardenKubeconfigFile = "/not/a/real/kubeconfig"
 		nodeHostname         = "example.host.invalid"
 	)
@@ -54,7 +57,9 @@ var _ = Describe("Completion", func() {
 		shootClient          client.Client
 		factory              util.Factory
 		targetFlags          target.TargetFlags
+		gardenDir            string
 		configFile           string
+		targetFile           string
 	)
 
 	BeforeEach(func() {
@@ -68,12 +73,19 @@ var _ = Describe("Completion", func() {
 			}},
 		}
 
-		f, err := os.CreateTemp(os.TempDir(), "gctlv2*")
+		dir, err := os.MkdirTemp(os.TempDir(), "gctlv2-*")
+		Expect(err).ToNot(HaveOccurred())
+		f, err := os.CreateTemp(dir, "gctlv2-*.yaml")
 		Expect(err).ToNot(HaveOccurred())
 		f.Close()
 
-		configFile = f.Name()
+		gardenDir = dir
+		configFile = filepath.Join(gardenDir, configName+".yaml")
+		targetFile = filepath.Join(gardenDir, targetFilename)
 		Expect(cfg.SaveToFile(configFile)).To(Succeed())
+		fsTargetProvider := target.NewTargetProvider(targetFile, nil)
+		Expect(fsTargetProvider.Write(target.NewTarget(gardenName, projectName, "", "myshoot"))).To(Succeed())
+		Expect(os.Setenv(envGardenHomeDir, gardenDir)).To(Succeed())
 
 		testProject1 = &gardencorev1beta1.Project{
 			ObjectMeta: metav1.ObjectMeta{
@@ -207,7 +219,8 @@ var _ = Describe("Completion", func() {
 	})
 
 	AfterEach(func() {
-		Expect(os.Remove(configFile)).To(Succeed())
+		Expect(os.Unsetenv(envGardenHomeDir)).To(Succeed())
+		Expect(os.RemoveAll(gardenDir)).To(Succeed())
 	})
 
 	Describe("gardenFlagCompletionFunc", func() {
@@ -266,6 +279,48 @@ var _ = Describe("Completion", func() {
 			returned, directory := wrapped(nil, nil, "f")
 			Expect(directory).To(Equal(cobra.ShellCompDirectiveNoFileComp))
 			Expect(returned).To(Equal([]string{"foo"}))
+		})
+	})
+
+	Describe("Gardenctl Command", func() {
+		It("should execute the completion command", func() {
+			factory := &util.FactoryImpl{
+				TargetFlags: targetFlags,
+			}
+			streams, _, out, _ := util.NewTestIOStreams()
+			shootName := "newshoot"
+			args := []string{
+				fmt.Sprintf("--shoot=%s", shootName),
+				"completion",
+				"zsh",
+			}
+
+			cmd := NewGardenctlCommand(factory, streams)
+			cmd.SetArgs(args)
+			Expect(cmd.Execute()).To(Succeed())
+
+			head := strings.Split(out.String(), "\n")[0]
+			Expect(head).To(Equal("#compdef _gardenctl gardenctl"))
+			Expect(factory.ConfigFile).To(Equal(configFile))
+			Expect(factory.TargetFile).To(Equal(targetFile))
+			Expect(factory.GardenHomeDirectory).To(Equal(gardenDir))
+
+			manager, err := factory.Manager()
+			Expect(err).NotTo(HaveOccurred())
+
+			tf := manager.TargetFlags()
+			Expect(tf).To(BeIdenticalTo(factory.TargetFlags))
+			Expect(tf.GardenName()).To(BeEmpty())
+			Expect(tf.ProjectName()).To(BeEmpty())
+			Expect(tf.SeedName()).To(BeEmpty())
+			Expect(tf.ShootName()).To(Equal(shootName))
+
+			current, err := manager.CurrentTarget()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(current.GardenName()).To(Equal(gardenName))
+			Expect(current.ProjectName()).To(Equal(projectName))
+			Expect(current.SeedName()).To(BeEmpty())
+			Expect(current.ShootName()).To(Equal(shootName))
 		})
 	})
 })

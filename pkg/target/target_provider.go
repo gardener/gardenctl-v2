@@ -105,7 +105,7 @@ func NewTargetProvider(targetFile string, targetFlags TargetFlags) TargetProvide
 }
 
 // dynamicTargetProvider is a wrapper that combines the basic
-// file-based TargetProvider with CLI flags, to allow the user
+// filesystem based TargetProvider with CLI flags, to allow the user
 // to change the target for individual gardenctl commands
 // on-the-fly without changing the file on disk every time.
 //
@@ -114,7 +114,9 @@ func NewTargetProvider(targetFile string, targetFlags TargetFlags) TargetProvide
 //
 // Otherwise, the flags are used to augment the existing target.
 type dynamicTargetProvider struct {
-	delegate    TargetProvider
+	// delegate must be valid a filesystem based TargetProvider (required)
+	delegate *fsTargetProvider
+	// targetFlags refers to the global target CLI flags (required)
 	targetFlags TargetFlags
 }
 

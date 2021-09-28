@@ -36,57 +36,69 @@ const (
 	targetFilename   = "target.yaml"
 )
 
-var (
-	factory = util.FactoryImpl{
-		TargetFlags: target.NewTargetFlags("", "", "", ""),
-	}
-)
-
 // Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
+// This is called by main.main(). It only needs to happen once to the root cmd.
 func Execute() {
-	ioStreams := util.NewIOStreams()
-
-	cmd := &cobra.Command{
-		Use:          "gardenctl",
-		Short:        "gardenctl is a utility to interact with Gardener installations",
-		SilenceUsage: true,
-	}
-
-	cmd.AddCommand(cmdssh.NewCmdSSH(&factory, cmdssh.NewSSHOptions(ioStreams)))
-	cmd.AddCommand(cmdtarget.NewCmdTarget(&factory, cmdtarget.NewTargetOptions(ioStreams)))
-	cmd.AddCommand(cmdversion.NewCmdVersion(&factory, cmdversion.NewVersionOptions(ioStreams)))
-
-	flags := cmd.PersistentFlags()
-	// Do not precalculate what $HOME is for the help text, because it prevents
-	// usage where the current user has no home directory (which might _just_ be
-	// the reason the user chose to specify an explicit config file).
-	flags.StringVar(&factory.ConfigFile, "config", "", fmt.Sprintf("config file (default is $HOME/%s/%s.yaml)", gardenHomeFolder, configName))
-
-	// allow to temporarily re-target a different cluster
-	factory.TargetFlags.AddFlags(flags)
-
-	// register completion function for target flags
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(&factory, gardenFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(&factory, projectFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(&factory, seedFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(&factory, shootFlagCompletionFunc)))
-
-	cobra.OnInitialize(initConfig)
-
+	cmd := NewDefaultGardenctlCommand()
 	// any error would already be printed, so avoid doing it again here
 	if cmd.Execute() != nil {
 		os.Exit(1)
 	}
 }
 
+// NewDefaultGardenctlCommand creates the `gardenctl` command with defaults
+func NewDefaultGardenctlCommand() *cobra.Command {
+	factory := util.FactoryImpl{
+		TargetFlags: target.NewTargetFlags("", "", "", ""),
+	}
+	ioStreams := util.NewIOStreams()
+
+	return NewGardenctlCommand(&factory, ioStreams)
+}
+
+// NewGardenctlCommand creates the `gardenctl` command
+func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:          "gardenctl",
+		Short:        "gardenctl is a utility to interact with Gardener installations",
+		SilenceUsage: true,
+	}
+
+	cmd.SetIn(ioStreams.In)
+	cmd.SetOut(ioStreams.Out)
+	cmd.SetErr(ioStreams.ErrOut)
+
+	// register initializers
+	cobra.OnInitialize(func() {
+		initConfig(f)
+	})
+
+	flags := cmd.PersistentFlags()
+	// Do not precalculate what $HOME is for the help text, because it prevents
+	// usage where the current user has no home directory (which might _just_ be
+	// the reason the user chose to specify an explicit config file).
+	flags.StringVar(&f.ConfigFile, "config", "", fmt.Sprintf("config file (default is $HOME/%s/%s.yaml)", gardenHomeFolder, configName))
+
+	// allow to temporarily re-target a different cluster
+	f.TargetFlags.AddFlags(flags)
+
+	registerCompletionFuncForGlobalFlags(cmd, f)
+
+	// add subcommands
+	cmd.AddCommand(cmdssh.NewCmdSSH(f, cmdssh.NewSSHOptions(ioStreams)))
+	cmd.AddCommand(cmdtarget.NewCmdTarget(f, cmdtarget.NewTargetOptions(ioStreams)))
+	cmd.AddCommand(cmdversion.NewCmdVersion(f, cmdversion.NewVersionOptions(ioStreams)))
+
+	return cmd
+}
+
 // initConfig reads in config file and ENV variables if set.
-func initConfig() {
+func initConfig(f *util.FactoryImpl) {
 	var err error
 
-	if factory.ConfigFile != "" {
+	if f.ConfigFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(factory.ConfigFile)
+		viper.SetConfigFile(f.ConfigFile)
 	} else {
 		// Find home directory.
 		home, err := homedir.Dir()
@@ -127,10 +139,17 @@ func initConfig() {
 		home = filepath.Join(home, gardenHomeFolder)
 	}
 
-	factory.ConfigFile = viper.ConfigFileUsed()
-	factory.GardenHomeDirectory = home
+	f.ConfigFile = viper.ConfigFileUsed()
+	f.GardenHomeDirectory = home
 	targetFile := filepath.Join(home, targetFilename)
-	factory.TargetFile = targetFile
+	f.TargetFile = targetFile
+}
+
+func registerCompletionFuncForGlobalFlags(cmd *cobra.Command, f *util.FactoryImpl) {
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(f, gardenFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(f, projectFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(f, seedFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(f, shootFlagCompletionFunc)))
 }
 
 type cobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)

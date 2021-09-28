@@ -50,10 +50,10 @@ type FactoryImpl struct {
 	ConfigFile string
 
 	// TargetFile is the filename where the currently active target is located.
-	// This is only used if the TargetProvider property is nil.
 	TargetFile string
 
-	// TargetFlags can be used to completely override the provider.
+	// TargetFlags can be used to completely override the target configuration
+	// stored on the filesystem via a CLI flags.
 	TargetFlags target.TargetFlags
 }
 
