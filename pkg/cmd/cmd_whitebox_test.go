@@ -39,7 +39,8 @@ var _ = Describe("Completion", func() {
 	const (
 		gardenName           = "mygarden"
 		projectName          = "myproject"
-		gardenKubeconfigFile = "/not/a/real/kubeconfig"
+		gardenKubeconfigFile = "/not/a/real/garden/kubeconfig"
+		foobarKubeconfigFile = "/not/a/real/foobar/kubeconfig"
 		nodeHostname         = "example.host.invalid"
 	)
 
@@ -51,9 +52,11 @@ var _ = Describe("Completion", func() {
 		testSeed2            *gardencorev1beta1.Seed
 		testShoot1           *gardencorev1beta1.Shoot
 		testShoot2           *gardencorev1beta1.Shoot
+		testShoot3           *gardencorev1beta1.Shoot
 		testShoot1Kubeconfig *corev1.Secret
 		testNode             *corev1.Node
 		gardenClient         client.Client
+		foobarClient         client.Client
 		shootClient          client.Client
 		factory              util.Factory
 		targetFlags          target.TargetFlags
@@ -68,16 +71,13 @@ var _ = Describe("Completion", func() {
 				Name:       gardenName,
 				Kubeconfig: gardenKubeconfigFile,
 			}, {
-				Name:       "abc",
-				Kubeconfig: gardenKubeconfigFile,
+				Name:       "foobar",
+				Kubeconfig: foobarKubeconfigFile,
 			}},
 		}
 
 		dir, err := os.MkdirTemp(os.TempDir(), "gctlv2-*")
 		Expect(err).ToNot(HaveOccurred())
-		f, err := os.CreateTemp(dir, "gctlv2-*.yaml")
-		Expect(err).ToNot(HaveOccurred())
-		f.Close()
 
 		gardenDir = dir
 		configFile = filepath.Join(gardenDir, configName+".yaml")
@@ -173,6 +173,16 @@ var _ = Describe("Completion", func() {
 			},
 		}
 
+		testShoot3 = &gardencorev1beta1.Shoot{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "other-shoot",
+				Namespace: *testProject2.Spec.Namespace,
+			},
+			Spec: gardencorev1beta1.ShootSpec{
+				SeedName: pointer.String(testSeed2.Name),
+			},
+		}
+
 		gardenClient = fakeclient.NewClientBuilder().WithObjects(
 			testProject1,
 			testProject2,
@@ -181,8 +191,15 @@ var _ = Describe("Completion", func() {
 			testSeed1Kubeconfig,
 			testShoot1,
 			testShoot2,
+			testShoot3,
 			testShoot1Kubeconfig,
 			testShoot1Keypair,
+		).Build()
+
+		foobarClient = fakeclient.NewClientBuilder().WithObjects(
+			testProject2,
+			testSeed2,
+			testShoot2,
 		).Build()
 
 		// create a fake shoot cluster with a single node in it
@@ -206,7 +223,13 @@ var _ = Describe("Completion", func() {
 		clientProvider := internalfake.NewFakeClientProvider()
 
 		// ensure the clientprovider provides the proper clients to the manager
-		clientProvider.WithClient(gardenKubeconfigFile, gardenClient)
+		clientProvider.WithClient(
+			gardenKubeconfigFile,
+			gardenClient,
+		).WithClient(
+			foobarKubeconfigFile,
+			foobarClient,
+		)
 
 		// prepare command
 		factory = internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
@@ -230,7 +253,7 @@ var _ = Describe("Completion", func() {
 
 			values, err := gardenFlagCompletionFunc(factory.Context(), manager, targetFlags)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal([]string{"abc", gardenName}))
+			Expect(values).To(Equal([]string{"foobar", gardenName}))
 		})
 	})
 
@@ -243,6 +266,16 @@ var _ = Describe("Completion", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testProject1.Name, testProject2.Name}))
 		})
+
+		It("should return some project names for foobar, alphabetically sorted", func() {
+			manager, err := factory.Manager()
+			Expect(err).NotTo(HaveOccurred())
+
+			targetFlags = target.NewTargetFlags("foobar", "", "", "")
+			values, err := projectFlagCompletionFunc(factory.Context(), manager, targetFlags)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal([]string{testProject2.Name}))
+		})
 	})
 
 	Describe("seedFlagCompletionFunc", func() {
@@ -254,6 +287,16 @@ var _ = Describe("Completion", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testSeed2.Name, testSeed1.Name}))
 		})
+
+		It("should return all seed names for foobar, alphabetically sorted", func() {
+			manager, err := factory.Manager()
+			Expect(err).NotTo(HaveOccurred())
+
+			targetFlags = target.NewTargetFlags("foobar", "", "", "")
+			values, err := seedFlagCompletionFunc(factory.Context(), manager, targetFlags)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal([]string{testSeed2.Name}))
+		})
 	})
 
 	Describe("shootFlagCompletionFunc", func() {
@@ -264,6 +307,16 @@ var _ = Describe("Completion", func() {
 			values, err := shootFlagCompletionFunc(factory.Context(), manager, targetFlags)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testShoot2.Name, testShoot1.Name}))
+		})
+
+		It("should return all shoot names for prod2, alphabetically sorted", func() {
+			manager, err := factory.Manager()
+			Expect(err).NotTo(HaveOccurred())
+
+			targetFlags = target.NewTargetFlags("", "prod2", "", "")
+			values, err := shootFlagCompletionFunc(factory.Context(), manager, targetFlags)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal([]string{testShoot3.Name}))
 		})
 	})
 
@@ -282,7 +335,7 @@ var _ = Describe("Completion", func() {
 		})
 	})
 
-	Describe("Gardenctl Command", func() {
+	Describe("Gardenctl Command Bootstrapping", func() {
 		It("should execute the completion command", func() {
 			factory := &util.FactoryImpl{
 				TargetFlags: targetFlags,
@@ -308,6 +361,7 @@ var _ = Describe("Completion", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
+			// TODO comment via By or inline
 			tf := manager.TargetFlags()
 			Expect(tf).To(BeIdenticalTo(factory.TargetFlags))
 			Expect(tf.GardenName()).To(BeEmpty())
@@ -315,6 +369,7 @@ var _ = Describe("Completion", func() {
 			Expect(tf.SeedName()).To(BeEmpty())
 			Expect(tf.ShootName()).To(Equal(shootName))
 
+			// TODO comment via By or inline
 			current, err := manager.CurrentTarget()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(current.GardenName()).To(Equal(gardenName))
