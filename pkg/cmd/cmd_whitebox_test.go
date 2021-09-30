@@ -283,7 +283,7 @@ var _ = Describe("Gardenctl command", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = projectFlagCompletionFunc(factory.Context(), manager, targetFlags)
-			Expect(err).To(MatchError(MatchRegexp("^failed to read current target:")))
+			Expect(err).To(MatchError(HavePrefix("failed to read current target:")))
 		})
 	})
 
@@ -312,7 +312,7 @@ var _ = Describe("Gardenctl command", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = seedFlagCompletionFunc(factory.Context(), manager, targetFlags)
-			Expect(err).To(MatchError(MatchRegexp("^failed to read current target:")))
+			Expect(err).To(MatchError(HavePrefix("failed to read current target:")))
 		})
 	})
 
@@ -351,7 +351,7 @@ var _ = Describe("Gardenctl command", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = shootFlagCompletionFunc(factory.Context(), manager, targetFlags)
-			Expect(err).To(MatchError(MatchRegexp("^failed to read current target:")))
+			Expect(err).To(MatchError(HavePrefix("failed to read current target:")))
 		})
 	})
 
@@ -397,7 +397,7 @@ var _ = Describe("Gardenctl command", func() {
 			Expect(directory).To(Equal(cobra.ShellCompDirectiveNoFileComp))
 			Expect(returned).To(BeNil())
 			head := strings.Split(errOut.String(), "\n")[0]
-			Expect(head).To(MatchRegexp("^failed to load config:"))
+			Expect(head).To(HavePrefix("failed to load config:"))
 		})
 	})
 
