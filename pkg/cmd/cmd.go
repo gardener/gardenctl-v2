@@ -12,8 +12,6 @@ import (
 	"os"
 	"path/filepath"
 
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-
 	"github.com/gardener/gardenctl-v2/internal/util"
 	cmdssh "github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
@@ -23,6 +21,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog/v2"
 )
 

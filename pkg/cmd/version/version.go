@@ -9,9 +9,9 @@ package version
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"

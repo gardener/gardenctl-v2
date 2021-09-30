@@ -8,10 +8,10 @@ package target_test
 
 import (
 	"github.com/gardener/gardenctl-v2/pkg/target"
-	"github.com/spf13/pflag"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/pflag"
 )
 
 var _ = Describe("Target Flags", func() {
