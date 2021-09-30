@@ -427,7 +427,7 @@ var _ = Describe("Gardenctl command", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
-			// TODO comment via By or inline
+			// check target flags values
 			tf := manager.TargetFlags()
 			Expect(tf).To(BeIdenticalTo(factory.TargetFlags))
 			Expect(tf.GardenName()).To(BeEmpty())
@@ -435,7 +435,7 @@ var _ = Describe("Gardenctl command", func() {
 			Expect(tf.SeedName()).To(BeEmpty())
 			Expect(tf.ShootName()).To(Equal(shootName))
 
-			// TODO comment via By or inline
+			// check current target values
 			current, err := manager.CurrentTarget()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(current.GardenName()).To(Equal(gardenName))
