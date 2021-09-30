@@ -188,40 +188,12 @@ func completionWrapper(f *util.FactoryImpl, ioStreams util.IOStreams, completer 
 }
 
 func getCurrentTarget(tf target.TargetFlags, manager target.Manager) (target.Target, error) {
+	// any --garden flag has precedence over the config file
 	if tf.GardenName() != "" {
 		return target.NewTarget(tf.GardenName(), "", "", ""), nil
 	}
 
-	return manager.CurrentTarget()
-}
-
-func gardenFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
-	return util.GardenNames(manager)
-}
-
-func projectFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
-	// any --garden flag has precedence over the config file
-	currentTarget, err := getCurrentTarget(tf, manager)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read current target: %w", err)
-	}
-
-	return util.ProjectNamesForTarget(ctx, manager, currentTarget)
-}
-
-func seedFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
-	// any --garden flag has precedence over the config file
-	currentTarget, err := getCurrentTarget(tf, manager)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read current target: %w", err)
-	}
-
-	return util.SeedNamesForTarget(ctx, manager, currentTarget)
-}
-
-func shootFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
-	// errors are okay here, as we patch the target anyway
-	currentTarget, err := getCurrentTarget(tf, manager)
+	currentTarget, err := manager.CurrentTarget()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read current target: %w", err)
 	}
@@ -230,6 +202,37 @@ func shootFlagCompletionFunc(ctx context.Context, manager target.Manager, tf tar
 		currentTarget = currentTarget.WithProjectName(tf.ProjectName()).WithSeedName("")
 	} else if tf.SeedName() != "" {
 		currentTarget = currentTarget.WithSeedName(tf.SeedName()).WithProjectName("")
+	}
+
+	return currentTarget, nil
+}
+
+func gardenFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
+	return util.GardenNames(manager)
+}
+
+func projectFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
+	currentTarget, err := getCurrentTarget(tf, manager)
+	if err != nil {
+		return nil, err
+	}
+
+	return util.ProjectNamesForTarget(ctx, manager, currentTarget)
+}
+
+func seedFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
+	currentTarget, err := getCurrentTarget(tf, manager)
+	if err != nil {
+		return nil, err
+	}
+
+	return util.SeedNamesForTarget(ctx, manager, currentTarget)
+}
+
+func shootFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
+	currentTarget, err := getCurrentTarget(tf, manager)
+	if err != nil {
+		return nil, err
 	}
 
 	return util.ShootNamesForTarget(ctx, manager, currentTarget)
