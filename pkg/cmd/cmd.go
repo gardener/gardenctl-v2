@@ -82,7 +82,7 @@ func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.C
 	// allow to temporarily re-target a different cluster
 	f.TargetFlags.AddFlags(flags)
 
-	registerCompletionFuncForGlobalFlags(cmd, f)
+	registerCompletionFuncForGlobalFlags(cmd, f, ioStreams)
 
 	// add subcommands
 	cmd.AddCommand(cmdssh.NewCmdSSH(f, cmdssh.NewSSHOptions(ioStreams)))
@@ -145,17 +145,17 @@ func initConfig(f *util.FactoryImpl) {
 	f.TargetFile = targetFile
 }
 
-func registerCompletionFuncForGlobalFlags(cmd *cobra.Command, f *util.FactoryImpl) {
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(f, gardenFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(f, projectFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(f, seedFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(f, shootFlagCompletionFunc)))
+func registerCompletionFuncForGlobalFlags(cmd *cobra.Command, f *util.FactoryImpl, ioStreams util.IOStreams) {
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(f, ioStreams, gardenFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(f, ioStreams, projectFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(f, ioStreams, seedFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(f, ioStreams, shootFlagCompletionFunc)))
 }
 
 type cobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
 type cobraCompletionFuncWithError func(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error)
 
-func completionWrapper(f *util.FactoryImpl, completer cobraCompletionFuncWithError) cobraCompletionFunc {
+func completionWrapper(f *util.FactoryImpl, ioStreams util.IOStreams, completer cobraCompletionFuncWithError) cobraCompletionFunc {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		tf := f.TargetFlags
 
@@ -173,18 +173,26 @@ func completionWrapper(f *util.FactoryImpl, completer cobraCompletionFuncWithErr
 		manager, err := f.WithoutTargetFlags().Manager()
 
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
+			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
 		result, err := completer(f.Context(), manager, tf)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
+			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
 		return util.FilterStringsByPrefix(toComplete, result), cobra.ShellCompDirectiveNoFileComp
 	}
+}
+
+func getCurrentTarget(tf target.TargetFlags, manager target.Manager) (target.Target, error) {
+	if tf.GardenName() != "" {
+		return target.NewTarget(tf.GardenName(), "", "", ""), nil
+	}
+
+	return manager.CurrentTarget()
 }
 
 func gardenFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
@@ -193,17 +201,9 @@ func gardenFlagCompletionFunc(ctx context.Context, manager target.Manager, tf ta
 
 func projectFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
 	// any --garden flag has precedence over the config file
-	var currentTarget target.Target
-
-	if tf.GardenName() != "" {
-		currentTarget = target.NewTarget(tf.GardenName(), "", "", "")
-	} else {
-		var err error
-
-		currentTarget, err = manager.CurrentTarget()
-		if err != nil {
-			return nil, fmt.Errorf("failed to read current target: %w", err)
-		}
+	currentTarget, err := getCurrentTarget(tf, manager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read current target: %w", err)
 	}
 
 	return util.ProjectNamesForTarget(ctx, manager, currentTarget)
@@ -211,16 +211,9 @@ func projectFlagCompletionFunc(ctx context.Context, manager target.Manager, tf t
 
 func seedFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
 	// any --garden flag has precedence over the config file
-	var currentTarget target.Target
-
-	if tf.GardenName() != "" {
-		currentTarget = target.NewTarget(tf.GardenName(), "", "", "")
-	} else {
-		var err error
-		currentTarget, err = manager.CurrentTarget()
-		if err != nil {
-			return nil, fmt.Errorf("failed to read current target: %w", err)
-		}
+	currentTarget, err := getCurrentTarget(tf, manager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read current target: %w", err)
 	}
 
 	return util.SeedNamesForTarget(ctx, manager, currentTarget)
@@ -228,10 +221,9 @@ func seedFlagCompletionFunc(ctx context.Context, manager target.Manager, tf targ
 
 func shootFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
 	// errors are okay here, as we patch the target anyway
-	currentTarget, _ := manager.CurrentTarget()
-
-	if tf.GardenName() != "" {
-		currentTarget = currentTarget.WithGardenName(tf.GardenName())
+	currentTarget, err := getCurrentTarget(tf, manager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read current target: %w", err)
 	}
 
 	if tf.ProjectName() != "" {

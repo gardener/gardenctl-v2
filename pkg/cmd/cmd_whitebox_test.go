@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,7 +33,7 @@ import (
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var _ = Describe("Completion", func() {
+var _ = Describe("Gardenctl command", func() {
 	utilruntime.Must(gardencorev1beta1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(operationsv1alpha1.AddToScheme(scheme.Scheme))
 
@@ -179,7 +180,7 @@ var _ = Describe("Completion", func() {
 				Namespace: *testProject2.Spec.Namespace,
 			},
 			Spec: gardencorev1beta1.ShootSpec{
-				SeedName: pointer.String(testSeed2.Name),
+				SeedName: pointer.String(testSeed1.Name),
 			},
 		}
 
@@ -246,7 +247,7 @@ var _ = Describe("Completion", func() {
 		Expect(os.RemoveAll(gardenDir)).To(Succeed())
 	})
 
-	Describe("gardenFlagCompletionFunc", func() {
+	Describe("Complete garden flag values", func() {
 		It("should return all garden names, alphabetically sorted", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
@@ -257,8 +258,8 @@ var _ = Describe("Completion", func() {
 		})
 	})
 
-	Describe("projectFlagCompletionFunc", func() {
-		It("should return all project names, alphabetically sorted", func() {
+	Describe("Complete project flag values", func() {
+		It("should return all project names for first garden, alphabetically sorted", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -267,7 +268,7 @@ var _ = Describe("Completion", func() {
 			Expect(values).To(Equal([]string{testProject1.Name, testProject2.Name}))
 		})
 
-		It("should return some project names for foobar, alphabetically sorted", func() {
+		It("should return all project names for second garden, alphabetically sorted", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -276,10 +277,18 @@ var _ = Describe("Completion", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testProject2.Name}))
 		})
+
+		It("should fail when no target is defined", func() {
+			manager, err := target.NewManager(cfg, internalfake.NewFakeTargetProvider(nil), nil, nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = projectFlagCompletionFunc(factory.Context(), manager, targetFlags)
+			Expect(err).To(MatchError(MatchRegexp("^failed to read current target:")))
+		})
 	})
 
-	Describe("seedFlagCompletionFunc", func() {
-		It("should return all seed names, alphabetically sorted", func() {
+	Describe("Complete seed flag values", func() {
+		It("should return all seed names for first garden, alphabetically sorted", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -288,7 +297,7 @@ var _ = Describe("Completion", func() {
 			Expect(values).To(Equal([]string{testSeed2.Name, testSeed1.Name}))
 		})
 
-		It("should return all seed names for foobar, alphabetically sorted", func() {
+		It("should return all seed names for second garden, alphabetically sorted", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -297,10 +306,18 @@ var _ = Describe("Completion", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testSeed2.Name}))
 		})
+
+		It("should fail when no target is defined", func() {
+			manager, err := target.NewManager(cfg, internalfake.NewFakeTargetProvider(nil), nil, nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = seedFlagCompletionFunc(factory.Context(), manager, targetFlags)
+			Expect(err).To(MatchError(MatchRegexp("^failed to read current target:")))
+		})
 	})
 
-	Describe("shootFlagCompletionFunc", func() {
-		It("should return all shoot names, alphabetically sorted", func() {
+	Describe("Complete shoot flag values", func() {
+		It("should return all shoot names for first project, alphabetically sorted", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -309,7 +326,7 @@ var _ = Describe("Completion", func() {
 			Expect(values).To(Equal([]string{testShoot2.Name, testShoot1.Name}))
 		})
 
-		It("should return all shoot names for prod2, alphabetically sorted", func() {
+		It("should return all shoot names for second project, alphabetically sorted", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -318,14 +335,33 @@ var _ = Describe("Completion", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testShoot3.Name}))
 		})
+
+		It("should return all shoot names for first seed, alphabetically sorted", func() {
+			manager, err := factory.Manager()
+			Expect(err).NotTo(HaveOccurred())
+
+			targetFlags = target.NewTargetFlags("", "", testSeed1.Name, "")
+			values, err := shootFlagCompletionFunc(factory.Context(), manager, targetFlags)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal([]string{testShoot2.Name, testShoot3.Name, testShoot1.Name}))
+		})
+
+		It("should fail when no target is defined", func() {
+			manager, err := target.NewManager(cfg, internalfake.NewFakeTargetProvider(nil), nil, nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = shootFlagCompletionFunc(factory.Context(), manager, targetFlags)
+			Expect(err).To(MatchError(MatchRegexp("^failed to read current target:")))
+		})
 	})
 
-	Describe("completionWrapper", func() {
+	Describe("Wrapping completion functions", func() {
 		It("should respect the prefix", func() {
 			factory := &util.FactoryImpl{
 				ConfigFile: configFile,
 			}
-			wrapped := completionWrapper(factory, func(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
+			streams, _, _, _ := util.NewTestIOStreams()
+			wrapped := completionWrapper(factory, streams, func(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
 				return []string{"foo", "bar"}, nil
 			})
 
@@ -333,10 +369,40 @@ var _ = Describe("Completion", func() {
 			Expect(directory).To(Equal(cobra.ShellCompDirectiveNoFileComp))
 			Expect(returned).To(Equal([]string{"foo"}))
 		})
+
+		It("should fail when executing the completer", func() {
+			factory := &util.FactoryImpl{
+				ConfigFile: configFile,
+			}
+			streams, _, _, errOut := util.NewTestIOStreams()
+			wrapped := completionWrapper(factory, streams, func(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
+				return nil, errors.New("completion failed")
+			})
+
+			returned, directory := wrapped(nil, nil, "f")
+			Expect(directory).To(Equal(cobra.ShellCompDirectiveNoFileComp))
+			Expect(returned).To(BeNil())
+			head := strings.Split(errOut.String(), "\n")[0]
+			Expect(head).To(Equal("completion failed"))
+		})
+
+		It("should fail when loading the config", func() {
+			factory := &util.FactoryImpl{}
+			streams, _, _, errOut := util.NewTestIOStreams()
+			wrapped := completionWrapper(factory, streams, func(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
+				return []string{"foo", "bar"}, nil
+			})
+
+			returned, directory := wrapped(nil, nil, "f")
+			Expect(directory).To(Equal(cobra.ShellCompDirectiveNoFileComp))
+			Expect(returned).To(BeNil())
+			head := strings.Split(errOut.String(), "\n")[0]
+			Expect(head).To(MatchRegexp("^failed to load config:"))
+		})
 	})
 
-	Describe("Gardenctl Command Bootstrapping", func() {
-		It("should execute the completion command", func() {
+	Context("when running the completion command", func() {
+		It("should initialize command and factory correctly", func() {
 			factory := &util.FactoryImpl{
 				TargetFlags: targetFlags,
 			}
