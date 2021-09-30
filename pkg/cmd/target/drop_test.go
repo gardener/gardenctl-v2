@@ -32,7 +32,7 @@ var _ = Describe("Command", func() {
 	It("should reject bad options", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
 		o := cmdtarget.NewDropOptions(streams)
-		cmd := cmdtarget.NewCmdDrop(&util.FactoryImpl{}, o, &target.DynamicTargetProvider{})
+		cmd := cmdtarget.NewCmdDrop(&util.FactoryImpl{}, o)
 
 		Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
 	})
@@ -49,7 +49,7 @@ var _ = Describe("Command", func() {
 		}
 		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget(gardenName, "", "", ""))
 		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
-		cmd := cmdtarget.NewCmdDrop(factory, cmdtarget.NewDropOptions(streams), &target.DynamicTargetProvider{})
+		cmd := cmdtarget.NewCmdDrop(factory, cmdtarget.NewDropOptions(streams))
 
 		Expect(cmd.RunE(cmd, []string{"garden"})).To(Succeed())
 		Expect(out.String()).To(ContainSubstring("Successfully dropped targeted garden %q\n", gardenName))
@@ -93,7 +93,7 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := cmdtarget.NewCmdDrop(factory, cmdtarget.NewDropOptions(streams), &target.DynamicTargetProvider{})
+		cmd := cmdtarget.NewCmdDrop(factory, cmdtarget.NewDropOptions(streams))
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"project"})).To(Succeed())
@@ -142,7 +142,7 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := cmdtarget.NewCmdDrop(factory, cmdtarget.NewDropOptions(streams), &target.DynamicTargetProvider{})
+		cmd := cmdtarget.NewCmdDrop(factory, cmdtarget.NewDropOptions(streams))
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"seed"})).To(Succeed())
@@ -197,7 +197,7 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := cmdtarget.NewCmdDrop(factory, cmdtarget.NewDropOptions(streams), &target.DynamicTargetProvider{})
+		cmd := cmdtarget.NewCmdDrop(factory, cmdtarget.NewDropOptions(streams))
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"shoot"})).To(Succeed())

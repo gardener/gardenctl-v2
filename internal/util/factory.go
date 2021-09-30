@@ -50,12 +50,11 @@ type FactoryImpl struct {
 	ConfigFile string
 
 	// TargetFile is the filename where the currently active target is located.
-	// This is only used if the TargetProvider property is nil.
 	TargetFile string
 
-	// TargetProvider can be used to completely override the provider. In this
-	// case, TargetFile is not used by the factory.
-	TargetProvider target.TargetProvider
+	// TargetFlags can be used to completely override the target configuration
+	// stored on the filesystem via a CLI flags.
+	TargetFlags target.TargetFlags
 }
 
 var _ Factory = &FactoryImpl{}
@@ -70,11 +69,7 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	targetProvider := f.TargetProvider
-	if targetProvider == nil {
-		targetProvider = target.NewFilesystemTargetProvider(f.TargetFile)
-	}
-
+	targetProvider := target.NewTargetProvider(f.TargetFile, f.TargetFlags)
 	kubeconfigCache := target.NewFilesystemKubeconfigCache(filepath.Join(f.GardenHomeDirectory, "cache", "kubeconfigs"))
 	clientProvider := target.NewClientProvider()
 
@@ -135,4 +130,14 @@ func callIPify(ctx context.Context, domain string) (*net.IP, error) {
 	}
 
 	return &netIP, nil
+}
+
+// WithoutTargetFlags returns a copy of the factory without target flags
+func (f *FactoryImpl) WithoutTargetFlags() Factory {
+	return &FactoryImpl{
+		GardenHomeDirectory: f.GardenHomeDirectory,
+		ConfigFile:          f.ConfigFile,
+		TargetFile:          f.TargetFile,
+		TargetFlags:         nil,
+	}
 }

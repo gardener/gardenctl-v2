@@ -6,38 +6,42 @@ SPDX-License-Identifier: Apache-2.0
 package target
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
 	"gopkg.in/yaml.v3"
 )
 
-// TargetProvider can read and write targets.
+// TargetReader can read targets.
 //nolint
-type TargetProvider interface {
+type TargetReader interface {
 	// Read returns the current target. If no target exists yet, a default
 	// (empty) target is returned.
 	Read() (Target, error)
+}
+
+// TargetWriter can write targets.
+//nolint
+type TargetWriter interface {
 	// Write takes a target and saves it permanently.
 	Write(t Target) error
 }
 
+// TargetProvider can read and write targets.
+//nolint
+type TargetProvider interface {
+	TargetReader
+	TargetWriter
+}
+
+// fsTargetProvider is a TragetProvider that
+// reads and writes from the local filesystem.
 type fsTargetProvider struct {
 	targetFile string
 }
 
 var _ TargetProvider = &fsTargetProvider{}
 
-// NewFilesystemTargetProvider returns a new Provider that
-// reads and writes from the local filesystem.
-func NewFilesystemTargetProvider(targetFile string) TargetProvider {
-	return &fsTargetProvider{
-		targetFile: targetFile,
-	}
-}
-
-// Read returns the current target.
 func (p *fsTargetProvider) Read() (Target, error) {
 	f, err := os.Open(p.targetFile)
 	if err != nil {
@@ -83,8 +87,25 @@ func (p *fsTargetProvider) Write(t Target) error {
 	return nil
 }
 
-// DynamicTargetProvider is a wrapper that combines the basic
-// file-based TargetProvider with CLI flags, to allow the user
+// NewTargetProvider returns a new TargetProvider that
+// reads and writes the current Target.
+func NewTargetProvider(targetFile string, targetFlags TargetFlags) TargetProvider {
+	delegate := &fsTargetProvider{
+		targetFile: targetFile,
+	}
+
+	if targetFlags == nil {
+		return delegate
+	}
+
+	return &dynamicTargetProvider{
+		delegate:    delegate,
+		targetFlags: targetFlags,
+	}
+}
+
+// dynamicTargetProvider is a wrapper that combines the basic
+// filesystem based TargetProvider with CLI flags, to allow the user
 // to change the target for individual gardenctl commands
 // on-the-fly without changing the file on disk every time.
 //
@@ -92,99 +113,35 @@ func (p *fsTargetProvider) Write(t Target) error {
 // regular TargetProvider from NewFilesystemTargetProvider().
 //
 // Otherwise, the flags are used to augment the existing target.
-type DynamicTargetProvider struct {
-	// TargetFile is the file where the target is read from / written to
-	// when no CLI flags override the targeting. If this is empty, no file
-	// will be loaded as a fallback.
-	TargetFile string
-
-	// GardenNameFlag is the value that should be tied to a cobra flag.
-	GardenNameFlag string
-	// ProjectNameFlag is the value that should be tied to a cobra flag.
-	ProjectNameFlag string
-	// SeedNameFlag is the value that should be tied to a cobra flag.
-	SeedNameFlag string
-	// ShootNameFlag is the value that should be tied to a cobra flag.
-	ShootNameFlag string
+type dynamicTargetProvider struct {
+	// delegate must be valid a filesystem based TargetProvider (required)
+	delegate *fsTargetProvider
+	// targetFlags refers to the global target CLI flags (required)
+	targetFlags TargetFlags
 }
 
-// hasCLIFlags returns true if _any_ of the *Flag properties are not empty.
-func (p *DynamicTargetProvider) hasCLIFlags() bool {
-	return p.GardenNameFlag != "" || p.ProjectNameFlag != "" || p.SeedNameFlag != "" || p.ShootNameFlag != ""
-}
-
-// hasCompleteCLIFlags returns true if the set of given CLI flags is enough
-// to create a meaningful target. For example, if only the SeedNameFlag is
-// given, false is returned because for targeting a seed, the GardenNameFlag
-// must also be given. If ShootNameFlag and GardenNameFlag are set, false is
-// returned because either project or seed have to be given as well.
-func (p *DynamicTargetProvider) hasCompleteCLIFlags() bool {
-	// garden name is always required for a complete set of flags
-	if p.GardenNameFlag == "" {
-		return false
-	}
-
-	return NewTarget(p.GardenNameFlag, p.ProjectNameFlag, p.SeedNameFlag, p.ShootNameFlag).Validate() == nil
-}
+var _ TargetProvider = &dynamicTargetProvider{}
 
 // Read returns the current target from the TargetFile if no CLI
 // flags were given, and tries to construct a meaningful target
 // otherwise.
-func (p *DynamicTargetProvider) Read() (Target, error) {
+func (p *dynamicTargetProvider) Read() (Target, error) {
 	// user gave everything we needed
-	if p.hasCompleteCLIFlags() {
-		return NewTarget(p.GardenNameFlag, p.ProjectNameFlag, p.SeedNameFlag, p.ShootNameFlag), nil
+	if p.targetFlags.IsTargetValid() {
+		return p.targetFlags.ToTarget(), nil
 	}
 
-	// user didn't specify anything at all or _some_ flags; in both
-	// cases we need to read the current target from disk
-	current := NewTarget("", "", "", "")
-
-	if p.TargetFile != "" {
-		var err error
-
-		current, err = NewFilesystemTargetProvider(p.TargetFile).Read()
-		if err != nil {
-			return nil, err
-		}
+	// user didn't specify anything at all or _some_ flags;
+	// in both cases we need to read the current target from disk
+	current, err := p.delegate.Read()
+	if err != nil {
+		return nil, err
 	}
 
-	// user gave _some_ flags; we use those to override the current target
-	// (e.g. to quickly change a shoot while keeping garden/project names)
-	if p.hasCLIFlags() {
-		// note that "deeper" levels of targets are reset, as to allow the
-		// user to "move up", e.g. when they have targeted a shoot, just
-		// specifying "--garden mygarden" should target the garden, not the same
-		// shoot on the garden mygarden.
-		if p.GardenNameFlag != "" {
-			current = current.WithGardenName(p.GardenNameFlag).WithProjectName("").WithSeedName("").WithShootName("")
-		}
-
-		if p.ProjectNameFlag != "" && p.SeedNameFlag != "" {
-			return nil, errors.New("cannot specify --project and --seed at the same time")
-		}
-
-		if p.ProjectNameFlag != "" {
-			current = current.WithProjectName(p.ProjectNameFlag).WithSeedName("").WithShootName("")
-		}
-
-		if p.SeedNameFlag != "" {
-			current = current.WithSeedName(p.SeedNameFlag).WithProjectName("").WithShootName("")
-		}
-
-		if p.ShootNameFlag != "" {
-			current = current.WithShootName(p.ShootNameFlag)
-		}
-
-		if err := current.Validate(); err != nil {
-			return nil, fmt.Errorf("invalid target flags: %w", err)
-		}
-	}
-
-	return current, nil
+	return p.targetFlags.OverrideTarget(current)
 }
 
 // Write takes a target and saves it permanently.
-func (p *DynamicTargetProvider) Write(t Target) error {
-	return NewFilesystemTargetProvider(p.TargetFile).Write(t)
+func (p *dynamicTargetProvider) Write(t Target) error {
+	return p.delegate.Write(t)
 }

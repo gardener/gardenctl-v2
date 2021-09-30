@@ -35,59 +35,69 @@ const (
 	targetFilename   = "target.yaml"
 )
 
-var (
-	targetProvider = &target.DynamicTargetProvider{}
-	factory        = util.FactoryImpl{
-		TargetProvider: targetProvider,
-	}
-)
-
 // Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
+// This is called by main.main(). It only needs to happen once to the root cmd.
 func Execute() {
+	cmd := NewDefaultGardenctlCommand()
+	// any error would already be printed, so avoid doing it again here
+	if cmd.Execute() != nil {
+		os.Exit(1)
+	}
+}
+
+// NewDefaultGardenctlCommand creates the `gardenctl` command with defaults
+func NewDefaultGardenctlCommand() *cobra.Command {
+	factory := util.FactoryImpl{
+		TargetFlags: target.NewTargetFlags("", "", "", ""),
+	}
 	ioStreams := util.NewIOStreams()
 
-	rootCmd := &cobra.Command{
+	return NewGardenctlCommand(&factory, ioStreams)
+}
+
+// NewGardenctlCommand creates the `gardenctl` command
+func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.Command {
+	cmd := &cobra.Command{
 		Use:          "gardenctl",
 		Short:        "gardenctl is a utility to interact with Gardener installations",
 		SilenceUsage: true,
 	}
 
-	rootCmd.AddCommand(cmdssh.NewCmdSSH(&factory, cmdssh.NewSSHOptions(ioStreams)))
-	rootCmd.AddCommand(cmdtarget.NewCmdTarget(&factory, cmdtarget.NewTargetOptions(ioStreams), targetProvider))
-	rootCmd.AddCommand(cmdversion.NewCmdVersion(&factory, cmdversion.NewVersionOptions(ioStreams)))
+	cmd.SetIn(ioStreams.In)
+	cmd.SetOut(ioStreams.Out)
+	cmd.SetErr(ioStreams.ErrOut)
 
+	// register initializers
+	cobra.OnInitialize(func() {
+		initConfig(f)
+	})
+
+	flags := cmd.PersistentFlags()
 	// Do not precalculate what $HOME is for the help text, because it prevents
 	// usage where the current user has no home directory (which might _just_ be
 	// the reason the user chose to specify an explicit config file).
-	rootCmd.PersistentFlags().StringVar(&factory.ConfigFile, "config", "", fmt.Sprintf("config file (default is $HOME/%s/%s.yaml)", gardenHomeFolder, configName))
+	flags.StringVar(&f.ConfigFile, "config", "", fmt.Sprintf("config file (default is $HOME/%s/%s.yaml)", gardenHomeFolder, configName))
 
 	// allow to temporarily re-target a different cluster
-	rootCmd.PersistentFlags().StringVar(&targetProvider.GardenNameFlag, "garden", "", "target the given garden cluster")
-	rootCmd.PersistentFlags().StringVar(&targetProvider.ProjectNameFlag, "project", "", "target the given project")
-	rootCmd.PersistentFlags().StringVar(&targetProvider.SeedNameFlag, "seed", "", "target the given seed cluster")
-	rootCmd.PersistentFlags().StringVar(&targetProvider.ShootNameFlag, "shoot", "", "target the given shoot cluster")
+	f.TargetFlags.AddFlags(flags)
 
-	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("garden", completionWrapper(&factory, gardenFlagCompletionFunc)))
-	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("project", completionWrapper(&factory, projectFlagCompletionFunc)))
-	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("seed", completionWrapper(&factory, seedFlagCompletionFunc)))
-	utilruntime.Must(rootCmd.RegisterFlagCompletionFunc("shoot", completionWrapper(&factory, shootFlagCompletionFunc)))
+	registerCompletionFuncForGlobalFlags(cmd, f, ioStreams)
 
-	cobra.OnInitialize(initConfig)
+	// add subcommands
+	cmd.AddCommand(cmdssh.NewCmdSSH(f, cmdssh.NewSSHOptions(ioStreams)))
+	cmd.AddCommand(cmdtarget.NewCmdTarget(f, cmdtarget.NewTargetOptions(ioStreams)))
+	cmd.AddCommand(cmdversion.NewCmdVersion(f, cmdversion.NewVersionOptions(ioStreams)))
 
-	// any error would already be printed, so avoid doing it again here
-	if rootCmd.Execute() != nil {
-		os.Exit(1)
-	}
+	return cmd
 }
 
 // initConfig reads in config file and ENV variables if set.
-func initConfig() {
+func initConfig(f *util.FactoryImpl) {
 	var err error
 
-	if factory.ConfigFile != "" {
+	if f.ConfigFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(factory.ConfigFile)
+		viper.SetConfigFile(f.ConfigFile)
 	} else {
 		// Find home directory.
 		home, err := homedir.Dir()
@@ -128,17 +138,27 @@ func initConfig() {
 		home = filepath.Join(home, gardenHomeFolder)
 	}
 
-	factory.ConfigFile = viper.ConfigFileUsed()
-	targetProvider.TargetFile = filepath.Join(home, targetFilename)
-	factory.GardenHomeDirectory = home
+	f.ConfigFile = viper.ConfigFileUsed()
+	f.GardenHomeDirectory = home
+	targetFile := filepath.Join(home, targetFilename)
+	f.TargetFile = targetFile
+}
+
+func registerCompletionFuncForGlobalFlags(cmd *cobra.Command, f *util.FactoryImpl, ioStreams util.IOStreams) {
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(f, ioStreams, gardenFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(f, ioStreams, projectFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(f, ioStreams, seedFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(f, ioStreams, shootFlagCompletionFunc)))
 }
 
 type cobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
-type cobraCompletionFuncWithError func(ctx context.Context, manager target.Manager) ([]string, error)
+type cobraCompletionFuncWithError func(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error)
 
-func completionWrapper(f *util.FactoryImpl, completer cobraCompletionFuncWithError) cobraCompletionFunc {
+func completionWrapper(f *util.FactoryImpl, ioStreams util.IOStreams, completer cobraCompletionFuncWithError) cobraCompletionFunc {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		// By default, the factory will provide a target manager that uses the DynamicTargetProvider (DTP)
+		tf := f.TargetFlags
+
+		// By default, the factory will provide a target manager that uses the dynamicTargetProvider (DTP)
 		// implementation, i.e. is based on the file just as much as the CLI flags.
 		// The DTP tries to allow users to "move up", i.e. when they already targeted a shoot, just adding
 		// "--garden foo" should not just change the used garden cluster, but _target_ the garden (instead
@@ -147,19 +167,18 @@ func completionWrapper(f *util.FactoryImpl, completer cobraCompletionFuncWithErr
 		// "user wants to target the garden" and will therefore throw away the project/seed information.
 		// Project and seed information however are important for the completion functions.
 		//
-		// To work around this, all completion functions use the regular filesystem based target provider.
-		f.TargetFile = targetProvider.TargetFile
-		f.TargetProvider = nil
+		// To work around this, all completion functions use a manager with a regular filesystem based
+		// target provider without considering the given target flags.
+		manager, err := f.WithoutTargetFlags().Manager()
 
-		manager, err := f.Manager()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
+			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
-		result, err := completer(f.Context(), manager)
+		result, err := completer(f.Context(), manager, tf)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
+			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
@@ -167,57 +186,52 @@ func completionWrapper(f *util.FactoryImpl, completer cobraCompletionFuncWithErr
 	}
 }
 
-func gardenFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
+func getCurrentTarget(tf target.TargetFlags, manager target.Manager) (target.Target, error) {
+	// any --garden flag has precedence over the config file
+	if tf.GardenName() != "" {
+		return target.NewTarget(tf.GardenName(), "", "", ""), nil
+	}
+
+	currentTarget, err := manager.CurrentTarget()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read current target: %w", err)
+	}
+
+	if tf.ProjectName() != "" {
+		currentTarget = currentTarget.WithProjectName(tf.ProjectName()).WithSeedName("")
+	} else if tf.SeedName() != "" {
+		currentTarget = currentTarget.WithSeedName(tf.SeedName()).WithProjectName("")
+	}
+
+	return currentTarget, nil
+}
+
+func gardenFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
 	return util.GardenNames(manager)
 }
 
-func projectFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
-	// any --garden flag has precedence over the config file
-	var currentTarget target.Target
-
-	if targetProvider.GardenNameFlag != "" {
-		currentTarget = target.NewTarget(targetProvider.GardenNameFlag, "", "", "")
-	} else {
-		var err error
-
-		currentTarget, err = manager.CurrentTarget()
-		if err != nil {
-			return nil, fmt.Errorf("failed to read current target: %w", err)
-		}
+func projectFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
+	currentTarget, err := getCurrentTarget(tf, manager)
+	if err != nil {
+		return nil, err
 	}
 
 	return util.ProjectNamesForTarget(ctx, manager, currentTarget)
 }
 
-func seedFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
-	// any --garden flag has precedence over the config file
-	var currentTarget target.Target
-
-	if targetProvider.GardenNameFlag != "" {
-		currentTarget = target.NewTarget(targetProvider.GardenNameFlag, "", "", "")
-	} else {
-		var err error
-		currentTarget, err = manager.CurrentTarget()
-		if err != nil {
-			return nil, fmt.Errorf("failed to read current target: %w", err)
-		}
+func seedFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
+	currentTarget, err := getCurrentTarget(tf, manager)
+	if err != nil {
+		return nil, err
 	}
 
 	return util.SeedNamesForTarget(ctx, manager, currentTarget)
 }
 
-func shootFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
-	// errors are okay here, as we patch the target anyway
-	currentTarget, _ := manager.CurrentTarget()
-
-	if targetProvider.GardenNameFlag != "" {
-		currentTarget = currentTarget.WithGardenName(targetProvider.GardenNameFlag)
-	}
-
-	if targetProvider.ProjectNameFlag != "" {
-		currentTarget = currentTarget.WithProjectName(targetProvider.ProjectNameFlag).WithSeedName("")
-	} else if targetProvider.SeedNameFlag != "" {
-		currentTarget = currentTarget.WithSeedName(targetProvider.SeedNameFlag).WithProjectName("")
+func shootFlagCompletionFunc(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
+	currentTarget, err := getCurrentTarget(tf, manager)
+	if err != nil {
+		return nil, err
 	}
 
 	return util.ShootNamesForTarget(ctx, manager, currentTarget)

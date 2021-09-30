@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestCommand(t *testing.T) {
+func TestGardenctlCommand(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Root Command Test Suite")
+	RunSpecs(t, "Gardenctl Command Test Suite")
 }

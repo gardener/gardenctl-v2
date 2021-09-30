@@ -12,6 +12,7 @@ import (
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
+
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -31,7 +32,7 @@ var _ = Describe("Command", func() {
 	It("should reject bad options", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
 		o := cmdtarget.NewTargetOptions(streams)
-		cmd := cmdtarget.NewCmdTarget(&util.FactoryImpl{}, o, &target.DynamicTargetProvider{})
+		cmd := cmdtarget.NewCmdTarget(&util.FactoryImpl{}, o)
 
 		Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
 	})
@@ -48,7 +49,7 @@ var _ = Describe("Command", func() {
 		}
 		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget("", "", "", ""))
 		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
-		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams), &target.DynamicTargetProvider{})
+		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
 
 		Expect(cmd.RunE(cmd, []string{"garden", gardenName})).To(Succeed())
 		Expect(out.String()).To(ContainSubstring("Successfully targeted garden %q\n", gardenName))
@@ -92,7 +93,7 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams), &target.DynamicTargetProvider{})
+		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"project", projectName})).To(Succeed())
@@ -141,7 +142,7 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams), &target.DynamicTargetProvider{})
+		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"seed", seedName})).To(Succeed())
@@ -196,7 +197,7 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams), &target.DynamicTargetProvider{})
+		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"shoot", shootName})).To(Succeed())
