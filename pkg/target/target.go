@@ -74,10 +74,6 @@ func (t *targetImpl) Validate() error {
 		return errors.New("seed and project must not be configured at the same time")
 	}
 
-	if len(t.Shoot) > 0 && len(t.Project) == 0 && len(t.Seed) == 0 {
-		return errors.New("either a seed or a project must be targeted when targeting a shoot")
-	}
-
 	return nil
 }
 
