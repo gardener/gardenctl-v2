@@ -49,6 +49,7 @@ func runViewCommand(f util.Factory, opt *ViewOptions) error {
 	} else {
 		return opt.PrintObject(currentTarget)
 	}
+
 	return nil
 }
 
