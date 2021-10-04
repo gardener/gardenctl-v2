@@ -47,6 +47,7 @@ func NewCmdTarget(f util.Factory, o *TargetOptions) *cobra.Command {
 	ioStreams := util.NewIOStreams()
 
 	cmd.AddCommand(NewCmdDrop(f, NewDropOptions(ioStreams)))
+	cmd.AddCommand(NewCmdView(f, NewViewOptions(ioStreams)))
 
 	return cmd
 }
