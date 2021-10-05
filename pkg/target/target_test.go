@@ -27,11 +27,9 @@ var _ = Describe("Target", func() {
 		// valid
 		Expect(target.NewTarget("a", "b", "", "d").Validate()).To(Succeed())
 		Expect(target.NewTarget("a", "", "c", "d").Validate()).To(Succeed())
+		Expect(target.NewTarget("a", "", "", "d").Validate()).To(Succeed())
 
 		// invalid because both project and seed are defined
 		Expect(target.NewTarget("a", "b", "c", "d").Validate()).NotTo(Succeed())
-
-		// invalid because neither project and seed are defined, but a shoot is
-		Expect(target.NewTarget("a", "", "", "d").Validate()).NotTo(Succeed())
 	})
 })
