@@ -35,7 +35,7 @@ type Manager interface {
 	TargetFlags() TargetFlags
 
 	// TargetGarden sets the garden target configuration
-	// This implicitly drops project, seed and shoot target configuration
+	// This implicitly unsets project, seed and shoot target configuration
 	TargetGarden(name string) error
 	// TargetProject sets the project target configuration
 	// This implicitly unsets seed and shoot target configuration
@@ -46,17 +46,17 @@ type Manager interface {
 	// TargetShoot sets the shoot target configuration
 	// It will also configure appropriate project and seed values if not already set
 	TargetShoot(ctx context.Context, name string) error
-	// DropTargetGarden unsets the garden target configuration
+	// UnsetTargetGarden unsets the garden target configuration
 	// This implicitly unsets project, shoot and seed target configuration
-	DropTargetGarden() (string, error)
-	// DropTargetProject unsets the project target configuration
+	UnsetTargetGarden() (string, error)
+	// UnsetTargetProject unsets the project target configuration
 	// This implicitly unsets seed and shoot target configuration
-	DropTargetProject() (string, error)
-	// DropTargetSeed unsets the garden seed configuration
+	UnsetTargetProject() (string, error)
+	// UnsetTargetSeed unsets the garden seed configuration
 	// This implicitly unsets project and shoot target configuration
-	DropTargetSeed() (string, error)
-	// DropTargetShoot unsets the garden shoot configuration
-	DropTargetShoot() (string, error)
+	UnsetTargetSeed() (string, error)
+	// UnsetTargetShoot unsets the garden shoot configuration
+	UnsetTargetShoot() (string, error)
 
 	// GardenClient controller-runtime client for accessing the configured garden cluster
 	GardenClient(t Target) (client.Client, error)
@@ -126,7 +126,7 @@ func (m *managerImpl) TargetGarden(gardenName string) error {
 	return fmt.Errorf("garden %q is not defined in gardenctl configuration", gardenName)
 }
 
-func (m *managerImpl) DropTargetGarden() (string, error) {
+func (m *managerImpl) UnsetTargetGarden() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current target: %v", err)
@@ -177,7 +177,7 @@ func (m *managerImpl) TargetProject(ctx context.Context, projectName string) err
 	})
 }
 
-func (m *managerImpl) DropTargetProject() (string, error) {
+func (m *managerImpl) UnsetTargetProject() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current target: %v", err)
@@ -243,7 +243,7 @@ func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 	})
 }
 
-func (m *managerImpl) DropTargetSeed() (string, error) {
+func (m *managerImpl) UnsetTargetSeed() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current target: %v", err)
@@ -342,7 +342,7 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 	})
 }
 
-func (m *managerImpl) DropTargetShoot() (string, error) {
+func (m *managerImpl) UnsetTargetShoot() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current target: %v", err)

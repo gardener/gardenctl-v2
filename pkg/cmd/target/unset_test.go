@@ -31,13 +31,13 @@ func init() {
 var _ = Describe("Command", func() {
 	It("should reject bad options", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := cmdtarget.NewDropOptions(streams)
-		cmd := cmdtarget.NewCmdDrop(&util.FactoryImpl{}, o)
+		o := cmdtarget.NewUnsetOptions(streams)
+		cmd := cmdtarget.NewCmdUnset(&util.FactoryImpl{}, o)
 
 		Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
 	})
 
-	It("should be able to drop a targeted garden", func() {
+	It("should be able to unset a targeted garden", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		gardenName := "mygarden"
@@ -49,17 +49,17 @@ var _ = Describe("Command", func() {
 		}
 		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget(gardenName, "", "", ""))
 		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
-		cmd := cmdtarget.NewCmdDrop(factory, cmdtarget.NewDropOptions(streams))
+		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
 
 		Expect(cmd.RunE(cmd, []string{"garden"})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully dropped targeted garden %q\n", gardenName))
+		Expect(out.String()).To(ContainSubstring("Successfully unset targeted garden %q\n", gardenName))
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(currentTarget.GardenName()).To(BeEmpty())
 	})
 
-	It("should be able to drop a targeted project", func() {
+	It("should be able to unset a targeted project", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		gardenName := "mygarden"
@@ -93,11 +93,11 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := cmdtarget.NewCmdDrop(factory, cmdtarget.NewDropOptions(streams))
+		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"project"})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully dropped targeted project %q\n", projectName))
+		Expect(out.String()).To(ContainSubstring("Successfully unset targeted project %q\n", projectName))
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
@@ -105,7 +105,7 @@ var _ = Describe("Command", func() {
 		Expect(currentTarget.ProjectName()).To(BeEmpty())
 	})
 
-	It("should be able to drop targeted seed", func() {
+	It("should be able to unset targeted seed", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		gardenName := "mygarden"
@@ -142,11 +142,11 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := cmdtarget.NewCmdDrop(factory, cmdtarget.NewDropOptions(streams))
+		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"seed"})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully dropped targeted seed %q\n", seedName))
+		Expect(out.String()).To(ContainSubstring("Successfully unset targeted seed %q\n", seedName))
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
@@ -154,7 +154,7 @@ var _ = Describe("Command", func() {
 		Expect(currentTarget.SeedName()).To(BeEmpty())
 	})
 
-	It("should be able to drop targeted shoot", func() {
+	It("should be able to unset targeted shoot", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		gardenName := "mygarden"
@@ -197,11 +197,11 @@ var _ = Describe("Command", func() {
 		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := cmdtarget.NewCmdDrop(factory, cmdtarget.NewDropOptions(streams))
+		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"shoot"})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully dropped targeted shoot %q\n", shootName))
+		Expect(out.String()).To(ContainSubstring("Successfully unset targeted shoot %q\n", shootName))
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
@@ -212,10 +212,10 @@ var _ = Describe("Command", func() {
 	})
 })
 
-var _ = Describe("DropOptions", func() {
+var _ = Describe("UnsetOptions", func() {
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := cmdtarget.NewDropOptions(streams)
+		o := cmdtarget.NewUnsetOptions(streams)
 		o.Kind = cmdtarget.TargetKindGarden
 
 		Expect(o.Validate()).To(Succeed())
@@ -223,7 +223,7 @@ var _ = Describe("DropOptions", func() {
 
 	It("should reject invalid kinds", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := cmdtarget.NewDropOptions(streams)
+		o := cmdtarget.NewUnsetOptions(streams)
 		o.Kind = "not a kind"
 
 		err := o.Validate()

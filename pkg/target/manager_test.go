@@ -400,7 +400,7 @@ var _ = Describe("Manager", func() {
 		Expect(newClient).NotTo(BeNil())
 	})
 
-	It("should be able to drop selected garden", func() {
+	It("should be able to unset selected garden", func() {
 		t := target.NewTarget(gardenName, "", "", "")
 		targetProvider := fake.NewFakeTargetProvider(t)
 
@@ -408,7 +408,7 @@ var _ = Describe("Manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(manager).NotTo(BeNil())
 
-		Expect(manager.DropTargetGarden()).Should(Equal(gardenName))
+		Expect(manager.UnsetTargetGarden()).Should(Equal(gardenName))
 		assertTargetProvider(targetProvider, target.NewTarget("", "", "", ""))
 	})
 
@@ -420,13 +420,13 @@ var _ = Describe("Manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(manager).NotTo(BeNil())
 
-		res, dropErr := manager.DropTargetGarden()
-		Expect(dropErr).To(HaveOccurred())
+		res, unsetErr := manager.UnsetTargetGarden()
+		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
 		assertTargetProvider(targetProvider, t)
 	})
 
-	It("should unset deeper target levels when dropping garden", func() {
+	It("should unset deeper target levels when unsetping garden", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1AmbiguousShoot.Name)
 		targetProvider := fake.NewFakeTargetProvider(t)
 
@@ -434,14 +434,14 @@ var _ = Describe("Manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(manager).NotTo(BeNil())
 
-		// Drop Garden
-		Expect(manager.DropTargetGarden()).Should(Equal(gardenName))
+		// Unset Garden
+		Expect(manager.UnsetTargetGarden()).Should(Equal(gardenName))
 
-		// should also drop project, seed and shoot
+		// should also unset project, seed and shoot
 		assertTargetProvider(targetProvider, target.NewTarget("", "", "", ""))
 	})
 
-	It("should be able to drop selected project", func() {
+	It("should be able to unset selected project", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
 		targetProvider := fake.NewFakeTargetProvider(t)
 
@@ -449,7 +449,7 @@ var _ = Describe("Manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(manager).NotTo(BeNil())
 
-		Expect(manager.DropTargetProject()).Should(Equal(prod1Project.Name))
+		Expect(manager.UnsetTargetProject()).Should(Equal(prod1Project.Name))
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
 	})
 
@@ -461,13 +461,13 @@ var _ = Describe("Manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(manager).NotTo(BeNil())
 
-		res, dropErr := manager.DropTargetProject()
-		Expect(dropErr).To(HaveOccurred())
+		res, unsetErr := manager.UnsetTargetProject()
+		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
 		assertTargetProvider(targetProvider, t)
 	})
 
-	It("should unset deeper target levels when dropping project", func() {
+	It("should unset deeper target levels when unsetping project", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1AmbiguousShoot.Name)
 		targetProvider := fake.NewFakeTargetProvider(t)
 
@@ -475,14 +475,14 @@ var _ = Describe("Manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(manager).NotTo(BeNil())
 
-		// Drop Project
-		Expect(manager.DropTargetProject()).Should(Equal(prod1Project.Name))
+		// Unset Project
+		Expect(manager.UnsetTargetProject()).Should(Equal(prod1Project.Name))
 
-		// should also drop seed and shoot
+		// should also unset seed and shoot
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
 	})
 
-	It("should be able to drop selected shoot", func() {
+	It("should be able to unset selected shoot", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name)
 		targetProvider := fake.NewFakeTargetProvider(t)
 
@@ -490,7 +490,7 @@ var _ = Describe("Manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(manager).NotTo(BeNil())
 
-		Expect(manager.DropTargetShoot()).Should(Equal(prod1AmbiguousShoot.Name))
+		Expect(manager.UnsetTargetShoot()).Should(Equal(prod1AmbiguousShoot.Name))
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
 	})
 
@@ -502,13 +502,13 @@ var _ = Describe("Manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(manager).NotTo(BeNil())
 
-		res, dropErr := manager.DropTargetShoot()
-		Expect(dropErr).To(HaveOccurred())
+		res, unsetErr := manager.UnsetTargetShoot()
+		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
 		assertTargetProvider(targetProvider, t)
 	})
 
-	It("should be able to drop selected seed", func() {
+	It("should be able to unset selected seed", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1AmbiguousShoot.Name)
 		targetProvider := fake.NewFakeTargetProvider(t)
 
@@ -516,7 +516,7 @@ var _ = Describe("Manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(manager).NotTo(BeNil())
 
-		Expect(manager.DropTargetSeed()).Should(Equal(seed.Name))
+		Expect(manager.UnsetTargetSeed()).Should(Equal(seed.Name))
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
 	})
 
@@ -528,8 +528,8 @@ var _ = Describe("Manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(manager).NotTo(BeNil())
 
-		res, dropErr := manager.DropTargetSeed()
-		Expect(dropErr).To(HaveOccurred())
+		res, unsetErr := manager.UnsetTargetSeed()
+		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
 		assertTargetProvider(targetProvider, t)
 	})
