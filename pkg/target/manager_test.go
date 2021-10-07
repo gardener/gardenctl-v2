@@ -248,8 +248,8 @@ var _ = Describe("Manager", func() {
 		assertTargetProvider(targetProvider, t)
 	})
 
-	It("should be able to target valid seeds", func() {
-		t := target.NewTarget(gardenName, "", "", "")
+	It("should be able to target valid seeds and drop project and shoot target", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name)
 		targetProvider := fake.NewFakeTargetProvider(t)
 
 		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
