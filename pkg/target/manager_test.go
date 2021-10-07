@@ -284,7 +284,7 @@ var _ = Describe("Manager", func() {
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name))
 	})
 
-	It("should be able to target valid shoots with a seed already targeted", func() {
+	It("should be able to target valid shoots with a seed already targeted. Should drop seed and set shoot project instead", func() {
 		t := target.NewTarget(gardenName, "", seed.Name, "")
 		targetProvider := fake.NewFakeTargetProvider(t)
 
@@ -293,7 +293,7 @@ var _ = Describe("Manager", func() {
 		Expect(manager).NotTo(BeNil())
 
 		Expect(manager.TargetShoot(context.TODO(), prod1GoldenShoot.Name)).To(Succeed())
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", seed.Name, prod1GoldenShoot.Name))
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
 	})
 
 	It("should be able to target valid shoots with another seed already targeted", func() {
@@ -320,21 +320,6 @@ var _ = Describe("Manager", func() {
 		Expect(manager.TargetShoot(context.TODO(), prod1GoldenShoot.Name)).To(Succeed())
 		// project should be inserted into the path, as it is prefered over a seed step
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
-	})
-
-	It("should be able to target valid shoots with only garden targeted with project missing", func() {
-		t := target.NewTarget(gardenName, "", "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		// artificially break the garden
-		Expect(gardenClient.Delete(context.TODO(), prod1Project)).To(Succeed())
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
-
-		Expect(manager.TargetShoot(context.TODO(), prod1GoldenShoot.Name)).To(Succeed())
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", seed.Name, prod1GoldenShoot.Name))
 	})
 
 	It("should error when multiple shoots match", func() {
@@ -426,7 +411,7 @@ var _ = Describe("Manager", func() {
 		assertTargetProvider(targetProvider, t)
 	})
 
-	It("should unset deeper target levels when unsetping garden", func() {
+	It("should unset deeper target levels when unsetting garden", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1AmbiguousShoot.Name)
 		targetProvider := fake.NewFakeTargetProvider(t)
 
@@ -467,8 +452,8 @@ var _ = Describe("Manager", func() {
 		assertTargetProvider(targetProvider, t)
 	})
 
-	It("should unset deeper target levels when unsetping project", func() {
-		t := target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1AmbiguousShoot.Name)
+	It("should unset deeper target levels when unsetting project", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name)
 		targetProvider := fake.NewFakeTargetProvider(t)
 
 		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
@@ -509,7 +494,7 @@ var _ = Describe("Manager", func() {
 	})
 
 	It("should be able to unset selected seed", func() {
-		t := target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1AmbiguousShoot.Name)
+		t := target.NewTarget(gardenName, "", seed.Name, "")
 		targetProvider := fake.NewFakeTargetProvider(t)
 
 		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
