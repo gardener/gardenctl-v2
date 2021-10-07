@@ -9,6 +9,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/gardener/gardenctl-v2/pkg/config"
 
@@ -205,6 +207,13 @@ func (m *managerImpl) resolveProjectName(ctx context.Context, gardenClient clien
 	return project, err
 }
 
+func (m *managerImpl) resolveProjectNamespace(ctx context.Context, gardenClient client.Client, projectNamespace string) (*corev1.Namespace, error) {
+	namespace := &corev1.Namespace{}
+	key := types.NamespacedName{Name: projectNamespace}
+	err := gardenClient.Get(ctx, key, namespace)
+	return namespace, err
+}
+
 func (m *managerImpl) validateProject(ctx context.Context, project *gardencorev1beta1.Project) error {
 	if project.Spec.Namespace == nil || *project.Spec.Namespace == "" {
 		return errors.New("project does not have a corresponding namespace set; most likely it has not yet been fully created")
@@ -282,8 +291,111 @@ func (m *managerImpl) validateSeed(ctx context.Context, seed *gardencorev1beta1.
 	return nil
 }
 
+func domainsFromConfiguration(m *managerImpl) (map[string]string, map[string]string, error) {
+	domainRegexp, err := regexp.Compile(`(http://|https://)?(.+\..+)`)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to compile regular expression: %v", err)
+	}
+
+	dashboardDomains := make(map[string]string)
+	shootDomains := make(map[string]string)
+	for _, g := range m.Configuration().Gardens {
+		match := domainRegexp.FindStringSubmatch(g.DashboardDomain)
+		if match != nil {
+			dashboardDomains[g.Name] = match[2]
+		}
+		match = domainRegexp.FindStringSubmatch(g.ShootDomain)
+		if match != nil {
+			shootDomains[g.Name] = match[2]
+		}
+	}
+	return dashboardDomains, shootDomains, nil
+}
+
+func matchGardenDomain(domains map[string]string, domain string) (string, string) {
+	for garden, gDomain := range domains {
+		if strings.Contains(domain, gDomain) {
+			return garden, domain
+		}
+	}
+
+	return "", ""
+}
+
+func targetFlagsFromDomain(m *managerImpl, t *targetImpl, ctx context.Context, name string) (TargetFlags, error) {
+	dashboardDomains, shootDomains, err := domainsFromConfiguration(m)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid domain format in configured gardens", err)
+	}
+
+	garden, domain := matchGardenDomain(dashboardDomains, name)
+	if domain != "" {
+		domainRegexp, err := regexp.Compile(`.+/namespace/([^/]+)/shoots/([^/]+)/?`)
+		if err != nil {
+			return nil, fmt.Errorf("could not extract project and shoot from url: %w", err)
+		}
+		match := domainRegexp.FindStringSubmatch(domain)
+		if match != nil {
+			gardenClient, err := m.clientForGarden(t.Garden)
+			if err != nil {
+				return nil, fmt.Errorf("could not create Kubernetes client for garden cluster: %w", err)
+			}
+			namespace, err := m.resolveProjectNamespace(ctx, gardenClient, match[1])
+			if err != nil {
+				return nil, fmt.Errorf("failed to validate project: %w", err)
+			}
+			if namespace == nil {
+				return nil, fmt.Errorf("invalid namespace in shoot url")
+			}
+			projectName := namespace.Labels["project.gardener.cloud/name"]
+			if projectName == "" {
+				return nil, fmt.Errorf("namespace in url is not related to a gardener project")
+			}
+			return NewTargetFlags(garden, projectName, "", match[2]), nil
+		}
+	}
+
+	garden, domain = matchGardenDomain(shootDomains, name)
+	if domain != "" {
+		domainRegexp, err := regexp.Compile(`([^.]+).([^.]+)\..+`)
+		if err != nil {
+			return nil, fmt.Errorf("could not extract project and shoot from url: %w", err)
+		}
+		match := domainRegexp.FindStringSubmatch(domain)
+		if match != nil {
+			return NewTargetFlags(garden, match[2], "", match[1]), nil
+		}
+	}
+
+	return nil, nil
+}
+
+func isDomainFormat(name string) bool {
+	_, err := regexp.MatchString(`.+\..+/.+`, name) // check that name has domain and path
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 	return m.patchTarget(func(t *targetImpl) error {
+		if isDomainFormat(shootName) {
+			targetFlags, err := targetFlagsFromDomain(m, t, ctx, shootName)
+			if err != nil {
+				return err
+			}
+
+			if targetFlags != nil {
+				t.Garden = targetFlags.GardenName()
+				t.Project = targetFlags.ProjectName()
+				t.Shoot = targetFlags.ShootName()
+				return nil
+			}
+
+			return fmt.Errorf("failed to target shoot with url, %s", shootName)
+		}
+
 		if t.Garden == "" {
 			return ErrNoGardenTargeted
 		}

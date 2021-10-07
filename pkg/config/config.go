@@ -19,8 +19,10 @@ type Config struct {
 }
 
 type Garden struct {
-	Name       string `yaml:"name"`
-	Kubeconfig string `yaml:"kubeconfig"`
+	Name            string `yaml:"name"`
+	Kubeconfig      string `yaml:"kubeconfig"`
+	ShootDomain     string `yaml:"shootDomain"`
+	DashboardDomain string `yaml:"dashboardDomain"`
 }
 
 func LoadFromFile(filename string) (*Config, error) {

@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
