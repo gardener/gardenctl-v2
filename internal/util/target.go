@@ -111,7 +111,8 @@ func ShootsForTarget(ctx context.Context, gardenClient client.Client, t target.T
 	} else if t.SeedName() != "" {
 		listOpt = client.MatchingFields{gardencore.ShootSeedName: t.SeedName()}
 	} else {
-		return nil, errors.New("invalid target, must have either project or seed specified for targeting a shoot")
+		// list all
+		listOpt = &client.ListOptions{Namespace: ""}
 	}
 
 	shootList := &gardencorev1beta1.ShootList{}
