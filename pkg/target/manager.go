@@ -332,6 +332,10 @@ func targetFlagsFromDomain(ctx context.Context, m *managerImpl, t *targetImpl, n
 		return nil, fmt.Errorf("invalid domain format in configured gardens: %w", err)
 	}
 
+	if len(dashboardDomains) == 0 && len(shootDomains) == 0 {
+		return nil, fmt.Errorf("no domain found in configured gardens. Shoot targeting via domain requires shoot and / or dashboard domain configuration for each garden that you want to enable domain targeting for")
+	}
+
 	garden, domain := matchGardenDomain(dashboardDomains, name)
 	if domain != "" {
 		domainRegexp, err := regexp.Compile(`.+/namespace/([^/]+)/shoots/([^/]+)/?`)
@@ -401,7 +405,7 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 				return nil
 			}
 
-			return fmt.Errorf("failed to target shoot with url, %s", shootName)
+			return fmt.Errorf("failed to target shoot with url: %s", shootName)
 		}
 
 		if t.Garden == "" {
