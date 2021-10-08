@@ -211,6 +211,7 @@ func (m *managerImpl) resolveProjectNamespace(ctx context.Context, gardenClient 
 	namespace := &corev1.Namespace{}
 	key := types.NamespacedName{Name: projectNamespace}
 	err := gardenClient.Get(ctx, key, namespace)
+
 	return namespace, err
 }
 
@@ -299,16 +300,19 @@ func domainsFromConfiguration(m *managerImpl) (map[string]string, map[string]str
 
 	dashboardDomains := make(map[string]string)
 	shootDomains := make(map[string]string)
+
 	for _, g := range m.Configuration().Gardens {
 		match := domainRegexp.FindStringSubmatch(g.DashboardDomain)
 		if match != nil {
 			dashboardDomains[g.Name] = match[2]
 		}
+
 		match = domainRegexp.FindStringSubmatch(g.ShootDomain)
 		if match != nil {
 			shootDomains[g.Name] = match[2]
 		}
 	}
+
 	return dashboardDomains, shootDomains, nil
 }
 
@@ -322,10 +326,10 @@ func matchGardenDomain(domains map[string]string, domain string) (string, string
 	return "", ""
 }
 
-func targetFlagsFromDomain(m *managerImpl, t *targetImpl, ctx context.Context, name string) (TargetFlags, error) {
+func targetFlagsFromDomain(ctx context.Context, m *managerImpl, t *targetImpl, name string) (TargetFlags, error) {
 	dashboardDomains, shootDomains, err := domainsFromConfiguration(m)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid domain format in configured gardens", err)
+		return nil, fmt.Errorf("invalid domain format in configured gardens: %w", err)
 	}
 
 	garden, domain := matchGardenDomain(dashboardDomains, name)
@@ -334,23 +338,28 @@ func targetFlagsFromDomain(m *managerImpl, t *targetImpl, ctx context.Context, n
 		if err != nil {
 			return nil, fmt.Errorf("could not extract project and shoot from url: %w", err)
 		}
+
 		match := domainRegexp.FindStringSubmatch(domain)
 		if match != nil {
 			gardenClient, err := m.clientForGarden(t.Garden)
 			if err != nil {
 				return nil, fmt.Errorf("could not create Kubernetes client for garden cluster: %w", err)
 			}
+
 			namespace, err := m.resolveProjectNamespace(ctx, gardenClient, match[1])
 			if err != nil {
 				return nil, fmt.Errorf("failed to validate project: %w", err)
 			}
+
 			if namespace == nil {
 				return nil, fmt.Errorf("invalid namespace in shoot url")
 			}
+
 			projectName := namespace.Labels["project.gardener.cloud/name"]
 			if projectName == "" {
 				return nil, fmt.Errorf("namespace in url is not related to a gardener project")
 			}
+
 			return NewTargetFlags(garden, projectName, "", match[2]), nil
 		}
 	}
@@ -361,6 +370,7 @@ func targetFlagsFromDomain(m *managerImpl, t *targetImpl, ctx context.Context, n
 		if err != nil {
 			return nil, fmt.Errorf("could not extract project and shoot from url: %w", err)
 		}
+
 		match := domainRegexp.FindStringSubmatch(domain)
 		if match != nil {
 			return NewTargetFlags(garden, match[2], "", match[1]), nil
@@ -371,17 +381,15 @@ func targetFlagsFromDomain(m *managerImpl, t *targetImpl, ctx context.Context, n
 }
 
 func isDomainFormat(name string) bool {
-	_, err := regexp.MatchString(`.+\..+/.+`, name) // check that name has domain and path
-	if err != nil {
-		return false
-	}
-	return true
+	// as shoots must not contain dots we can assume that the user wants to target via domain
+	match, err := regexp.MatchString(`.+\..+`, name)
+	return err == nil && match
 }
 
 func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 	return m.patchTarget(func(t *targetImpl) error {
 		if isDomainFormat(shootName) {
-			targetFlags, err := targetFlagsFromDomain(m, t, ctx, shootName)
+			targetFlags, err := targetFlagsFromDomain(ctx, m, t, shootName)
 			if err != nil {
 				return err
 			}
