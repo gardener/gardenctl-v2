@@ -15,7 +15,8 @@ import (
 // NewCmdView returns a new version command.
 func NewCmdView(f util.Factory, o *ViewOptions) *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "view",
+		Use:   "view",
+		Short: "Print the current target",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := o.Complete(f, cmd, args); err != nil {
 				return fmt.Errorf("failed to complete command options: %w", err)
@@ -44,13 +45,11 @@ func runViewCommand(f util.Factory, opt *ViewOptions) error {
 		return fmt.Errorf("failed to get current target: %v", err)
 	}
 
-	if opt.Output == "" && currentTarget.GardenName() == "" {
-		fmt.Fprintf(opt.IOStreams.Out, "No garden targeted. Please target a garden first.")
-	} else {
-		return opt.PrintObject(currentTarget)
+	if currentTarget.IsEmpty() {
+		fmt.Fprintf(opt.IOStreams.Out, "Target is empty. Check gardenctl target --help on how to use the target command")
+		return nil
 	}
-
-	return nil
+	return opt.PrintObject(currentTarget)
 }
 
 // ViewOptions is a struct to support version command

@@ -30,10 +30,12 @@ func NewOptions(ioStreams util.IOStreams) *Options {
 	}
 }
 
+// AddOutputFlags adds flags to adjust the output to a cobra command
 func (o *Options) AddOutputFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.Output, "output", "o", o.Output, "One of 'yaml' or 'json'.")
 }
 
+// PrintObject prints an object to IOStreams.out, using o.Output to print in the selected output format
 func (o *Options) PrintObject(obj interface{}) error {
 	switch o.Output {
 	case "":
