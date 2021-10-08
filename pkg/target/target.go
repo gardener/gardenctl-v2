@@ -50,7 +50,7 @@ type Target interface {
 }
 
 type targetImpl struct {
-	Garden  string `yaml:"garden,omitempty" json:"garden,omitempty""`
+	Garden  string `yaml:"garden,omitempty" json:"garden,omitempty"`
 	Project string `yaml:"project,omitempty" json:"project,omitempty"`
 	Seed    string `yaml:"seed,omitempty" json:"seed,omitempty"`
 	Shoot   string `yaml:"shoot,omitempty" json:"shoot,omitempty"`

@@ -55,7 +55,8 @@ var _ = Describe("Options", func() {
 	It("should print with no output set", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 		o := base.NewOptions(streams)
-		o.PrintObject(foo)
+		err := o.PrintObject(foo)
+		Expect(err).ToNot(HaveOccurred())
 		Expect(out.String()).To(ContainSubstring(foo.Foo))
 		Expect(out.String()).To(ContainSubstring(foo.Bar))
 	})
@@ -64,7 +65,8 @@ var _ = Describe("Options", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 		o := base.NewOptions(streams)
 		o.Output = "yaml"
-		o.PrintObject(foo)
+		err := o.PrintObject(foo)
+		Expect(err).ToNot(HaveOccurred())
 		Expect(out.String()).To(Equal(fmt.Sprintf("foo: %s\nbar: %s\n\n", foo.Foo, foo.Bar)))
 	})
 
@@ -72,7 +74,8 @@ var _ = Describe("Options", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 		o := base.NewOptions(streams)
 		o.Output = "json"
-		o.PrintObject(foo)
+		err := o.PrintObject(foo)
+		Expect(err).ToNot(HaveOccurred())
 		Expect(out.String()).To(Equal(fmt.Sprintf("{\n  \"Foo\": \"%s\",\n  \"Bar\": \"%s\"\n}\n", foo.Foo, foo.Bar)))
 	})
 })

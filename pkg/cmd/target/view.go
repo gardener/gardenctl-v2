@@ -49,6 +49,7 @@ func runViewCommand(f util.Factory, opt *ViewOptions) error {
 		fmt.Fprintf(opt.IOStreams.Out, "Target is empty. Check gardenctl target --help on how to use the target command")
 		return nil
 	}
+
 	return opt.PrintObject(currentTarget)
 }
 
