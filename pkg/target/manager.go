@@ -445,19 +445,10 @@ func (m *managerImpl) resolveShootName(
 	projectList.Items = filterProjectsByNamespace(projectList.Items, shoot.Namespace)
 
 	if len(projectList.Items) == 0 {
-		// this should never happen, but to aid in inspecting broken
-		// installations, try to find the seed instead as a fallback
-		if shoot.Status.SeedName != nil && *shoot.Status.SeedName != "" {
-			var err error
-
-			seed, err = m.resolveSeedName(ctx, gardenClient, *shoot.Status.SeedName)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to fetch project or seed for shoot: %v", err)
-			}
-		}
-	} else {
-		project = &projectList.Items[0]
+		return nil, nil, fmt.Errorf("failed to fetch parent project for shoot")
 	}
+
+	project = &projectList.Items[0]
 
 	return project, shoot, nil
 }
