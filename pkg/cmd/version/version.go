@@ -43,16 +43,17 @@ func runCmdVersion(opt *VersionOptions) error {
 	versionInfo := version.Get()
 
 	if opt.Output == "" {
+		var err error
 		if opt.Short {
-			fmt.Fprintf(opt.IOStreams.Out, "Version: %s\n", versionInfo.GitVersion)
+			_, err = fmt.Fprintf(opt.IOStreams.Out, "Version: %s\n", versionInfo.GitVersion)
 		} else {
-			fmt.Fprintf(opt.IOStreams.Out, "Version: %s\n", fmt.Sprintf("%#v", versionInfo))
+			_, err = fmt.Fprintf(opt.IOStreams.Out, "Version: %s\n", fmt.Sprintf("%#v", versionInfo))
 		}
-	} else {
-		return opt.PrintObject(versionInfo)
+
+		return err
 	}
 
-	return nil
+	return opt.PrintObject(versionInfo)
 }
 
 // VersionOptions is a struct to support version command

@@ -42,8 +42,9 @@ func runViewCommand(f util.Factory, opt *ViewOptions) error {
 		return fmt.Errorf("failed to get current target: %v", err)
 	}
 
-	if currentTarget.IsEmpty() {
-		return fmt.Errorf("target is empty. Check gardenctl target --help on how to use the target command")
+	if opt.Output == "" && currentTarget.IsEmpty() {
+		_, err = fmt.Fprintf(opt.IOStreams.Out, "target is empty")
+		return err
 	}
 
 	return opt.PrintObject(currentTarget)
