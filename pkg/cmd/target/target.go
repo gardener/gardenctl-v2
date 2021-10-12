@@ -165,7 +165,7 @@ type TargetOptions struct {
 	TargetName string
 }
 
-// NewTargetOptions returns initialized UnsetOptions
+// NewTargetOptions returns initialized TargetOptions
 func NewTargetOptions(ioStreams util.IOStreams) *TargetOptions {
 	return &TargetOptions{
 		Options: base.Options{

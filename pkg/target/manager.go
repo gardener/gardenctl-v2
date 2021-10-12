@@ -304,7 +304,7 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 		} else if t.Seed != "" {
 			seed, err = m.resolveSeedName(ctx, gardenClient, t.Seed)
 			if err != nil {
-				return fmt.Errorf("failed to resolve sed by name: %w", err)
+				return fmt.Errorf("failed to resolve seed: %w", err)
 			}
 		}
 

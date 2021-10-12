@@ -463,7 +463,7 @@ var _ = Describe("Manager", func() {
 		// Unset Project
 		Expect(manager.UnsetTargetProject()).Should(Equal(prod1Project.Name))
 
-		// should also unset seed and shoot
+		// should also unset shoot
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
 	})
 
