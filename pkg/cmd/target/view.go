@@ -18,9 +18,6 @@ func NewCmdView(f util.Factory, o *ViewOptions) *cobra.Command {
 		Use:   "view",
 		Short: "Print the current target",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := o.Complete(f, cmd, args); err != nil {
-				return fmt.Errorf("failed to complete command options: %w", err)
-			}
 			if err := o.Validate(); err != nil {
 				return err
 			}
@@ -46,8 +43,7 @@ func runViewCommand(f util.Factory, opt *ViewOptions) error {
 	}
 
 	if currentTarget.IsEmpty() {
-		fmt.Fprintf(opt.IOStreams.Out, "Target is empty. Check gardenctl target --help on how to use the target command")
-		return nil
+		return fmt.Errorf("target is empty. Check gardenctl target --help on how to use the target command")
 	}
 
 	return opt.PrintObject(currentTarget)
@@ -65,9 +61,4 @@ func NewViewOptions(ioStreams util.IOStreams) *ViewOptions {
 			IOStreams: ioStreams,
 		},
 	}
-}
-
-// Complete adapts from the command line args to the data required.
-func (o *ViewOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	return nil
 }
