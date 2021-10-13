@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package target_test
+package base_test
 
 import (
 	"testing"
@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestCommand(t *testing.T) {
+func TestBaseCommand(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Target Command Test Suite")
+	RunSpecs(t, "Base Options Test Suite")
 }

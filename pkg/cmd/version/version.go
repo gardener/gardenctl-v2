@@ -7,14 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package version
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 	"k8s.io/component-base/version"
 )
 
@@ -36,7 +34,7 @@ func NewCmdVersion(f util.Factory, o *VersionOptions) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&o.Short, "short", o.Short, "If true, print just the version number.")
-	cmd.Flags().StringVarP(&o.Output, "output", "o", o.Output, "One of 'yaml' or 'json'.")
+	o.AddOutputFlags(cmd)
 
 	return cmd
 }
@@ -44,37 +42,18 @@ func NewCmdVersion(f util.Factory, o *VersionOptions) *cobra.Command {
 func runCmdVersion(opt *VersionOptions) error {
 	versionInfo := version.Get()
 
-	switch opt.Output {
-	case "":
+	if opt.Output == "" {
+		var err error
 		if opt.Short {
-			fmt.Fprintf(opt.IOStreams.Out, "Version: %s\n", versionInfo.GitVersion)
+			_, err = fmt.Fprintf(opt.IOStreams.Out, "Version: %s\n", versionInfo.GitVersion)
 		} else {
-			fmt.Fprintf(opt.IOStreams.Out, "Version: %s\n", fmt.Sprintf("%#v", versionInfo))
+			_, err = fmt.Fprintf(opt.IOStreams.Out, "Version: %#v\n", versionInfo)
 		}
 
-	case "yaml":
-		marshalled, err := yaml.Marshal(&versionInfo)
-		if err != nil {
-			return err
-		}
-
-		fmt.Fprintln(opt.IOStreams.Out, string(marshalled))
-
-	case "json":
-		marshalled, err := json.MarshalIndent(&versionInfo, "", "  ")
-		if err != nil {
-			return err
-		}
-
-		fmt.Fprintln(opt.IOStreams.Out, string(marshalled))
-
-	default:
-		// There is a bug in the program if we hit this case.
-		// However, we follow a policy of never panicking.
-		return fmt.Errorf("options were not validated: --output=%q should have been rejected", opt.Output)
+		return err
 	}
 
-	return nil
+	return opt.PrintObject(versionInfo)
 }
 
 // VersionOptions is a struct to support version command
@@ -84,8 +63,6 @@ type VersionOptions struct {
 
 	// Short indicates if just the version number should be printed
 	Short bool
-	// Output defines the output format of the version information. Either 'yaml' or 'json'
-	Output string
 }
 
 // NewVersionOptions returns initialized VersionOptions
@@ -99,14 +76,5 @@ func NewVersionOptions(ioStreams util.IOStreams) *VersionOptions {
 
 // Complete adapts from the command line args to the data required.
 func (o *VersionOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	return nil
-}
-
-// Validate validates the provided options
-func (o *VersionOptions) Validate() error {
-	if o.Output != "" && o.Output != "yaml" && o.Output != "json" {
-		return fmt.Errorf(`--output must be either 'yaml' or 'json'`)
-	}
-
 	return nil
 }

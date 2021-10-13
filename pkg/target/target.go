@@ -45,13 +45,15 @@ type Target interface {
 	// Validate checks for semantical correctness of the target, without
 	// actually connecting to the targeted clusters.
 	Validate() error
+	// IsEmpty returns true if all values of the target are empty
+	IsEmpty() bool
 }
 
 type targetImpl struct {
-	Garden  string `yaml:"garden,omitempty"`
-	Project string `yaml:"project,omitempty"`
-	Seed    string `yaml:"seed,omitempty"`
-	Shoot   string `yaml:"shoot,omitempty"`
+	Garden  string `yaml:"garden,omitempty" json:"garden,omitempty"`
+	Project string `yaml:"project,omitempty" json:"project,omitempty"`
+	Seed    string `yaml:"seed,omitempty" json:"seed,omitempty"`
+	Shoot   string `yaml:"shoot,omitempty" json:"shoot,omitempty"`
 }
 
 var _ Target = &targetImpl{}
@@ -146,4 +148,8 @@ func (t *targetImpl) String() string {
 	}
 
 	return strings.Join(steps, ", ")
+}
+
+func (t *targetImpl) IsEmpty() bool {
+	return t.Garden == "" && t.Project == "" && t.Seed == "" && t.Shoot == ""
 }
