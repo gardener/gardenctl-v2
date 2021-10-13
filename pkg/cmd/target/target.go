@@ -46,7 +46,7 @@ func NewCmdTarget(f util.Factory, o *TargetOptions) *cobra.Command {
 
 	ioStreams := util.NewIOStreams()
 
-	cmd.AddCommand(NewCmdDrop(f, NewDropOptions(ioStreams)))
+	cmd.AddCommand(NewCmdUnset(f, NewUnsetOptions(ioStreams)))
 	cmd.AddCommand(NewCmdView(f, NewViewOptions(ioStreams)))
 
 	return cmd
@@ -166,7 +166,7 @@ type TargetOptions struct {
 	TargetName string
 }
 
-// NewTargetOptions returns initialized DropOptions
+// NewTargetOptions returns initialized TargetOptions
 func NewTargetOptions(ioStreams util.IOStreams) *TargetOptions {
 	return &TargetOptions{
 		Options: base.Options{

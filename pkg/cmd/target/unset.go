@@ -17,11 +17,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCmdDrop returns a new (target) drop command.
-func NewCmdDrop(f util.Factory, o *DropOptions) *cobra.Command {
+// NewCmdUnset returns a new (target) unset command.
+func NewCmdUnset(f util.Factory, o *UnsetOptions) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "drop",
-		Short: "Drop target, e.g. \"gardenctl target drop shoot\" to drop currently targeted shoot",
+		Use:   "unset",
+		Short: "Unset target, e.g. \"gardenctl target unset shoot\" to unset currently targeted shoot",
 		ValidArgs: []string{
 			string(TargetKindGarden),
 			string(TargetKindProject),
@@ -36,14 +36,14 @@ func NewCmdDrop(f util.Factory, o *DropOptions) *cobra.Command {
 				return err
 			}
 
-			return runCmdDrop(f, o)
+			return runCmdUnset(f, o)
 		},
 	}
 
 	return cmd
 }
 
-func runCmdDrop(f util.Factory, o *DropOptions) error {
+func runCmdUnset(f util.Factory, o *UnsetOptions) error {
 	manager, err := f.Manager()
 	if err != nil {
 		return err
@@ -53,13 +53,13 @@ func runCmdDrop(f util.Factory, o *DropOptions) error {
 
 	switch o.Kind {
 	case TargetKindGarden:
-		targetName, err = manager.DropTargetGarden()
+		targetName, err = manager.UnsetTargetGarden()
 	case TargetKindProject:
-		targetName, err = manager.DropTargetProject()
+		targetName, err = manager.UnsetTargetProject()
 	case TargetKindSeed:
-		targetName, err = manager.DropTargetSeed()
+		targetName, err = manager.UnsetTargetSeed()
 	case TargetKindShoot:
-		targetName, err = manager.DropTargetShoot()
+		targetName, err = manager.UnsetTargetShoot()
 	default:
 		err = errors.New("invalid kind")
 	}
@@ -68,22 +68,22 @@ func runCmdDrop(f util.Factory, o *DropOptions) error {
 		return err
 	}
 
-	fmt.Fprintf(o.IOStreams.Out, "Successfully dropped targeted %s %q\n", o.Kind, targetName)
+	fmt.Fprintf(o.IOStreams.Out, "Successfully unset targeted %s %q\n", o.Kind, targetName)
 
 	return nil
 }
 
-// DropOptions is a struct to support drop command
-type DropOptions struct {
+// UnsetOptions is a struct to support unset command
+type UnsetOptions struct {
 	base.Options
 
 	// Kind is the target kind, for example "garden" or "seed"
 	Kind TargetKind
 }
 
-// NewDropOptions returns initialized DropOptions
-func NewDropOptions(ioStreams util.IOStreams) *DropOptions {
-	return &DropOptions{
+// NewUnsetOptions returns initialized UnsetOptions
+func NewUnsetOptions(ioStreams util.IOStreams) *UnsetOptions {
+	return &UnsetOptions{
 		Options: base.Options{
 			IOStreams: ioStreams,
 		},
@@ -91,7 +91,7 @@ func NewDropOptions(ioStreams util.IOStreams) *DropOptions {
 }
 
 // Complete adapts from the command line args to the data required.
-func (o *DropOptions) Complete(_ util.Factory, cmd *cobra.Command, args []string) error {
+func (o *UnsetOptions) Complete(_ util.Factory, cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		o.Kind = TargetKind(strings.TrimSpace(args[0]))
 	}
@@ -100,7 +100,7 @@ func (o *DropOptions) Complete(_ util.Factory, cmd *cobra.Command, args []string
 }
 
 // Validate validates the provided options
-func (o *DropOptions) Validate() error {
+func (o *UnsetOptions) Validate() error {
 	if err := ValidateKind(o.Kind); err != nil {
 		return err
 	}

@@ -35,7 +35,7 @@ type Manager interface {
 	TargetFlags() TargetFlags
 
 	// TargetGarden sets the garden target configuration
-	// This implicitly drops project, seed and shoot target configuration
+	// This implicitly unsets project, seed and shoot target configuration
 	TargetGarden(name string) error
 	// TargetProject sets the project target configuration
 	// This implicitly unsets seed and shoot target configuration
@@ -44,19 +44,19 @@ type Manager interface {
 	// This implicitly unsets project and shoot target configuration
 	TargetSeed(ctx context.Context, name string) error
 	// TargetShoot sets the shoot target configuration
+	// This implicitly unsets seed target configuration
 	// It will also configure appropriate project and seed values if not already set
 	TargetShoot(ctx context.Context, name string) error
-	// DropTargetGarden unsets the garden target configuration
+	// UnsetTargetGarden unsets the garden target configuration
 	// This implicitly unsets project, shoot and seed target configuration
-	DropTargetGarden() (string, error)
-	// DropTargetProject unsets the project target configuration
-	// This implicitly unsets seed and shoot target configuration
-	DropTargetProject() (string, error)
-	// DropTargetSeed unsets the garden seed configuration
-	// This implicitly unsets project and shoot target configuration
-	DropTargetSeed() (string, error)
-	// DropTargetShoot unsets the garden shoot configuration
-	DropTargetShoot() (string, error)
+	UnsetTargetGarden() (string, error)
+	// UnsetTargetProject unsets the project target configuration
+	// This implicitly unsets shoot target configuration
+	UnsetTargetProject() (string, error)
+	// UnsetTargetSeed unsets the garden seed configuration
+	UnsetTargetSeed() (string, error)
+	// UnsetTargetShoot unsets the garden shoot configuration
+	UnsetTargetShoot() (string, error)
 
 	// GardenClient controller-runtime client for accessing the configured garden cluster
 	GardenClient(t Target) (client.Client, error)
@@ -126,7 +126,7 @@ func (m *managerImpl) TargetGarden(gardenName string) error {
 	return fmt.Errorf("garden %q is not defined in gardenctl configuration", gardenName)
 }
 
-func (m *managerImpl) DropTargetGarden() (string, error) {
+func (m *managerImpl) UnsetTargetGarden() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current target: %v", err)
@@ -177,7 +177,7 @@ func (m *managerImpl) TargetProject(ctx context.Context, projectName string) err
 	})
 }
 
-func (m *managerImpl) DropTargetProject() (string, error) {
+func (m *managerImpl) UnsetTargetProject() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current target: %v", err)
@@ -187,7 +187,6 @@ func (m *managerImpl) DropTargetProject() (string, error) {
 	if targetedName != "" {
 		return targetedName, m.patchTarget(func(t *targetImpl) error {
 			t.Project = ""
-			t.Seed = ""
 			t.Shoot = ""
 
 			return nil
@@ -243,7 +242,7 @@ func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 	})
 }
 
-func (m *managerImpl) DropTargetSeed() (string, error) {
+func (m *managerImpl) UnsetTargetSeed() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current target: %v", err)
@@ -253,8 +252,6 @@ func (m *managerImpl) DropTargetSeed() (string, error) {
 	if targetedName != "" {
 		return targetedName, m.patchTarget(func(t *targetImpl) error {
 			t.Seed = ""
-			t.Project = ""
-			t.Shoot = ""
 
 			return nil
 		})
@@ -307,11 +304,11 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 		} else if t.Seed != "" {
 			seed, err = m.resolveSeedName(ctx, gardenClient, t.Seed)
 			if err != nil {
-				return fmt.Errorf("failed to fetch kubeconfig for seed cluster: %w", err)
+				return fmt.Errorf("failed to resolve seed: %w", err)
 			}
 		}
 
-		project, seed, shoot, err := m.resolveShootName(ctx, gardenClient, project, seed, shootName)
+		project, shoot, err := m.resolveShootName(ctx, gardenClient, project, seed, shootName)
 		if err != nil {
 			return fmt.Errorf("failed to resolve shoot: %w", err)
 		}
@@ -334,15 +331,13 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 			t.Project = project.Name
 		}
 
-		if seed != nil {
-			t.Seed = seed.Name
-		}
+		t.Seed = ""
 
 		return nil
 	})
 }
 
-func (m *managerImpl) DropTargetShoot() (string, error) {
+func (m *managerImpl) UnsetTargetShoot() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current target: %v", err)
@@ -364,17 +359,16 @@ func (m *managerImpl) DropTargetShoot() (string, error) {
 // on the given garden. Either project or seed can be supplied to help in
 // finding the Shoot. If no or multiple Shoots match the given criteria, an
 // error is returned.
-// If a project or a seed are given, they are returned directly (unless an
-// error is returned). If neither are given, the function will decide how
-// to best find the Shoot later by returning either a project or a seed,
-// never both.
+// If a project is given, it is returned directly (unless an
+// error is returned). If none are given, the function will
+// return matching project to clearly identify the shoot
 func (m *managerImpl) resolveShootName(
 	ctx context.Context,
 	gardenClient client.Client,
 	project *gardencorev1beta1.Project,
 	seed *gardencorev1beta1.Seed,
 	shootName string,
-) (*gardencorev1beta1.Project, *gardencorev1beta1.Seed, *gardencorev1beta1.Shoot, error) {
+) (*gardencorev1beta1.Project, *gardencorev1beta1.Shoot, error) {
 	shoot := &gardencorev1beta1.Shoot{}
 
 	// If a shoot is targeted via a project, we fetch it based on the project's namespace.
@@ -389,10 +383,10 @@ func (m *managerImpl) resolveShootName(
 		key := types.NamespacedName{Name: shootName, Namespace: *project.Spec.Namespace}
 
 		if err := gardenClient.Get(ctx, key, shoot); err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to get shoot %v: %w", key, err)
+			return nil, nil, fmt.Errorf("failed to get shoot %v: %w", key, err)
 		}
 
-		return project, nil, shoot, nil
+		return project, shoot, nil
 	}
 
 	// list all shoots, filter by their name and possibly spec.seedName (if seed is set)
@@ -410,7 +404,7 @@ func (m *managerImpl) resolveShootName(
 	}
 
 	if err := gardenClient.List(ctx, &shootList, listOpts...); err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to list shoot clusters: %w", err)
+		return nil, nil, fmt.Errorf("failed to list shoot clusters: %w", err)
 	}
 
 	// filter found shoots
@@ -431,49 +425,32 @@ func (m *managerImpl) resolveShootName(
 	}
 
 	if len(matchingShoots) == 0 {
-		return nil, nil, nil, fmt.Errorf("no shoot named %q exists", shootName)
+		return nil, nil, fmt.Errorf("no shoot named %q exists", shootName)
 	}
 
 	if len(matchingShoots) > 1 {
-		return nil, nil, nil, fmt.Errorf("there are multiple shoots named %q on this garden, please target a project or seed to make your choice unambiguous", shootName)
+		return nil, nil, fmt.Errorf("there are multiple shoots named %q on this garden, please target a project or seed to make your choice unambiguous", shootName)
 	}
 
 	shoot = matchingShoots[0]
-
-	// if the user specifically targeted via a seed, keep their choice
-	if seed != nil {
-		return nil, seed, shoot, nil
-	}
-
 	// given how fast we can resolve shoots by project and that shoots
 	// always have a project, but not always a seed (yet), we prefer
 	// for users later to use the project path in their target
 	projectList := &gardencorev1beta1.ProjectList{}
 	if err := gardenClient.List(ctx, projectList, client.MatchingFields{gardencore.ProjectNamespace: shoot.Namespace}); err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to fetch parent project for shoot: %v", err)
+		return nil, nil, fmt.Errorf("failed to fetch parent project for shoot: %v", err)
 	}
 
 	// see note above on why we have to filter again because ctrl-runtime doesn't support FieldSelectors in tests
 	projectList.Items = filterProjectsByNamespace(projectList.Items, shoot.Namespace)
 
 	if len(projectList.Items) == 0 {
-		// this should never happen, but to aid in inspecting broken
-		// installations, try to find the seed instead as a fallback
-		if shoot.Status.SeedName != nil && *shoot.Status.SeedName != "" {
-			var err error
-
-			seed, err = m.resolveSeedName(ctx, gardenClient, *shoot.Status.SeedName)
-			if err != nil {
-				return nil, nil, nil, fmt.Errorf("failed to fetch project or seed for shoot: %v", err)
-			}
-		}
-	} else {
-		project = &projectList.Items[0]
+		return nil, nil, fmt.Errorf("failed to fetch parent project for shoot")
 	}
 
-	// only project or seed will be non-nil at this point
+	project = &projectList.Items[0]
 
-	return project, seed, shoot, nil
+	return project, shoot, nil
 }
 
 func filterProjectsByNamespace(items []gardencorev1beta1.Project, namespace string) []gardencorev1beta1.Project {
@@ -625,7 +602,7 @@ func (m *managerImpl) ensureShootKubeconfig(ctx context.Context, t Target) ([]by
 		}
 	}
 
-	_, _, shoot, err := m.resolveShootName(ctx, gardenClient, project, seed, t.ShootName())
+	_, shoot, err := m.resolveShootName(ctx, gardenClient, project, seed, t.ShootName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve shoot: %w", err)
 	}
