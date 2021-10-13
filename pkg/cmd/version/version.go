@@ -47,7 +47,7 @@ func runCmdVersion(opt *VersionOptions) error {
 		if opt.Short {
 			_, err = fmt.Fprintf(opt.IOStreams.Out, "Version: %s\n", versionInfo.GitVersion)
 		} else {
-			_, err = fmt.Fprintf(opt.IOStreams.Out, "Version: %s\n", fmt.Sprintf("%#v", versionInfo))
+			_, err = fmt.Fprintf(opt.IOStreams.Out, "Version: %#v\n", versionInfo)
 		}
 
 		return err
