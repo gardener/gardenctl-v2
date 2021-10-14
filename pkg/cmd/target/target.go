@@ -70,14 +70,20 @@ func runCmdTarget(f util.Factory, o *TargetOptions) error {
 	case TargetKindShoot:
 		err = manager.TargetShoot(ctx, o.TargetName)
 	default:
-		err = errors.New("invalid kind")
+		err = manager.TargetMatchPattern(ctx, o.TargetName)
 	}
 
 	if err != nil {
 		return err
 	}
 
+	currentTarget, err := manager.CurrentTarget()
+	if err != nil {
+		return fmt.Errorf("failed to get current target: %v", err)
+	}
+
 	fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
+	fmt.Fprintf(o.IOStreams.Out, "New target: %s\n", currentTarget)
 
 	return nil
 }
@@ -177,12 +183,18 @@ func NewTargetOptions(ioStreams util.IOStreams) *TargetOptions {
 
 // Complete adapts from the command line args to the data required.
 func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	if len(args) > 0 {
-		o.Kind = TargetKind(strings.TrimSpace(args[0]))
-	}
+	kindValidationErr := ValidateKind(o.Kind)
+	if len(args) == 1 && kindValidationErr != nil {
+		// no target kind provided - try to match target with match patterns
+		o.TargetName = strings.TrimSpace(args[0])
+	} else {
+		if len(args) > 0 {
+			o.Kind = TargetKind(strings.TrimSpace(args[0]))
+		}
 
-	if len(args) > 1 {
-		o.TargetName = strings.TrimSpace(args[1])
+		if len(args) > 1 {
+			o.TargetName = strings.TrimSpace(args[1])
+		}
 	}
 
 	manager, err := f.Manager()
@@ -222,12 +234,13 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 // Validate validates the provided options
 func (o *TargetOptions) Validate() error {
 	// reject flag/arg-less invocations
-	if o.Kind == "" || o.TargetName == "" {
+	if o.TargetName == "" {
 		return errors.New("no target specified")
 	}
 
-	if err := ValidateKind(o.Kind); err != nil {
-		return err
+	kindValidationErr := ValidateKind(o.Kind)
+	if o.Kind != "" && kindValidationErr != nil {
+		return kindValidationErr
 	}
 
 	return nil

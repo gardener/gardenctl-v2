@@ -57,6 +57,11 @@ type Manager interface {
 	UnsetTargetSeed() (string, error)
 	// UnsetTargetShoot unsets the garden shoot configuration
 	UnsetTargetShoot() (string, error)
+	// TargetMatchPattern replaces the whole target
+	// Garden, Project and Shoot values are determined by matching the provided value
+	// against patterns defined in gardenctl configuration. Some values may only match a subset
+	// of a pattern
+	TargetMatchPattern(ctx context.Context, value string) error
 
 	// GardenClient controller-runtime client for accessing the configured garden cluster
 	GardenClient(t Target) (client.Client, error)
@@ -144,7 +149,7 @@ func (m *managerImpl) UnsetTargetGarden() (string, error) {
 		})
 	}
 
-	return "", fmt.Errorf("no garden targeted")
+	return "", errors.New("no garden targeted")
 }
 
 func (m *managerImpl) TargetProject(ctx context.Context, projectName string) error {
@@ -193,15 +198,29 @@ func (m *managerImpl) UnsetTargetProject() (string, error) {
 		})
 	}
 
-	return "", fmt.Errorf("no project targeted")
+	return "", errors.New("no project targeted")
 }
 
 func (m *managerImpl) resolveProjectName(ctx context.Context, gardenClient client.Client, projectName string) (*gardencorev1beta1.Project, error) {
 	project := &gardencorev1beta1.Project{}
 	key := types.NamespacedName{Name: projectName}
-	err := gardenClient.Get(ctx, key, project)
 
-	return project, err
+	if err := gardenClient.Get(ctx, key, project); err != nil {
+		return nil, err
+	}
+
+	return project, nil
+}
+
+func (m *managerImpl) resolveProjectNamespace(ctx context.Context, gardenClient client.Client, projectNamespace string) (*corev1.Namespace, error) {
+	namespace := &corev1.Namespace{}
+	key := types.NamespacedName{Name: projectNamespace}
+
+	if err := gardenClient.Get(ctx, key, namespace); err != nil {
+		return nil, err
+	}
+
+	return namespace, nil
 }
 
 func (m *managerImpl) validateProject(ctx context.Context, project *gardencorev1beta1.Project) error {
@@ -257,7 +276,7 @@ func (m *managerImpl) UnsetTargetSeed() (string, error) {
 		})
 	}
 
-	return "", fmt.Errorf("no seed targeted")
+	return "", errors.New("no seed targeted")
 }
 
 func (m *managerImpl) resolveSeedName(ctx context.Context, gardenClient client.Client, seedName string) (*gardencorev1beta1.Seed, error) {
@@ -352,7 +371,72 @@ func (m *managerImpl) UnsetTargetShoot() (string, error) {
 		})
 	}
 
-	return "", fmt.Errorf("no shoot targeted")
+	return "", errors.New("no shoot targeted")
+}
+
+func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) error {
+	currentTarget, err := m.CurrentTarget()
+	if err != nil {
+		return fmt.Errorf("failed to get current target: %v", err)
+	}
+
+	tm, err := m.config.MatchPattern(currentTarget.GardenName(), value)
+	if err != nil {
+		return fmt.Errorf("error occurred while trying to match value: %v", err)
+	}
+
+	if tm == nil {
+		return errors.New("the provided value does not match any pattern")
+	}
+
+	if err := tm.ValidMatch(); err != nil {
+		return err
+	}
+
+	gardenClient, err := m.clientForGarden(tm.Garden)
+	if err != nil {
+		return fmt.Errorf("could not create Kubernetes client for garden cluster: %w", err)
+	}
+
+	if tm.Namespace != "" {
+		namespace, err := m.resolveProjectNamespace(ctx, gardenClient, tm.Namespace)
+		if err != nil {
+			return fmt.Errorf("failed to validate project: %w", err)
+		}
+
+		if namespace == nil {
+			return fmt.Errorf("invalid namespace: %s", tm.Namespace)
+		}
+
+		projectName := namespace.Labels["project.gardener.cloud/name"]
+		if projectName == "" {
+			return fmt.Errorf("namespace '%s' is not related to a gardener project", tm.Namespace)
+		}
+
+		if tm.Project != "" && tm.Project != projectName {
+			return fmt.Errorf("both namespace '%s' and project '%s' provided, however they do not match", tm.Namespace, tm.Project)
+		}
+
+		tm.Project = projectName
+	}
+
+	if err := m.TargetGarden(tm.Garden); err != nil {
+		return err
+	}
+
+	if tm.Project != "" {
+		if err := m.TargetProject(ctx, tm.Project); err != nil {
+			return err
+		}
+	}
+
+	if tm.Shoot != "" {
+		if err := m.TargetShoot(ctx, tm.Shoot); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // resolveShootName takes a shoot name and tries to find the matching shoot
@@ -445,7 +529,7 @@ func (m *managerImpl) resolveShootName(
 	projectList.Items = filterProjectsByNamespace(projectList.Items, shoot.Namespace)
 
 	if len(projectList.Items) == 0 {
-		return nil, nil, fmt.Errorf("failed to fetch parent project for shoot")
+		return nil, nil, errors.New("failed to fetch parent project for shoot")
 	}
 
 	project = &projectList.Items[0]
