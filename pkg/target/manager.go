@@ -114,21 +114,20 @@ func (m *managerImpl) Configuration() *config.Config {
 	return m.config
 }
 
-func (m *managerImpl) TargetGarden(gardenName string) error {
-	for _, g := range m.config.Gardens {
-		if g.Name == gardenName {
-			return m.patchTarget(func(t *targetImpl) error {
-				t.Garden = gardenName
-				t.Project = ""
-				t.Seed = ""
-				t.Shoot = ""
+func (m *managerImpl) TargetGarden(gardenNameOrAlias string) error {
+	gardenName := m.config.FindGarden(gardenNameOrAlias)
+	if gardenName != "" {
+		return m.patchTarget(func(t *targetImpl) error {
+			t.Garden = gardenName
+			t.Project = ""
+			t.Seed = ""
+			t.Shoot = ""
 
-				return nil
-			})
-		}
+			return nil
+		})
 	}
 
-	return fmt.Errorf("garden %q is not defined in gardenctl configuration", gardenName)
+	return fmt.Errorf("garden with name or alias %q is not defined in gardenctl configuration", gardenNameOrAlias)
 }
 
 func (m *managerImpl) UnsetTargetGarden() (string, error) {
@@ -375,12 +374,7 @@ func (m *managerImpl) UnsetTargetShoot() (string, error) {
 }
 
 func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) error {
-	currentTarget, err := m.CurrentTarget()
-	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
-	}
-
-	tm, err := m.config.MatchPattern(currentTarget.GardenName(), value)
+	tm, err := m.config.MatchPattern(value)
 	if err != nil {
 		return fmt.Errorf("error occurred while trying to match value: %v", err)
 	}
@@ -389,11 +383,24 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		return errors.New("the provided value does not match any pattern")
 	}
 
-	if err := tm.ValidMatch(); err != nil {
-		return err
+	// if match contains garden name or alias, set it
+	if tm.Garden != "" {
+		if err := m.TargetGarden(tm.Garden); err != nil {
+			return err
+		}
 	}
 
-	gardenClient, err := m.clientForGarden(tm.Garden)
+	// read target to get current target name
+	currentTarget, err := m.CurrentTarget()
+	if err != nil {
+		return fmt.Errorf("failed to get current target: %v", err)
+	}
+
+	if currentTarget.GardenName() == "" {
+		return errors.New("target match is incomplete: Garden is not set")
+	}
+
+	gardenClient, err := m.clientForGarden(currentTarget.GardenName())
 	if err != nil {
 		return fmt.Errorf("could not create Kubernetes client for garden cluster: %w", err)
 	}
@@ -410,18 +417,14 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 
 		projectName := namespace.Labels["project.gardener.cloud/name"]
 		if projectName == "" {
-			return fmt.Errorf("namespace '%s' is not related to a gardener project", tm.Namespace)
+			return fmt.Errorf("namespace %q is not related to a gardener project", tm.Namespace)
 		}
 
 		if tm.Project != "" && tm.Project != projectName {
-			return fmt.Errorf("both namespace '%s' and project '%s' provided, however they do not match", tm.Namespace, tm.Project)
+			return fmt.Errorf("both namespace %q and project %q provided, however they do not match", tm.Namespace, tm.Project)
 		}
 
 		tm.Project = projectName
-	}
-
-	if err := m.TargetGarden(tm.Garden); err != nil {
-		return err
 	}
 
 	if tm.Project != "" {

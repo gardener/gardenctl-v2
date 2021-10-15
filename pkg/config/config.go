@@ -6,7 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -22,9 +21,9 @@ type Config struct {
 }
 
 type Garden struct {
-	Name          string   `yaml:"name"`
-	Kubeconfig    string   `yaml:"kubeconfig"`
-	MatchPatterns []string `yaml:"matchPatterns"`
+	Name       string   `yaml:"name"`
+	Kubeconfig string   `yaml:"kubeconfig"`
+	Aliases    []string `yaml:"aliases"`
 }
 
 // LoadFromFile parses a gardenctl config file and returns a Config struct
@@ -61,20 +60,6 @@ func LoadFromFile(filename string) (*Config, error) {
 	return config, nil
 }
 
-func (config *Config) ConfiguredPatternsForGarden(garden string) []string {
-	patterns := config.MatchPatterns
-
-	for _, g := range config.Gardens {
-		for _, p := range g.MatchPatterns {
-			if g.Name == garden {
-				patterns = append(patterns, p)
-			}
-		}
-	}
-
-	return patterns
-}
-
 // SaveToFile updates a gardenctl config file with the values passed via Config struct
 func (config *Config) SaveToFile(filename string) error {
 	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
@@ -97,18 +82,34 @@ type TargetMatch struct {
 	Shoot     string
 }
 
-func (tm TargetMatch) ValidMatch() error {
-	if tm.Garden == "" {
-		return errors.New("target match is incomplete: Garden is not set")
+func contains(values []string, value string) bool {
+	for _, v := range values {
+		if v == value {
+			return true
+		}
 	}
 
-	return nil
+	return false
+}
+
+func (config *Config) FindGarden(nameOrAlias string) string {
+	for _, g := range config.Gardens {
+		if g.Name == nameOrAlias {
+			return g.Name
+		}
+
+		if contains(g.Aliases, nameOrAlias) {
+			return g.Name
+		}
+	}
+
+	return ""
 }
 
 // MatchPattern matches a string against patterns defined in gardenctl config
-// If matched, the function creates and returns a target from the provided target string
-func (config *Config) MatchPattern(garden string, value string) (*TargetMatch, error) {
-	for _, p := range config.ConfiguredPatternsForGarden(garden) {
+// If matched, the function creates and returns a TargetMatch from the provided target string
+func (config *Config) MatchPattern(value string) (*TargetMatch, error) {
+	for _, p := range config.MatchPatterns {
 		r, err := regexp.Compile(p)
 		if err != nil {
 			return nil, fmt.Errorf("failed to compile configured regular expression: %v", err)
@@ -134,10 +135,6 @@ func (config *Config) MatchPattern(garden string, value string) (*TargetMatch, e
 			case "shoot":
 				tm.Shoot = matches[i]
 			}
-		}
-
-		if tm.Garden == "" {
-			tm.Garden = garden
 		}
 
 		return tm, nil
