@@ -81,6 +81,7 @@ var _ = Describe("Manager", func() {
 		gardenClient        client.Client
 		clientProvider      *fake.ClientProvider
 		kubeconfigCache     target.KubeconfigCache
+		namespace           *corev1.Namespace
 	)
 
 	BeforeEach(func() {
@@ -89,6 +90,10 @@ var _ = Describe("Manager", func() {
 				Name:       gardenName,
 				Kubeconfig: gardenKubeconfig,
 			}},
+			MatchPatterns: []string{
+				"^((?P<garden>[^/]+)/)?shoot--(?P<project>.+)--(?P<shoot>.+)$",
+				"^namespace:(?P<namespace>[^/]+)$",
+			},
 		}
 
 		prod1Project = &gardencorev1beta1.Project{
@@ -144,6 +149,15 @@ var _ = Describe("Manager", func() {
 			prod1PendingShootKubeconfig   *corev1.Secret
 		)
 
+		namespace = &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: *prod1Project.Spec.Namespace,
+				Labels: map[string]string{
+					"project.gardener.cloud/name": prod1Project.Name,
+				},
+			},
+		}
+
 		prod1GoldenShoot, prod1GoldenShootKubeconfig = createFakeShoot("golden-shoot", *prod1Project.Spec.Namespace, pointer.String(seed.Name))
 		prod1AmbiguousShoot, prod1AmbiguousShootKubeconfig = createFakeShoot("ambiguous-shoot", *prod1Project.Spec.Namespace, pointer.String(seed.Name))
 		prod2AmbiguousShoot, prod2AmbiguousShootKubeconfig = createFakeShoot("ambiguous-shoot", *prod2Project.Spec.Namespace, pointer.String(seed.Name))
@@ -163,6 +177,7 @@ var _ = Describe("Manager", func() {
 			prod2AmbiguousShootKubeconfig,
 			prod1PendingShoot,
 			prod1PendingShootKubeconfig,
+			namespace,
 		).Build()
 
 		clientProvider = fake.NewFakeClientProvider()
@@ -318,7 +333,7 @@ var _ = Describe("Manager", func() {
 		Expect(manager).NotTo(BeNil())
 
 		Expect(manager.TargetShoot(context.TODO(), prod1GoldenShoot.Name)).To(Succeed())
-		// project should be inserted into the path, as it is prefered over a seed step
+		// project should be inserted into the path, as it is preferred over a seed step
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
 	})
 
@@ -332,6 +347,54 @@ var _ = Describe("Manager", func() {
 
 		Expect(manager.TargetShoot(context.TODO(), prod1AmbiguousShoot.Name)).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
+	})
+
+	It("should be able to target valid garden, project and shoot by matching a pattern", func() {
+		t := target.NewTarget("", "", "", "")
+		targetProvider := fake.NewFakeTargetProvider(t)
+
+		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(manager).NotTo(BeNil())
+
+		Expect(manager.TargetMatchPattern(context.TODO(), fmt.Sprintf("%s/shoot--%s--%s", gardenName, prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
+	})
+
+	It("should be able to target valid project shoot by matching a pattern if garden is set", func() {
+		t := target.NewTarget(gardenName, "", "", "")
+		targetProvider := fake.NewFakeTargetProvider(t)
+
+		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(manager).NotTo(BeNil())
+
+		Expect(manager.TargetMatchPattern(context.TODO(), fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
+	})
+
+	It("should fail to target shoot by matching a pattern if garden is not set", func() {
+		t := target.NewTarget("", "", "", "")
+		targetProvider := fake.NewFakeTargetProvider(t)
+
+		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(manager).NotTo(BeNil())
+
+		Expect(manager.TargetMatchPattern(context.TODO(), fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).NotTo(Succeed())
+		assertTargetProvider(targetProvider, t)
+	})
+
+	It("should be able to target valid project by matching a pattern containing a namespace", func() {
+		t := target.NewTarget(gardenName, "", "", "")
+		targetProvider := fake.NewFakeTargetProvider(t)
+
+		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(manager).NotTo(BeNil())
+
+		Expect(manager.TargetMatchPattern(context.TODO(), fmt.Sprintf("namespace:%s", *prod1Project.Spec.Namespace))).To(Succeed())
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
 	})
 
 	It("should provide a garden client", func() {
