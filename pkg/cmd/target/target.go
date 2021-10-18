@@ -183,15 +183,16 @@ func NewTargetOptions(ioStreams util.IOStreams) *TargetOptions {
 
 // Complete adapts from the command line args to the data required.
 func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+	if len(args) > 0 {
+		o.Kind = TargetKind(strings.TrimSpace(args[0]))
+	}
+
 	kindValidationErr := ValidateKind(o.Kind)
 	if len(args) == 1 && kindValidationErr != nil {
 		// no target kind provided - try to match target with match patterns
 		o.TargetName = strings.TrimSpace(args[0])
+		o.Kind = ""
 	} else {
-		if len(args) > 0 {
-			o.Kind = TargetKind(strings.TrimSpace(args[0]))
-		}
-
 		if len(args) > 1 {
 			o.TargetName = strings.TrimSpace(args[1])
 		}
