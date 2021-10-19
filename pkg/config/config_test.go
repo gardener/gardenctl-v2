@@ -43,18 +43,26 @@ var _ = Describe("Config", func() {
 	})
 
 	It("should find garden by name", func() {
-		gardenName := cfg.FindGarden(gardenName1)
+		gardenName, err := cfg.FindGarden(gardenName1)
+		Expect(err).NotTo(HaveOccurred())
 		Expect(gardenName).Should(Equal(gardenName1))
 
 	})
 
 	It("should find garden by alias", func() {
-		gardenName := cfg.FindGarden(gardenAlias1[0])
+		gardenName, err := cfg.FindGarden(gardenAlias1[0])
+		Expect(err).NotTo(HaveOccurred())
 		Expect(gardenName).Should(Equal(gardenName1))
 
-		gardenName = cfg.FindGarden(gardenAlias2[1])
+		gardenName, err = cfg.FindGarden(gardenAlias2[1])
+		Expect(err).NotTo(HaveOccurred())
 		Expect(gardenName).Should(Equal(gardenName2))
 
+	})
+
+	It("should throw an error if garden not found", func() {
+		_, err := cfg.FindGarden("foobar")
+		Expect(err).To(HaveOccurred())
 	})
 
 	It("should return a TargetMatch for a given value", func() {
