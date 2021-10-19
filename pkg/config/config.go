@@ -92,18 +92,18 @@ func contains(values []string, value string) bool {
 	return false
 }
 
-func (config *Config) FindGarden(nameOrAlias string) string {
+func (config *Config) FindGarden(nameOrAlias string) (string, error) {
 	for _, g := range config.Gardens {
 		if g.Name == nameOrAlias {
-			return g.Name
+			return g.Name, nil
 		}
 
 		if contains(g.Aliases, nameOrAlias) {
-			return g.Name
+			return g.Name, nil
 		}
 	}
 
-	return ""
+	return "", fmt.Errorf("garden with name or alias %q is not defined in gardenctl configuration", nameOrAlias)
 }
 
 // MatchPattern matches a string against patterns defined in gardenctl config

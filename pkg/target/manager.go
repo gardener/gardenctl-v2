@@ -115,19 +115,19 @@ func (m *managerImpl) Configuration() *config.Config {
 }
 
 func (m *managerImpl) TargetGarden(gardenNameOrAlias string) error {
-	gardenName := m.config.FindGarden(gardenNameOrAlias)
-	if gardenName != "" {
-		return m.patchTarget(func(t *targetImpl) error {
-			t.Garden = gardenName
-			t.Project = ""
-			t.Seed = ""
-			t.Shoot = ""
-
-			return nil
-		})
+	gardenName, err := m.config.FindGarden(gardenNameOrAlias)
+	if err != nil {
+		return err
 	}
 
-	return fmt.Errorf("garden with name or alias %q is not defined in gardenctl configuration", gardenNameOrAlias)
+	return m.patchTarget(func(t *targetImpl) error {
+		t.Garden = gardenName
+		t.Project = ""
+		t.Seed = ""
+		t.Shoot = ""
+
+		return nil
+	})
 }
 
 func (m *managerImpl) UnsetTargetGarden() (string, error) {
@@ -383,29 +383,32 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		return errors.New("the provided value does not match any pattern")
 	}
 
-	// if match contains garden name or alias, set it
-	if tm.Garden != "" {
-		if err := m.TargetGarden(tm.Garden); err != nil {
-			return err
+	// need to validate the provided garden before creating a client
+	gardenName := tm.Garden
+	if gardenName == "" {
+		// read target to get current target name
+		currentTarget, err := m.CurrentTarget()
+		if err != nil {
+			return fmt.Errorf("failed to get current target: %v", err)
 		}
+		gardenName = currentTarget.GardenName()
 	}
 
-	// read target to get current target name
-	currentTarget, err := m.CurrentTarget()
+	gardenName, err = m.config.FindGarden(gardenName)
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return err
 	}
 
-	if currentTarget.GardenName() == "" {
+	if gardenName == "" {
 		return errors.New("target match is incomplete: Garden is not set")
 	}
 
-	gardenClient, err := m.clientForGarden(currentTarget.GardenName())
-	if err != nil {
-		return fmt.Errorf("could not create Kubernetes client for garden cluster: %w", err)
-	}
-
 	if tm.Namespace != "" {
+		gardenClient, err := m.clientForGarden(gardenName)
+		if err != nil {
+			return fmt.Errorf("could not create Kubernetes client for garden cluster: %w", err)
+		}
+
 		namespace, err := m.resolveProjectNamespace(ctx, gardenClient, tm.Namespace)
 		if err != nil {
 			return fmt.Errorf("failed to validate project: %w", err)
@@ -427,14 +430,21 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		tm.Project = projectName
 	}
 
-	if tm.Project != "" {
-		if err := m.TargetProject(ctx, tm.Project); err != nil {
-			return err
-		}
+	if dp, ok := m.targetProvider.(*dynamicTargetProvider); ok {
+		tf := NewTargetFlags(gardenName, tm.Project, "", tm.Shoot)
+		dp.targetFlags = tf
 	}
 
 	if tm.Shoot != "" {
 		if err := m.TargetShoot(ctx, tm.Shoot); err != nil {
+			return err
+		}
+	} else if tm.Project != "" {
+		if err := m.TargetProject(ctx, tm.Project); err != nil {
+			return err
+		}
+	} else if tm.Garden != "" {
+		if err := m.TargetGarden(tm.Garden); err != nil {
 			return err
 		}
 	}

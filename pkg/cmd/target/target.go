@@ -99,10 +99,11 @@ const (
 	TargetKindProject TargetKind = "project"
 	TargetKindSeed    TargetKind = "seed"
 	TargetKindShoot   TargetKind = "shoot"
+	TargetKindPattern TargetKind = "pattern"
 )
 
 var (
-	AllTargetKinds = []TargetKind{TargetKindGarden, TargetKindProject, TargetKindSeed, TargetKindShoot}
+	AllTargetKinds = []TargetKind{TargetKindGarden, TargetKindProject, TargetKindSeed, TargetKindShoot, TargetKindPattern}
 )
 
 func ValidateKind(kind TargetKind) error {
@@ -122,6 +123,7 @@ func validTargetArgsFunction(f util.Factory, o *TargetOptions, args []string, to
 			string(TargetKindProject),
 			string(TargetKindSeed),
 			string(TargetKindShoot),
+			string(TargetKindPattern),
 		}, nil
 	}
 
@@ -191,7 +193,7 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 	if len(args) == 1 && kindValidationErr != nil {
 		// no target kind provided - try to match target with match patterns
 		o.TargetName = strings.TrimSpace(args[0])
-		o.Kind = ""
+		o.Kind = TargetKindPattern
 	} else {
 		if len(args) > 1 {
 			o.TargetName = strings.TrimSpace(args[1])
@@ -235,13 +237,12 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 // Validate validates the provided options
 func (o *TargetOptions) Validate() error {
 	// reject flag/arg-less invocations
-	if o.TargetName == "" {
+	if o.Kind == "" || o.TargetName == "" {
 		return errors.New("no target specified")
 	}
 
-	kindValidationErr := ValidateKind(o.Kind)
-	if o.Kind != "" && kindValidationErr != nil {
-		return kindValidationErr
+	if err := ValidateKind(o.Kind); err != nil {
+		return err
 	}
 
 	return nil
