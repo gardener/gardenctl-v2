@@ -49,6 +49,8 @@ func NewCmdTarget(f util.Factory, o *TargetOptions) *cobra.Command {
 	cmd.AddCommand(NewCmdUnset(f, NewUnsetOptions(ioStreams)))
 	cmd.AddCommand(NewCmdView(f, NewViewOptions(ioStreams)))
 
+	o.AddOutputFlags(cmd)
+
 	return cmd
 }
 
@@ -82,10 +84,14 @@ func runCmdTarget(f util.Factory, o *TargetOptions) error {
 		return fmt.Errorf("failed to get current target: %v", err)
 	}
 
-	fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
-	fmt.Fprintf(o.IOStreams.Out, "New target: %s\n", currentTarget)
+	if o.Output == "" {
+		fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
+		fmt.Fprintf(o.IOStreams.Out, "New target: %s\n", currentTarget)
 
-	return nil
+		return nil
+	}
+
+	return o.PrintObject(currentTarget)
 }
 
 // TargetKind is representing the type of things that can be targeted

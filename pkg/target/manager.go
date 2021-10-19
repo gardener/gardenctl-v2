@@ -211,7 +211,7 @@ func (m *managerImpl) resolveProjectName(ctx context.Context, gardenClient clien
 	return project, nil
 }
 
-func (m *managerImpl) resolveProjectNamespace(ctx context.Context, gardenClient client.Client, projectNamespace string) (*corev1.Namespace, error) {
+func (m *managerImpl) resolveNamespace(ctx context.Context, gardenClient client.Client, projectNamespace string) (*corev1.Namespace, error) {
 	namespace := &corev1.Namespace{}
 	key := types.NamespacedName{Name: projectNamespace}
 
@@ -391,6 +391,7 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		if err != nil {
 			return fmt.Errorf("failed to get current target: %v", err)
 		}
+
 		gardenName = currentTarget.GardenName()
 	}
 
@@ -409,7 +410,7 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 			return fmt.Errorf("could not create Kubernetes client for garden cluster: %w", err)
 		}
 
-		namespace, err := m.resolveProjectNamespace(ctx, gardenClient, tm.Namespace)
+		namespace, err := m.resolveNamespace(ctx, gardenClient, tm.Namespace)
 		if err != nil {
 			return fmt.Errorf("failed to validate project: %w", err)
 		}

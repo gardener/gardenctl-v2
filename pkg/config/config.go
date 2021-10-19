@@ -14,16 +14,22 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Config is the global Garden configuration
 type Config struct {
 	// Gardens is a list of known Garden clusters
-	Gardens       []Garden `yaml:"gardens"`
+	Gardens []Garden `yaml:"gardens"`
+	// MatchPatterns is a list of regex patterns that can be defined to use custom input formats for targeting
 	MatchPatterns []string `yaml:"matchPatterns"`
 }
 
+// Garden represents one Gardener Landscape
 type Garden struct {
-	Name       string   `yaml:"name"`
-	Kubeconfig string   `yaml:"kubeconfig"`
-	Aliases    []string `yaml:"aliases"`
+	// Name is a unique identifier of this Garden
+	Name string `yaml:"name"`
+	// Kubeconfig defines the path to a Kubeconfig valid for this Garden
+	Kubeconfig string `yaml:"kubeconfig"`
+	// is a list of alternative names that can be used to target this Garden
+	Aliases []string `yaml:"aliases"`
 }
 
 // LoadFromFile parses a gardenctl config file and returns a Config struct
@@ -75,11 +81,16 @@ func (config *Config) SaveToFile(filename string) error {
 	return nil
 }
 
+// TargetMatch represents a pattern match
 type TargetMatch struct {
-	Garden    string
-	Project   string
+	// Garden is the matched Garden
+	Garden string
+	// Project is the matched Project
+	Project string
+	// Namespace is the matched Namespace, can be used to find the related project
 	Namespace string
-	Shoot     string
+	// Garden is the matched Shoot
+	Shoot string
 }
 
 func contains(values []string, value string) bool {
@@ -106,6 +117,13 @@ func (config *Config) FindGarden(nameOrAlias string) (string, error) {
 	return "", fmt.Errorf("garden with name or alias %q is not defined in gardenctl configuration", nameOrAlias)
 }
 
+const (
+	patternGarden    = "garden"
+	patternProject   = "project"
+	patternNamespace = "namespace"
+	patternShoot     = "shoot"
+)
+
 // MatchPattern matches a string against patterns defined in gardenctl config
 // If matched, the function creates and returns a TargetMatch from the provided target string
 func (config *Config) MatchPattern(value string) (*TargetMatch, error) {
@@ -126,13 +144,13 @@ func (config *Config) MatchPattern(value string) (*TargetMatch, error) {
 
 		for i, name := range names {
 			switch name {
-			case "garden":
+			case patternGarden:
 				tm.Garden = matches[i]
-			case "project":
+			case patternProject:
 				tm.Project = matches[i]
-			case "namespace":
+			case patternNamespace:
 				tm.Namespace = matches[i]
-			case "shoot":
+			case patternShoot:
 				tm.Shoot = matches[i]
 			}
 		}
