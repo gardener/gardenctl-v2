@@ -36,7 +36,7 @@ type Manager interface {
 
 	// TargetGarden sets the garden target configuration
 	// This implicitly unsets project, seed and shoot target configuration
-	TargetGarden(name string) error
+	TargetGarden(ctx context.Context, name string) error
 	// TargetProject sets the project target configuration
 	// This implicitly unsets seed and shoot target configuration
 	TargetProject(ctx context.Context, name string) error
@@ -114,20 +114,8 @@ func (m *managerImpl) Configuration() *config.Config {
 	return m.config
 }
 
-func (m *managerImpl) TargetGarden(gardenNameOrAlias string) error {
-	gardenName, err := m.config.FindGarden(gardenNameOrAlias)
-	if err != nil {
-		return err
-	}
-
-	return m.patchTarget(func(t *targetImpl) error {
-		t.Garden = gardenName
-		t.Project = ""
-		t.Seed = ""
-		t.Shoot = ""
-
-		return nil
-	})
+func (m *managerImpl) TargetGarden(ctx context.Context, gardenNameOrAlias string) error {
+	return m.patchTargetWithValues(ctx, gardenNameOrAlias, "", "", "", "")
 }
 
 func (m *managerImpl) UnsetTargetGarden() (string, error) {
@@ -152,33 +140,7 @@ func (m *managerImpl) UnsetTargetGarden() (string, error) {
 }
 
 func (m *managerImpl) TargetProject(ctx context.Context, projectName string) error {
-	return m.patchTarget(func(t *targetImpl) error {
-		if t.Garden == "" {
-			return ErrNoGardenTargeted
-		}
-
-		gardenClient, err := m.clientForGarden(t.Garden)
-		if err != nil {
-			return fmt.Errorf("could not create Kubernetes client for garden cluster: %w", err)
-		}
-
-		// validate that the project exists
-		project, err := m.resolveProjectName(ctx, gardenClient, projectName)
-		if err != nil {
-			return fmt.Errorf("failed to resolve project: %w", err)
-		}
-
-		// validate the project
-		if err := m.validateProject(ctx, project); err != nil {
-			return fmt.Errorf("invalid project: %w", err)
-		}
-
-		t.Seed = ""
-		t.Project = projectName
-		t.Shoot = ""
-
-		return nil
-	})
+	return m.patchTargetWithValues(ctx, "", projectName, "", "", "")
 }
 
 func (m *managerImpl) UnsetTargetProject() (string, error) {
@@ -231,33 +193,7 @@ func (m *managerImpl) validateProject(ctx context.Context, project *gardencorev1
 }
 
 func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
-	return m.patchTarget(func(t *targetImpl) error {
-		if t.Garden == "" {
-			return ErrNoGardenTargeted
-		}
-
-		gardenClient, err := m.clientForGarden(t.Garden)
-		if err != nil {
-			return fmt.Errorf("could not create Kubernetes client for garden cluster: %w", err)
-		}
-
-		// validate that the seed exists
-		seed, err := m.resolveSeedName(ctx, gardenClient, seedName)
-		if err != nil {
-			return fmt.Errorf("failed to resolve seed: %w", err)
-		}
-
-		// validate the seed
-		if err := m.validateSeed(ctx, seed); err != nil {
-			return fmt.Errorf("invalid seed: %w", err)
-		}
-
-		t.Seed = seedName
-		t.Project = ""
-		t.Shoot = ""
-
-		return nil
-	})
+	return m.patchTargetWithValues(ctx, "", "", "", seedName, "")
 }
 
 func (m *managerImpl) UnsetTargetSeed() (string, error) {
@@ -298,61 +234,7 @@ func (m *managerImpl) validateSeed(ctx context.Context, seed *gardencorev1beta1.
 }
 
 func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
-	return m.patchTarget(func(t *targetImpl) error {
-		if t.Garden == "" {
-			return ErrNoGardenTargeted
-		}
-
-		gardenClient, err := m.clientForGarden(t.Garden)
-		if err != nil {
-			return fmt.Errorf("could not create Kubernetes client for garden cluster: %w", err)
-		}
-
-		var (
-			project *gardencorev1beta1.Project
-			seed    *gardencorev1beta1.Seed
-		)
-
-		// *if* project or seed are set, resolve them to aid in finding the shoot later on
-		if t.Project != "" {
-			project, err = m.resolveProjectName(ctx, gardenClient, t.Project)
-			if err != nil {
-				return fmt.Errorf("failed to validate project: %w", err)
-			}
-		} else if t.Seed != "" {
-			seed, err = m.resolveSeedName(ctx, gardenClient, t.Seed)
-			if err != nil {
-				return fmt.Errorf("failed to resolve seed: %w", err)
-			}
-		}
-
-		project, shoot, err := m.resolveShootName(ctx, gardenClient, project, seed, shootName)
-		if err != nil {
-			return fmt.Errorf("failed to resolve shoot: %w", err)
-		}
-
-		// validate the shoot
-		if err := m.validateShoot(ctx, shoot); err != nil {
-			return fmt.Errorf("invalid shoot: %w", err)
-		}
-
-		t.Shoot = shootName
-
-		// update the target path to the shoot; this is primarily important
-		// when so far neither project nor seed were set. By updating the
-		// target, we persist the result of the resolving step earlier and make
-		// it easier to other gardenctl commands to ingest the target without
-		// having to re-resolve the shoot name again.
-		// resolveShootName will only ever return either a project or a seed,
-		// never both. The decision what to prefer happens there as well.
-		if project != nil {
-			t.Project = project.Name
-		}
-
-		t.Seed = ""
-
-		return nil
-	})
+	return m.patchTargetWithValues(ctx, "", "", "", "", shootName)
 }
 
 func (m *managerImpl) UnsetTargetShoot() (string, error) {
@@ -383,74 +265,155 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		return errors.New("the provided value does not match any pattern")
 	}
 
-	// need to validate the provided garden before creating a client
-	gardenName := tm.Garden
-	if gardenName == "" {
-		// read target to get current target name
-		currentTarget, err := m.CurrentTarget()
-		if err != nil {
-			return fmt.Errorf("failed to get current target: %v", err)
-		}
+	return m.patchTargetWithValues(ctx, tm.Garden, tm.Project, tm.Namespace, "", tm.Shoot)
+}
 
-		gardenName = currentTarget.GardenName()
-	}
-
-	gardenName, err = m.config.FindGarden(gardenName)
+func (m *managerImpl) patchTargetWithValues(ctx context.Context, gardenName string, projectName string, namespace string, seedName string, shootName string) error {
+	target, err := m.createValidTarget(ctx, gardenName, projectName, namespace, seedName, shootName)
 	if err != nil {
 		return err
 	}
 
-	if gardenName == "" {
-		return errors.New("target match is incomplete: Garden is not set")
+	if target == nil {
+		return errors.New("could not create valid target")
 	}
 
-	if tm.Namespace != "" {
-		gardenClient, err := m.clientForGarden(gardenName)
-		if err != nil {
-			return fmt.Errorf("could not create Kubernetes client for garden cluster: %w", err)
-		}
+	return m.patchTarget(func(t *targetImpl) error {
+		t.Garden = target.GardenName()
+		t.Project = target.ProjectName()
+		t.Seed = target.SeedName()
+		t.Shoot = target.ShootName()
 
-		namespace, err := m.resolveNamespace(ctx, gardenClient, tm.Namespace)
+		return nil
+	})
+}
+
+func (m *managerImpl) createValidTarget(ctx context.Context, gardenName string, projectName string, namespace string, seedName string, shootName string) (Target, error) {
+	currentTarget, err := m.CurrentTarget()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current target: %v", err)
+	}
+
+	if gardenName != "" {
+		gardenName, err = m.config.FindGarden(gardenName)
 		if err != nil {
-			return fmt.Errorf("failed to validate project: %w", err)
+			return nil, err
+		}
+	} else {
+		// if newTarget does not have a Garden name set, we need to get it from the current
+		// target to be able to create a client
+		gardenName = currentTarget.GardenName()
+	}
+
+	if gardenName == "" {
+		return nil, ErrNoGardenTargeted
+	}
+
+	if namespace == "" && projectName == "" && seedName == "" && shootName == "" {
+		// return immediately if only garden is targeted, no need to create a client in this case
+		newTarget := NewTarget(gardenName, projectName, seedName, shootName)
+		return newTarget, nil
+	}
+
+	gardenClient, err := m.clientForGarden(gardenName)
+	if err != nil {
+		return nil, fmt.Errorf("could not create Kubernetes client for garden cluster: %w", err)
+	}
+
+	if namespace != "" {
+		namespace, err := m.resolveNamespace(ctx, gardenClient, namespace)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate namespace: %w", err)
 		}
 
 		if namespace == nil {
-			return fmt.Errorf("invalid namespace: %s", tm.Namespace)
+			return nil, fmt.Errorf("invalid namespace: %s", namespace)
 		}
 
-		projectName := namespace.Labels["project.gardener.cloud/name"]
-		if projectName == "" {
-			return fmt.Errorf("namespace %q is not related to a gardener project", tm.Namespace)
+		projectNameNamespace := namespace.Labels["project.gardener.cloud/name"]
+		if projectNameNamespace == "" {
+			return nil, fmt.Errorf("namespace %q is not related to a gardener project", projectNameNamespace)
 		}
 
-		if tm.Project != "" && tm.Project != projectName {
-			return fmt.Errorf("both namespace %q and project %q provided, however they do not match", tm.Namespace, tm.Project)
+		if projectName != "" && projectName != projectNameNamespace {
+			return nil, fmt.Errorf("both namespace %q and project %q provided, however they do not point to the same project", namespace, projectName)
 		}
 
-		tm.Project = projectName
+		projectName = projectNameNamespace
 	}
 
-	if dp, ok := m.targetProvider.(*dynamicTargetProvider); ok {
-		tf := NewTargetFlags(gardenName, tm.Project, "", tm.Shoot)
-		dp.targetFlags = tf
-	}
+	var project *gardencorev1beta1.Project
+	if projectName != "" {
+		// validate that the project exists
+		project, err = m.resolveProjectName(ctx, gardenClient, projectName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve project: %w", err)
+		}
 
-	if tm.Shoot != "" {
-		if err := m.TargetShoot(ctx, tm.Shoot); err != nil {
-			return err
-		}
-	} else if tm.Project != "" {
-		if err := m.TargetProject(ctx, tm.Project); err != nil {
-			return err
-		}
-	} else if tm.Garden != "" {
-		if err := m.TargetGarden(tm.Garden); err != nil {
-			return err
+		// validate the project
+		if err := m.validateProject(ctx, project); err != nil {
+			return nil, fmt.Errorf("invalid project: %w", err)
 		}
 	}
 
-	return nil
+	var seed *gardencorev1beta1.Seed
+	if seedName != "" {
+		// validate that the seed exists
+		seed, err = m.resolveSeedName(ctx, gardenClient, seedName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve seed: %w", err)
+		}
+
+		// validate the seed
+		if err := m.validateSeed(ctx, seed); err != nil {
+			return nil, fmt.Errorf("invalid seed: %w", err)
+		}
+	}
+
+	if shootName != "" {
+		var (
+			project *gardencorev1beta1.Project
+			seed    *gardencorev1beta1.Seed
+		)
+
+		// *if* project or seed are set, resolve them to aid in finding the shoot later on
+		if project == nil && currentTarget.ProjectName() != "" {
+			project, err = m.resolveProjectName(ctx, gardenClient, currentTarget.ProjectName())
+			if err != nil {
+				return nil, fmt.Errorf("failed to validate project: %w", err)
+			}
+		} else if seed == nil && currentTarget.SeedName() != "" {
+			seed, err = m.resolveSeedName(ctx, gardenClient, currentTarget.SeedName())
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve seed: %w", err)
+			}
+		}
+
+		project, shoot, err := m.resolveShootName(ctx, gardenClient, project, seed, shootName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve shoot: %w", err)
+		}
+
+		// validate the shoot
+		if err := m.validateShoot(ctx, shoot); err != nil {
+			return nil, fmt.Errorf("invalid shoot: %w", err)
+		}
+
+		// update the target path to the shoot; this is primarily important
+		// when so far neither project nor seed were set. By updating the
+		// target, we persist the result of the resolving step earlier and make
+		// it easier to other gardenctl commands to ingest the target without
+		// having to re-resolve the shoot name again.
+		// resolveShootName will only ever return either a project or a seed,
+		// never both. The decision what to prefer happens there as well.
+		if projectName == "" && project != nil {
+			projectName = project.Name
+		}
+	}
+
+	newTarget := NewTarget(gardenName, projectName, seedName, shootName)
+
+	return newTarget, nil
 }
 
 // resolveShootName takes a shoot name and tries to find the matching shoot

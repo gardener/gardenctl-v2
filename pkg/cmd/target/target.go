@@ -64,7 +64,7 @@ func runCmdTarget(f util.Factory, o *TargetOptions) error {
 
 	switch o.Kind {
 	case TargetKindGarden:
-		err = manager.TargetGarden(o.TargetName)
+		err = manager.TargetGarden(ctx, o.TargetName)
 	case TargetKindProject:
 		err = manager.TargetProject(ctx, o.TargetName)
 	case TargetKindSeed:

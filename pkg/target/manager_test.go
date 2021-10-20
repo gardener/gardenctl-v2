@@ -202,7 +202,7 @@ var _ = Describe("Manager", func() {
 		t := target.NewTarget("", "", "", "")
 		manager, targetProvider := createFakeManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		Expect(manager.TargetGarden(gardenName)).To(Succeed())
+		Expect(manager.TargetGarden(context.TODO(), gardenName)).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
 	})
 
@@ -210,7 +210,7 @@ var _ = Describe("Manager", func() {
 		t := target.NewTarget("", "", "", "")
 		manager, targetProvider := createFakeManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		Expect(manager.TargetGarden("does-not-exist")).NotTo(Succeed())
+		Expect(manager.TargetGarden(context.TODO(), "does-not-exist")).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
 	})
 
@@ -245,7 +245,7 @@ var _ = Describe("Manager", func() {
 		// go deep
 		Expect(manager.TargetProject(context.TODO(), prod1Project.Name)).To(Succeed())
 		// go back up
-		Expect(manager.TargetGarden(gardenName)).To(Succeed())
+		Expect(manager.TargetGarden(context.TODO(), gardenName)).To(Succeed())
 
 		// should have the same as before
 		assertTargetProvider(targetProvider, t)

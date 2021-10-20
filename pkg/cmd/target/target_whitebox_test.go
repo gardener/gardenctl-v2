@@ -186,6 +186,7 @@ var _ = Describe("Completion", func() {
 				string(TargetKindProject),
 				string(TargetKindSeed),
 				string(TargetKindShoot),
+				string(TargetKindPattern),
 			}))
 		})
 
