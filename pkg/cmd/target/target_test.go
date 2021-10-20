@@ -45,6 +45,7 @@ var _ = Describe("Command", func() {
 		shoot            *gardencorev1beta1.Shoot
 		cfg              *config.Config
 		fakeGardenClient client.Client
+		clientProvider   *internalfake.ClientProvider
 	)
 
 	BeforeEach(func() {
@@ -86,6 +87,8 @@ var _ = Describe("Command", func() {
 		}
 
 		fakeGardenClient = fake.NewClientBuilder().WithObjects(project, seed, shoot).Build()
+		clientProvider = internalfake.NewFakeClientProvider()
+		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 	})
 
 	It("should reject bad options", func() {
@@ -119,8 +122,6 @@ var _ = Describe("Command", func() {
 
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
-		clientProvider := internalfake.NewFakeClientProvider()
-		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
 		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
@@ -143,8 +144,6 @@ var _ = Describe("Command", func() {
 
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
-		clientProvider := internalfake.NewFakeClientProvider()
-		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
 		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
@@ -162,22 +161,11 @@ var _ = Describe("Command", func() {
 	It("should be able to target a shoot", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
-		gardenName := "mygarden"
-		gardenKubeconfig := ""
-		cfg := &config.Config{
-			Gardens: []config.Garden{{
-				Name:       gardenName,
-				Kubeconfig: gardenKubeconfig,
-			}},
-		}
-
 		// user has already targeted a garden and project
 		currentTarget := target.NewTarget(gardenName, projectName, "", "")
 
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
-		clientProvider := internalfake.NewFakeClientProvider()
-		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
 		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
