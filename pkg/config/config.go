@@ -103,6 +103,7 @@ func contains(values []string, value string) bool {
 	return false
 }
 
+// FindGarden returns name of Garden with provided name or first that includes the provided name in the list of aliases
 func (config *Config) FindGarden(nameOrAlias string) (string, error) {
 	for _, g := range config.Gardens {
 		if g.Name == nameOrAlias {
