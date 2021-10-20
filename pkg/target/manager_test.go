@@ -333,6 +333,14 @@ var _ = Describe("Manager", func() {
 		assertTargetProvider(targetProvider, t)
 	})
 
+	It("should not target anything if target is not completely valid", func() {
+		t := target.NewTarget(gardenName, "", "", "")
+		manager, targetProvider := createFakeManager(t, *cfg, clientProvider, kubeconfigCache)
+
+		Expect(manager.TargetMatchPattern(context.TODO(), fmt.Sprintf("shoot--%s--%s", prod1Project.Name, "invalid shoot"))).NotTo(Succeed())
+		assertTargetProvider(targetProvider, t)
+	})
+
 	It("should be able to target valid project by matching a pattern containing a namespace", func() {
 		t := target.NewTarget(gardenName, "", "", "")
 		manager, targetProvider := createFakeManager(t, *cfg, clientProvider, kubeconfigCache)
