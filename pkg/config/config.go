@@ -14,7 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config is the global Garden configuration
+// Config holds the gardenctl configuration
 type Config struct {
 	// Gardens is a list of known Garden clusters
 	Gardens []Garden `yaml:"gardens"`
@@ -26,7 +26,7 @@ type Config struct {
 type Garden struct {
 	// Name is a unique identifier of this Garden
 	Name string `yaml:"name"`
-	// Kubeconfig defines the path to a Kubeconfig valid for this Garden
+	// Kubeconfig holds the path for the kubeconfig of the garden cluster
 	Kubeconfig string `yaml:"kubeconfig"`
 	// is a list of alternative names that can be used to target this Garden
 	Aliases []string `yaml:"aliases"`
@@ -89,7 +89,7 @@ type TargetMatch struct {
 	Project string
 	// Namespace is the matched Namespace, can be used to find the related project
 	Namespace string
-	// Garden is the matched Shoot
+	// Shoot is the matched Shoot
 	Shoot string
 }
 
