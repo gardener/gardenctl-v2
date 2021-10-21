@@ -258,7 +258,7 @@ func (m *managerImpl) UnsetTargetShoot() (string, error) {
 func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) error {
 	tm, err := m.config.MatchPattern(value)
 	if err != nil {
-		return fmt.Errorf("error occurred while trying to match value: %v", err)
+		return fmt.Errorf("error occurred while trying to match value: %w", err)
 	}
 
 	if tm == nil {
