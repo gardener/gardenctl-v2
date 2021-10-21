@@ -19,16 +19,20 @@ type Config struct {
 	// Gardens is a list of known Garden clusters
 	Gardens []Garden `yaml:"gardens"`
 	// MatchPatterns is a list of regex patterns that can be defined to use custom input formats for targeting
+	// Use named capturing groups to match target values.
+	// Supported capturing groups: garden, project, namespace, shoot
 	MatchPatterns []string `yaml:"matchPatterns"`
 }
 
-// Garden represents one Gardener Landscape
+// Garden represents one garden cluster
 type Garden struct {
 	// Name is a unique identifier of this Garden
+	// The value is considered when evaluating the garden matcher pattern
 	Name string `yaml:"name"`
 	// Kubeconfig defines the path to a Kubeconfig valid for this Garden
 	Kubeconfig string `yaml:"kubeconfig"`
-	// is a list of alternative names that can be used to target this Garden
+	// Aliases is a list of alternative names that can be used to target this Garden
+	// Each value is considered when evaluating the garden matcher pattern
 	Aliases []string `yaml:"aliases"`
 }
 
@@ -131,7 +135,7 @@ func (config *Config) MatchPattern(value string) (*TargetMatch, error) {
 	for _, p := range config.MatchPatterns {
 		r, err := regexp.Compile(p)
 		if err != nil {
-			return nil, fmt.Errorf("failed to compile configured regular expression: %v", err)
+			return nil, fmt.Errorf("failed to compile configured regular expression %q: %v", p, err)
 		}
 
 		names := r.SubexpNames()
