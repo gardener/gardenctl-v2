@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"text/template"
 
@@ -93,10 +94,12 @@ func NewCloudEnvOptions(ioStreams util.IOStreams) *CloudEnvOptions {
 
 // Complete adapts from the command line args to the data required.
 func (o *CloudEnvOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	o.Shell = viper.GetString("shell")
-
 	if len(args) > 0 {
 		o.Shell = strings.TrimSpace(args[0])
+	} else if viper.IsSet("shell") {
+		o.Shell = viper.GetString("shell")
+	} else {
+		o.Shell = DefaultShell()
 	}
 
 	o.GardenDir = f.GardenHomeDir()
@@ -130,6 +133,20 @@ func ValidateShell(shell string) error {
 	}
 
 	return fmt.Errorf("invalid shell given, must be one of %v", shells)
+}
+
+// DefaultShell detects user's current shell.
+func DefaultShell() string {
+	shell := os.Getenv("SHELL")
+	if shell != "" {
+		return filepath.Base(shell)
+	}
+
+	if runtime.GOOS != "windows" {
+		return "bash"
+	}
+
+	return "powershell"
 }
 
 func (o *CloudEnvOptions) runCmd(f util.Factory) error {
