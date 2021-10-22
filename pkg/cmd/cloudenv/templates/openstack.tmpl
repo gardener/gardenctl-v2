@@ -1,0 +1,77 @@
+{{define "default"}}{{if .unset -}}
+unset OS_IDENTITY_API_VERSION;
+unset OS_AUTH_VERSION;
+unset OS_AUTH_STRATEGY;
+unset OS_AUTH_URL;
+unset OS_TENANT_NAME;
+unset OS_PROJECT_DOMAIN_NAME;
+unset OS_USER_DOMAIN_NAME;
+unset OS_USERNAME;
+unset OS_PASSWORD;
+unset OS_REGION_NAME;
+{{else -}}
+export OS_IDENTITY_API_VERSION="3";
+export OS_AUTH_VERSION="3";
+export OS_AUTH_STRATEGY="keystone";
+export OS_AUTH_URL={{.authURL | quote}};
+export OS_TENANT_NAME={{.tenantName | quote}};
+export OS_PROJECT_DOMAIN_NAME={{.domainName | quote}};
+export OS_USER_DOMAIN_NAME={{.domainName | quote}};
+export OS_USERNAME={{.accessKeyID | quote}};
+export OS_PASSWORD={{.secretAccessKey | quote}};
+export OS_REGION_NAME={{.region | quote}};
+{{end}}
+{{.usageHint}}{{end}}
+
+{{define "bash"}}{{template "default" .}}{{end}}
+{{define "zsh"}}{{template "default" .}}{{end}}
+
+{{define "fish"}}{{if .unset -}}
+set -e OS_IDENTITY_API_VERSION;
+set -e OS_AUTH_VERSION;
+set -e OS_AUTH_STRATEGY;
+set -e OS_AUTH_URL;
+set -e OS_TENANT_NAME;
+set -e OS_PROJECT_DOMAIN_NAME;
+set -e OS_USER_DOMAIN_NAME;
+set -e OS_USERNAME;
+set -e OS_PASSWORD;
+set -e OS_REGION_NAME;
+{{else -}}
+set -gx OS_IDENTITY_API_VERSION "3";
+set -gx OS_AUTH_VERSION "3";
+set -gx OS_AUTH_STRATEGY "keystone";
+set -gx OS_AUTH_URL {{.authURL | quote}};
+set -gx OS_TENANT_NAME {{.tenantName | quote}};
+set -gx OS_PROJECT_DOMAIN_NAME {{.domainName | quote}};
+set -gx OS_USER_DOMAIN_NAME {{.domainName | quote}};
+set -gx OS_USERNAME {{.accessKeyID | quote}};
+set -gx OS_PASSWORD {{.secretAccessKey | quote}};
+set -gx OS_REGION_NAME {{.region | quote}};
+{{end}}
+{{.usageHint}}{{end}}
+
+{{define "powershell"}}{{if .unset -}}
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_IDENTITY_API_VERSION;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_AUTH_VERSION;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_AUTH_STRATEGY;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_AUTH_URL;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_TENANT_NAME;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_PROJECT_DOMAIN_NAME;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_USER_DOMAIN_NAME;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_USERNAME;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_PASSWORD;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_REGION_NAME;
+{{else -}}
+$Env:OS_IDENTITY_API_VERSION = "3";
+$Env:OS_AUTH_VERSION = "3";
+$Env:OS_AUTH_STRATEGY = "keystone";
+$Env:OS_AUTH_URL = {{.authURL | quote}};
+$Env:OS_TENANT_NAME = {{.tenantName | quote}};
+$Env:OS_PROJECT_DOMAIN_NAME = {{.domainName | quote}};
+$Env:OS_USER_DOMAIN_NAME = {{.domainName | quote}};
+$Env:OS_USERNAME = {{.accessKeyID | quote}};
+$Env:OS_PASSWORD = {{.secretAccessKey | quote}};
+$Env:OS_REGION_NAME = {{.region | quote}};
+{{end}}{{.usageHint}}{{end}}
+
