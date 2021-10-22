@@ -46,7 +46,7 @@ func NewCmdCloudEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	o := NewCloudEnvOptions(ioStreams)
 
 	cmd := &cobra.Command{
-		Use:     "cloudenv [bash | fish | powershell | zsh]",
+		Use:     "configure-cloudprovider [bash | fish | powershell | zsh]",
 		Short:   "Show the commands to configure cloudprovider CLI of the target cluster",
 		Aliases: []string{"configure-cloud", "cloudprovider-env", "cloud-env"},
 		RunE: func(cmd *cobra.Command, args []string) error {
