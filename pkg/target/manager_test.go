@@ -54,7 +54,7 @@ func createFakeShoot(name string, namespace string, seedName *string) (*gardenco
 			Name:      name,
 			Namespace: namespace,
 		},
-		Status: gardencorev1beta1.ShootStatus{
+		Spec: gardencorev1beta1.ShootSpec{
 			SeedName: seedName,
 		},
 	}

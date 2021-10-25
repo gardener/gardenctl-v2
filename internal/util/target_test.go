@@ -9,6 +9,7 @@ package util_test
 import (
 	"context"
 	"fmt"
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 
 	. "github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -19,7 +20,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -29,7 +29,7 @@ var _ = Describe("Target Utilities", func() {
 		testUnreadyProject *gardencorev1beta1.Project
 		testSeed           *gardencorev1beta1.Seed
 		testShoot          *gardencorev1beta1.Shoot
-		gardenClient       client.Client
+		gardenClient       gardenclient.Client
 	)
 
 	BeforeEach(func() {
@@ -90,14 +90,14 @@ var _ = Describe("Target Utilities", func() {
 			},
 		}
 
-		gardenClient = fakeclient.NewClientBuilder().WithObjects(
+		gardenClient = gardenclient.NewGardenClient(fakeclient.NewClientBuilder().WithObjects(
 			testReadyProject,
 			testUnreadyProject,
 			testSeedKubeconfig,
 			testSeed,
 			testShootKubeconfig,
 			testShoot,
-		).Build()
+		).Build())
 	})
 
 	Describe("SeedForTarget", func() {

@@ -9,13 +9,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 
 	"github.com/gardener/gardenctl-v2/pkg/config"
 
-	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -63,8 +61,8 @@ type Manager interface {
 	// of a pattern
 	TargetMatchPattern(ctx context.Context, value string) error
 
-	// GardenClient controller-runtime client for accessing the configured garden cluster
-	GardenClient(t Target) (client.Client, error)
+	// GardenClient client for accessing the configured garden cluster
+	GardenClient(t Target) (gardenclient.Client, error)
 	// SeedClient controller-runtime client for accessing the configured seed cluster
 	SeedClient(ctx context.Context, t Target) (client.Client, error)
 	// ShootClusterClient controller-runtime client for accessing the configured shoot cluster
@@ -83,6 +81,7 @@ type managerImpl struct {
 
 var _ Manager = &managerImpl{}
 
+// NewManager returns a new manager
 func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider ClientProvider, kubeconfigCache KubeconfigCache) (Manager, error) {
 	return &managerImpl{
 		config:          config,
@@ -115,7 +114,19 @@ func (m *managerImpl) Configuration() *config.Config {
 }
 
 func (m *managerImpl) TargetGarden(ctx context.Context, gardenNameOrAlias string) error {
-	return m.patchTargetWithValues(ctx, gardenNameOrAlias, "", "", "", "")
+	tb := NewTargetBuilder(m)
+
+	err := tb.UpdateWithCurrentTarget()
+	if err != nil {
+		return err
+	}
+
+	err = tb.SetAndValidateGardenName(gardenNameOrAlias)
+	if err != nil {
+		return err
+	}
+
+	return m.patchTargetWithTarget(tb.GetTarget())
 }
 
 func (m *managerImpl) UnsetTargetGarden() (string, error) {
@@ -140,7 +151,19 @@ func (m *managerImpl) UnsetTargetGarden() (string, error) {
 }
 
 func (m *managerImpl) TargetProject(ctx context.Context, projectName string) error {
-	return m.patchTargetWithValues(ctx, "", projectName, "", "", "")
+	tb := NewTargetBuilder(m)
+
+	err := tb.UpdateWithCurrentTarget()
+	if err != nil {
+		return err
+	}
+
+	err = tb.SetAndValidateProjectName(ctx, projectName)
+	if err != nil {
+		return err
+	}
+
+	return m.patchTargetWithTarget(tb.GetTarget())
 }
 
 func (m *managerImpl) UnsetTargetProject() (string, error) {
@@ -162,38 +185,20 @@ func (m *managerImpl) UnsetTargetProject() (string, error) {
 	return "", errors.New("no project targeted")
 }
 
-func (m *managerImpl) resolveProjectName(ctx context.Context, gardenClient client.Client, projectName string) (*gardencorev1beta1.Project, error) {
-	project := &gardencorev1beta1.Project{}
-	key := types.NamespacedName{Name: projectName}
-
-	if err := gardenClient.Get(ctx, key, project); err != nil {
-		return nil, err
-	}
-
-	return project, nil
-}
-
-func (m *managerImpl) resolveNamespace(ctx context.Context, gardenClient client.Client, projectNamespace string) (*corev1.Namespace, error) {
-	namespace := &corev1.Namespace{}
-	key := types.NamespacedName{Name: projectNamespace}
-
-	if err := gardenClient.Get(ctx, key, namespace); err != nil {
-		return nil, err
-	}
-
-	return namespace, nil
-}
-
-func (m *managerImpl) validateProject(ctx context.Context, project *gardencorev1beta1.Project) error {
-	if project.Spec.Namespace == nil || *project.Spec.Namespace == "" {
-		return errors.New("project does not have a corresponding namespace set; most likely it has not yet been fully created")
-	}
-
-	return nil
-}
-
 func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
-	return m.patchTargetWithValues(ctx, "", "", "", seedName, "")
+	tb := NewTargetBuilder(m)
+
+	err := tb.UpdateWithCurrentTarget()
+	if err != nil {
+		return err
+	}
+
+	err = tb.SetAndValidateSeedName(ctx, seedName)
+	if err != nil {
+		return err
+	}
+
+	return m.patchTargetWithTarget(tb.GetTarget())
 }
 
 func (m *managerImpl) UnsetTargetSeed() (string, error) {
@@ -214,27 +219,20 @@ func (m *managerImpl) UnsetTargetSeed() (string, error) {
 	return "", errors.New("no seed targeted")
 }
 
-func (m *managerImpl) resolveSeedName(ctx context.Context, gardenClient client.Client, seedName string) (*gardencorev1beta1.Seed, error) {
-	seed := &gardencorev1beta1.Seed{}
-	key := types.NamespacedName{Name: seedName}
-
-	if err := gardenClient.Get(ctx, key, seed); err != nil {
-		return nil, err
-	}
-
-	return seed, nil
-}
-
-func (m *managerImpl) validateSeed(ctx context.Context, seed *gardencorev1beta1.Seed) error {
-	if seed.Spec.SecretRef == nil {
-		return errors.New("spec.SecretRef is missing in this seed, seed not reachable")
-	}
-
-	return nil
-}
-
 func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
-	return m.patchTargetWithValues(ctx, "", "", "", "", shootName)
+	tb := NewTargetBuilder(m)
+
+	err := tb.UpdateWithCurrentTarget()
+	if err != nil {
+		return err
+	}
+
+	err = tb.SetAndValidateShootName(ctx, shootName)
+	if err != nil {
+		return err
+	}
+
+	return m.patchTargetWithTarget(tb.GetTarget())
 }
 
 func (m *managerImpl) UnsetTargetShoot() (string, error) {
@@ -265,19 +263,49 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		return errors.New("the provided value does not match any pattern")
 	}
 
-	return m.patchTargetWithValues(ctx, tm.Garden, tm.Project, tm.Namespace, "", tm.Shoot)
-}
+	tb := NewTargetBuilder(m)
+	err = tb.UpdateWithCurrentTarget()
 
-func (m *managerImpl) patchTargetWithValues(ctx context.Context, gardenName string, projectName string, namespace string, seedName string, shootName string) error {
-	target, err := m.createValidTarget(ctx, gardenName, projectName, namespace, seedName, shootName)
 	if err != nil {
 		return err
 	}
 
-	if target == nil {
-		return errors.New("could not create valid target")
+	if tm.Project != "" && tm.Namespace != "" {
+		return fmt.Errorf("project %q and Namespace %q set in target match value. It is forbidden to have both values set", tm.Project, tm.Namespace)
 	}
 
+	if tm.Garden != "" {
+		err = tb.SetAndValidateGardenName(tm.Garden)
+		if err != nil {
+			return err
+		}
+	}
+
+	if tm.Project != "" {
+		err = tb.SetAndValidateProjectName(ctx, tm.Project)
+		if err != nil {
+			return err
+		}
+	}
+
+	if tm.Namespace != "" {
+		err = tb.SetAndValidateProjectNameWithNamespace(ctx, tm.Namespace)
+		if err != nil {
+			return err
+		}
+	}
+
+	if tm.Shoot != "" {
+		err = tb.SetAndValidateShootName(ctx, tm.Shoot)
+		if err != nil {
+			return err
+		}
+	}
+
+	return m.patchTargetWithTarget(tb.GetTarget())
+}
+
+func (m *managerImpl) patchTargetWithTarget(target Target) error {
 	return m.patchTarget(func(t *targetImpl) error {
 		t.Garden = target.GardenName()
 		t.Project = target.ProjectName()
@@ -288,249 +316,7 @@ func (m *managerImpl) patchTargetWithValues(ctx context.Context, gardenName stri
 	})
 }
 
-func (m *managerImpl) createValidTarget(ctx context.Context, gardenName string, projectName string, namespace string, seedName string, shootName string) (Target, error) {
-	currentTarget, err := m.CurrentTarget()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get current target: %v", err)
-	}
-
-	if gardenName != "" {
-		gardenName, err = m.config.FindGarden(gardenName)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// if newTarget does not have a Garden name set, we need to get it from the current
-		// target to be able to create a client
-		gardenName = currentTarget.GardenName()
-	}
-
-	if gardenName == "" {
-		return nil, ErrNoGardenTargeted
-	}
-
-	if namespace == "" && projectName == "" && seedName == "" && shootName == "" {
-		// return immediately if only garden is targeted, no need to create a client in this case
-		newTarget := NewTarget(gardenName, projectName, seedName, shootName)
-		return newTarget, nil
-	}
-
-	gardenClient, err := m.clientForGarden(gardenName)
-	if err != nil {
-		return nil, fmt.Errorf("could not create Kubernetes client for garden cluster: %w", err)
-	}
-
-	if namespace != "" {
-		namespace, err := m.resolveNamespace(ctx, gardenClient, namespace)
-		if err != nil {
-			return nil, fmt.Errorf("failed to validate namespace: %w", err)
-		}
-
-		if namespace == nil {
-			return nil, fmt.Errorf("invalid namespace: %s", namespace)
-		}
-
-		projectNameNamespace := namespace.Labels["project.gardener.cloud/name"]
-		if projectNameNamespace == "" {
-			return nil, fmt.Errorf("namespace %q is not related to a gardener project", projectNameNamespace)
-		}
-
-		if projectName != "" && projectName != projectNameNamespace {
-			return nil, fmt.Errorf("both namespace %q and project %q provided, however they do not point to the same project", namespace, projectName)
-		}
-
-		projectName = projectNameNamespace
-	}
-
-	var project *gardencorev1beta1.Project
-	if projectName != "" {
-		// validate that the project exists
-		project, err = m.resolveProjectName(ctx, gardenClient, projectName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve project: %w", err)
-		}
-
-		// validate the project
-		if err := m.validateProject(ctx, project); err != nil {
-			return nil, fmt.Errorf("invalid project: %w", err)
-		}
-	}
-
-	var seed *gardencorev1beta1.Seed
-	if seedName != "" {
-		// validate that the seed exists
-		seed, err = m.resolveSeedName(ctx, gardenClient, seedName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve seed: %w", err)
-		}
-
-		// validate the seed
-		if err := m.validateSeed(ctx, seed); err != nil {
-			return nil, fmt.Errorf("invalid seed: %w", err)
-		}
-	}
-
-	if shootName != "" {
-		var (
-			project *gardencorev1beta1.Project
-			seed    *gardencorev1beta1.Seed
-		)
-
-		// *if* project or seed are set, resolve them to aid in finding the shoot later on
-		if project == nil && currentTarget.ProjectName() != "" {
-			project, err = m.resolveProjectName(ctx, gardenClient, currentTarget.ProjectName())
-			if err != nil {
-				return nil, fmt.Errorf("failed to validate project: %w", err)
-			}
-		} else if seed == nil && currentTarget.SeedName() != "" {
-			seed, err = m.resolveSeedName(ctx, gardenClient, currentTarget.SeedName())
-			if err != nil {
-				return nil, fmt.Errorf("failed to resolve seed: %w", err)
-			}
-		}
-
-		project, shoot, err := m.resolveShootName(ctx, gardenClient, project, seed, shootName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve shoot: %w", err)
-		}
-
-		// validate the shoot
-		if err := m.validateShoot(ctx, shoot); err != nil {
-			return nil, fmt.Errorf("invalid shoot: %w", err)
-		}
-
-		// update the target path to the shoot; this is primarily important
-		// when so far neither project nor seed were set. By updating the
-		// target, we persist the result of the resolving step earlier and make
-		// it easier to other gardenctl commands to ingest the target without
-		// having to re-resolve the shoot name again.
-		// resolveShootName will only ever return either a project or a seed,
-		// never both. The decision what to prefer happens there as well.
-		if projectName == "" && project != nil {
-			projectName = project.Name
-		}
-	}
-
-	newTarget := NewTarget(gardenName, projectName, seedName, shootName)
-
-	return newTarget, nil
-}
-
-// resolveShootName takes a shoot name and tries to find the matching shoot
-// on the given garden. Either project or seed can be supplied to help in
-// finding the Shoot. If no or multiple Shoots match the given criteria, an
-// error is returned.
-// If a project is given, it is returned directly (unless an
-// error is returned). If none are given, the function will
-// return matching project to clearly identify the shoot
-func (m *managerImpl) resolveShootName(
-	ctx context.Context,
-	gardenClient client.Client,
-	project *gardencorev1beta1.Project,
-	seed *gardencorev1beta1.Seed,
-	shootName string,
-) (*gardencorev1beta1.Project, *gardencorev1beta1.Shoot, error) {
-	shoot := &gardencorev1beta1.Shoot{}
-
-	// If a shoot is targeted via a project, we fetch it based on the project's namespace.
-	// If the target uses a seed, _all_ shoots in the garden are filtered
-	// for shoots with matching seed and name.
-	// If neither project nor seed are given, _all_ shoots in the garden are filtered by
-	// their name.
-	// It's an error if no or multiple matching shoots are found.
-
-	if project != nil {
-		// fetch shoot from project namespace
-		key := types.NamespacedName{Name: shootName, Namespace: *project.Spec.Namespace}
-
-		if err := gardenClient.Get(ctx, key, shoot); err != nil {
-			return nil, nil, fmt.Errorf("failed to get shoot %v: %w", key, err)
-		}
-
-		return project, shoot, nil
-	}
-
-	// list all shoots, filter by their name and possibly spec.seedName (if seed is set)
-	shootList := gardencorev1beta1.ShootList{}
-	listOpts := []client.ListOption{}
-
-	if seed != nil {
-		// ctrl-runtime doesn't support FieldSelectors in fake clients
-		// ( https://github.com/kubernetes-sigs/controller-runtime/issues/1376 )
-		// yet, which affects the unit tests. To ensure proper filtering,
-		// the shootList (and projectList later on) are filtered again.
-		// In production this does not hurt much, as the FieldSelector is
-		// already applied, and in tests very few objects exist anyway.
-		listOpts = append(listOpts, client.MatchingFields{gardencore.ShootSeedName: seed.Name})
-	}
-
-	if err := gardenClient.List(ctx, &shootList, listOpts...); err != nil {
-		return nil, nil, fmt.Errorf("failed to list shoot clusters: %w", err)
-	}
-
-	// filter found shoots
-	matchingShoots := []*gardencorev1beta1.Shoot{}
-
-	for i, s := range shootList.Items {
-		if s.Name != shootName {
-			continue
-		}
-
-		// if filtering by seed, ignore shoot's whose seed name doesn't match
-		// (if ctrl-runntime supported FieldSelectors in tests, this if statement could go away)
-		if seed != nil && (s.Status.SeedName == nil || *s.Status.SeedName != seed.Name) {
-			continue
-		}
-
-		matchingShoots = append(matchingShoots, &shootList.Items[i])
-	}
-
-	if len(matchingShoots) == 0 {
-		return nil, nil, fmt.Errorf("no shoot named %q exists", shootName)
-	}
-
-	if len(matchingShoots) > 1 {
-		return nil, nil, fmt.Errorf("there are multiple shoots named %q on this garden, please target a project or seed to make your choice unambiguous", shootName)
-	}
-
-	shoot = matchingShoots[0]
-	// given how fast we can resolve shoots by project and that shoots
-	// always have a project, but not always a seed (yet), we prefer
-	// for users later to use the project path in their target
-	projectList := &gardencorev1beta1.ProjectList{}
-	if err := gardenClient.List(ctx, projectList, client.MatchingFields{gardencore.ProjectNamespace: shoot.Namespace}); err != nil {
-		return nil, nil, fmt.Errorf("failed to fetch parent project for shoot: %v", err)
-	}
-
-	// see note above on why we have to filter again because ctrl-runtime doesn't support FieldSelectors in tests
-	projectList.Items = filterProjectsByNamespace(projectList.Items, shoot.Namespace)
-
-	if len(projectList.Items) == 0 {
-		return nil, nil, errors.New("failed to fetch parent project for shoot")
-	}
-
-	project = &projectList.Items[0]
-
-	return project, shoot, nil
-}
-
-func filterProjectsByNamespace(items []gardencorev1beta1.Project, namespace string) []gardencorev1beta1.Project {
-	result := []gardencorev1beta1.Project{}
-
-	for i, project := range items {
-		if project.Spec.Namespace != nil && *project.Spec.Namespace == namespace {
-			result = append(result, items[i])
-		}
-	}
-
-	return result
-}
-
-func (m *managerImpl) validateShoot(ctx context.Context, seed *gardencorev1beta1.Shoot) error {
-	return nil
-}
-
-func (m *managerImpl) GardenClient(t Target) (client.Client, error) {
+func (m *managerImpl) GardenClient(t Target) (gardenclient.Client, error) {
 	t, err := m.getTarget(t)
 	if err != nil {
 		return nil, err
@@ -540,7 +326,12 @@ func (m *managerImpl) GardenClient(t Target) (client.Client, error) {
 		return nil, ErrNoGardenTargeted
 	}
 
-	return m.clientForGarden(t.GardenName())
+	client, err := m.clientForGarden(t.GardenName())
+	if err != nil {
+		return nil, err
+	}
+
+	return gardenclient.NewGardenClient(client), nil
 }
 
 func (m *managerImpl) clientForGarden(name string) (client.Client, error) {
@@ -585,15 +376,13 @@ func (m *managerImpl) ensureSeedKubeconfig(ctx context.Context, t Target) ([]byt
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	seed, err := m.resolveSeedName(ctx, gardenClient, t.SeedName())
+	seed, err := gardenClient.GetSeedByName(ctx, t.SeedName())
 	if err != nil {
 		return nil, fmt.Errorf("invalid seed cluster: %w", err)
 	}
 
-	secret := corev1.Secret{}
-	key := types.NamespacedName{Name: seed.Spec.SecretRef.Name, Namespace: seed.Spec.SecretRef.Namespace}
-
-	if err := gardenClient.Get(ctx, key, &secret); err != nil {
+	secret, err := gardenClient.GetSecretByNamespaceAndName(ctx, seed.Spec.SecretRef.Namespace, seed.Spec.SecretRef.Name)
+	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve seed kubeconfig: %w", err)
 	}
 
@@ -645,37 +434,28 @@ func (m *managerImpl) ensureShootKubeconfig(ctx context.Context, t Target) ([]by
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	var (
-		project *gardencorev1beta1.Project
-		seed    *gardencorev1beta1.Seed
-	)
+	shoot := &gardencorev1beta1.Shoot{}
 
-	// *if* project or seed are set, resolve them to aid in finding the shoot later on
 	if t.ProjectName() != "" {
-		project, err = m.resolveProjectName(ctx, gardenClient, t.ProjectName())
+		project, err := gardenClient.GetProjectByName(ctx, t.ProjectName())
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve project: %w", err)
+			return nil, fmt.Errorf("failed to fetch project: %w", err)
+		}
+
+		shoot, err = gardenClient.GetShootByNamespaceAndName(ctx, *project.Spec.Namespace, t.ShootName())
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch shoot %q inside namespace %q: %w", t.ShootName(), *project.Spec.Namespace, err)
 		}
 	} else if t.SeedName() != "" {
-		seed, err = m.resolveSeedName(ctx, gardenClient, t.SeedName())
+		shoot, err = gardenClient.GetShootBySeedAndName(ctx, t.SeedName(), t.ShootName())
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve seed: %w", err)
+			return nil, fmt.Errorf("failed to fetch shoot %q using ShootSeedName field selector %q: %w", t.ShootName(), t.SeedName(), err)
 		}
 	}
 
-	_, shoot, err := m.resolveShootName(ctx, gardenClient, project, seed, t.ShootName())
+	secret, err := gardenClient.GetSecretByNamespaceAndName(ctx, shoot.Namespace, fmt.Sprintf("%s.kubeconfig", shoot.Name))
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve shoot: %w", err)
-	}
-
-	secret := corev1.Secret{}
-	key := types.NamespacedName{
-		Name:      fmt.Sprintf("%s.kubeconfig", shoot.Name),
-		Namespace: shoot.Namespace,
-	}
-
-	if err := gardenClient.Get(ctx, key, &secret); err != nil {
-		return nil, fmt.Errorf("failed to retrieve shoot kubeconfig: %w", err)
+		return nil, fmt.Errorf("failed to retrieve seed kubeconfig: %w", err)
 	}
 
 	if err := m.kubeconfigCache.Write(t, secret.Data["kubeconfig"]); err != nil {

@@ -10,19 +10,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ShootForTarget returns the targeted shoot, if a shoot cluster is targeted,
 // otherwise an error.
-func ShootForTarget(ctx context.Context, gardenClient client.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
+func ShootForTarget(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
 	if t.ProjectName() != "" {
 		return shootForTargetViaProject(ctx, gardenClient, t)
 	} else if t.SeedName() != "" {
@@ -32,7 +32,7 @@ func ShootForTarget(ctx context.Context, gardenClient client.Client, t target.Ta
 	return nil, errors.New("invalid target, must have either project or seed specified for targeting a shoot")
 }
 
-func shootForTargetViaProject(ctx context.Context, gardenClient client.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
+func shootForTargetViaProject(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
 	project, err := ProjectForTarget(ctx, gardenClient, t)
 	if err != nil {
 		return nil, fmt.Errorf("invalid project %q: %v", t.ProjectName(), err)
@@ -43,62 +43,35 @@ func shootForTargetViaProject(ctx context.Context, gardenClient client.Client, t
 	}
 
 	// fetch shoot from project namespace
-	shoot := &gardencorev1beta1.Shoot{}
-	key := types.NamespacedName{Name: t.ShootName(), Namespace: *project.Spec.Namespace}
-
-	if err := gardenClient.Get(ctx, key, shoot); err != nil {
-		return nil, fmt.Errorf("invalid shoot %q: %w", key.Name, err)
+	shoot, err := gardenClient.GetShootByNamespaceAndName(ctx, *project.Spec.Namespace, t.ShootName())
+	if err != nil {
+		return nil, err
 	}
 
 	return shoot, nil
 }
 
-func shootForTargetViaSeed(ctx context.Context, gardenClient client.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
+func shootForTargetViaSeed(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
 	seed, err := SeedForTarget(ctx, gardenClient, t)
 	if err != nil {
 		return nil, fmt.Errorf("invalid seed %q: %v", t.SeedName(), err)
 	}
 
-	// list all shoots, filter by their name and possibly spec.seedName (if seed is set)
-	shootList := gardencorev1beta1.ShootList{}
-	if err := gardenClient.List(ctx, &shootList, &client.ListOptions{}); err != nil {
-		return nil, fmt.Errorf("failed to list shoot clusters: %w", err)
+	shoot, err := gardenClient.GetShootBySeedAndName(ctx, seed.Name, t.ShootName())
+	if err != nil {
+		return nil, err
 	}
 
-	// filter found shoots
-	matchingShoots := []*gardencorev1beta1.Shoot{}
-
-	for i, s := range shootList.Items {
-		if s.Name != t.ShootName() {
-			continue
-		}
-
-		// ignore shootss where seed name doesn't match
-		if s.Spec.SeedName == nil || *s.Spec.SeedName != seed.Name {
-			continue
-		}
-
-		matchingShoots = append(matchingShoots, &shootList.Items[i])
-	}
-
-	if len(matchingShoots) == 0 {
-		return nil, fmt.Errorf("invalid shoot %q: not found", t.ShootName())
-	}
-
-	if len(matchingShoots) > 1 {
-		return nil, fmt.Errorf("there are multiple shoots named %q on this garden, please target using a project to make your choice unambiguous", t.ShootName())
-	}
-
-	return matchingShoots[0], nil
+	return shoot, nil
 }
 
 // ShootsForTarget returns all possible shoots for a given target. The
 // target must either target a project or a seed (both including a garden).
-func ShootsForTarget(ctx context.Context, gardenClient client.Client, t target.Target) ([]gardencorev1beta1.Shoot, error) {
+func ShootsForTarget(ctx context.Context, gardenClient gardenclient.Client, t target.Target) ([]gardencorev1beta1.Shoot, error) {
 	var listOpt client.ListOption
 
 	if t.ProjectName() != "" {
-		project, err := ProjectForTarget(ctx, gardenClient, t)
+		project, err := gardenClient.GetProjectByName(ctx, t.ProjectName())
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch project: %w", err)
 		}
@@ -115,12 +88,12 @@ func ShootsForTarget(ctx context.Context, gardenClient client.Client, t target.T
 		listOpt = &client.ListOptions{Namespace: ""}
 	}
 
-	shootList := &gardencorev1beta1.ShootList{}
-	if err := gardenClient.List(ctx, shootList, listOpt); err != nil {
-		return nil, fmt.Errorf("failed to list shoots on garden cluster %q: %w", t.GardenName(), err)
+	shootItems, err := gardenClient.GetShoots(ctx, listOpt)
+	if err != nil {
+		return nil, err
 	}
 
-	return shootList.Items, nil
+	return shootItems, nil
 }
 
 // ShootNamesForTarget returns all possible shoots for a given target. The
@@ -144,16 +117,14 @@ func ShootNamesForTarget(ctx context.Context, manager target.Manager, t target.T
 	return names.List(), nil
 }
 
-func SeedForTarget(ctx context.Context, gardenClient client.Client, t target.Target) (*gardencorev1beta1.Seed, error) {
+func SeedForTarget(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Seed, error) {
 	name := t.SeedName()
 	if name == "" {
 		return nil, errors.New("no seed targeted")
 	}
 
-	seed := &gardencorev1beta1.Seed{}
-	key := types.NamespacedName{Name: name}
-
-	if err := gardenClient.Get(ctx, key, seed); err != nil {
+	seed, err := gardenClient.GetSeedByName(ctx, name)
+	if err != nil {
 		return nil, err
 	}
 
@@ -168,30 +139,28 @@ func SeedNamesForTarget(ctx context.Context, manager target.Manager, t target.Ta
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
 	}
 
-	seedList := &gardencorev1beta1.SeedList{}
-	if err := gardenClient.List(ctx, seedList); err != nil {
-		return nil, fmt.Errorf("failed to list seeds on garden cluster %q: %w", t.GardenName(), err)
+	seedItems, err := gardenClient.GetSeeds(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	names := sets.NewString()
-	for _, seed := range seedList.Items {
+	for _, seed := range seedItems {
 		names.Insert(seed.Name)
 	}
 
 	return names.List(), nil
 }
 
-func ProjectForTarget(ctx context.Context, gardenClient client.Client, t target.Target) (*gardencorev1beta1.Project, error) {
+func ProjectForTarget(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Project, error) {
 	name := t.ProjectName()
 	if name == "" {
 		return nil, errors.New("no project targeted")
 	}
 
-	project := &gardencorev1beta1.Project{}
-	key := types.NamespacedName{Name: name}
-
-	if err := gardenClient.Get(ctx, key, project); err != nil {
-		return nil, err
+	project, err := gardenClient.GetProjectByName(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch project: %w", err)
 	}
 
 	return project, nil
@@ -205,13 +174,13 @@ func ProjectNamesForTarget(ctx context.Context, manager target.Manager, t target
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
 	}
 
-	projectList := &gardencorev1beta1.ProjectList{}
-	if err := gardenClient.List(ctx, projectList); err != nil {
-		return nil, fmt.Errorf("failed to list projects on garden cluster %q: %w", t.GardenName(), err)
+	projectItems, err := gardenClient.GetProjects(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	names := sets.NewString()
-	for _, project := range projectList.Items {
+	for _, project := range projectItems {
 		names.Insert(project.Name)
 	}
 
