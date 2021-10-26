@@ -10,14 +10,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
-	gardencore "github.com/gardener/gardener/pkg/apis/core"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	gardencore "github.com/gardener/gardener/pkg/apis/core"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 // ShootForTarget returns the targeted shoot, if a shoot cluster is targeted,
@@ -43,7 +45,7 @@ func shootForTargetViaProject(ctx context.Context, gardenClient gardenclient.Cli
 	}
 
 	// fetch shoot from project namespace
-	shoot, err := gardenClient.GetShootByNamespaceAndName(ctx, *project.Spec.Namespace, t.ShootName())
+	shoot, err := gardenClient.GetShoot(ctx, *project.Spec.Namespace, t.ShootName())
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +59,7 @@ func shootForTargetViaSeed(ctx context.Context, gardenClient gardenclient.Client
 		return nil, fmt.Errorf("invalid seed %q: %v", t.SeedName(), err)
 	}
 
-	shoot, err := gardenClient.GetShootBySeedAndName(ctx, seed.Name, t.ShootName())
+	shoot, err := gardenClient.GetShootBySeed(ctx, seed.Name, t.ShootName())
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +73,7 @@ func ShootsForTarget(ctx context.Context, gardenClient gardenclient.Client, t ta
 	var listOpt client.ListOption
 
 	if t.ProjectName() != "" {
-		project, err := gardenClient.GetProjectByName(ctx, t.ProjectName())
+		project, err := gardenClient.GetProject(ctx, t.ProjectName())
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch project: %w", err)
 		}
@@ -99,7 +101,7 @@ func ShootsForTarget(ctx context.Context, gardenClient gardenclient.Client, t ta
 // ShootNamesForTarget returns all possible shoots for a given target. The
 // target must either target a project or a seed (both including a garden).
 func ShootNamesForTarget(ctx context.Context, manager target.Manager, t target.Target) ([]string, error) {
-	gardenClient, err := manager.GardenClient(t)
+	gardenClient, err := manager.Configuration().GardenClientForGarden(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
 	}
@@ -123,7 +125,7 @@ func SeedForTarget(ctx context.Context, gardenClient gardenclient.Client, t targ
 		return nil, errors.New("no seed targeted")
 	}
 
-	seed, err := gardenClient.GetSeedByName(ctx, name)
+	seed, err := gardenClient.GetSeed(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +136,7 @@ func SeedForTarget(ctx context.Context, gardenClient gardenclient.Client, t targ
 // SeedNamesForTarget returns all possible shoots for a given target. The
 // target must at least point to a garden.
 func SeedNamesForTarget(ctx context.Context, manager target.Manager, t target.Target) ([]string, error) {
-	gardenClient, err := manager.GardenClient(t)
+	gardenClient, err := manager.Configuration().GardenClientForGarden(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
 	}
@@ -158,7 +160,7 @@ func ProjectForTarget(ctx context.Context, gardenClient gardenclient.Client, t t
 		return nil, errors.New("no project targeted")
 	}
 
-	project, err := gardenClient.GetProjectByName(ctx, name)
+	project, err := gardenClient.GetProject(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch project: %w", err)
 	}
@@ -169,7 +171,7 @@ func ProjectForTarget(ctx context.Context, gardenClient gardenclient.Client, t t
 // ProjectNamesForTarget returns all possible shoots for a given target. The
 // target must at least point to a garden.
 func ProjectNamesForTarget(ctx context.Context, manager target.Manager, t target.Target) ([]string, error) {
-	gardenClient, err := manager.GardenClient(t)
+	gardenClient, err := manager.Configuration().GardenClientForGarden(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
 	}

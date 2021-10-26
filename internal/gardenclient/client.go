@@ -10,44 +10,45 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	gardencore "github.com/gardener/gardener/pkg/apis/core"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	gardencore "github.com/gardener/gardener/pkg/apis/core"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 // Client returns a new client with functions to get Gardener and Kubernetes resources
 type Client interface {
-	// GetProjectByName returns a Gardener project resource by name
-	GetProjectByName(ctx context.Context, projectName string) (*gardencorev1beta1.Project, error)
+	// GetProject returns a Gardener project resource by name
+	GetProject(ctx context.Context, projectName string) (*gardencorev1beta1.Project, error)
 	// GetProjectByNamespace returns a Gardener project resource by namespace
 	GetProjectByNamespace(ctx context.Context, namespaceName string) (*gardencorev1beta1.Project, error)
 	// GetProjects returns all Gardener project resources
 	GetProjects(ctx context.Context) ([]gardencorev1beta1.Project, error)
 
-	// GetSeedByName returns a Gardener seed resource by name
-	GetSeedByName(ctx context.Context, seedName string) (*gardencorev1beta1.Seed, error)
+	// GetSeed returns a Gardener seed resource by name
+	GetSeed(ctx context.Context, seedName string) (*gardencorev1beta1.Seed, error)
 	// GetSeeds returns all Gardener seed resources
 	GetSeeds(ctx context.Context) ([]gardencorev1beta1.Seed, error)
 
-	// GetShootByNamespaceAndName returns a Gardener shoot resource in a namespace by name
-	GetShootByNamespaceAndName(ctx context.Context, namespaceName string, shootName string) (*gardencorev1beta1.Shoot, error)
-	// GetShootBySeedAndName returns a Gardener shoot resource by name
+	// GetShoot returns a Gardener shoot resource in a namespace by name
+	GetShoot(ctx context.Context, namespaceName string, shootName string) (*gardencorev1beta1.Shoot, error)
+	// GetShootBySeed returns a Gardener shoot resource by name
 	// An optional seedName can be provided to filter by ShootSeedName field selector
-	GetShootBySeedAndName(ctx context.Context, seedName string, shootName string) (*gardencorev1beta1.Shoot, error)
+	GetShootBySeed(ctx context.Context, seedName string, shootName string) (*gardencorev1beta1.Shoot, error)
 	// GetShoots returns all Gardener shoot resources, filtered by a list option
 	GetShoots(ctx context.Context, listOpt client.ListOption) ([]gardencorev1beta1.Shoot, error)
-	// GetNamespaceByName returns a Kubernetes namespace resource by name
 
-	GetNamespaceByName(ctx context.Context, namespaceName string) (*corev1.Namespace, error)
-	// GetSecretByNamespaceAndName returns a Kubernetes namespace resource by name
+	// GetNamespace returns a Kubernetes namespace resource by name
+	GetNamespace(ctx context.Context, namespaceName string) (*corev1.Namespace, error)
+	// GetSecret returns a Kubernetes namespace resource by name
+	GetSecret(ctx context.Context, namespaceName string, seedName string) (*corev1.Secret, error)
 
-	GetSecretByNamespaceAndName(ctx context.Context, namespaceName string, seedName string) (*corev1.Secret, error)
-	// GetNativeClient returns the underlying kubernetes runtime client
-
+	// GetRuntimeClient returns the underlying kubernetes runtime client
 	// TODO: Remove this when we switched all APIs to the new gardenclient
-	GetNativeClient() client.Client
+	GetRuntimeClient() client.Client
 }
 
 type clientImpl struct {
@@ -63,7 +64,7 @@ func NewGardenClient(client client.Client) Client {
 
 var _ Client = &clientImpl{}
 
-func (g *clientImpl) GetProjectByName(ctx context.Context, projectName string) (*gardencorev1beta1.Project, error) {
+func (g *clientImpl) GetProject(ctx context.Context, projectName string) (*gardencorev1beta1.Project, error) {
 	project := &gardencorev1beta1.Project{}
 	key := types.NamespacedName{Name: projectName}
 
@@ -113,7 +114,7 @@ func (g *clientImpl) GetProjects(ctx context.Context) ([]gardencorev1beta1.Proje
 	return projectList.Items, nil
 }
 
-func (g *clientImpl) GetSeedByName(ctx context.Context, seedName string) (*gardencorev1beta1.Seed, error) {
+func (g *clientImpl) GetSeed(ctx context.Context, seedName string) (*gardencorev1beta1.Seed, error) {
 	seed := &gardencorev1beta1.Seed{}
 	key := types.NamespacedName{Name: seedName}
 
@@ -133,7 +134,7 @@ func (g *clientImpl) GetSeeds(ctx context.Context) ([]gardencorev1beta1.Seed, er
 	return seedList.Items, nil
 }
 
-func (g *clientImpl) GetShootByNamespaceAndName(ctx context.Context, namespaceName string, shootName string) (*gardencorev1beta1.Shoot, error) {
+func (g *clientImpl) GetShoot(ctx context.Context, namespaceName string, shootName string) (*gardencorev1beta1.Shoot, error) {
 	shoot := &gardencorev1beta1.Shoot{}
 	key := types.NamespacedName{Name: shootName, Namespace: namespaceName}
 
@@ -144,7 +145,7 @@ func (g *clientImpl) GetShootByNamespaceAndName(ctx context.Context, namespaceNa
 	return shoot, nil
 }
 
-func (g *clientImpl) GetShootBySeedAndName(ctx context.Context, seedName string, shootName string) (*gardencorev1beta1.Shoot, error) {
+func (g *clientImpl) GetShootBySeed(ctx context.Context, seedName string, shootName string) (*gardencorev1beta1.Shoot, error) {
 	// list all shoots, filter by their name and possibly spec.seedName (if seed is set)
 	shootList := gardencorev1beta1.ShootList{}
 	listOpts := []client.ListOption{}
@@ -200,7 +201,7 @@ func (g *clientImpl) GetShoots(ctx context.Context, listOpt client.ListOption) (
 	return shootList.Items, nil
 }
 
-func (g *clientImpl) GetNamespaceByName(ctx context.Context, namespaceName string) (*corev1.Namespace, error) {
+func (g *clientImpl) GetNamespace(ctx context.Context, namespaceName string) (*corev1.Namespace, error) {
 	namespace := &corev1.Namespace{}
 	key := types.NamespacedName{Name: namespaceName}
 
@@ -211,7 +212,7 @@ func (g *clientImpl) GetNamespaceByName(ctx context.Context, namespaceName strin
 	return namespace, nil
 }
 
-func (g *clientImpl) GetSecretByNamespaceAndName(ctx context.Context, namespaceName string, seedName string) (*corev1.Secret, error) {
+func (g *clientImpl) GetSecret(ctx context.Context, namespaceName string, seedName string) (*corev1.Secret, error) {
 	secret := corev1.Secret{}
 	key := types.NamespacedName{Name: seedName, Namespace: namespaceName}
 
@@ -222,6 +223,6 @@ func (g *clientImpl) GetSecretByNamespaceAndName(ctx context.Context, namespaceN
 	return &secret, nil
 }
 
-func (g *clientImpl) GetNativeClient() client.Client {
+func (g *clientImpl) GetRuntimeClient() client.Client {
 	return g.c
 }

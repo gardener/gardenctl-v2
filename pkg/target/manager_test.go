@@ -10,11 +10,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+
 	"github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -22,6 +23,8 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 func assertTarget(t target.Target, expected target.Target) {
@@ -62,7 +65,7 @@ func createFakeShoot(name string, namespace string, seedName *string) (*gardenco
 	return shoot, kubeconfigSecret
 }
 
-func createFakeManager(t target.Target, cfg config.Config, clientProvider target.ClientProvider, kubeconfigCache target.KubeconfigCache) (target.Manager, target.TargetProvider) {
+func createFakeManager(t target.Target, cfg config.Config, clientProvider gardenclient.ClientProvider, kubeconfigCache target.KubeconfigCache) (target.Manager, target.TargetProvider) {
 	targetProvider := fake.NewFakeTargetProvider(t)
 
 	manager, err := target.NewManager(&cfg, targetProvider, clientProvider, kubeconfigCache)
@@ -194,6 +197,8 @@ var _ = Describe("Manager", func() {
 
 		clientProvider = fake.NewFakeClientProvider()
 		clientProvider.WithClient(gardenKubeconfig, gardenClient)
+
+		cfg.SetClientProvider(clientProvider)
 
 		kubeconfigCache = fake.NewFakeKubeconfigCache()
 	})
@@ -353,7 +358,7 @@ var _ = Describe("Manager", func() {
 		t := target.NewTarget(gardenName, "", "", "")
 		manager, _ := createFakeManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		newClient, err := manager.GardenClient(t)
+		newClient, err := manager.Configuration().GardenClientForGarden(t.GardenName())
 		Expect(err).NotTo(HaveOccurred())
 		Expect(newClient).NotTo(BeNil())
 	})

@@ -8,7 +8,7 @@ package fake
 import (
 	"fmt"
 
-	"github.com/gardener/gardenctl-v2/pkg/target"
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -17,7 +17,7 @@ type ClientProvider struct {
 	fakeClients map[string]client.Client
 }
 
-var _ target.ClientProvider = &ClientProvider{}
+var _ gardenclient.ClientProvider = &ClientProvider{}
 
 // NewFakeClientProvider returns a new ClientProvider that returns a static
 // client for a given kubeconfig / kubeconfig file.

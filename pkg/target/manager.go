@@ -9,12 +9,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 
 	"github.com/gardener/gardenctl-v2/pkg/config"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 var (
@@ -61,8 +63,6 @@ type Manager interface {
 	// of a pattern
 	TargetMatchPattern(ctx context.Context, value string) error
 
-	// GardenClient client for accessing the configured garden cluster
-	GardenClient(t Target) (gardenclient.Client, error)
 	// SeedClient controller-runtime client for accessing the configured seed cluster
 	SeedClient(ctx context.Context, t Target) (client.Client, error)
 	// ShootClusterClient controller-runtime client for accessing the configured shoot cluster
@@ -75,14 +75,14 @@ type Manager interface {
 type managerImpl struct {
 	config          *config.Config
 	targetProvider  TargetProvider
-	clientProvider  ClientProvider
+	clientProvider  gardenclient.ClientProvider
 	kubeconfigCache KubeconfigCache
 }
 
 var _ Manager = &managerImpl{}
 
 // NewManager returns a new manager
-func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider ClientProvider, kubeconfigCache KubeconfigCache) (Manager, error) {
+func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider gardenclient.ClientProvider, kubeconfigCache KubeconfigCache) (Manager, error) {
 	return &managerImpl{
 		config:          config,
 		targetProvider:  targetProvider,
@@ -114,19 +114,21 @@ func (m *managerImpl) Configuration() *config.Config {
 }
 
 func (m *managerImpl) TargetGarden(ctx context.Context, gardenNameOrAlias string) error {
-	tb := NewTargetBuilder(m)
+	tb := NewTargetBuilder(m.config)
 
-	err := tb.UpdateWithCurrentTarget()
+	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get current target: %v", err)
 	}
+
+	tb.SetUnvalidatedTarget(currentTarget)
 
 	err = tb.SetAndValidateGardenName(gardenNameOrAlias)
 	if err != nil {
 		return err
 	}
 
-	return m.patchTargetWithTarget(tb.GetTarget())
+	return m.patchTargetWithTarget(tb.Build())
 }
 
 func (m *managerImpl) UnsetTargetGarden() (string, error) {
@@ -151,19 +153,21 @@ func (m *managerImpl) UnsetTargetGarden() (string, error) {
 }
 
 func (m *managerImpl) TargetProject(ctx context.Context, projectName string) error {
-	tb := NewTargetBuilder(m)
+	tb := NewTargetBuilder(m.config)
 
-	err := tb.UpdateWithCurrentTarget()
+	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get current target: %v", err)
 	}
+
+	tb.SetUnvalidatedTarget(currentTarget)
 
 	err = tb.SetAndValidateProjectName(ctx, projectName)
 	if err != nil {
 		return err
 	}
 
-	return m.patchTargetWithTarget(tb.GetTarget())
+	return m.patchTargetWithTarget(tb.Build())
 }
 
 func (m *managerImpl) UnsetTargetProject() (string, error) {
@@ -186,19 +190,21 @@ func (m *managerImpl) UnsetTargetProject() (string, error) {
 }
 
 func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
-	tb := NewTargetBuilder(m)
+	tb := NewTargetBuilder(m.config)
 
-	err := tb.UpdateWithCurrentTarget()
+	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get current target: %v", err)
 	}
+
+	tb.SetUnvalidatedTarget(currentTarget)
 
 	err = tb.SetAndValidateSeedName(ctx, seedName)
 	if err != nil {
 		return err
 	}
 
-	return m.patchTargetWithTarget(tb.GetTarget())
+	return m.patchTargetWithTarget(tb.Build())
 }
 
 func (m *managerImpl) UnsetTargetSeed() (string, error) {
@@ -220,19 +226,21 @@ func (m *managerImpl) UnsetTargetSeed() (string, error) {
 }
 
 func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
-	tb := NewTargetBuilder(m)
+	tb := NewTargetBuilder(m.config)
 
-	err := tb.UpdateWithCurrentTarget()
+	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get current target: %v", err)
 	}
+
+	tb.SetUnvalidatedTarget(currentTarget)
 
 	err = tb.SetAndValidateShootName(ctx, shootName)
 	if err != nil {
 		return err
 	}
 
-	return m.patchTargetWithTarget(tb.GetTarget())
+	return m.patchTargetWithTarget(tb.Build())
 }
 
 func (m *managerImpl) UnsetTargetShoot() (string, error) {
@@ -263,8 +271,14 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		return errors.New("the provided value does not match any pattern")
 	}
 
-	tb := NewTargetBuilder(m)
-	err = tb.UpdateWithCurrentTarget()
+	tb := NewTargetBuilder(m.config)
+
+	currentTarget, err := m.CurrentTarget()
+	if err != nil {
+		return fmt.Errorf("failed to get current target: %v", err)
+	}
+
+	tb.SetUnvalidatedTarget(currentTarget)
 
 	if err != nil {
 		return err
@@ -302,7 +316,7 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		}
 	}
 
-	return m.patchTargetWithTarget(tb.GetTarget())
+	return m.patchTargetWithTarget(tb.Build())
 }
 
 func (m *managerImpl) patchTargetWithTarget(target Target) error {
@@ -314,34 +328,6 @@ func (m *managerImpl) patchTargetWithTarget(target Target) error {
 
 		return nil
 	})
-}
-
-func (m *managerImpl) GardenClient(t Target) (gardenclient.Client, error) {
-	t, err := m.getTarget(t)
-	if err != nil {
-		return nil, err
-	}
-
-	if t.GardenName() == "" {
-		return nil, ErrNoGardenTargeted
-	}
-
-	client, err := m.clientForGarden(t.GardenName())
-	if err != nil {
-		return nil, err
-	}
-
-	return gardenclient.NewGardenClient(client), nil
-}
-
-func (m *managerImpl) clientForGarden(name string) (client.Client, error) {
-	for _, g := range m.config.Gardens {
-		if g.Name == name {
-			return m.clientProvider.FromFile(g.Kubeconfig)
-		}
-	}
-
-	return nil, fmt.Errorf("targeted garden cluster %q is not configured", name)
 }
 
 func (m *managerImpl) SeedClient(ctx context.Context, t Target) (client.Client, error) {
@@ -371,17 +357,17 @@ func (m *managerImpl) ensureSeedKubeconfig(ctx context.Context, t Target) ([]byt
 		return kubeconfig, nil
 	}
 
-	gardenClient, err := m.GardenClient(t)
+	gardenClient, err := m.config.GardenClientForGarden(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	seed, err := gardenClient.GetSeedByName(ctx, t.SeedName())
+	seed, err := gardenClient.GetSeed(ctx, t.SeedName())
 	if err != nil {
 		return nil, fmt.Errorf("invalid seed cluster: %w", err)
 	}
 
-	secret, err := gardenClient.GetSecretByNamespaceAndName(ctx, seed.Spec.SecretRef.Namespace, seed.Spec.SecretRef.Name)
+	secret, err := gardenClient.GetSecret(ctx, seed.Spec.SecretRef.Namespace, seed.Spec.SecretRef.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve seed kubeconfig: %w", err)
 	}
@@ -429,7 +415,7 @@ func (m *managerImpl) ensureShootKubeconfig(ctx context.Context, t Target) ([]by
 		return kubeconfig, nil
 	}
 
-	gardenClient, err := m.GardenClient(t)
+	gardenClient, err := m.config.GardenClientForGarden(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
@@ -437,23 +423,23 @@ func (m *managerImpl) ensureShootKubeconfig(ctx context.Context, t Target) ([]by
 	shoot := &gardencorev1beta1.Shoot{}
 
 	if t.ProjectName() != "" {
-		project, err := gardenClient.GetProjectByName(ctx, t.ProjectName())
+		project, err := gardenClient.GetProject(ctx, t.ProjectName())
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch project: %w", err)
 		}
 
-		shoot, err = gardenClient.GetShootByNamespaceAndName(ctx, *project.Spec.Namespace, t.ShootName())
+		shoot, err = gardenClient.GetShoot(ctx, *project.Spec.Namespace, t.ShootName())
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch shoot %q inside namespace %q: %w", t.ShootName(), *project.Spec.Namespace, err)
 		}
 	} else if t.SeedName() != "" {
-		shoot, err = gardenClient.GetShootBySeedAndName(ctx, t.SeedName(), t.ShootName())
+		shoot, err = gardenClient.GetShootBySeed(ctx, t.SeedName(), t.ShootName())
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch shoot %q using ShootSeedName field selector %q: %w", t.ShootName(), t.SeedName(), err)
 		}
 	}
 
-	secret, err := gardenClient.GetSecretByNamespaceAndName(ctx, shoot.Namespace, fmt.Sprintf("%s.kubeconfig", shoot.Name))
+	secret, err := gardenClient.GetSecret(ctx, shoot.Namespace, fmt.Sprintf("%s.kubeconfig", shoot.Name))
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve seed kubeconfig: %w", err)
 	}

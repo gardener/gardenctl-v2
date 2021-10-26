@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
@@ -71,7 +73,7 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 
 	targetProvider := target.NewTargetProvider(f.TargetFile, f.TargetFlags)
 	kubeconfigCache := target.NewFilesystemKubeconfigCache(filepath.Join(f.GardenHomeDirectory, "cache", "kubeconfigs"))
-	clientProvider := target.NewClientProvider()
+	clientProvider := gardenclient.NewClientProvider()
 
 	return target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
 }

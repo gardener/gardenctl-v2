@@ -9,19 +9,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 // TargetBuilder builds, completes and validates target values to create valid targets
 //nolint
 type TargetBuilder interface {
-	// UpdateWithCurrentTarget updates all values of the TargetBuilder with the provided target
+	// SetUnvalidatedTarget updates all values of the TargetBuilder with the provided target
 	// Use this function to set target baseline data before updating with new values
 	// The function does NOT ensure that the Target is valid
-	UpdateWithCurrentTarget() error
-	// GetTarget uses the values set for TargetBuilder to create and return a new target
-	GetTarget() Target
+	SetUnvalidatedTarget(t Target)
+	// Build uses the values set for TargetBuilder to create and return a new target
+	Build() Target
 
 	// SetAndValidateGardenName updates TargetBuilder with a validated Garden name
 	// gardenName can be Garden Name or Alias
@@ -47,7 +48,7 @@ type TargetBuilder interface {
 }
 
 type targetBuilderImpl struct {
-	m           Manager
+	config      *config.Config
 	gardeName   string
 	projectName string
 	seedName    string
@@ -57,28 +58,21 @@ type targetBuilderImpl struct {
 var _ TargetBuilder = &targetBuilderImpl{}
 
 // NewTargetBuilder returns a new target builder
-func NewTargetBuilder(manager Manager) TargetBuilder {
+func NewTargetBuilder(config *config.Config) TargetBuilder {
 	return &targetBuilderImpl{
-		m: manager,
+		config: config,
 	}
 }
 
-func (tb *targetBuilderImpl) UpdateWithCurrentTarget() error {
-	currentTarget, err := tb.m.CurrentTarget()
-	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
-	}
-
-	tb.gardeName = currentTarget.GardenName()
-	tb.projectName = currentTarget.ProjectName()
-	tb.seedName = currentTarget.SeedName()
-	tb.shootName = currentTarget.ShootName()
-
-	return nil
+func (tb *targetBuilderImpl) SetUnvalidatedTarget(t Target) {
+	tb.gardeName = t.GardenName()
+	tb.projectName = t.ProjectName()
+	tb.seedName = t.SeedName()
+	tb.shootName = t.ShootName()
 }
 
 func (tb *targetBuilderImpl) SetAndValidateGardenName(gardenName string) error {
-	gardenName, err := tb.m.Configuration().FindGarden(gardenName)
+	gardenName, err := tb.config.FindGarden(gardenName)
 	if err != nil {
 		return err
 	}
@@ -96,12 +90,12 @@ func (tb *targetBuilderImpl) SetAndValidateProjectName(ctx context.Context, proj
 		return ErrNoGardenTargeted
 	}
 	// validate that the project exists
-	gardenClient, err := tb.getGardenClient()
+	gardenClient, err := tb.config.GardenClientForGarden(tb.gardeName)
 	if err != nil {
 		return err
 	}
 
-	project, err := gardenClient.GetProjectByName(ctx, projectName)
+	project, err := gardenClient.GetProject(ctx, projectName)
 	if err != nil {
 		return fmt.Errorf("failed to fetch project: %w", err)
 	}
@@ -123,12 +117,12 @@ func (tb *targetBuilderImpl) SetAndValidateProjectNameWithNamespace(ctx context.
 		return ErrNoGardenTargeted
 	}
 
-	gardenClient, err := tb.getGardenClient()
+	gardenClient, err := tb.config.GardenClientForGarden(tb.gardeName)
 	if err != nil {
 		return err
 	}
 
-	namespace, err := gardenClient.GetNamespaceByName(ctx, namespaceName)
+	namespace, err := gardenClient.GetNamespace(ctx, namespaceName)
 
 	if err != nil {
 		return fmt.Errorf("failed to fetch namespace: %w", err)
@@ -152,12 +146,12 @@ func (tb *targetBuilderImpl) SetAndValidateSeedName(ctx context.Context, seedNam
 	}
 
 	// validate that the seed exists
-	gardenClient, err := tb.getGardenClient()
+	gardenClient, err := tb.config.GardenClientForGarden(tb.gardeName)
 	if err != nil {
 		return err
 	}
 
-	seed, err := gardenClient.GetSeedByName(ctx, seedName)
+	seed, err := gardenClient.GetSeed(ctx, seedName)
 	if err != nil {
 		return fmt.Errorf("failed to resolve seed: %w", err)
 	}
@@ -179,7 +173,7 @@ func (tb *targetBuilderImpl) SetAndValidateShootName(ctx context.Context, shootN
 		return ErrNoGardenTargeted
 	}
 
-	gardenClient, err := tb.getGardenClient()
+	gardenClient, err := tb.config.GardenClientForGarden(tb.gardeName)
 	if err != nil {
 		return err
 	}
@@ -188,17 +182,17 @@ func (tb *targetBuilderImpl) SetAndValidateShootName(ctx context.Context, shootN
 
 	if tb.projectName != "" {
 		// project name set, get shoot within project namespace
-		project, err := gardenClient.GetProjectByName(ctx, tb.projectName)
+		project, err := gardenClient.GetProject(ctx, tb.projectName)
 		if err != nil {
 			return fmt.Errorf("failed to fetch project: %w", err)
 		}
 
-		shoot, err = gardenClient.GetShootByNamespaceAndName(ctx, *project.Spec.Namespace, shootName)
+		shoot, err = gardenClient.GetShoot(ctx, *project.Spec.Namespace, shootName)
 		if err != nil {
 			return fmt.Errorf("failed to fetch shoot %q inside namespace %q: %w", shootName, *project.Spec.Namespace, err)
 		}
 	} else {
-		shoot, err = gardenClient.GetShootBySeedAndName(ctx, tb.seedName, shootName)
+		shoot, err = gardenClient.GetShootBySeed(ctx, tb.seedName, shootName)
 		if err != nil {
 			return fmt.Errorf("failed to fetch shoot %q using ShootSeedName field selector %q: %w", shootName, tb.seedName, err)
 		}
@@ -224,19 +218,8 @@ func (tb *targetBuilderImpl) SetAndValidateShootName(ctx context.Context, shootN
 	return nil
 }
 
-func (tb *targetBuilderImpl) GetTarget() Target {
+func (tb *targetBuilderImpl) Build() Target {
 	return NewTarget(tb.gardeName, tb.projectName, tb.seedName, tb.shootName)
-}
-
-func (tb *targetBuilderImpl) getGardenClient() (gardenclient.Client, error) {
-	t := NewTarget(tb.gardeName, "", "", "")
-
-	client, err := tb.m.GardenClient(t)
-	if err != nil {
-		return nil, fmt.Errorf("could not create Kubernetes client for garden cluster: %w", err)
-	}
-
-	return client, nil
 }
 
 func (tb *targetBuilderImpl) validateProject(project *gardencorev1beta1.Project) error {
