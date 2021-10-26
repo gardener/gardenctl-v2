@@ -9,8 +9,11 @@ package base
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gardener/gardenctl-v2/internal/util"
+
 	"github.com/spf13/cobra"
+
+	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 )
 
@@ -30,9 +33,9 @@ func NewOptions(ioStreams util.IOStreams) *Options {
 	}
 }
 
-// AddOutputFlags adds flags to adjust the output to a cobra command
-func (o *Options) AddOutputFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&o.Output, "output", "o", o.Output, "One of 'yaml' or 'json'.")
+// AddFlags adds flags to adjust the output to a cobra command
+func (o *Options) AddFlags(flags *pflag.FlagSet) {
+	flags.StringVarP(&o.Output, "output", "o", o.Output, "One of 'yaml' or 'json'.")
 }
 
 // PrintObject prints an object to IOStreams.out, using o.Output to print in the selected output format
@@ -66,11 +69,16 @@ func (o *Options) PrintObject(obj interface{}) error {
 	return nil
 }
 
-// Validate validates the provided options
+// Validate validates the provided options.
 func (o *Options) Validate() error {
 	if o.Output != "" && o.Output != "yaml" && o.Output != "json" {
 		return fmt.Errorf(`--output must be either 'yaml' or 'json'`)
 	}
 
+	return nil
+}
+
+// Complete adapts from the command line args to the data required.
+func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
 	return nil
 }

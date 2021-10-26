@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package version_test
+package cloudenv_test
 
 import (
 	"testing"
@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestVersionCommand(t *testing.T) {
+func TestCloudEnvCommand(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Version Command Test Suite")
+	RunSpecs(t, "CloudEnv Command Test Suite")
 }

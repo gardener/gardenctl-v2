@@ -41,6 +41,6 @@ $Env:GOOGLE_CREDENTIALS = {{.credentials | toJson | replace "'" "''" | squote}};
 $Env:GOOGLE_CREDENTIALS_ACCOUNT = {{.credentials.client_email | quote}};
 $Env:CLOUDSDK_CORE_PROJECT = {{.credentials.project_id | quote}};
 $Env:CLOUDSDK_COMPUTE_REGION = {{.region | quote}};
-function Invoke-WithGoogleCredentials {param([Parameter(Mandatory)] [ScriptBlock] $sb); $f = [IO.Path]::GetTempFilename(); try {$Env:GOOGLE_CREDENTIALS | Out-File -Encoding utf8 $f; Invoke-Command -ScriptBlock $sb -ArgumentList $f} catch {Remove-Item -ErrorAction SilentlyContinue $f}};
+function Invoke-WithGoogleCredentials {param([Parameter(Mandatory)] [ScriptBlock] $sb); $f = New-TemporaryFile; try {$Env:GOOGLE_CREDENTIALS | Out-File -Encoding utf8 $f; Invoke-Command -ScriptBlock $sb -ArgumentList $f} finally {Remove-Item -ErrorAction SilentlyContinue $f}};
 Invoke-WithGoogleCredentials {param($f) gcloud auth activate-service-account $Env:GOOGLE_CREDENTIALS_ACCOUNT --key-file $f};
 {{end}}{{.usageHint}}{{end}}

@@ -7,6 +7,7 @@ package target
 
 import (
 	"fmt"
+
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/spf13/cobra"
@@ -26,7 +27,7 @@ func NewCmdView(f util.Factory, o *ViewOptions) *cobra.Command {
 		},
 	}
 
-	o.AddOutputFlags(cmd)
+	o.AddFlags(cmd.Flags())
 
 	return cmd
 }

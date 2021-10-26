@@ -7,28 +7,71 @@ SPDX-License-Identifier: Apache-2.0
 package version_test
 
 import (
+	"encoding/json"
+
 	"github.com/gardener/gardenctl-v2/internal/util"
 	. "github.com/gardener/gardenctl-v2/pkg/cmd/version"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Command", func() {
-	It("should print version", func() {
-		streams, _, out, _ := util.NewTestIOStreams()
-		o := NewVersionOptions(streams)
-		cmd := NewCmdVersion(&util.FactoryImpl{}, o)
+var _ = Describe("Version Command", func() {
+	var (
+		o       *VersionOptions
+		factory util.Factory
+		streams util.IOStreams
+		buf     *util.SafeBytesBuffer
+		args    []string
+	)
 
-		Expect(cmd.RunE(cmd, nil)).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("GitVersion"))
+	BeforeEach(func() {
+		streams, _, buf, _ = util.NewTestIOStreams()
+		o = NewVersionOptions(streams)
+		factory = &util.FactoryImpl{}
+		args = make([]string, 0, 5)
 	})
-})
 
-var _ = Describe("VersionOptions", func() {
-	It("should validate", func() {
-		streams, _, _, _ := util.NewTestIOStreams()
-		o := NewVersionOptions(streams)
+	It("should run the command without any flags", func() {
+		cmd := NewCmdVersion(factory, o)
+		cmd.SetArgs(args)
+		Expect(cmd.Execute()).To(Succeed())
+		Expect(o.Short).To(BeFalse())
+		Expect(o.Output).To(BeEmpty())
+		Expect(buf.String()).To(MatchRegexp("^Version: version.Info{.*GitVersion:\"v0.0.0-master.*\".*}\n?$"))
+	})
+
+	It("should run the command with flags --short", func() {
+		cmd := NewCmdVersion(factory, o)
+		cmd.SetArgs(append(args, "--short"))
+		Expect(cmd.Execute()).To(Succeed())
+		Expect(o.Short).To(BeTrue())
+		Expect(o.Output).To(BeEmpty())
+		Expect(buf.String()).To(MatchRegexp("^Version: v0.0.0-master.*\n?$"))
+	})
+
+	It("should run the command with flags --output json", func() {
+		cmd := NewCmdVersion(factory, o)
+		cmd.SetArgs(append(args, "--output", "json"))
+		Expect(o.Short).To(BeFalse())
+		Expect(cmd.Execute()).To(Succeed())
+		Expect(o.Output).To(Equal("json"))
+		var anyJSON map[string]interface{}
+		Expect(json.Unmarshal([]byte(buf.String()), &anyJSON)).To(Succeed())
+		Expect(anyJSON["gitVersion"]).To(HavePrefix("v0.0.0-master"))
+	})
+
+	It("should run the command with flags --short --output json", func() {
+		cmd := NewCmdVersion(factory, o)
+		cmd.SetArgs(append(args, "--short", "--output", "json"))
+		Expect(cmd.Execute()).To(Succeed())
+		Expect(o.Short).To(BeTrue())
+		Expect(o.Output).To(Equal("json"))
+		var anyJSON map[string]interface{}
+		Expect(json.Unmarshal([]byte(buf.String()), &anyJSON)).To(Succeed())
+		Expect(anyJSON["gitVersion"]).To(HavePrefix("v0.0.0-master"))
+	})
+
+	It("should validate the options", func() {
 		err := o.Validate()
 		Expect(err).ToNot(HaveOccurred())
 	})
