@@ -92,6 +92,9 @@ func (tb *targetBuilderImpl) SetAndValidateGardenName(gardenName string) error {
 }
 
 func (tb *targetBuilderImpl) SetAndValidateProjectName(ctx context.Context, projectName string) error {
+	if tb.gardeName == "" {
+		return ErrNoGardenTargeted
+	}
 	// validate that the project exists
 	gardenClient, err := tb.getGardenClient()
 	if err != nil {
@@ -116,6 +119,10 @@ func (tb *targetBuilderImpl) SetAndValidateProjectName(ctx context.Context, proj
 }
 
 func (tb *targetBuilderImpl) SetAndValidateProjectNameWithNamespace(ctx context.Context, namespaceName string) error {
+	if tb.gardeName == "" {
+		return ErrNoGardenTargeted
+	}
+
 	gardenClient, err := tb.getGardenClient()
 	if err != nil {
 		return err
@@ -140,6 +147,10 @@ func (tb *targetBuilderImpl) SetAndValidateProjectNameWithNamespace(ctx context.
 }
 
 func (tb *targetBuilderImpl) SetAndValidateSeedName(ctx context.Context, seedName string) error {
+	if tb.gardeName == "" {
+		return ErrNoGardenTargeted
+	}
+
 	// validate that the seed exists
 	gardenClient, err := tb.getGardenClient()
 	if err != nil {
@@ -164,6 +175,10 @@ func (tb *targetBuilderImpl) SetAndValidateSeedName(ctx context.Context, seedNam
 }
 
 func (tb *targetBuilderImpl) SetAndValidateShootName(ctx context.Context, shootName string) error {
+	if tb.gardeName == "" {
+		return ErrNoGardenTargeted
+	}
+
 	gardenClient, err := tb.getGardenClient()
 	if err != nil {
 		return err

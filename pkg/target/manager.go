@@ -147,7 +147,7 @@ func (m *managerImpl) UnsetTargetGarden() (string, error) {
 		})
 	}
 
-	return "", errors.New("no garden targeted")
+	return "", ErrNoGardenTargeted
 }
 
 func (m *managerImpl) TargetProject(ctx context.Context, projectName string) error {
@@ -182,7 +182,7 @@ func (m *managerImpl) UnsetTargetProject() (string, error) {
 		})
 	}
 
-	return "", errors.New("no project targeted")
+	return "", ErrNoProjectTargeted
 }
 
 func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
@@ -216,7 +216,7 @@ func (m *managerImpl) UnsetTargetSeed() (string, error) {
 		})
 	}
 
-	return "", errors.New("no seed targeted")
+	return "", ErrNoSeedTargeted
 }
 
 func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
@@ -250,7 +250,7 @@ func (m *managerImpl) UnsetTargetShoot() (string, error) {
 		})
 	}
 
-	return "", errors.New("no shoot targeted")
+	return "", ErrNoShootTargeted
 }
 
 func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) error {
