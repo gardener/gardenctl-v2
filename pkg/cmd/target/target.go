@@ -86,7 +86,6 @@ func runCmdTarget(f util.Factory, o *TargetOptions) error {
 
 	if o.Output == "" {
 		fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
-		fmt.Fprintf(o.IOStreams.Out, "New target: %s\n", currentTarget)
 
 		return nil
 	}
