@@ -70,19 +70,22 @@ type Manager interface {
 
 	// Configuration returns the current gardenctl configuration
 	Configuration() *config.Config
+
+	// GardenClientForGarden returns a gardenClient for a garden cluster
+	GardenClientForGarden(name string) (gardenclient.Client, error)
 }
 
 type managerImpl struct {
 	config          *config.Config
 	targetProvider  TargetProvider
-	clientProvider  gardenclient.ClientProvider
+	clientProvider  ClientProvider
 	kubeconfigCache KubeconfigCache
 }
 
 var _ Manager = &managerImpl{}
 
 // NewManager returns a new manager
-func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider gardenclient.ClientProvider, kubeconfigCache KubeconfigCache) (Manager, error) {
+func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider ClientProvider, kubeconfigCache KubeconfigCache) (Manager, error) {
 	return &managerImpl{
 		config:          config,
 		targetProvider:  targetProvider,
@@ -114,7 +117,7 @@ func (m *managerImpl) Configuration() *config.Config {
 }
 
 func (m *managerImpl) TargetGarden(ctx context.Context, gardenNameOrAlias string) error {
-	tb := NewTargetBuilder(m.config)
+	tb := NewTargetBuilder(m.config, m.clientProvider)
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
@@ -153,7 +156,7 @@ func (m *managerImpl) UnsetTargetGarden() (string, error) {
 }
 
 func (m *managerImpl) TargetProject(ctx context.Context, projectName string) error {
-	tb := NewTargetBuilder(m.config)
+	tb := NewTargetBuilder(m.config, m.clientProvider)
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
@@ -190,7 +193,7 @@ func (m *managerImpl) UnsetTargetProject() (string, error) {
 }
 
 func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
-	tb := NewTargetBuilder(m.config)
+	tb := NewTargetBuilder(m.config, m.clientProvider)
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
@@ -226,7 +229,7 @@ func (m *managerImpl) UnsetTargetSeed() (string, error) {
 }
 
 func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
-	tb := NewTargetBuilder(m.config)
+	tb := NewTargetBuilder(m.config, m.clientProvider)
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
@@ -271,7 +274,7 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		return errors.New("the provided value does not match any pattern")
 	}
 
-	tb := NewTargetBuilder(m.config)
+	tb := NewTargetBuilder(m.config, m.clientProvider)
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
@@ -357,7 +360,7 @@ func (m *managerImpl) ensureSeedKubeconfig(ctx context.Context, t Target) ([]byt
 		return kubeconfig, nil
 	}
 
-	gardenClient, err := m.config.GardenClientForGarden(t.GardenName())
+	gardenClient, err := m.GardenClientForGarden(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
@@ -415,7 +418,7 @@ func (m *managerImpl) ensureShootKubeconfig(ctx context.Context, t Target) ([]by
 		return kubeconfig, nil
 	}
 
-	gardenClient, err := m.config.GardenClientForGarden(t.GardenName())
+	gardenClient, err := m.GardenClientForGarden(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
@@ -477,4 +480,23 @@ func (m *managerImpl) getTarget(t Target) (Target, error) {
 	}
 
 	return t, err
+}
+
+func (m *managerImpl) GardenClientForGarden(name string) (gardenclient.Client, error) {
+	runtimeClient, err := m.runtimeClientForGarden(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return gardenclient.NewGardenClient(runtimeClient), nil
+}
+
+func (m *managerImpl) runtimeClientForGarden(name string) (client.Client, error) {
+	for _, g := range m.config.Gardens {
+		if g.Name == name {
+			return m.clientProvider.FromFile(g.Kubeconfig)
+		}
+	}
+
+	return nil, fmt.Errorf("targeted garden cluster %q is not configured", name)
 }

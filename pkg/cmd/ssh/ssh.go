@@ -209,7 +209,7 @@ func runCmdSSH(f util.Factory, o *SSHOptions) error {
 	printTargetInformation(o.IOStreams.Out, currentTarget)
 
 	// create client for the garden cluster
-	gardenClient, err := manager.Configuration().GardenClientForGarden(currentTarget.GardenName())
+	gardenClient, err := manager.GardenClientForGarden(currentTarget.GardenName())
 	if err != nil {
 		return err
 	}

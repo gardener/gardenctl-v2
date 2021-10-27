@@ -10,6 +10,10 @@ import (
 	"errors"
 	"fmt"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
@@ -48,19 +52,21 @@ type TargetBuilder interface {
 }
 
 type targetBuilderImpl struct {
-	config      *config.Config
-	gardeName   string
-	projectName string
-	seedName    string
-	shootName   string
+	config         *config.Config
+	clientProvider ClientProvider
+	gardeName      string
+	projectName    string
+	seedName       string
+	shootName      string
 }
 
 var _ TargetBuilder = &targetBuilderImpl{}
 
 // NewTargetBuilder returns a new target builder
-func NewTargetBuilder(config *config.Config) TargetBuilder {
+func NewTargetBuilder(config *config.Config, clientProvider ClientProvider) TargetBuilder {
 	return &targetBuilderImpl{
-		config: config,
+		config:         config,
+		clientProvider: clientProvider,
 	}
 }
 
@@ -90,7 +96,7 @@ func (tb *targetBuilderImpl) SetAndValidateProjectName(ctx context.Context, proj
 		return ErrNoGardenTargeted
 	}
 	// validate that the project exists
-	gardenClient, err := tb.config.GardenClientForGarden(tb.gardeName)
+	gardenClient, err := tb.getGardenClient()
 	if err != nil {
 		return err
 	}
@@ -117,7 +123,7 @@ func (tb *targetBuilderImpl) SetAndValidateProjectNameWithNamespace(ctx context.
 		return ErrNoGardenTargeted
 	}
 
-	gardenClient, err := tb.config.GardenClientForGarden(tb.gardeName)
+	gardenClient, err := tb.getGardenClient()
 	if err != nil {
 		return err
 	}
@@ -146,7 +152,7 @@ func (tb *targetBuilderImpl) SetAndValidateSeedName(ctx context.Context, seedNam
 	}
 
 	// validate that the seed exists
-	gardenClient, err := tb.config.GardenClientForGarden(tb.gardeName)
+	gardenClient, err := tb.getGardenClient()
 	if err != nil {
 		return err
 	}
@@ -173,7 +179,7 @@ func (tb *targetBuilderImpl) SetAndValidateShootName(ctx context.Context, shootN
 		return ErrNoGardenTargeted
 	}
 
-	gardenClient, err := tb.config.GardenClientForGarden(tb.gardeName)
+	gardenClient, err := tb.getGardenClient()
 	if err != nil {
 		return err
 	}
@@ -244,4 +250,23 @@ func (tb *targetBuilderImpl) validateShoot(shoot *gardencorev1beta1.Shoot) error
 	}
 
 	return nil
+}
+
+func (tb *targetBuilderImpl) getGardenClient() (gardenclient.Client, error) {
+	runtimeClient, err := tb.runtimeClientForGarden(tb.gardeName)
+	if err != nil {
+		return nil, err
+	}
+
+	return gardenclient.NewGardenClient(runtimeClient), nil
+}
+
+func (tb *targetBuilderImpl) runtimeClientForGarden(name string) (client.Client, error) {
+	for _, g := range tb.config.Gardens {
+		if g.Name == name {
+			return tb.clientProvider.FromFile(g.Kubeconfig)
+		}
+	}
+
+	return nil, fmt.Errorf("targeted garden cluster %q is not configured", name)
 }

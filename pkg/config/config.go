@@ -10,12 +10,8 @@ import (
 	"os"
 	"regexp"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v3"
-
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 )
 
 // Config holds the gardenctl configuration
@@ -26,9 +22,6 @@ type Config struct {
 	// Use named capturing groups to match target values.
 	// Supported capturing groups: garden, project, namespace, shoot
 	MatchPatterns []string `yaml:"matchPatterns"`
-
-	// TODO: This is only there for testing purposes, providing it here is unnecessary, find a better way to inject it
-	clientProvider gardenclient.ClientProvider
 }
 
 // Garden represents one garden cluster
@@ -90,19 +83,6 @@ func (config *Config) SaveToFile(filename string) error {
 	}
 
 	return nil
-}
-
-func (config *Config) getClientProvider() gardenclient.ClientProvider {
-	if config.clientProvider == nil {
-		return gardenclient.NewClientProvider()
-	}
-
-	return config.clientProvider
-}
-
-// TODO Only for testing
-func (config *Config) SetClientProvider(clientProvider gardenclient.ClientProvider) {
-	config.clientProvider = clientProvider
 }
 
 // TargetMatch represents a pattern match
@@ -184,23 +164,4 @@ func (config *Config) MatchPattern(value string) (*TargetMatch, error) {
 	}
 
 	return nil, nil
-}
-
-func (config *Config) GardenClientForGarden(name string) (gardenclient.Client, error) {
-	runtimeClient, err := config.runtimeClientForGarden(name)
-	if err != nil {
-		return nil, err
-	}
-
-	return gardenclient.NewGardenClient(runtimeClient), nil
-}
-
-func (config *Config) runtimeClientForGarden(name string) (client.Client, error) {
-	for _, g := range config.Gardens {
-		if g.Name == name {
-			return config.getClientProvider().FromFile(g.Kubeconfig)
-		}
-	}
-
-	return nil, fmt.Errorf("targeted garden cluster %q is not configured", name)
 }

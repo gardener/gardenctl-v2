@@ -9,8 +9,6 @@ package fake
 import (
 	"context"
 
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
-
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -27,7 +25,7 @@ type Factory struct {
 
 	// Override these to customize the created manager.
 	Config              *config.Config
-	ClientProviderImpl  gardenclient.ClientProvider
+	ClientProviderImpl  target.ClientProvider
 	KubeconfigCacheImpl target.KubeconfigCache
 	TargetProviderImpl  target.TargetProvider
 
@@ -43,7 +41,7 @@ type Factory struct {
 
 var _ util.Factory = &Factory{}
 
-func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider gardenclient.ClientProvider, kubeconfigCache target.KubeconfigCache, targetProvider target.TargetProvider) *Factory {
+func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider target.ClientProvider, kubeconfigCache target.KubeconfigCache, targetProvider target.TargetProvider) *Factory {
 	if cfg == nil {
 		cfg = &config.Config{}
 	}
@@ -63,8 +61,6 @@ func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider gardenc
 	if clock == nil {
 		clock = &util.RealClock{}
 	}
-
-	cfg.SetClientProvider(clientProvider)
 
 	return &Factory{
 		Config:              cfg,
