@@ -224,7 +224,7 @@ func runCmdSSH(f util.Factory, o *SSHOptions) error {
 	}
 
 	// fetch the SSH key(s) for the shoot nodes
-	nodePrivateKeys, err := getShootNodePrivateKeys(ctx, gardenClient.GetRuntimeClient(), shoot)
+	nodePrivateKeys, err := getShootNodePrivateKeys(ctx, gardenClient.RuntimeClient(), shoot)
 	if err != nil {
 		return err
 	}
@@ -305,20 +305,20 @@ func runCmdSSH(f util.Factory, o *SSHOptions) error {
 	}()
 
 	// do not use `ctx`, as it might be cancelled already when running the cleanup
-	defer cleanup(f.Context(), o, gardenClient.GetRuntimeClient(), bastion, nodePrivateKeyFiles)
+	defer cleanup(f.Context(), o, gardenClient.RuntimeClient(), bastion, nodePrivateKeyFiles)
 
 	fmt.Fprintf(o.IOStreams.Out, "Creating bastion %s…\n", bastion.Name)
 
-	if err := gardenClient.GetRuntimeClient().Create(ctx, bastion); err != nil {
+	if err := gardenClient.RuntimeClient().Create(ctx, bastion); err != nil {
 		return fmt.Errorf("failed to create bastion: %v", err)
 	}
 
 	// continuously keep the bastion alive by renewing its annotation
-	go keepBastionAlive(ctx, gardenClient.GetRuntimeClient(), bastion.DeepCopy(), o.IOStreams.ErrOut)
+	go keepBastionAlive(ctx, gardenClient.RuntimeClient(), bastion.DeepCopy(), o.IOStreams.ErrOut)
 
 	fmt.Fprintf(o.IOStreams.Out, "Waiting up to %v for bastion to be ready…\n", o.WaitTimeout)
 
-	err = waitForBastion(ctx, o, gardenClient.GetRuntimeClient(), bastion)
+	err = waitForBastion(ctx, o, gardenClient.RuntimeClient(), bastion)
 
 	if err == wait.ErrWaitTimeout {
 		fmt.Fprintln(o.IOStreams.Out, "Timed out waiting for the bastion to be ready.")

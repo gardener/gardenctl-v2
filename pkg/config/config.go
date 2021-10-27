@@ -85,8 +85,8 @@ func (config *Config) SaveToFile(filename string) error {
 	return nil
 }
 
-// TargetMatch represents a pattern match
-type TargetMatch struct {
+// PatternMatch holds (target) values extracted from a provided string
+type PatternMatch struct {
 	// Garden is the matched Garden
 	Garden string
 	// Project is the matched Project
@@ -107,7 +107,8 @@ func contains(values []string, value string) bool {
 	return false
 }
 
-// FindGarden returns name of Garden with provided name or first that includes the provided name in the list of aliases
+// FindGarden returns the unique identifier (name) of a Garden cluster from the list of configured Gardens
+// The first Garden where nameOrAlias matches either name or one of the defined aliases will be returned
 func (config *Config) FindGarden(nameOrAlias string) (string, error) {
 	for _, g := range config.Gardens {
 		if g.Name == nameOrAlias {
@@ -130,12 +131,12 @@ const (
 )
 
 // MatchPattern matches a string against patterns defined in gardenctl config
-// If matched, the function creates and returns a TargetMatch from the provided target string
-func (config *Config) MatchPattern(value string) (*TargetMatch, error) {
+// If matched, the function creates and returns a PatternMatch from the provided target string
+func (config *Config) MatchPattern(value string) (*PatternMatch, error) {
 	for _, p := range config.MatchPatterns {
 		r, err := regexp.Compile(p)
 		if err != nil {
-			return nil, fmt.Errorf("failed to compile configured regular expression %q: %v", p, err)
+			return nil, fmt.Errorf("failed to compile configured regular expression %q: %w", p, err)
 		}
 
 		names := r.SubexpNames()
@@ -145,7 +146,7 @@ func (config *Config) MatchPattern(value string) (*TargetMatch, error) {
 			continue
 		}
 
-		tm := &TargetMatch{}
+		tm := &PatternMatch{}
 
 		for i, name := range names {
 			switch name {

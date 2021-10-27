@@ -71,7 +71,7 @@ type Manager interface {
 	// Configuration returns the current gardenctl configuration
 	Configuration() *config.Config
 
-	// GardenClientForGarden returns a gardenClient for a garden cluster
+	// GardenClient returns a gardenClient for a garden cluster
 	GardenClientForGarden(name string) (gardenclient.Client, error)
 }
 
@@ -83,6 +83,21 @@ type managerImpl struct {
 }
 
 var _ Manager = &managerImpl{}
+
+func GardenClient(name string, config *config.Config, provider ClientProvider) (gardenclient.Client, error) {
+	for _, g := range config.Gardens {
+		if g.Name == name {
+			runtimeClient, err := provider.FromFile(g.Kubeconfig)
+			if err != nil {
+				return nil, err
+			}
+
+			return gardenclient.NewGardenClient(runtimeClient), nil
+		}
+	}
+
+	return nil, fmt.Errorf("targeted garden cluster %q is not configured", name)
+}
 
 // NewManager returns a new manager
 func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider ClientProvider, kubeconfigCache KubeconfigCache) (Manager, error) {
@@ -483,20 +498,5 @@ func (m *managerImpl) getTarget(t Target) (Target, error) {
 }
 
 func (m *managerImpl) GardenClientForGarden(name string) (gardenclient.Client, error) {
-	runtimeClient, err := m.runtimeClientForGarden(name)
-	if err != nil {
-		return nil, err
-	}
-
-	return gardenclient.NewGardenClient(runtimeClient), nil
-}
-
-func (m *managerImpl) runtimeClientForGarden(name string) (client.Client, error) {
-	for _, g := range m.config.Gardens {
-		if g.Name == name {
-			return m.clientProvider.FromFile(g.Kubeconfig)
-		}
-	}
-
-	return nil, fmt.Errorf("targeted garden cluster %q is not configured", name)
+	return GardenClient(name, m.config, m.clientProvider)
 }

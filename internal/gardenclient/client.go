@@ -25,21 +25,21 @@ type Client interface {
 	GetProject(ctx context.Context, projectName string) (*gardencorev1beta1.Project, error)
 	// GetProjectByNamespace returns a Gardener project resource by namespace
 	GetProjectByNamespace(ctx context.Context, namespaceName string) (*gardencorev1beta1.Project, error)
-	// GetProjects returns all Gardener project resources
-	GetProjects(ctx context.Context) ([]gardencorev1beta1.Project, error)
+	// ListProjects returns all Gardener project resources
+	ListProjects(ctx context.Context) ([]gardencorev1beta1.Project, error)
 
 	// GetSeed returns a Gardener seed resource by name
 	GetSeed(ctx context.Context, seedName string) (*gardencorev1beta1.Seed, error)
-	// GetSeeds returns all Gardener seed resources
-	GetSeeds(ctx context.Context) ([]gardencorev1beta1.Seed, error)
+	// ListSeeds returns all Gardener seed resources
+	ListSeeds(ctx context.Context) ([]gardencorev1beta1.Seed, error)
 
 	// GetShoot returns a Gardener shoot resource in a namespace by name
 	GetShoot(ctx context.Context, namespaceName string, shootName string) (*gardencorev1beta1.Shoot, error)
 	// GetShootBySeed returns a Gardener shoot resource by name
 	// An optional seedName can be provided to filter by ShootSeedName field selector
 	GetShootBySeed(ctx context.Context, seedName string, shootName string) (*gardencorev1beta1.Shoot, error)
-	// GetShoots returns all Gardener shoot resources, filtered by a list option
-	GetShoots(ctx context.Context, listOpt client.ListOption) ([]gardencorev1beta1.Shoot, error)
+	// ListShoots returns all Gardener shoot resources, filtered by a list option
+	ListShoots(ctx context.Context, listOpt client.ListOption) ([]gardencorev1beta1.Shoot, error)
 
 	// GetNamespace returns a Kubernetes namespace resource by name
 	GetNamespace(ctx context.Context, namespaceName string) (*corev1.Namespace, error)
@@ -48,7 +48,7 @@ type Client interface {
 
 	// GetRuntimeClient returns the underlying kubernetes runtime client
 	// TODO: Remove this when we switched all APIs to the new gardenclient
-	GetRuntimeClient() client.Client
+	RuntimeClient() client.Client
 }
 
 type clientImpl struct {
@@ -105,7 +105,7 @@ func (g *clientImpl) GetProjectByNamespace(ctx context.Context, namespaceName st
 	return matchingProjects[0], nil
 }
 
-func (g *clientImpl) GetProjects(ctx context.Context) ([]gardencorev1beta1.Project, error) {
+func (g *clientImpl) ListProjects(ctx context.Context) ([]gardencorev1beta1.Project, error) {
 	projectList := &gardencorev1beta1.ProjectList{}
 	if err := g.c.List(ctx, projectList); err != nil {
 		return nil, fmt.Errorf("failed to list projects: %w", err)
@@ -125,7 +125,7 @@ func (g *clientImpl) GetSeed(ctx context.Context, seedName string) (*gardencorev
 	return seed, nil
 }
 
-func (g *clientImpl) GetSeeds(ctx context.Context) ([]gardencorev1beta1.Seed, error) {
+func (g *clientImpl) ListSeeds(ctx context.Context) ([]gardencorev1beta1.Seed, error) {
 	seedList := &gardencorev1beta1.SeedList{}
 	if err := g.c.List(ctx, seedList); err != nil {
 		return nil, fmt.Errorf("failed to list seeds: %w", err)
@@ -192,7 +192,7 @@ func (g *clientImpl) GetShootBySeed(ctx context.Context, seedName string, shootN
 	return matchingShoots[0], nil
 }
 
-func (g *clientImpl) GetShoots(ctx context.Context, listOpt client.ListOption) ([]gardencorev1beta1.Shoot, error) {
+func (g *clientImpl) ListShoots(ctx context.Context, listOpt client.ListOption) ([]gardencorev1beta1.Shoot, error) {
 	shootList := &gardencorev1beta1.ShootList{}
 	if err := g.c.List(ctx, shootList, listOpt); err != nil {
 		return nil, fmt.Errorf("failed to list shoots with list option %q: %w", listOpt, err)
@@ -223,6 +223,6 @@ func (g *clientImpl) GetSecret(ctx context.Context, namespaceName string, seedNa
 	return &secret, nil
 }
 
-func (g *clientImpl) GetRuntimeClient() client.Client {
+func (g *clientImpl) RuntimeClient() client.Client {
 	return g.c
 }

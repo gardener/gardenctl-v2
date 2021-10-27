@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestBaseCommand(t *testing.T) {
+func TestConfiguration(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Config Test Suite")
 }

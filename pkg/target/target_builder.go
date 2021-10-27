@@ -10,8 +10,6 @@ import (
 	"errors"
 	"fmt"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 
 	"github.com/gardener/gardenctl-v2/pkg/config"
@@ -54,7 +52,7 @@ type TargetBuilder interface {
 type targetBuilderImpl struct {
 	config         *config.Config
 	clientProvider ClientProvider
-	gardeName      string
+	gardenName     string
 	projectName    string
 	seedName       string
 	shootName      string
@@ -71,7 +69,7 @@ func NewTargetBuilder(config *config.Config, clientProvider ClientProvider) Targ
 }
 
 func (tb *targetBuilderImpl) SetUnvalidatedTarget(t Target) {
-	tb.gardeName = t.GardenName()
+	tb.gardenName = t.GardenName()
 	tb.projectName = t.ProjectName()
 	tb.seedName = t.SeedName()
 	tb.shootName = t.ShootName()
@@ -83,7 +81,7 @@ func (tb *targetBuilderImpl) SetAndValidateGardenName(gardenName string) error {
 		return err
 	}
 
-	tb.gardeName = gardenName
+	tb.gardenName = gardenName
 	tb.projectName = ""
 	tb.seedName = ""
 	tb.shootName = ""
@@ -92,7 +90,7 @@ func (tb *targetBuilderImpl) SetAndValidateGardenName(gardenName string) error {
 }
 
 func (tb *targetBuilderImpl) SetAndValidateProjectName(ctx context.Context, projectName string) error {
-	if tb.gardeName == "" {
+	if tb.gardenName == "" {
 		return ErrNoGardenTargeted
 	}
 	// validate that the project exists
@@ -119,7 +117,7 @@ func (tb *targetBuilderImpl) SetAndValidateProjectName(ctx context.Context, proj
 }
 
 func (tb *targetBuilderImpl) SetAndValidateProjectNameWithNamespace(ctx context.Context, namespaceName string) error {
-	if tb.gardeName == "" {
+	if tb.gardenName == "" {
 		return ErrNoGardenTargeted
 	}
 
@@ -147,7 +145,7 @@ func (tb *targetBuilderImpl) SetAndValidateProjectNameWithNamespace(ctx context.
 }
 
 func (tb *targetBuilderImpl) SetAndValidateSeedName(ctx context.Context, seedName string) error {
-	if tb.gardeName == "" {
+	if tb.gardenName == "" {
 		return ErrNoGardenTargeted
 	}
 
@@ -175,7 +173,7 @@ func (tb *targetBuilderImpl) SetAndValidateSeedName(ctx context.Context, seedNam
 }
 
 func (tb *targetBuilderImpl) SetAndValidateShootName(ctx context.Context, shootName string) error {
-	if tb.gardeName == "" {
+	if tb.gardenName == "" {
 		return ErrNoGardenTargeted
 	}
 
@@ -225,7 +223,7 @@ func (tb *targetBuilderImpl) SetAndValidateShootName(ctx context.Context, shootN
 }
 
 func (tb *targetBuilderImpl) Build() Target {
-	return NewTarget(tb.gardeName, tb.projectName, tb.seedName, tb.shootName)
+	return NewTarget(tb.gardenName, tb.projectName, tb.seedName, tb.shootName)
 }
 
 func (tb *targetBuilderImpl) validateProject(project *gardencorev1beta1.Project) error {
@@ -253,20 +251,5 @@ func (tb *targetBuilderImpl) validateShoot(shoot *gardencorev1beta1.Shoot) error
 }
 
 func (tb *targetBuilderImpl) getGardenClient() (gardenclient.Client, error) {
-	runtimeClient, err := tb.runtimeClientForGarden(tb.gardeName)
-	if err != nil {
-		return nil, err
-	}
-
-	return gardenclient.NewGardenClient(runtimeClient), nil
-}
-
-func (tb *targetBuilderImpl) runtimeClientForGarden(name string) (client.Client, error) {
-	for _, g := range tb.config.Gardens {
-		if g.Name == name {
-			return tb.clientProvider.FromFile(g.Kubeconfig)
-		}
-	}
-
-	return nil, fmt.Errorf("targeted garden cluster %q is not configured", name)
+	return GardenClient(tb.gardenName, tb.config, tb.clientProvider)
 }

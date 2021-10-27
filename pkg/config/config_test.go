@@ -8,9 +8,11 @@ package config_test
 
 import (
 	"fmt"
-	"github.com/gardener/gardenctl-v2/pkg/config"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
 var _ = Describe("Config", func() {
@@ -65,7 +67,7 @@ var _ = Describe("Config", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
-	It("should return a TargetMatch for a given value", func() {
+	It("should return a PatternMatch for a given value", func() {
 		tm, err := cfg.MatchPattern(fmt.Sprintf("%s/shoot--%s--%s", gardenAlias2[1], project, shoot))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(tm.Garden).Should(Equal(gardenAlias2[1]))

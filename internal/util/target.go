@@ -90,7 +90,7 @@ func ShootsForTarget(ctx context.Context, gardenClient gardenclient.Client, t ta
 		listOpt = &client.ListOptions{Namespace: ""}
 	}
 
-	shootItems, err := gardenClient.GetShoots(ctx, listOpt)
+	shootItems, err := gardenClient.ListShoots(ctx, listOpt)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func SeedNamesForTarget(ctx context.Context, manager target.Manager, t target.Ta
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
 	}
 
-	seedItems, err := gardenClient.GetSeeds(ctx)
+	seedItems, err := gardenClient.ListSeeds(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func ProjectNamesForTarget(ctx context.Context, manager target.Manager, t target
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
 	}
 
-	projectItems, err := gardenClient.GetProjects(ctx)
+	projectItems, err := gardenClient.ListProjects(ctx)
 	if err != nil {
 		return nil, err
 	}
