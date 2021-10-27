@@ -7,28 +7,38 @@ SPDX-License-Identifier: Apache-2.0
 package cloudenv_test
 
 import (
+	"embed"
 	"os"
+	"path/filepath"
 
-	v1 "k8s.io/api/core/v1"
-
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/cloudenv"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
-
-	"github.com/gardener/gardenctl-v2/pkg/cmd/cloudenv"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
 )
+
+//go:embed testdata
+var testdata embed.FS
 
 func init() {
 	utilruntime.Must(gardencorev1beta1.AddToScheme(scheme.Scheme))
+}
+
+func readFile(name string) string {
+	data, err := testdata.ReadFile(filepath.Join("testdata", name))
+	utilruntime.Must(err)
+
+	return string(data)
 }
 
 var _ = Describe("CloudEnv Command", func() {
@@ -40,10 +50,11 @@ var _ = Describe("CloudEnv Command", func() {
 		secretBindingName,
 		secretName,
 		kubeconfig string
-		factory util.Factory
-		streams util.IOStreams
-		buf     *util.SafeBytesBuffer
-		args    []string
+		serviceaccountJSON = readFile("gcp/serviceaccount.json")
+		factory            util.Factory
+		streams            util.IOStreams
+		buf                *util.SafeBytesBuffer
+		args               []string
 	)
 
 	BeforeEach(func() {
@@ -98,21 +109,18 @@ var _ = Describe("CloudEnv Command", func() {
 						Name:      secretBindingName,
 						Namespace: namespace,
 					},
-					SecretRef: v1.SecretReference{
+					SecretRef: corev1.SecretReference{
 						Namespace: namespace,
 						Name:      secretName,
 					},
 				})
-				fakeGardenClient.WithObjects(&v1.Secret{
+				fakeGardenClient.WithObjects(&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      secretName,
 						Namespace: namespace,
 					},
 					Data: map[string][]byte{
-						"serviceaccount.json": []byte(`{
-  "project_id": "test",
-  "client_email": "test@example.org"
-}`),
+						"serviceaccount.json": []byte(serviceaccountJSON),
 					},
 				})
 			}
@@ -127,44 +135,31 @@ var _ = Describe("CloudEnv Command", func() {
 	})
 
 	Describe("running the cloud-env command", func() {
-		It("should run the command for bash shell without any flags", func() {
+		It("should create the command and add flags", func() {
 			cmd := cloudenv.NewCmdCloudEnv(factory, streams)
-			Expect(cmd.Use).To(Equal("configure-cloudprovider [bash | fish | powershell | zsh]"))
-			Expect(cmd.Aliases).To(Equal([]string{"configure-cloud", "cloudprovider-env", "cloud-env"}))
+			Expect(cmd.Use).To(Equal("cloud-env [bash | fish | powershell | zsh]"))
+			Expect(cmd.Aliases).To(Equal(cloudenv.Aliases))
+			Expect(cmd.ValidArgs).To(Equal(cloudenv.ValidShells))
 			flag := cmd.Flag("unset")
 			Expect(flag).NotTo(BeNil())
 			Expect(flag.Shorthand).To(Equal("u"))
 			Expect(cmd.Flag("output")).To(BeNil())
+		})
+
+		It("should run the command for bash shell without any flags", func() {
+			cmd := cloudenv.NewCmdCloudEnv(factory, streams)
 			cmd.SetArgs(append(args, "bash"))
 			Expect(cmd.Execute()).To(Succeed())
 			Expect(cmd.Flag("unset").Value.String()).To(Equal("false"))
-			Expect(buf.String()).To(Equal(`export GOOGLE_CREDENTIALS='{"client_email":"test@example.org","project_id":"test"}';
-export GOOGLE_CREDENTIALS_ACCOUNT="test@example.org";
-export CLOUDSDK_CORE_PROJECT="test";
-export CLOUDSDK_COMPUTE_REGION="europe";
-gcloud auth activate-service-account $GOOGLE_CREDENTIALS_ACCOUNT --key-file <(printf "%s" "$GOOGLE_CREDENTIALS");
-
-# Run this command to configure the "gcloud" CLI for your shell:
-# eval $(configure-cloudprovider bash)`))
+			Expect(buf.String()).To(Equal(readFile("gcp/export.bash")))
 		})
 
 		It("should run the command for powershell with flags --unset", func() {
 			cmd := cloudenv.NewCmdCloudEnv(factory, streams)
-			Expect(cmd.Use).To(Equal("configure-cloudprovider [bash | fish | powershell | zsh]"))
-			Expect(cmd.Aliases).To(Equal([]string{"configure-cloud", "cloudprovider-env", "cloud-env"}))
-			flag := cmd.Flag("unset")
-			Expect(flag).NotTo(BeNil())
-			Expect(flag.Shorthand).To(Equal("u"))
-			Expect(cmd.Flag("output")).To(BeNil())
 			cmd.SetArgs(append(args, "--unset", "powershell"))
 			Expect(cmd.Execute()).To(Succeed())
 			Expect(cmd.Flag("unset").Value.String()).To(Equal("true"))
-			Expect(buf.String()).To(Equal(`gcloud auth revoke $Env:GOOGLE_CREDENTIALS_ACCOUNT --verbosity=error;
-Remove-Item -ErrorAction SilentlyContinue Env:\GOOGLE_CREDENTIALS;
-Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_CORE_PROJECT;
-Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_COMPUTE_REGION;
-# Run this command to reset the configuration of the "gcloud" CLI for your shell:
-# & configure-cloudprovider -u powershell | Invoke-Expression`))
+			Expect(buf.String()).To(Equal(readFile("gcp/unset.pwsh")))
 		})
 	})
 
@@ -178,14 +173,14 @@ Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_COMPUTE_REGION;
 		It("should return the default shell ", func() {
 			os.Unsetenv("SHELL")
 			By("Running on Darwin")
-			Expect(cloudenv.DefaultShell("darwin")).To(Equal("bash"))
+			Expect(cloudenv.DetectShell("darwin")).To(Equal("bash"))
 			By("Running on Windows")
-			Expect(cloudenv.DefaultShell("windows")).To(Equal("powershell"))
+			Expect(cloudenv.DetectShell("windows")).To(Equal("powershell"))
 		})
 
 		It("should return the shell defined in the environment", func() {
 			os.Setenv("SHELL", "/bin/fish")
-			Expect(cloudenv.DefaultShell("*")).To(Equal("fish"))
+			Expect(cloudenv.DetectShell("*")).To(Equal("fish"))
 		})
 
 	})

@@ -12,9 +12,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
+
+	"github.com/gardener/gardenctl-v2/internal/util"
 )
 
 // Options contains all settings that are used across all commands in gardenctl.

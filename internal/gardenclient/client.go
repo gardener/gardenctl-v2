@@ -35,20 +35,24 @@ type Client interface {
 
 	// GetShoot returns a Gardener shoot resource in a namespace by name
 	GetShoot(ctx context.Context, namespaceName string, shootName string) (*gardencorev1beta1.Shoot, error)
+	// GetShootByProject returns a Gardener shoot resource in a project by name
+	GetShootByProject(ctx context.Context, projectName, shootName string) (*gardencorev1beta1.Shoot, error)
 	// GetShootBySeed returns a Gardener shoot resource by name
 	// An optional seedName can be provided to filter by ShootSeedName field selector
 	GetShootBySeed(ctx context.Context, seedName string, shootName string) (*gardencorev1beta1.Shoot, error)
 	// FindShoot tries to get a shoot via project (namespace) first, if not provided it tries to find the shot
 	// with an (optional) seedname
 	FindShoot(ctx context.Context, shootName string, projectName string, seedName string) (*gardencorev1beta1.Shoot, error)
-
 	// ListShoots returns all Gardener shoot resources, filtered by a list option
 	ListShoots(ctx context.Context, listOpt client.ListOption) ([]gardencorev1beta1.Shoot, error)
 
-	// GetNamespace returns a Kubernetes namespace resource by name
+	// GetSecretBinding returns a Gardener secretbinding resource
+	GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error)
+
+	// GetNamespace returns a Kubernetes namespace resource
 	GetNamespace(ctx context.Context, namespaceName string) (*corev1.Namespace, error)
-	// GetSecret returns a Kubernetes namespace resource by name
-	GetSecret(ctx context.Context, namespaceName string, seedName string) (*corev1.Secret, error)
+	// GetSecret returns a Kubernetes secret resource
+	GetSecret(ctx context.Context, namespaceName string, secretName string) (*corev1.Secret, error)
 
 	// GetRuntimeClient returns the underlying kubernetes runtime client
 	// TODO: Remove this when we switched all APIs to the new gardenclient
@@ -196,15 +200,20 @@ func (g *clientImpl) GetShootBySeed(ctx context.Context, seedName string, shootN
 	return matchingShoots[0], nil
 }
 
+// GetShootByProject returns a Gardener shoot resource in a project by name
+func (g *clientImpl) GetShootByProject(ctx context.Context, projectName, shootName string) (*gardencorev1beta1.Shoot, error) {
+	// project name set, get shoot within project namespace
+	project, err := g.GetProject(ctx, projectName)
+	if err != nil {
+		return nil, err
+	}
+
+	return g.GetShoot(ctx, *project.Spec.Namespace, shootName)
+}
+
 func (g *clientImpl) FindShoot(ctx context.Context, shootName string, projectName string, seedName string) (*gardencorev1beta1.Shoot, error) {
 	if projectName != "" {
-		// project name set, get shoot within project namespace
-		project, err := g.GetProject(ctx, projectName)
-		if err != nil {
-			return nil, err
-		}
-
-		return g.GetShoot(ctx, *project.Spec.Namespace, shootName)
+		return g.GetShootByProject(ctx, projectName, shootName)
 	}
 
 	return g.GetShootBySeed(ctx, seedName, shootName)
@@ -230,9 +239,19 @@ func (g *clientImpl) GetNamespace(ctx context.Context, namespaceName string) (*c
 	return namespace, nil
 }
 
-func (g *clientImpl) GetSecret(ctx context.Context, namespaceName string, seedName string) (*corev1.Secret, error) {
+// GetSecretBinding returns a Gardener secretbinding resource
+func (g *clientImpl) GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error) {
+	secretBinding := &gardencorev1beta1.SecretBinding{}
+	if err := g.c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, secretBinding); err != nil {
+		return nil, fmt.Errorf("failed to get secretbinding %q in namespace %q: %w", name, namespace, err)
+	}
+
+	return secretBinding, nil
+}
+
+func (g *clientImpl) GetSecret(ctx context.Context, namespaceName string, secretName string) (*corev1.Secret, error) {
 	secret := corev1.Secret{}
-	key := types.NamespacedName{Name: seedName, Namespace: namespaceName}
+	key := types.NamespacedName{Name: secretName, Namespace: namespaceName}
 
 	if err := g.c.Get(ctx, key, &secret); err != nil {
 		return nil, fmt.Errorf("failed to get secret %v: %w", key, err)

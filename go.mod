@@ -3,7 +3,7 @@ module github.com/gardener/gardenctl-v2
 go 1.16
 
 require (
-	github.com/Masterminds/sprig v2.22.0+incompatible
+	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/gardener/gardener v1.25.0
 	github.com/google/gofuzz v1.2.0 // indirect

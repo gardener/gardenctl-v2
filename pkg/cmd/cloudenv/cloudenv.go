@@ -17,17 +17,15 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/Masterminds/sprig"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/cloudenv/garden"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	"github.com/spf13/viper"
-	v1 "k8s.io/api/core/v1"
-
+	sprigv3 "github.com/Masterminds/sprig/v3"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
-	"github.com/spf13/cobra"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 //go:embed templates
@@ -39,15 +37,22 @@ var (
 	ErrProjectAndSeedTargeted        = errors.New("project and seed must not be targeted at the same time")
 )
 
-// NewCmdCloudEnv returns a new cloudenv command
+var (
+	validShells = []string{"bash", "fish", "powershell", "zsh"}
+	aliases     = []string{"cloudprovider-env", "provider-env"}
+)
+
+// NewCmdCloudEnv returns a new cloudenv command.
 func NewCmdCloudEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	o := NewCloudEnvOptions(ioStreams)
 
 	cmd := &cobra.Command{
-		Use:     "configure-cloudprovider [bash | fish | powershell | zsh]",
-		Short:   "Show the commands to configure cloudprovider CLI of the target cluster",
-		Aliases: []string{"configure-cloud", "cloudprovider-env", "cloud-env"},
-		RunE:    WrapRunE(f, o),
+		Use:       "cloud-env [bash | fish | powershell | zsh]",
+		Short:     "Show the commands to configure cloudprovider CLI of the target cluster",
+		Aliases:   aliases,
+		ValidArgs: validShells,
+		Args:      matchAll(cobra.MaximumNArgs(1), cobra.OnlyValidArgs),
+		RunE:      wrapRunE(f, o),
 	}
 
 	o.AddFlags(cmd.Flags())
@@ -55,8 +60,19 @@ func NewCmdCloudEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	return cmd
 }
 
-// WrapRunE wraps the RunE function of a cobra.Command
-func WrapRunE(f util.Factory, o CommandOptions) func(cmd *cobra.Command, args []string) error {
+func matchAll(checks ...cobra.PositionalArgs) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		for _, check := range checks {
+			if err := check(cmd, args); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
+func wrapRunE(f util.Factory, o CommandOptions) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		if err := o.Complete(f, cmd, args); err != nil {
 			return fmt.Errorf("failed to complete command options: %w", err)
@@ -70,15 +86,19 @@ func WrapRunE(f util.Factory, o CommandOptions) func(cmd *cobra.Command, args []
 	}
 }
 
-// CommandOptions is the basic interface for command options
+// CommandOptions is the basic interface for command options.
 type CommandOptions interface {
+	// Complete adapts from the command line args to the data required.
 	Complete(util.Factory, *cobra.Command, []string) error
+	// Validate validates the provided options.
 	Validate() error
+	// Run does the actual work of the command.
 	Run(util.Factory) error
+	// AddFlags adds flags to adjust the output to a cobra command.
 	AddFlags(*pflag.FlagSet)
 }
 
-// NewCloudEnvOptions returns a new options instance
+// NewCloudEnvOptions returns a new options instance.
 func NewCloudEnvOptions(ioStreams util.IOStreams) *CloudEnvOptions {
 	return &CloudEnvOptions{
 		Options: base.Options{
@@ -88,18 +108,18 @@ func NewCloudEnvOptions(ioStreams util.IOStreams) *CloudEnvOptions {
 	}
 }
 
-// CloudEnvOptions is a struct to support the target cloudenv command
+// CloudEnvOptions is a struct to support the target cloudenv command.
 // nolint
 type CloudEnvOptions struct {
 	base.Options
 
-	// Unset environment variables instead of setting them
+	// Unset resets environment variables and configuration of the cloudprovider CLI for your shell.
 	Unset bool
-	// Shell to configure
+	// Shell to configure.
 	Shell string
-	// GardenDir is the configuration directory of gardenctl
+	// GardenDir is the configuration directory of gardenctl.
 	GardenDir string
-	// CmdPath is the path of the called command
+	// CmdPath is the path of the called command.
 	CmdPath []string
 }
 
@@ -112,7 +132,7 @@ func (o *CloudEnvOptions) Complete(f util.Factory, cmd *cobra.Command, args []st
 	} else if viper.IsSet("shell") {
 		o.Shell = viper.GetString("shell")
 	} else {
-		o.Shell = DefaultShell(runtime.GOOS)
+		o.Shell = detectShell(runtime.GOOS)
 	}
 
 	o.GardenDir = f.GardenHomeDir()
@@ -123,13 +143,13 @@ func (o *CloudEnvOptions) Complete(f util.Factory, cmd *cobra.Command, args []st
 	return nil
 }
 
-// Validate validates the provided command options
+// Validate validates the provided command options.
 func (o *CloudEnvOptions) Validate() error {
 	if o.Shell == "" {
 		return errors.New("no shell configured or specified")
 	}
 
-	if err := ValidateShell(o.Shell); err != nil {
+	if err := validateShell(o.Shell); err != nil {
 		return err
 	}
 
@@ -164,47 +184,50 @@ func (o *CloudEnvOptions) Run(f util.Factory) error {
 		return ErrProjectAndSeedTargeted
 	}
 
-	// garden controller runtime client
-	client, err := m.GardenClient(target)
+	// garden client
+	gardenClient, err := m.GardenClient(gardenName)
 	if err != nil {
 		return fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	// garden client
-	gardenClient := garden.NewClient(client, gardenName)
 	ctx := f.Context()
 
 	var shoot *gardencorev1beta1.Shoot
 
 	if projectName != "" {
-		shoot, err = gardenClient.GetShootByProjectAndName(ctx, projectName, shootName)
+		shoot, err = gardenClient.GetShootByProject(ctx, projectName, shootName)
 		if err != nil {
 			return err
 		}
-	} else if seedName != "" {
-		shoot, err = gardenClient.FindShootBySeedAndName(ctx, seedName, shootName)
+	} else {
+		shoot, err = gardenClient.GetShootBySeed(ctx, seedName, shootName)
 		if err != nil {
 			return err
 		}
 	}
 
-	secret, err := gardenClient.GetSecretBySecretBinding(ctx, shoot.Namespace, shoot.Spec.SecretBindingName)
+	secretBinding, err := gardenClient.GetSecretBinding(ctx, shoot.Namespace, shoot.Spec.SecretBindingName)
 	if err != nil {
 		return err
 	}
 
-	return o.ExecuteTemplate(shoot, secret)
+	secret, err := gardenClient.GetSecret(ctx, secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name)
+	if err != nil {
+		return err
+	}
+
+	return o.execTmpl(shoot, secret)
 }
 
-// AddFlags binds the command options to a given flagset
+// AddFlags binds the command options to a given flagset.
 func (o *CloudEnvOptions) AddFlags(flags *pflag.FlagSet) {
-	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, "Unset environment variables instead of setting them")
+	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, "Reset environment variables and configuration of the cloudprovider CLI for your shell")
 }
 
 func (o *CloudEnvOptions) parseTmpl(name string) (*template.Template, error) {
 	var tmpl *template.Template
 
-	baseTmpl := template.New("base").Funcs(sprig.TxtFuncMap())
+	baseTmpl := template.New("base").Funcs(sprigv3.TxtFuncMap())
 	filename := filepath.Join("templates", name+".tmpl")
 	defaultTmpl, err := baseTmpl.ParseFS(fsys, filename)
 
@@ -223,7 +246,7 @@ func (o *CloudEnvOptions) parseTmpl(name string) (*template.Template, error) {
 	return tmpl, err
 }
 
-func (o *CloudEnvOptions) ExecuteTemplate(shoot *gardencorev1beta1.Shoot, secret *v1.Secret) error {
+func (o *CloudEnvOptions) execTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret) error {
 	cloudprovider := shoot.Spec.Provider.Type
 
 	t, err := o.parseTmpl(cloudprovider)
@@ -238,7 +261,7 @@ func (o *CloudEnvOptions) ExecuteTemplate(shoot *gardencorev1beta1.Shoot, secret
 	m := make(map[string]interface{})
 	m["shell"] = o.Shell
 	m["unset"] = o.Unset
-	m["usageHint"] = o.GenerateUsageHint(cloudprovider, o.CmdPath...)
+	m["usageHint"] = o.generateUsageHint(cloudprovider, o.CmdPath...)
 	m["region"] = shoot.Spec.Region
 
 	for key, value := range secret.Data {
@@ -247,7 +270,7 @@ func (o *CloudEnvOptions) ExecuteTemplate(shoot *gardencorev1beta1.Shoot, secret
 
 	switch cloudprovider {
 	case "gcp":
-		if err := ParseCredentials(&m); err != nil {
+		if err := parseCredentials(&m); err != nil {
 			return err
 		}
 	}
@@ -255,7 +278,7 @@ func (o *CloudEnvOptions) ExecuteTemplate(shoot *gardencorev1beta1.Shoot, secret
 	return t.ExecuteTemplate(o.IOStreams.Out, o.Shell, m)
 }
 
-func (o *CloudEnvOptions) GenerateUsageHint(cloudprovider string, a ...string) string {
+func (o *CloudEnvOptions) generateUsageHint(cloudprovider string, a ...string) string {
 	var (
 		cmd     string
 		desc    string
@@ -295,8 +318,7 @@ func (o *CloudEnvOptions) GenerateUsageHint(cloudprovider string, a ...string) s
 	}, "\n")
 }
 
-// ParseCredentials attempts to parse GcpCredentials from a JSON string.
-func ParseCredentials(values *map[string]interface{}) error {
+func parseCredentials(values *map[string]interface{}) error {
 	m := *values
 
 	privateKey, ok := m["serviceaccount.json"].(string)
@@ -317,10 +339,7 @@ func ParseCredentials(values *map[string]interface{}) error {
 	return nil
 }
 
-var validShells = [...]string{"bash", "fish", "powershell", "zsh"}
-
-// ValidateShell validates that the provided shell is supported
-func ValidateShell(shell string) error {
+func validateShell(shell string) error {
 	for _, s := range validShells {
 		if s == shell {
 			return nil
@@ -330,8 +349,7 @@ func ValidateShell(shell string) error {
 	return fmt.Errorf("invalid shell given, must be one of %v", validShells)
 }
 
-// DefaultShell detects user's current shell.
-func DefaultShell(goos string) string {
+func detectShell(goos string) string {
 	if shell, ok := os.LookupEnv("SHELL"); ok && shell != "" {
 		return filepath.Base(shell)
 	}
