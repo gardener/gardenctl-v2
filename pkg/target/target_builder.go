@@ -19,43 +19,34 @@ import (
 // TargetBuilder builds, completes and validates target values to create valid targets
 //nolint
 type TargetBuilder interface {
-	// SetUnvalidatedTarget updates all values of the TargetBuilder with the provided target
-	// Use this function to set target baseline data before updating with new values
-	// The function does NOT ensure that the Target is valid
-	SetUnvalidatedTarget(t Target)
-	// Build uses the values set for TargetBuilder to create and return a new target
-	Build() Target
-
-	// SetAndValidateGardenName updates TargetBuilder with a validated Garden name
+	// Init updates the TargetBuilder with the provided target
+	// Use this function to overwrite target baseline data before updating with new values
+	Init(Target) TargetBuilder
+	// SetGarden updates TargetBuilder with a Garden name
 	// gardenName can be Garden Name or Alias
-	// The function ensures that the Garden is valid
-	// This implicitly unsets project, seed and shoot values
-	SetAndValidateGardenName(gardenName string) error
-	// SetAndValidateProjectName updates TargetBuilder with a validated Project name
-	// The function ensures that the Project is valid
-	// This implicitly unsets seed and shoot values
-	SetAndValidateProjectName(ctx context.Context, projectName string) error
-	// SetAndValidateProjectNameWithNamespace updates TargetBuilder with validated Project name by resolving the project via associated namespace
-	// The function ensures that the Project is valid
-	// This implicitly unsets seed and shoot values
-	SetAndValidateProjectNameWithNamespace(ctx context.Context, namespaceName string) error
-	// SetAndValidateSeedName updates TargetBuilder with a validated Seed name
-	// The function ensures that the Seed is valid
-	// This implicitly unsets project and shoot values
-	SetAndValidateSeedName(ctx context.Context, seedName string) error
-	// SetAndValidateShootName updates TargetBuilder with a validated Shoot name
-	// The function ensures that the Shoot is valid
-	// This implicitly unsets seed value
-	SetAndValidateShootName(ctx context.Context, shootName string) error
+	SetGarden(string) TargetBuilder
+	// SetProject updates TargetBuilder with a Project name
+	SetProject(context.Context, string) TargetBuilder
+	// SetNamespace updates TargetBuilder with a Namespace name
+	// The Namespace will be used to resolve the associated project during build
+	SetNamespace(context.Context, string) TargetBuilder
+	// SetSeed updates TargetBuilder with a Seed name
+	SetSeed(context.Context, string) TargetBuilder
+	// SetShoot updates TargetBuilder with a  Shoot name
+	SetShoot(context.Context, string) TargetBuilder
+	// Build uses the values set for TargetBuilder to create and return a new target
+	// This function validates the target values and tries to complete missing values
+	// If the provided values do not represent a valid and unique target, an error is returned
+	Build() (Target, error)
 }
+
+type handler func(t *targetImpl) error
 
 type targetBuilderImpl struct {
 	config         *config.Config
 	clientProvider ClientProvider
-	gardenName     string
-	projectName    string
-	seedName       string
-	shootName      string
+	target         Target
+	actions        []handler
 }
 
 var _ TargetBuilder = &targetBuilderImpl{}
@@ -68,188 +59,239 @@ func NewTargetBuilder(config *config.Config, clientProvider ClientProvider) Targ
 	}
 }
 
-func (tb *targetBuilderImpl) SetUnvalidatedTarget(t Target) {
-	tb.gardenName = t.GardenName()
-	tb.projectName = t.ProjectName()
-	tb.seedName = t.SeedName()
-	tb.shootName = t.ShootName()
+func (b *targetBuilderImpl) Init(t Target) TargetBuilder {
+	b.target = t
+	return b
 }
 
-func (tb *targetBuilderImpl) SetAndValidateGardenName(gardenName string) error {
-	gardenName, err := tb.config.FindGarden(gardenName)
-	if err != nil {
-		return err
-	}
+func (b *targetBuilderImpl) SetGarden(name string) TargetBuilder {
+	b.actions = append(b.actions, func(t *targetImpl) error {
+		gardenName, err := b.config.FindGarden(name)
+		if err != nil {
+			return fmt.Errorf("failed to set target garden: %w", err)
+		}
 
-	tb.gardenName = gardenName
-	tb.projectName = ""
-	tb.seedName = ""
-	tb.shootName = ""
+		t.Garden = gardenName
+		t.Project = ""
+		t.Seed = ""
+		t.Shoot = ""
 
-	return nil
+		return nil
+	})
+
+	return b
 }
 
-func (tb *targetBuilderImpl) SetAndValidateProjectName(ctx context.Context, projectName string) error {
-	if tb.gardenName == "" {
-		return ErrNoGardenTargeted
+func (b *targetBuilderImpl) SetProject(ctx context.Context, name string) TargetBuilder {
+	b.actions = append(b.actions, func(t *targetImpl) error {
+		if t.GardenName() == "" {
+			return ErrNoGardenTargeted
+		}
+
+		// validate that the project exists
+		project, err := b.validateProject(ctx, t.GardenName(), name)
+		if err != nil {
+			return fmt.Errorf("failed to set target project: %w", err)
+		}
+
+		t.Project = project.Name
+		t.Seed = ""
+		t.Shoot = ""
+
+		return nil
+	})
+
+	return b
+}
+
+func (b *targetBuilderImpl) SetNamespace(ctx context.Context, name string) TargetBuilder {
+	b.actions = append(b.actions, func(t *targetImpl) error {
+		if t.GardenName() == "" {
+			return ErrNoGardenTargeted
+		}
+
+		// validate that the namespace exists and is related to a project
+		projectName, err := b.validateNamespace(ctx, t.GardenName(), name)
+		if err != nil {
+			return fmt.Errorf("failed to set target project: %w", err)
+		}
+
+		// validate that the project exists
+		project, err := b.validateProject(ctx, t.GardenName(), projectName)
+		if err != nil {
+			return fmt.Errorf("failed to set target project: %w", err)
+		}
+
+		t.Project = project.Name
+		t.Seed = ""
+		t.Shoot = ""
+
+		return nil
+	})
+
+	return b
+}
+
+func (b *targetBuilderImpl) SetSeed(ctx context.Context, name string) TargetBuilder {
+	b.actions = append(b.actions, func(t *targetImpl) error {
+		if t.GardenName() == "" {
+			return ErrNoGardenTargeted
+		}
+
+		// validate that the seed exists
+		seed, err := b.validateSeed(ctx, t.GardenName(), name)
+		if err != nil {
+			return fmt.Errorf("failed to set target seed: %w", err)
+		}
+
+		t.Project = ""
+		t.Seed = seed.Name
+		t.Shoot = ""
+
+		return nil
+	})
+
+	return b
+}
+
+func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBuilder {
+	b.actions = append(b.actions, func(t *targetImpl) error {
+		if t.GardenName() == "" {
+			return ErrNoGardenTargeted
+		}
+
+		gardenClient, err := b.getGardenClient(t.GardenName())
+		if err != nil {
+			return err
+		}
+
+		var shoot *gardencorev1beta1.Shoot
+
+		if t.ProjectName() != "" {
+			// project name set, get shoot within project namespace
+			project, err := gardenClient.GetProject(ctx, t.ProjectName())
+			if err != nil {
+				return fmt.Errorf("failed to fetch project: %w", err)
+			}
+
+			shoot, err = gardenClient.GetShoot(ctx, *project.Spec.Namespace, name)
+			if err != nil {
+				return fmt.Errorf("failed to fetch shoot %q inside namespace %q: %w", name, *project.Spec.Namespace, err)
+			}
+		} else {
+			shoot, err = gardenClient.GetShootBySeed(ctx, t.SeedName(), name)
+			if err != nil {
+				return fmt.Errorf("failed to fetch shoot %q using ShootSeedName field selector %q: %w", name, t.SeedName(), err)
+			}
+
+			// we need to resolve the project name as it is not already set
+			// This is important to ensure that the target stays unambiguous and the shoot can be found faster in subsequent operations
+			project, err := gardenClient.GetProjectByNamespace(ctx, shoot.Namespace)
+			if err != nil {
+				return fmt.Errorf("failed to fetch parent project for shoot: %w", err)
+			}
+
+			t.Project = project.Name
+		}
+
+		t.Seed = ""
+		t.Shoot = shoot.Name
+
+		return nil
+	})
+
+	return b
+}
+
+func (b *targetBuilderImpl) Build() (Target, error) {
+	target := b.target
+	if target == nil {
+		target = NewTarget("", "", "", "")
 	}
+
+	t := &targetImpl{
+		target.GardenName(),
+		target.ProjectName(),
+		target.SeedName(),
+		target.ShootName(),
+	}
+
+	for _, a := range b.actions {
+		if err := a(t); err != nil {
+			return nil, err
+		}
+	}
+
+	return t, nil
+}
+
+// returns gardener project
+func (b *targetBuilderImpl) validateProject(ctx context.Context, gardenName string, name string) (*gardencorev1beta1.Project, error) {
 	// validate that the project exists
-	gardenClient, err := tb.getGardenClient()
+	gardenClient, err := b.getGardenClient(gardenName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	project, err := gardenClient.GetProject(ctx, projectName)
+	project, err := gardenClient.GetProject(ctx, name)
 	if err != nil {
-		return fmt.Errorf("failed to fetch project: %w", err)
+		return nil, fmt.Errorf("failed to fetch project: %w", err)
 	}
 
 	// validate the project
-	if err := tb.validateProject(project); err != nil {
-		return fmt.Errorf("invalid project: %w", err)
+	if project.Spec.Namespace == nil || *project.Spec.Namespace == "" {
+		return nil, errors.New("project does not have a corresponding namespace set; most likely it has not yet been fully created")
 	}
 
-	tb.projectName = projectName
-	tb.seedName = ""
-	tb.shootName = ""
-
-	return nil
+	return project, nil
 }
 
-func (tb *targetBuilderImpl) SetAndValidateProjectNameWithNamespace(ctx context.Context, namespaceName string) error {
-	if tb.gardenName == "" {
-		return ErrNoGardenTargeted
+// returns gardener project name for namespace
+func (b *targetBuilderImpl) validateNamespace(ctx context.Context, gardenName string, name string) (string, error) {
+	gardenClient, err := b.getGardenClient(gardenName)
+	if err != nil {
+		return "", err
 	}
 
-	gardenClient, err := tb.getGardenClient()
-	if err != nil {
-		return err
-	}
-
-	namespace, err := gardenClient.GetNamespace(ctx, namespaceName)
+	namespace, err := gardenClient.GetNamespace(ctx, name)
 
 	if err != nil {
-		return fmt.Errorf("failed to fetch namespace: %w", err)
+		return "", fmt.Errorf("failed to fetch namespace: %w", err)
 	}
 
 	if namespace == nil {
-		return fmt.Errorf("invalid namespace: %s", namespaceName)
+		return "", fmt.Errorf("invalid namespace: %s", name)
 	}
 
 	projectName := namespace.Labels["project.gardener.cloud/name"]
 	if projectName == "" {
-		return fmt.Errorf("namespace %q is not related to a gardener project", projectName)
+		return "", fmt.Errorf("namespace %q is not related to a gardener project", projectName)
 	}
 
-	return tb.SetAndValidateProjectName(ctx, projectName)
+	return projectName, nil
 }
 
-func (tb *targetBuilderImpl) SetAndValidateSeedName(ctx context.Context, seedName string) error {
-	if tb.gardenName == "" {
-		return ErrNoGardenTargeted
-	}
-
+// returns gardener seed
+func (b *targetBuilderImpl) validateSeed(ctx context.Context, gardenName string, name string) (*gardencorev1beta1.Seed, error) {
 	// validate that the seed exists
-	gardenClient, err := tb.getGardenClient()
+	gardenClient, err := b.getGardenClient(gardenName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	seed, err := gardenClient.GetSeed(ctx, seedName)
+	seed, err := gardenClient.GetSeed(ctx, name)
 	if err != nil {
-		return fmt.Errorf("failed to resolve seed: %w", err)
+		return nil, fmt.Errorf("failed to resolve seed: %w", err)
 	}
 
 	// validate the seed
-	if err := tb.validateSeed(seed); err != nil {
-		return fmt.Errorf("invalid seed: %w", err)
-	}
-
-	tb.projectName = ""
-	tb.seedName = seedName
-	tb.shootName = ""
-
-	return nil
-}
-
-func (tb *targetBuilderImpl) SetAndValidateShootName(ctx context.Context, shootName string) error {
-	if tb.gardenName == "" {
-		return ErrNoGardenTargeted
-	}
-
-	gardenClient, err := tb.getGardenClient()
-	if err != nil {
-		return err
-	}
-
-	var shoot *gardencorev1beta1.Shoot
-
-	if tb.projectName != "" {
-		// project name set, get shoot within project namespace
-		project, err := gardenClient.GetProject(ctx, tb.projectName)
-		if err != nil {
-			return fmt.Errorf("failed to fetch project: %w", err)
-		}
-
-		shoot, err = gardenClient.GetShoot(ctx, *project.Spec.Namespace, shootName)
-		if err != nil {
-			return fmt.Errorf("failed to fetch shoot %q inside namespace %q: %w", shootName, *project.Spec.Namespace, err)
-		}
-	} else {
-		shoot, err = gardenClient.GetShootBySeed(ctx, tb.seedName, shootName)
-		if err != nil {
-			return fmt.Errorf("failed to fetch shoot %q using ShootSeedName field selector %q: %w", shootName, tb.seedName, err)
-		}
-
-		// we need to resolve the project name as it is not already set
-		// This is important to ensure that the target stays unambiguous and the shoot can be found faster in subsequent operations
-		project, err := gardenClient.GetProjectByNamespace(ctx, shoot.Namespace)
-		if err != nil {
-			return fmt.Errorf("failed to fetch parent project for shoot: %w", err)
-		}
-
-		tb.projectName = project.Name
-	}
-
-	// validate the shoot
-	if err := tb.validateShoot(shoot); err != nil {
-		return fmt.Errorf("invalid shoot: %w", err)
-	}
-
-	tb.seedName = ""
-	tb.shootName = shootName
-
-	return nil
-}
-
-func (tb *targetBuilderImpl) Build() Target {
-	return NewTarget(tb.gardenName, tb.projectName, tb.seedName, tb.shootName)
-}
-
-func (tb *targetBuilderImpl) validateProject(project *gardencorev1beta1.Project) error {
-	if project.Spec.Namespace == nil || *project.Spec.Namespace == "" {
-		return errors.New("project does not have a corresponding namespace set; most likely it has not yet been fully created")
-	}
-
-	return nil
-}
-
-func (tb *targetBuilderImpl) validateSeed(seed *gardencorev1beta1.Seed) error {
 	if seed.Spec.SecretRef == nil {
-		return errors.New("spec.SecretRef is missing in this seed, seed not reachable")
+		return nil, errors.New("spec.SecretRef is missing in this seed, seed not reachable")
 	}
 
-	return nil
+	return seed, nil
 }
 
-func (tb *targetBuilderImpl) validateShoot(shoot *gardencorev1beta1.Shoot) error {
-	if shoot == nil {
-		return errors.New("failed to validate shoot")
-	}
-
-	return nil
-}
-
-func (tb *targetBuilderImpl) getGardenClient() (gardenclient.Client, error) {
-	return GardenClient(tb.gardenName, tb.config, tb.clientProvider)
+func (b *targetBuilderImpl) getGardenClient(gardenName string) (gardenclient.Client, error) {
+	return GardenClient(gardenName, b.config, b.clientProvider)
 }

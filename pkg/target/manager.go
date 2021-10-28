@@ -139,14 +139,14 @@ func (m *managerImpl) TargetGarden(ctx context.Context, gardenNameOrAlias string
 		return fmt.Errorf("failed to get current target: %v", err)
 	}
 
-	tb.SetUnvalidatedTarget(currentTarget)
+	tb.Init(currentTarget)
 
-	err = tb.SetAndValidateGardenName(gardenNameOrAlias)
+	target, err := tb.SetGarden(gardenNameOrAlias).Build()
 	if err != nil {
 		return err
 	}
 
-	return m.patchTargetWithTarget(tb.Build())
+	return m.patchTargetWithTarget(target)
 }
 
 func (m *managerImpl) UnsetTargetGarden() (string, error) {
@@ -178,14 +178,14 @@ func (m *managerImpl) TargetProject(ctx context.Context, projectName string) err
 		return fmt.Errorf("failed to get current target: %v", err)
 	}
 
-	tb.SetUnvalidatedTarget(currentTarget)
+	tb.Init(currentTarget)
 
-	err = tb.SetAndValidateProjectName(ctx, projectName)
+	target, err := tb.SetProject(ctx, projectName).Build()
 	if err != nil {
 		return err
 	}
 
-	return m.patchTargetWithTarget(tb.Build())
+	return m.patchTargetWithTarget(target)
 }
 
 func (m *managerImpl) UnsetTargetProject() (string, error) {
@@ -215,14 +215,14 @@ func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 		return fmt.Errorf("failed to get current target: %v", err)
 	}
 
-	tb.SetUnvalidatedTarget(currentTarget)
+	tb.Init(currentTarget)
 
-	err = tb.SetAndValidateSeedName(ctx, seedName)
+	target, err := tb.SetSeed(ctx, seedName).Build()
 	if err != nil {
 		return err
 	}
 
-	return m.patchTargetWithTarget(tb.Build())
+	return m.patchTargetWithTarget(target)
 }
 
 func (m *managerImpl) UnsetTargetSeed() (string, error) {
@@ -251,14 +251,14 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 		return fmt.Errorf("failed to get current target: %v", err)
 	}
 
-	tb.SetUnvalidatedTarget(currentTarget)
+	tb.Init(currentTarget)
 
-	err = tb.SetAndValidateShootName(ctx, shootName)
+	target, err := tb.SetShoot(ctx, shootName).Build()
 	if err != nil {
 		return err
 	}
 
-	return m.patchTargetWithTarget(tb.Build())
+	return m.patchTargetWithTarget(target)
 }
 
 func (m *managerImpl) UnsetTargetShoot() (string, error) {
@@ -296,7 +296,7 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		return fmt.Errorf("failed to get current target: %v", err)
 	}
 
-	tb.SetUnvalidatedTarget(currentTarget)
+	tb.Init(currentTarget)
 
 	if err != nil {
 		return err
@@ -307,34 +307,27 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 	}
 
 	if tm.Garden != "" {
-		err = tb.SetAndValidateGardenName(tm.Garden)
-		if err != nil {
-			return err
-		}
+		tb.SetGarden(tm.Garden)
 	}
 
 	if tm.Project != "" {
-		err = tb.SetAndValidateProjectName(ctx, tm.Project)
-		if err != nil {
-			return err
-		}
+		tb.SetProject(ctx, tm.Project)
 	}
 
 	if tm.Namespace != "" {
-		err = tb.SetAndValidateProjectNameWithNamespace(ctx, tm.Namespace)
-		if err != nil {
-			return err
-		}
+		tb.SetNamespace(ctx, tm.Namespace)
 	}
 
 	if tm.Shoot != "" {
-		err = tb.SetAndValidateShootName(ctx, tm.Shoot)
-		if err != nil {
-			return err
-		}
+		tb.SetShoot(ctx, tm.Shoot)
 	}
 
-	return m.patchTargetWithTarget(tb.Build())
+	target, err := tb.Build()
+	if err != nil {
+		return err
+	}
+
+	return m.patchTargetWithTarget(target)
 }
 
 func (m *managerImpl) patchTargetWithTarget(target Target) error {
