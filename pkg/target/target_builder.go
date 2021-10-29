@@ -23,7 +23,7 @@ type TargetBuilder interface {
 	// Use this function to overwrite target baseline data before updating with new values
 	Init(Target) TargetBuilder
 	// SetGarden updates TargetBuilder with a Garden name
-	// gardenName can be Garden Name or Alias
+	// gardenName can be Garden Name or Alias as defined in the config
 	SetGarden(string) TargetBuilder
 	// SetProject updates TargetBuilder with a Project name
 	SetProject(context.Context, string) TargetBuilder
@@ -32,7 +32,7 @@ type TargetBuilder interface {
 	SetNamespace(context.Context, string) TargetBuilder
 	// SetSeed updates TargetBuilder with a Seed name
 	SetSeed(context.Context, string) TargetBuilder
-	// SetShoot updates TargetBuilder with a  Shoot name
+	// SetShoot updates TargetBuilder with a Shoot name
 	SetShoot(context.Context, string) TargetBuilder
 	// Build uses the values set for TargetBuilder to create and return a new target
 	// This function validates the target values and tries to complete missing values
@@ -110,8 +110,7 @@ func (b *targetBuilderImpl) SetNamespace(ctx context.Context, name string) Targe
 			return ErrNoGardenTargeted
 		}
 
-		// validate that the namespace exists and is related to a project
-		projectName, err := b.validateNamespace(ctx, t.GardenName(), name)
+		projectName, err := b.getProjectNameByNamespace(ctx, t.GardenName(), name)
 		if err != nil {
 			return fmt.Errorf("failed to set target project: %w", err)
 		}
@@ -212,14 +211,14 @@ func (b *targetBuilderImpl) Build() (Target, error) {
 	return t, nil
 }
 
-// returns gardener project
+// validateProject ensures that the project exists and that a corresponding namespace is set, otherwise an error is returned.
 func (b *targetBuilderImpl) validateProject(ctx context.Context, gardenName string, name string) (*gardencorev1beta1.Project, error) {
-	// validate that the project exists
 	gardenClient, err := b.getGardenClient(gardenName)
 	if err != nil {
 		return nil, err
 	}
 
+	// validate that the project exists
 	project, err := gardenClient.GetProject(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch project: %w", err)
@@ -233,21 +232,16 @@ func (b *targetBuilderImpl) validateProject(ctx context.Context, gardenName stri
 	return project, nil
 }
 
-// returns gardener project name for namespace
-func (b *targetBuilderImpl) validateNamespace(ctx context.Context, gardenName string, name string) (string, error) {
+// getProjectNameByNamespace  returns the project name for the given namespace name
+func (b *targetBuilderImpl) getProjectNameByNamespace(ctx context.Context, gardenName string, name string) (string, error) {
 	gardenClient, err := b.getGardenClient(gardenName)
 	if err != nil {
 		return "", err
 	}
 
 	namespace, err := gardenClient.GetNamespace(ctx, name)
-
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch namespace: %w", err)
-	}
-
-	if namespace == nil {
-		return "", fmt.Errorf("invalid namespace: %s", name)
 	}
 
 	projectName := namespace.Labels["project.gardener.cloud/name"]
@@ -258,7 +252,7 @@ func (b *targetBuilderImpl) validateNamespace(ctx context.Context, gardenName st
 	return projectName, nil
 }
 
-// returns gardener seed
+//  validateSeed ensures that the seed exists and that a secret reference is set, otherwise an error is returned.
 func (b *targetBuilderImpl) validateSeed(ctx context.Context, gardenName string, name string) (*gardencorev1beta1.Seed, error) {
 	// validate that the seed exists
 	gardenClient, err := b.getGardenClient(gardenName)
