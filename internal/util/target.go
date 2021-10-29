@@ -22,8 +22,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
-// ShootForTarget returns the targeted shoot, if a shoot cluster is targeted,
-// if valid and exists otherwise an error.
+// ShootForTarget returns the targeted shoot, if a shoot cluster is targeted and exists otherwise an error.
 func ShootForTarget(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
 	if t.ProjectName() != "" {
 		return shootForTargetViaProject(ctx, gardenClient, t)
@@ -109,8 +108,7 @@ func ShootNamesForTarget(ctx context.Context, manager target.Manager, t target.T
 	return names.List(), nil
 }
 
-// SeedForTarget returns the targeted seed, if a seed is targeted,
-// if valid and exists otherwise an error.
+// SeedForTarget returns the targeted seed, if a seed is targeted and exists otherwise an error.
 func SeedForTarget(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Seed, error) {
 	name := t.SeedName()
 	if name == "" {
@@ -141,8 +139,7 @@ func SeedNamesForTarget(ctx context.Context, manager target.Manager, t target.Ta
 	return names.List(), nil
 }
 
-// ProjectForTarget returns the targeted project, if a project is targeted,
-// if valid and exists otherwise an error.
+// ProjectForTarget returns the targeted project, if a project is targeted and exists otherwise an error.
 func ProjectForTarget(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Project, error) {
 	name := t.ProjectName()
 	if name == "" {
