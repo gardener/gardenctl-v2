@@ -38,6 +38,10 @@ type Client interface {
 	// GetShootBySeed returns a Gardener shoot resource by name
 	// An optional seedName can be provided to filter by ShootSeedName field selector
 	GetShootBySeed(ctx context.Context, seedName string, shootName string) (*gardencorev1beta1.Shoot, error)
+	// FindShoot tries to get a shoot via project (namespace) first, if not provided it tries to find the shot
+	// with an (optional) seedname
+	FindShoot(ctx context.Context, shootName string, projectName string, seedName string) (*gardencorev1beta1.Shoot, error)
+
 	// ListShoots returns all Gardener shoot resources, filtered by a list option
 	ListShoots(ctx context.Context, listOpt client.ListOption) ([]gardencorev1beta1.Shoot, error)
 
@@ -69,7 +73,7 @@ func (g *clientImpl) GetProject(ctx context.Context, projectName string) (*garde
 	key := types.NamespacedName{Name: projectName}
 
 	if err := g.c.Get(ctx, key, project); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get project %v: %w", key, err)
 	}
 
 	return project, nil
@@ -119,7 +123,7 @@ func (g *clientImpl) GetSeed(ctx context.Context, seedName string) (*gardencorev
 	key := types.NamespacedName{Name: seedName}
 
 	if err := g.c.Get(ctx, key, seed); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get seed %v: %w", key, err)
 	}
 
 	return seed, nil
@@ -192,6 +196,20 @@ func (g *clientImpl) GetShootBySeed(ctx context.Context, seedName string, shootN
 	return matchingShoots[0], nil
 }
 
+func (g *clientImpl) FindShoot(ctx context.Context, shootName string, projectName string, seedName string) (*gardencorev1beta1.Shoot, error) {
+	if projectName != "" {
+		// project name set, get shoot within project namespace
+		project, err := g.GetProject(ctx, projectName)
+		if err != nil {
+			return nil, err
+		}
+
+		return g.GetShoot(ctx, *project.Spec.Namespace, shootName)
+	}
+
+	return g.GetShootBySeed(ctx, seedName, shootName)
+}
+
 func (g *clientImpl) ListShoots(ctx context.Context, listOpt client.ListOption) ([]gardencorev1beta1.Shoot, error) {
 	shootList := &gardencorev1beta1.ShootList{}
 	if err := g.c.List(ctx, shootList, listOpt); err != nil {
@@ -206,7 +224,7 @@ func (g *clientImpl) GetNamespace(ctx context.Context, namespaceName string) (*c
 	key := types.NamespacedName{Name: namespaceName}
 
 	if err := g.c.Get(ctx, key, namespace); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get namespace %v: %w", key, err)
 	}
 
 	return namespace, nil
@@ -217,7 +235,7 @@ func (g *clientImpl) GetSecret(ctx context.Context, namespaceName string, seedNa
 	key := types.NamespacedName{Name: seedName, Namespace: namespaceName}
 
 	if err := g.c.Get(ctx, key, &secret); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get secret %v: %w", key, err)
 	}
 
 	return &secret, nil

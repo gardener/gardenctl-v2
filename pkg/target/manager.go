@@ -15,8 +15,6 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/config"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 var (
@@ -72,7 +70,7 @@ type Manager interface {
 	Configuration() *config.Config
 
 	// GardenClient returns a gardenClient for a garden cluster
-	GardenClientForGarden(name string) (gardenclient.Client, error)
+	GardenClient(name string) (gardenclient.Client, error)
 }
 
 type managerImpl struct {
@@ -84,6 +82,8 @@ type managerImpl struct {
 
 var _ Manager = &managerImpl{}
 
+// GardenClient creates a new Garden client by creating a runtime client via the ClientProvider
+// it then wraps the runtime client and returns a Garden client
 func GardenClient(name string, config *config.Config, provider ClientProvider) (gardenclient.Client, error) {
 	for _, g := range config.Gardens {
 		if g.Name == name {
@@ -285,10 +285,6 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		return fmt.Errorf("error occurred while trying to match value: %w", err)
 	}
 
-	if tm == nil {
-		return errors.New("the provided value does not match any pattern")
-	}
-
 	tb := NewTargetBuilder(m.config, m.clientProvider)
 
 	currentTarget, err := m.CurrentTarget()
@@ -368,7 +364,7 @@ func (m *managerImpl) ensureSeedKubeconfig(ctx context.Context, t Target) ([]byt
 		return kubeconfig, nil
 	}
 
-	gardenClient, err := m.GardenClientForGarden(t.GardenName())
+	gardenClient, err := m.GardenClient(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
@@ -426,28 +422,14 @@ func (m *managerImpl) ensureShootKubeconfig(ctx context.Context, t Target) ([]by
 		return kubeconfig, nil
 	}
 
-	gardenClient, err := m.GardenClientForGarden(t.GardenName())
+	gardenClient, err := m.GardenClient(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	shoot := &gardencorev1beta1.Shoot{}
-
-	if t.ProjectName() != "" {
-		project, err := gardenClient.GetProject(ctx, t.ProjectName())
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch project: %w", err)
-		}
-
-		shoot, err = gardenClient.GetShoot(ctx, *project.Spec.Namespace, t.ShootName())
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch shoot %q inside namespace %q: %w", t.ShootName(), *project.Spec.Namespace, err)
-		}
-	} else if t.SeedName() != "" {
-		shoot, err = gardenClient.GetShootBySeed(ctx, t.SeedName(), t.ShootName())
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch shoot %q using ShootSeedName field selector %q: %w", t.ShootName(), t.SeedName(), err)
-		}
+	shoot, err := gardenClient.FindShoot(ctx, t.ShootName(), t.ProjectName(), t.SeedName())
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch shoot: %w", err)
 	}
 
 	secret, err := gardenClient.GetSecret(ctx, shoot.Namespace, fmt.Sprintf("%s.kubeconfig", shoot.Name))
@@ -490,6 +472,6 @@ func (m *managerImpl) getTarget(t Target) (Target, error) {
 	return t, err
 }
 
-func (m *managerImpl) GardenClientForGarden(name string) (gardenclient.Client, error) {
+func (m *managerImpl) GardenClient(name string) (gardenclient.Client, error) {
 	return GardenClient(name, m.config, m.clientProvider)
 }

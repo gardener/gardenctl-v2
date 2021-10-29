@@ -66,7 +66,7 @@ func (b *targetBuilderImpl) Init(t Target) TargetBuilder {
 
 func (b *targetBuilderImpl) SetGarden(name string) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
-		gardenName, err := b.config.FindGarden(name)
+		gardenName, err := b.config.GardenName(name)
 		if err != nil {
 			return fmt.Errorf("failed to set target garden: %w", err)
 		}
@@ -165,25 +165,12 @@ func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBui
 			return err
 		}
 
-		var shoot *gardencorev1beta1.Shoot
+		shoot, err := gardenClient.FindShoot(ctx, name, t.ProjectName(), t.SeedName())
+		if err != nil {
+			return fmt.Errorf("failed to set target shoot: %w", err)
+		}
 
-		if t.ProjectName() != "" {
-			// project name set, get shoot within project namespace
-			project, err := gardenClient.GetProject(ctx, t.ProjectName())
-			if err != nil {
-				return fmt.Errorf("failed to fetch project: %w", err)
-			}
-
-			shoot, err = gardenClient.GetShoot(ctx, *project.Spec.Namespace, name)
-			if err != nil {
-				return fmt.Errorf("failed to fetch shoot %q inside namespace %q: %w", name, *project.Spec.Namespace, err)
-			}
-		} else {
-			shoot, err = gardenClient.GetShootBySeed(ctx, t.SeedName(), name)
-			if err != nil {
-				return fmt.Errorf("failed to fetch shoot %q using ShootSeedName field selector %q: %w", name, t.SeedName(), err)
-			}
-
+		if t.ProjectName() == "" {
 			// we need to resolve the project name as it is not already set
 			// This is important to ensure that the target stays unambiguous and the shoot can be found faster in subsequent operations
 			project, err := gardenClient.GetProjectByNamespace(ctx, shoot.Namespace)

@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -26,7 +27,7 @@ type Config struct {
 
 // Garden represents one garden cluster
 type Garden struct {
-	// Name is a unique identifier of this Garden
+	// Name is a unique identifier of this Garden that can be used to target this Garden
 	// The value is considered when evaluating the garden matcher pattern
 	Name string `yaml:"name"`
 	// Kubeconfig holds the path for the kubeconfig of the garden cluster
@@ -107,9 +108,9 @@ func contains(values []string, value string) bool {
 	return false
 }
 
-// FindGarden returns the unique identifier (name) of a Garden cluster from the list of configured Gardens
-// The first Garden where nameOrAlias matches either name or one of the defined aliases will be returned
-func (config *Config) FindGarden(nameOrAlias string) (string, error) {
+// GardenName returns the unique name of a Garden cluster from the list of configured Gardens
+// The first Garden name where nameOrAlias matches either name or one of the defined aliases will be returned
+func (config *Config) GardenName(nameOrAlias string) (string, error) {
 	for _, g := range config.Gardens {
 		if g.Name == nameOrAlias {
 			return g.Name, nil
@@ -123,11 +124,18 @@ func (config *Config) FindGarden(nameOrAlias string) (string, error) {
 	return "", fmt.Errorf("garden with name or alias %q is not defined in gardenctl configuration", nameOrAlias)
 }
 
+// PatternKey is a key that can be used to identify a value in a pattern
+type PatternKey string
+
 const (
-	patternGarden    = "garden"
-	patternProject   = "project"
-	patternNamespace = "namespace"
-	patternShoot     = "shoot"
+	// PatternKeyGarden is used to identify a Garden by name or alias
+	PatternKeyGarden = PatternKey("garden")
+	// PatternKeyProject is used to identify a Project
+	PatternKeyProject = PatternKey("project")
+	// PatternKeyNamespace is used to identify a Project by the namespace it refers to
+	PatternKeyNamespace = PatternKey("namespace")
+	// PatternKeyShoot is used to identify a Shoot
+	PatternKeyShoot = PatternKey("shoot")
 )
 
 // MatchPattern matches a string against patterns defined in gardenctl config
@@ -149,14 +157,14 @@ func (config *Config) MatchPattern(value string) (*PatternMatch, error) {
 		tm := &PatternMatch{}
 
 		for i, name := range names {
-			switch name {
-			case patternGarden:
+			switch PatternKey(name) {
+			case PatternKeyGarden:
 				tm.Garden = matches[i]
-			case patternProject:
+			case PatternKeyProject:
 				tm.Project = matches[i]
-			case patternNamespace:
+			case PatternKeyNamespace:
 				tm.Namespace = matches[i]
-			case patternShoot:
+			case PatternKeyShoot:
 				tm.Shoot = matches[i]
 			}
 		}
@@ -164,5 +172,5 @@ func (config *Config) MatchPattern(value string) (*PatternMatch, error) {
 		return tm, nil
 	}
 
-	return nil, nil
+	return nil, errors.New("the provided value does not match any pattern")
 }

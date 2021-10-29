@@ -7,13 +7,15 @@ SPDX-License-Identifier: Apache-2.0
 package target_test
 
 import (
+	"context"
 	"testing"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 func init() {
@@ -24,3 +26,17 @@ func TestTarget(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Target Package Test Suite")
 }
+
+var (
+	ctx    context.Context
+	cancel context.CancelFunc
+)
+
+var _ = BeforeSuite(func() {
+	ctx, cancel = context.WithCancel(context.TODO())
+
+}, 60)
+
+var _ = AfterSuite(func() {
+	cancel()
+}, 5)

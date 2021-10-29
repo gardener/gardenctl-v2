@@ -23,7 +23,7 @@ import (
 )
 
 // ShootForTarget returns the targeted shoot, if a shoot cluster is targeted,
-// otherwise an error.
+// if valid and exists otherwise an error.
 func ShootForTarget(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
 	if t.ProjectName() != "" {
 		return shootForTargetViaProject(ctx, gardenClient, t)
@@ -59,12 +59,7 @@ func shootForTargetViaSeed(ctx context.Context, gardenClient gardenclient.Client
 		return nil, fmt.Errorf("invalid seed %q: %v", t.SeedName(), err)
 	}
 
-	shoot, err := gardenClient.GetShootBySeed(ctx, seed.Name, t.ShootName())
-	if err != nil {
-		return nil, err
-	}
-
-	return shoot, nil
+	return gardenClient.GetShootBySeed(ctx, seed.Name, t.ShootName())
 }
 
 // ShootsForTarget returns all possible shoots for a given target. The
@@ -90,18 +85,13 @@ func ShootsForTarget(ctx context.Context, gardenClient gardenclient.Client, t ta
 		listOpt = &client.ListOptions{Namespace: ""}
 	}
 
-	shootItems, err := gardenClient.ListShoots(ctx, listOpt)
-	if err != nil {
-		return nil, err
-	}
-
-	return shootItems, nil
+	return gardenClient.ListShoots(ctx, listOpt)
 }
 
 // ShootNamesForTarget returns all possible shoots for a given target. The
 // target must either target a project or a seed (both including a garden).
 func ShootNamesForTarget(ctx context.Context, manager target.Manager, t target.Target) ([]string, error) {
-	gardenClient, err := manager.GardenClientForGarden(t.GardenName())
+	gardenClient, err := manager.GardenClient(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
 	}
@@ -119,24 +109,21 @@ func ShootNamesForTarget(ctx context.Context, manager target.Manager, t target.T
 	return names.List(), nil
 }
 
+// SeedForTarget returns the targeted seed, if a seed is targeted,
+// if valid and exists otherwise an error.
 func SeedForTarget(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Seed, error) {
 	name := t.SeedName()
 	if name == "" {
 		return nil, errors.New("no seed targeted")
 	}
 
-	seed, err := gardenClient.GetSeed(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-
-	return seed, nil
+	return gardenClient.GetSeed(ctx, name)
 }
 
-// SeedNamesForTarget returns all possible shoots for a given target. The
+// SeedNamesForTarget returns all possible seeds for a given target. The
 // target must at least point to a garden.
 func SeedNamesForTarget(ctx context.Context, manager target.Manager, t target.Target) ([]string, error) {
-	gardenClient, err := manager.GardenClientForGarden(t.GardenName())
+	gardenClient, err := manager.GardenClient(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
 	}
@@ -154,24 +141,21 @@ func SeedNamesForTarget(ctx context.Context, manager target.Manager, t target.Ta
 	return names.List(), nil
 }
 
+// ProjectForTarget returns the targeted project, if a project is targeted,
+// if valid and exists otherwise an error.
 func ProjectForTarget(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Project, error) {
 	name := t.ProjectName()
 	if name == "" {
 		return nil, errors.New("no project targeted")
 	}
 
-	project, err := gardenClient.GetProject(ctx, name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch project: %w", err)
-	}
-
-	return project, nil
+	return gardenClient.GetProject(ctx, name)
 }
 
-// ProjectNamesForTarget returns all possible shoots for a given target. The
+// ProjectNamesForTarget returns all projects for the targeted garden.
 // target must at least point to a garden.
 func ProjectNamesForTarget(ctx context.Context, manager target.Manager, t target.Target) ([]string, error) {
-	gardenClient, err := manager.GardenClientForGarden(t.GardenName())
+	gardenClient, err := manager.GardenClient(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
 	}
@@ -189,6 +173,7 @@ func ProjectNamesForTarget(ctx context.Context, manager target.Manager, t target
 	return names.List(), nil
 }
 
+// GardenNames returns all names of configured Gardens
 func GardenNames(manager target.Manager) ([]string, error) {
 	names := sets.NewString()
 	for _, garden := range manager.Configuration().Gardens {
