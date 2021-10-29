@@ -12,6 +12,7 @@ import (
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo"
@@ -29,6 +30,67 @@ func init() {
 }
 
 var _ = Describe("Command", func() {
+	const (
+		gardenName       = "mygarden"
+		gardenKubeconfig = "/not/a/real/file"
+		projectName      = "myproject"
+		seedName         = "myseed"
+		shootName        = "myshoot"
+		namespace        = "garden"
+	)
+
+	var (
+		project          *gardencorev1beta1.Project
+		seed             *gardencorev1beta1.Seed
+		shoot            *gardencorev1beta1.Shoot
+		cfg              *config.Config
+		fakeGardenClient client.Client
+		clientProvider   *internalfake.ClientProvider
+	)
+
+	BeforeEach(func() {
+		cfg = &config.Config{
+			Gardens: []config.Garden{{
+				Name:       gardenName,
+				Kubeconfig: gardenKubeconfig,
+			}},
+		}
+
+		// garden cluster contains the targeted project
+		project = &gardencorev1beta1.Project{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: projectName,
+			},
+			Spec: gardencorev1beta1.ProjectSpec{
+				Namespace: pointer.String(namespace),
+			},
+		}
+
+		// garden cluster contains the targeted seed
+		seed = &gardencorev1beta1.Seed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: seedName,
+			},
+			Spec: gardencorev1beta1.SeedSpec{
+				SecretRef: &corev1.SecretReference{
+					Namespace: namespace,
+					Name:      seedName,
+				},
+			},
+		}
+
+		shoot = &gardencorev1beta1.Shoot{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      shootName,
+				Namespace: namespace,
+			},
+		}
+
+		fakeGardenClient = fake.NewClientBuilder().WithObjects(project, seed, shoot).Build()
+		clientProvider = internalfake.NewFakeClientProvider()
+		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
+	})
+
 	It("should reject bad options", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
 		o := cmdtarget.NewTargetOptions(streams)
@@ -40,13 +102,6 @@ var _ = Describe("Command", func() {
 	It("should be able to target a garden", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
-		gardenName := "mygarden"
-		cfg := &config.Config{
-			Gardens: []config.Garden{{
-				Name:       gardenName,
-				Kubeconfig: "",
-			}},
-		}
 		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget("", "", "", ""))
 		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
 		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
@@ -62,35 +117,11 @@ var _ = Describe("Command", func() {
 	It("should be able to target a project", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
-		gardenName := "mygarden"
-		gardenKubeconfig := ""
-		cfg := &config.Config{
-			Gardens: []config.Garden{{
-				Name:       gardenName,
-				Kubeconfig: gardenKubeconfig,
-			}},
-		}
-
 		// user has already targeted a garden
 		currentTarget := target.NewTarget(gardenName, "", "", "")
 
-		// garden cluster contains the targeted project
-		projectName := "myproject"
-		project := &gardencorev1beta1.Project{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: projectName,
-			},
-			Spec: gardencorev1beta1.ProjectSpec{
-				Namespace: pointer.String("garden-prod1"),
-			},
-		}
-
-		fakeGardenClient := fake.NewClientBuilder().WithObjects(project).Build()
-
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
-		clientProvider := internalfake.NewFakeClientProvider()
-		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
 		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
@@ -108,38 +139,11 @@ var _ = Describe("Command", func() {
 	It("should be able to target a seed", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
-		gardenName := "mygarden"
-		gardenKubeconfig := ""
-		cfg := &config.Config{
-			Gardens: []config.Garden{{
-				Name:       gardenName,
-				Kubeconfig: gardenKubeconfig,
-			}},
-		}
-
 		// user has already targeted a garden
 		currentTarget := target.NewTarget(gardenName, "", "", "")
 
-		// garden cluster contains the targeted seed
-		seedName := "myseed"
-		seed := &gardencorev1beta1.Seed{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: seedName,
-			},
-			Spec: gardencorev1beta1.SeedSpec{
-				SecretRef: &corev1.SecretReference{
-					Namespace: "garden",
-					Name:      seedName,
-				},
-			},
-		}
-
-		fakeGardenClient := fake.NewClientBuilder().WithObjects(seed).Build()
-
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
-		clientProvider := internalfake.NewFakeClientProvider()
-		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
 		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
@@ -157,44 +161,11 @@ var _ = Describe("Command", func() {
 	It("should be able to target a shoot", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
-		gardenName := "mygarden"
-		gardenKubeconfig := ""
-		cfg := &config.Config{
-			Gardens: []config.Garden{{
-				Name:       gardenName,
-				Kubeconfig: gardenKubeconfig,
-			}},
-		}
-
-		// garden cluster contains the targeted project and shoot
-		namespace := "garden-prod1"
-		projectName := "myproject"
-		project := &gardencorev1beta1.Project{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: projectName,
-			},
-			Spec: gardencorev1beta1.ProjectSpec{
-				Namespace: pointer.String("garden-prod1"),
-			},
-		}
-
-		shootName := "myshoot"
-		shoot := &gardencorev1beta1.Shoot{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      shootName,
-				Namespace: namespace,
-			},
-		}
-
 		// user has already targeted a garden and project
 		currentTarget := target.NewTarget(gardenName, projectName, "", "")
 
-		fakeGardenClient := fake.NewClientBuilder().WithObjects(project, shoot).Build()
-
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
-		clientProvider := internalfake.NewFakeClientProvider()
-		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
 
 		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
 		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))

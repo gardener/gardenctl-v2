@@ -7,14 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package target_test
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -22,6 +20,8 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 func assertTarget(t target.Target, expected target.Target) {
@@ -54,12 +54,22 @@ func createFakeShoot(name string, namespace string, seedName *string) (*gardenco
 			Name:      name,
 			Namespace: namespace,
 		},
-		Status: gardencorev1beta1.ShootStatus{
+		Spec: gardencorev1beta1.ShootSpec{
 			SeedName: seedName,
 		},
 	}
 
 	return shoot, kubeconfigSecret
+}
+
+func createTestManager(t target.Target, cfg config.Config, clientProvider target.ClientProvider, kubeconfigCache target.KubeconfigCache) (target.Manager, target.TargetProvider) {
+	targetProvider := fake.NewFakeTargetProvider(t)
+
+	manager, err := target.NewManager(&cfg, targetProvider, clientProvider, kubeconfigCache)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(manager).NotTo(BeNil())
+
+	return manager, targetProvider
 }
 
 var _ = Describe("Manager", func() {
@@ -81,6 +91,7 @@ var _ = Describe("Manager", func() {
 		gardenClient        client.Client
 		clientProvider      *fake.ClientProvider
 		kubeconfigCache     target.KubeconfigCache
+		namespace           *corev1.Namespace
 	)
 
 	BeforeEach(func() {
@@ -89,6 +100,10 @@ var _ = Describe("Manager", func() {
 				Name:       gardenName,
 				Kubeconfig: gardenKubeconfig,
 			}},
+			MatchPatterns: []string{
+				"^((?P<garden>[^/]+)/)?shoot--(?P<project>.+)--(?P<shoot>.+)$",
+				"^namespace:(?P<namespace>[^/]+)$",
+			},
 		}
 
 		prod1Project = &gardencorev1beta1.Project{
@@ -144,6 +159,15 @@ var _ = Describe("Manager", func() {
 			prod1PendingShootKubeconfig   *corev1.Secret
 		)
 
+		namespace = &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: *prod1Project.Spec.Namespace,
+				Labels: map[string]string{
+					"project.gardener.cloud/name": prod1Project.Name,
+				},
+			},
+		}
+
 		prod1GoldenShoot, prod1GoldenShootKubeconfig = createFakeShoot("golden-shoot", *prod1Project.Spec.Namespace, pointer.String(seed.Name))
 		prod1AmbiguousShoot, prod1AmbiguousShootKubeconfig = createFakeShoot("ambiguous-shoot", *prod1Project.Spec.Namespace, pointer.String(seed.Name))
 		prod2AmbiguousShoot, prod2AmbiguousShootKubeconfig = createFakeShoot("ambiguous-shoot", *prod2Project.Spec.Namespace, pointer.String(seed.Name))
@@ -163,6 +187,7 @@ var _ = Describe("Manager", func() {
 			prod2AmbiguousShootKubeconfig,
 			prod1PendingShoot,
 			prod1PendingShootKubeconfig,
+			namespace,
 		).Build()
 
 		clientProvider = fake.NewFakeClientProvider()
@@ -173,76 +198,52 @@ var _ = Describe("Manager", func() {
 
 	It("should be able to target valid gardens", func() {
 		t := target.NewTarget("", "", "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
-
-		Expect(manager.TargetGarden(gardenName)).To(Succeed())
+		Expect(manager.TargetGarden(ctx, gardenName)).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
 	})
 
 	It("should fail with invalid garden name", func() {
 		t := target.NewTarget("", "", "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
-
-		Expect(manager.TargetGarden("does-not-exist")).NotTo(Succeed())
+		Expect(manager.TargetGarden(ctx, "does-not-exist")).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
 	})
 
 	It("should be able to target valid projects", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
-
-		Expect(manager.TargetProject(context.TODO(), prod1Project.Name)).To(Succeed())
+		Expect(manager.TargetProject(ctx, prod1Project.Name)).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
 	})
 
 	It("should fail with invalid project name", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
-
-		Expect(manager.TargetProject(context.TODO(), "does-not-exist")).NotTo(Succeed())
+		Expect(manager.TargetProject(ctx, "does-not-exist")).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
 	})
 
 	It("should fail with unready project", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
-
-		Expect(manager.TargetProject(context.TODO(), unreadyProject.Name)).NotTo(Succeed())
+		Expect(manager.TargetProject(ctx, unreadyProject.Name)).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
 	})
 
 	It("should unset deeper target levels when 'going back'", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		// go deep
-		Expect(manager.TargetProject(context.TODO(), prod1Project.Name)).To(Succeed())
+		Expect(manager.TargetProject(ctx, prod1Project.Name)).To(Succeed())
 		// go back up
-		Expect(manager.TargetGarden(gardenName)).To(Succeed())
+		Expect(manager.TargetGarden(ctx, gardenName)).To(Succeed())
 
 		// should have the same as before
 		assertTargetProvider(targetProvider, t)
@@ -250,110 +251,114 @@ var _ = Describe("Manager", func() {
 
 	It("should be able to target valid seeds and drop project and shoot target", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name)
-		targetProvider := fake.NewFakeTargetProvider(t)
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
-
-		Expect(manager.TargetSeed(context.TODO(), seed.Name)).To(Succeed())
+		Expect(manager.TargetSeed(ctx, seed.Name)).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", seed.Name, ""))
 	})
 
 	It("should fail with invalid seed name", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
-
-		Expect(manager.TargetSeed(context.TODO(), "does-not-exist")).NotTo(Succeed())
+		Expect(manager.TargetSeed(ctx, "does-not-exist")).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
 	})
 
 	It("should be able to target valid shoots with a project already targeted", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
-
-		Expect(manager.TargetShoot(context.TODO(), prod1AmbiguousShoot.Name)).To(Succeed())
+		Expect(manager.TargetShoot(ctx, prod1AmbiguousShoot.Name)).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name))
 	})
 
 	It("should be able to target valid shoots with a seed already targeted. Should drop seed and set shoot project instead", func() {
 		t := target.NewTarget(gardenName, "", seed.Name, "")
-		targetProvider := fake.NewFakeTargetProvider(t)
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
-
-		Expect(manager.TargetShoot(context.TODO(), prod1GoldenShoot.Name)).To(Succeed())
+		Expect(manager.TargetShoot(ctx, prod1GoldenShoot.Name)).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
 	})
 
-	It("should be able to target valid shoots with another seed already targeted", func() {
+	It("should not be able to target valid shoots with another seed already targeted", func() {
 		t := target.NewTarget(gardenName, "", seed.Name, "")
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		// another seed is already targeted, so even though this shoot exists, it does not match
-		Expect(manager.TargetShoot(context.TODO(), prod1PendingShoot.Name)).NotTo(Succeed())
+		Expect(manager.TargetShoot(ctx, prod1PendingShoot.Name)).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
 	})
 
 	It("should be able to target valid shoots with only garden targeted", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
-
-		Expect(manager.TargetShoot(context.TODO(), prod1GoldenShoot.Name)).To(Succeed())
-		// project should be inserted into the path, as it is prefered over a seed step
+		Expect(manager.TargetShoot(ctx, prod1GoldenShoot.Name)).To(Succeed())
+		// project should be inserted into the path, as it is preferred over a seed step
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
 	})
 
 	It("should error when multiple shoots match", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
-
-		Expect(manager.TargetShoot(context.TODO(), prod1AmbiguousShoot.Name)).NotTo(Succeed())
+		Expect(manager.TargetShoot(ctx, prod1AmbiguousShoot.Name)).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
+	})
+
+	It("should be able to target valid garden, project and shoot by matching a pattern", func() {
+		t := target.NewTarget("", "", "", "")
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
+
+		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("%s/shoot--%s--%s", gardenName, prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
+	})
+
+	It("should be able to target valid project shoot by matching a pattern if garden is set", func() {
+		t := target.NewTarget(gardenName, "", "", "")
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
+
+		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
+	})
+
+	It("should fail to target shoot by matching a pattern if garden is not set", func() {
+		t := target.NewTarget("", "", "", "")
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
+
+		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).NotTo(Succeed())
+		assertTargetProvider(targetProvider, t)
+	})
+
+	It("should not target anything if target is not completely valid", func() {
+		t := target.NewTarget(gardenName, "", "", "")
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
+
+		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, "invalid shoot"))).NotTo(Succeed())
+		assertTargetProvider(targetProvider, t)
+	})
+
+	It("should be able to target valid project by matching a pattern containing a namespace", func() {
+		t := target.NewTarget(gardenName, "", "", "")
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
+
+		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("namespace:%s", *prod1Project.Spec.Namespace))).To(Succeed())
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
 	})
 
 	It("should provide a garden client", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
+		manager, _ := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
-
-		newClient, err := manager.GardenClient(t)
+		newClient, err := manager.GardenClient(t.GardenName())
 		Expect(err).NotTo(HaveOccurred())
 		Expect(newClient).NotTo(BeNil())
 	})
 
 	It("should provide a seed client", func() {
 		t := target.NewTarget(gardenName, "", seed.Name, "")
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
+		manager, _ := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		// provide a fake cached kubeconfig
 		seedKubeconfig := "seed"
@@ -361,18 +366,14 @@ var _ = Describe("Manager", func() {
 		Expect(kubeconfigCache.Write(t, []byte(seedKubeconfig))).To(Succeed())
 		clientProvider.WithClient(seedKubeconfig, seedClient)
 
-		newClient, err := manager.SeedClient(context.TODO(), t)
+		newClient, err := manager.SeedClient(ctx, t)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(newClient).NotTo(BeNil())
 	})
 
 	It("should provide a shoot client", func() {
 		t := target.NewTarget(gardenName, "", seed.Name, prod1GoldenShoot.Name)
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
+		manager, _ := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		// provide a fake cached kubeconfig
 		shootKubeconfig := "shoot"
@@ -380,18 +381,14 @@ var _ = Describe("Manager", func() {
 		Expect(kubeconfigCache.Write(t, []byte(shootKubeconfig))).To(Succeed())
 		clientProvider.WithClient(shootKubeconfig, shootClient)
 
-		newClient, err := manager.ShootClusterClient(context.TODO(), t)
+		newClient, err := manager.ShootClusterClient(ctx, t)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(newClient).NotTo(BeNil())
 	})
 
 	It("should be able to unset selected garden", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		Expect(manager.UnsetTargetGarden()).Should(Equal(gardenName))
 		assertTargetProvider(targetProvider, target.NewTarget("", "", "", ""))
@@ -399,11 +396,7 @@ var _ = Describe("Manager", func() {
 
 	It("should fail if no garden selected", func() {
 		t := target.NewTarget("", "", "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		res, unsetErr := manager.UnsetTargetGarden()
 		Expect(unsetErr).To(HaveOccurred())
@@ -413,11 +406,7 @@ var _ = Describe("Manager", func() {
 
 	It("should unset deeper target levels when unsetting garden", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1AmbiguousShoot.Name)
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		// Unset Garden
 		Expect(manager.UnsetTargetGarden()).Should(Equal(gardenName))
@@ -428,11 +417,7 @@ var _ = Describe("Manager", func() {
 
 	It("should be able to unset selected project", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		Expect(manager.UnsetTargetProject()).Should(Equal(prod1Project.Name))
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
@@ -440,11 +425,7 @@ var _ = Describe("Manager", func() {
 
 	It("should fail if no project selected", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		res, unsetErr := manager.UnsetTargetProject()
 		Expect(unsetErr).To(HaveOccurred())
@@ -454,11 +435,7 @@ var _ = Describe("Manager", func() {
 
 	It("should unset deeper target levels when unsetting project", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name)
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		// Unset Project
 		Expect(manager.UnsetTargetProject()).Should(Equal(prod1Project.Name))
@@ -469,11 +446,7 @@ var _ = Describe("Manager", func() {
 
 	It("should be able to unset selected shoot", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name)
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		Expect(manager.UnsetTargetShoot()).Should(Equal(prod1AmbiguousShoot.Name))
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
@@ -481,11 +454,7 @@ var _ = Describe("Manager", func() {
 
 	It("should fail if no shoot selected", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		res, unsetErr := manager.UnsetTargetShoot()
 		Expect(unsetErr).To(HaveOccurred())
@@ -495,11 +464,7 @@ var _ = Describe("Manager", func() {
 
 	It("should be able to unset selected seed", func() {
 		t := target.NewTarget(gardenName, "", seed.Name, "")
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		Expect(manager.UnsetTargetSeed()).Should(Equal(seed.Name))
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
@@ -507,11 +472,7 @@ var _ = Describe("Manager", func() {
 
 	It("should fail if no seed selected", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
-		targetProvider := fake.NewFakeTargetProvider(t)
-
-		manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(manager).NotTo(BeNil())
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		res, unsetErr := manager.UnsetTargetSeed()
 		Expect(unsetErr).To(HaveOccurred())

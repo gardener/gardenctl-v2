@@ -29,14 +29,6 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
-	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
-	corev1alpha1helper "github.com/gardener/gardener/pkg/apis/core/v1alpha1/helper"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
-	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
-	"github.com/gardener/gardener/pkg/utils"
-	gutil "github.com/gardener/gardener/pkg/utils/gardener"
-	"github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 	cryptossh "golang.org/x/crypto/ssh"
@@ -49,6 +41,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
+	corev1alpha1helper "github.com/gardener/gardener/pkg/apis/core/v1alpha1/helper"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
+	"github.com/gardener/gardener/pkg/utils"
+	gutil "github.com/gardener/gardener/pkg/utils/gardener"
+	"github.com/gardener/gardener/pkg/utils/secrets"
 )
 
 const (
@@ -208,7 +209,7 @@ func runCmdSSH(f util.Factory, o *SSHOptions) error {
 	printTargetInformation(o.IOStreams.Out, currentTarget)
 
 	// create client for the garden cluster
-	gardenClient, err := manager.GardenClient(currentTarget)
+	gardenClient, err := manager.GardenClient(currentTarget.GardenName())
 	if err != nil {
 		return err
 	}
@@ -223,7 +224,7 @@ func runCmdSSH(f util.Factory, o *SSHOptions) error {
 	}
 
 	// fetch the SSH key(s) for the shoot nodes
-	nodePrivateKeys, err := getShootNodePrivateKeys(ctx, gardenClient, shoot)
+	nodePrivateKeys, err := getShootNodePrivateKeys(ctx, gardenClient.RuntimeClient(), shoot)
 	if err != nil {
 		return err
 	}
@@ -304,20 +305,20 @@ func runCmdSSH(f util.Factory, o *SSHOptions) error {
 	}()
 
 	// do not use `ctx`, as it might be cancelled already when running the cleanup
-	defer cleanup(f.Context(), o, gardenClient, bastion, nodePrivateKeyFiles)
+	defer cleanup(f.Context(), o, gardenClient.RuntimeClient(), bastion, nodePrivateKeyFiles)
 
 	fmt.Fprintf(o.IOStreams.Out, "Creating bastion %s…\n", bastion.Name)
 
-	if err := gardenClient.Create(ctx, bastion); err != nil {
+	if err := gardenClient.RuntimeClient().Create(ctx, bastion); err != nil {
 		return fmt.Errorf("failed to create bastion: %v", err)
 	}
 
 	// continuously keep the bastion alive by renewing its annotation
-	go keepBastionAlive(ctx, gardenClient, bastion.DeepCopy(), o.IOStreams.ErrOut)
+	go keepBastionAlive(ctx, gardenClient.RuntimeClient(), bastion.DeepCopy(), o.IOStreams.ErrOut)
 
 	fmt.Fprintf(o.IOStreams.Out, "Waiting up to %v for bastion to be ready…\n", o.WaitTimeout)
 
-	err = waitForBastion(ctx, o, gardenClient, bastion)
+	err = waitForBastion(ctx, o, gardenClient.RuntimeClient(), bastion)
 
 	if err == wait.ErrWaitTimeout {
 		fmt.Fprintln(o.IOStreams.Out, "Timed out waiting for the bastion to be ready.")

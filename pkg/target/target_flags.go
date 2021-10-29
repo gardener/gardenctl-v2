@@ -33,7 +33,7 @@ type TargetFlags interface {
 	// must also be given. If ShootName and GardenName are set, false is
 	// returned because either project or seed have to be given as well.
 	IsTargetValid() bool
-	// overrideTarget overrides the given target with the values of the target flags
+	// OverrideTarget overrides the given target with the values of the target flags
 	OverrideTarget(current Target) (Target, error)
 }
 

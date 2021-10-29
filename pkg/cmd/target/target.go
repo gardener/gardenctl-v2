@@ -49,6 +49,8 @@ func NewCmdTarget(f util.Factory, o *TargetOptions) *cobra.Command {
 	cmd.AddCommand(NewCmdUnset(f, NewUnsetOptions(ioStreams)))
 	cmd.AddCommand(NewCmdView(f, NewViewOptions(ioStreams)))
 
+	o.AddOutputFlags(cmd)
+
 	return cmd
 }
 
@@ -62,7 +64,7 @@ func runCmdTarget(f util.Factory, o *TargetOptions) error {
 
 	switch o.Kind {
 	case TargetKindGarden:
-		err = manager.TargetGarden(o.TargetName)
+		err = manager.TargetGarden(ctx, o.TargetName)
 	case TargetKindProject:
 		err = manager.TargetProject(ctx, o.TargetName)
 	case TargetKindSeed:
@@ -70,16 +72,25 @@ func runCmdTarget(f util.Factory, o *TargetOptions) error {
 	case TargetKindShoot:
 		err = manager.TargetShoot(ctx, o.TargetName)
 	default:
-		err = errors.New("invalid kind")
+		err = manager.TargetMatchPattern(ctx, o.TargetName)
 	}
 
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
+	currentTarget, err := manager.CurrentTarget()
+	if err != nil {
+		return fmt.Errorf("failed to get current target: %v", err)
+	}
 
-	return nil
+	if o.Output == "" {
+		fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
+
+		return nil
+	}
+
+	return o.PrintObject(currentTarget)
 }
 
 // TargetKind is representing the type of things that can be targeted
@@ -93,10 +104,11 @@ const (
 	TargetKindProject TargetKind = "project"
 	TargetKindSeed    TargetKind = "seed"
 	TargetKindShoot   TargetKind = "shoot"
+	TargetKindPattern TargetKind = "pattern"
 )
 
 var (
-	AllTargetKinds = []TargetKind{TargetKindGarden, TargetKindProject, TargetKindSeed, TargetKindShoot}
+	AllTargetKinds = []TargetKind{TargetKindGarden, TargetKindProject, TargetKindSeed, TargetKindShoot, TargetKindPattern}
 )
 
 func ValidateKind(kind TargetKind) error {
@@ -116,6 +128,7 @@ func validTargetArgsFunction(f util.Factory, o *TargetOptions, args []string, to
 			string(TargetKindProject),
 			string(TargetKindSeed),
 			string(TargetKindShoot),
+			string(TargetKindPattern),
 		}, nil
 	}
 
@@ -181,8 +194,15 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 		o.Kind = TargetKind(strings.TrimSpace(args[0]))
 	}
 
-	if len(args) > 1 {
-		o.TargetName = strings.TrimSpace(args[1])
+	kindValidationErr := ValidateKind(o.Kind)
+	if len(args) == 1 && kindValidationErr != nil {
+		// no target kind provided - try to match target with match patterns
+		o.TargetName = strings.TrimSpace(args[0])
+		o.Kind = TargetKindPattern
+	} else {
+		if len(args) > 1 {
+			o.TargetName = strings.TrimSpace(args[1])
+		}
 	}
 
 	manager, err := f.Manager()
