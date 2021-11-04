@@ -29,7 +29,7 @@ if [[ -z "${LD_FLAGS}" ]]; then
 fi
 ###############################################################################
 
-out_file="${BINARY_PATH}"/darwin-amd64/gardenctl_v2_darwin-amd64
+out_file="${BINARY_PATH}"/darwin-amd64/gardenctl_v2_darwin_amd64
 
 echo "building for darwin-amd64: ${out_file}"
 CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 GO111MODULE=on go build \
