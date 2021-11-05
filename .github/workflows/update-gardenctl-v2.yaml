@@ -1,0 +1,52 @@
+name: gardenctl-updater
+
+on:
+  release:
+    types:
+      - published
+jobs:
+  update_gardenctl_in_homebrew_tap_and_chocolatey_packages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # pin@v2.4.0
+      - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57 # pin@v2.1.4
+        with:
+          go-version: '^1.17'
+      - name: Build the binary-files
+        id: build_binary_files
+        run: |
+          sudo apt-get update
+          sudo apt-get install make -y
+          make build
+          echo ::set-output name=latest_release_filtered_tag::${GITHUB_REF##*/}
+      - name: Upload binaries to release
+        uses: AButler/upload-release-assets@ec6d3263266dc57eb6645b5f75e827987f7c217d # pin@v2.0
+        with:
+          files: 'bin/darwin-amd64/gardenctl_v2_darwin_amd64;bin/linux-amd64/gardenctl_v2_linux_amd64;bin/windows-amd64/gardenctl_v2_windows_amd64.exe'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: ${{ steps.build_binary_files.outputs.latest_release_filtered_tag }}
+      - name: Get token for gardener-github-pkg-mngr app
+        id: gardener-github-workflows
+        uses: getsentry/action-github-app-token@38a3ce582e170ddfe8789f509597c6944f2292a9 # pin@v1.0.6
+        with:
+          app_id: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_ID }}
+          private_key: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_PRIVATE_KEY }}
+      - name: Send update with latest versions to gardener/homebrew-tap
+        run: |
+          darwin_sha256sum=$(sha256sum bin/darwin-amd64/gardenctl_v2_darwin_amd64 | awk '{print $1}')
+          linux_sha256sum=$(sha256sum bin/linux-amd64/gardenctl_v2_linux_amd64 | awk '{print $1}')
+          data='{"event_type": "update", "client_payload": { "component": "gardenctl-v2", "tag": "'"${{ steps.build_binary_files.outputs.latest_release_filtered_tag }}"'", "darwin_sha": "'"$darwin_sha256sum"'", "linux_sha": "'"$linux_sha256sum"'"}}'
+          echo "${data}"
+          curl -X POST https://api.github.com/repos/gardener/homebrew-tap/dispatches \
+          -H 'Accept: application/vnd.github.everest-preview+json' \
+          -H "Authorization: Token ${{ steps.gardener-github-workflows.outputs.token }}" \
+          --data "${data}"
+      - name: Send update with latest versions to gardener/chocolatey-packages
+        run: |
+          windows_sha256sum=$(sha256sum bin/windows-amd64/gardenctl_v2_windows_amd64.exe | awk '{print $1}')
+          data='{"event_type": "update", "client_payload": { "component": "gardenctl-v2", "tag": "'"${{ steps.build_binary_files.outputs.latest_release_filtered_tag }}"'", "windows_sha": "'"$windows_sha256sum"'"}}'
+          echo "${data}"
+          curl -X POST https://api.github.com/repos/gardener/chocolatey-packages/dispatches \
+          -H 'Accept: application/vnd.github.everest-preview+json' \
+          -H "Authorization: Token ${{ steps.gardener-github-workflows.outputs.token }}" \
+          --data "${data}"
