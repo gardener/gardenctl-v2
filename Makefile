@@ -40,10 +40,10 @@ lint: ## Run golangci-lint against code.
 ##@ Build
 
 .PHONY: build
-build: build-darwin-amd64 build-darwin-arm64 build-linux build-windows ## Build gardenctl binary for darwin, linux and windows.
+build: build-darwin-amd64 build-darwin-arm64 build-linux-amd64 build-windows-amd64 ## Build gardenctl binary for darwin, linux and windows.
 
-.PHONY: build-linux
-build-linux: ## Build gardenctl binary for linux.
+.PHONY: build-linux-amd64
+build-linux-amd64: ## Build gardenctl binary for linux.
 	@./hack/build-linux-amd64.sh
 
 .PHONY: build-darwin-amd64
@@ -54,6 +54,6 @@ build-darwin-amd64: ## Build gardenctl binary for darwin on Intel processors.
 build-darwin-arm64: ## Build gardenctl binary for darwin on Apple Silicon processors.
 	@./hack/build-darwin-arm64.sh
 
-.PHONY: build-windows
-build-windows: ## Build gardenctl binary for windows.
+.PHONY: build-windows-amd64
+build-windows-amd64: ## Build gardenctl binary for windows.
 	@./hack/build-windows-amd64.sh
