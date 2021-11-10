@@ -33,9 +33,10 @@ jobs:
           private_key: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_PRIVATE_KEY }}
       - name: Send update with latest versions to gardener/homebrew-tap
         run: |
-          darwin_sha256sum=$(sha256sum bin/darwin-amd64/gardenctl_v2_darwin_amd64 | awk '{print $1}')
-          linux_sha256sum=$(sha256sum bin/linux-amd64/gardenctl_v2_linux_amd64 | awk '{print $1}')
-          data='{"event_type": "update", "client_payload": { "component": "gardenctl-v2", "tag": "'"${{ steps.build_binary_files.outputs.latest_release_filtered_tag }}"'", "darwin_sha": "'"$darwin_sha256sum"'", "linux_sha": "'"$linux_sha256sum"'"}}'
+          darwin_sha256sum_amd64=$(sha256sum bin/darwin-amd64/gardenctl_v2_darwin_amd64 | awk '{print $1}')
+          darwin_sha256sum_arm64=$(sha256sum bin/darwin-arm64/gardenctl_v2_darwin_arm64 | awk '{print $1}')
+          linux_sha256sum_amd64=$(sha256sum bin/linux-amd64/gardenctl_v2_linux_amd64 | awk '{print $1}')
+          data='{"event_type": "update", "client_payload": { "component": "gardenctl-v2", "tag": "'"${{ steps.build_binary_files.outputs.latest_release_filtered_tag }}"'", "darwin_sha_amd64": "'"$darwin_sha256sum_amd64"'", "darwin_sha_arm64": "'"$darwin_sha256sum_arm64"'", "linux_sha_amd64": "'"$linux_sha256sum_amd64"'"}}'
           echo "${data}"
           curl -X POST https://api.github.com/repos/gardener/homebrew-tap/dispatches \
           -H 'Accept: application/vnd.github.everest-preview+json' \
