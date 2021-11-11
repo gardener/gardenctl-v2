@@ -24,6 +24,8 @@ var (
 	ErrNoShootTargeted   = errors.New("no shoot targeted")
 )
 
+//go:generate mockgen -destination=./mocks/mock_manager.go -package=mocks github.com/gardener/gardenctl-v2/pkg/target Manager
+
 // Manager sets and gets the current target configuration
 type Manager interface {
 	// CurrentTarget contains the current target configuration

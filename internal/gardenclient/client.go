@@ -19,6 +19,8 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
+//go:generate mockgen -destination=./mocks/mock_client.go -package=mocks github.com/gardener/gardenctl-v2/internal/gardenclient Client
+
 // Client returns a new client with functions to get Gardener and Kubernetes resources
 type Client interface {
 	// GetProject returns a Gardener project resource by name

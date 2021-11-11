@@ -1,0 +1,6 @@
+{{define "bash"}}{{if .unset -}}
+unset TEST_TOKEN;
+{{else -}}
+export TEST_TOKEN={{.testToken | quote }};
+{{end}}
+{{.usageHint}}{{end}}
