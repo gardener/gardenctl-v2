@@ -7,11 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package cloudenv
 
 import (
-	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
-
 	"github.com/spf13/cobra"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
 
 var (
