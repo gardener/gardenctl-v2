@@ -22,7 +22,7 @@ jobs:
       - name: Upload binaries to release
         uses: AButler/upload-release-assets@ec6d3263266dc57eb6645b5f75e827987f7c217d # pin@v2.0
         with:
-          files: 'bin/darwin-amd64/gardenctl_v2_darwin_amd64;bin/linux-amd64/gardenctl_v2_linux_amd64;bin/darwin-arm64/gardenctl_v2_darwin_arm64;bin/windows-amd64/gardenctl_v2_windows_amd64.exe'
+          files: 'bin/darwin-amd64/gardenctl_v2_darwin_amd64;bin/darwin-arm64/gardenctl_v2_darwin_arm64;bin/linux-amd64/gardenctl_v2_linux_amd64;bin/windows-amd64/gardenctl_v2_windows_amd64.exe'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           release-tag: ${{ steps.build_binary_files.outputs.latest_release_filtered_tag }}
       - name: Get token for gardener-github-pkg-mngr app
