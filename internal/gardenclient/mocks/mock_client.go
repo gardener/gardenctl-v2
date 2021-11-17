@@ -8,6 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	v1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	gomock "github.com/golang/mock/gomock"
 	v1 "k8s.io/api/core/v1"
@@ -52,6 +53,21 @@ func (mr *MockClientMockRecorder) FindShoot(arg0, arg1, arg2, arg3 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindShoot", reflect.TypeOf((*MockClient)(nil).FindShoot), arg0, arg1, arg2, arg3)
 }
 
+// GetCloudProfile mocks base method.
+func (m *MockClient) GetCloudProfile(arg0 context.Context, arg1 string) (*v1beta1.CloudProfile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCloudProfile", arg0, arg1)
+	ret0, _ := ret[0].(*v1beta1.CloudProfile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCloudProfile indicates an expected call of GetCloudProfile.
+func (mr *MockClientMockRecorder) GetCloudProfile(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCloudProfile", reflect.TypeOf((*MockClient)(nil).GetCloudProfile), arg0, arg1)
+}
+
 // GetNamespace mocks base method.
 func (m *MockClient) GetNamespace(arg0 context.Context, arg1 string) (*v1.Namespace, error) {
 	m.ctrl.T.Helper()
@@ -65,6 +81,21 @@ func (m *MockClient) GetNamespace(arg0 context.Context, arg1 string) (*v1.Namesp
 func (mr *MockClientMockRecorder) GetNamespace(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNamespace", reflect.TypeOf((*MockClient)(nil).GetNamespace), arg0, arg1)
+}
+
+// GetOpenstackCloudProfileConfig mocks base method.
+func (m *MockClient) GetOpenstackCloudProfileConfig(arg0 context.Context, arg1 string) (*v1alpha1.CloudProfileConfig, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOpenstackCloudProfileConfig", arg0, arg1)
+	ret0, _ := ret[0].(*v1alpha1.CloudProfileConfig)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOpenstackCloudProfileConfig indicates an expected call of GetOpenstackCloudProfileConfig.
+func (mr *MockClientMockRecorder) GetOpenstackCloudProfileConfig(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOpenstackCloudProfileConfig", reflect.TypeOf((*MockClient)(nil).GetOpenstackCloudProfileConfig), arg0, arg1)
 }
 
 // GetProject mocks base method.

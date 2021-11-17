@@ -17,6 +17,8 @@ import (
 	"strings"
 	"text/template"
 
+	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
+
 	sprigv3 "github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -134,7 +136,12 @@ func (o *cmdOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	return o.execTmpl(shoot, secret)
+	cloudProfile, err := gardenClient.GetCloudProfile(ctx, shoot.Spec.CloudProfileName)
+	if err != nil {
+		return err
+	}
+
+	return o.execTmpl(shoot, secret, cloudProfile)
 }
 
 // AddFlags binds the command options to a given flagset.
@@ -143,7 +150,7 @@ func (o *cmdOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, usage)
 }
 
-func (o *cmdOptions) execTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret) error {
+func (o *cmdOptions) execTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile) error {
 	c := CloudProvider(shoot.Spec.Provider.Type)
 
 	t, err := parseTemplate(c, o.GardenDir)
@@ -160,6 +167,8 @@ func (o *cmdOptions) execTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Sec
 	m["unset"] = o.Unset
 	m["usageHint"] = o.generateUsageHint(c)
 	m["region"] = shoot.Spec.Region
+	m["cloudProfileName"] = shoot.Spec.CloudProfileName
+	m["cloudProfileConfig"] = cloudProfile.Spec.ProviderConfig.Object
 
 	for key, value := range secret.Data {
 		m[key] = string(value)
@@ -217,12 +226,13 @@ func parseTemplate(c CloudProvider, dir string) (*template.Template, error) {
 
 // beforeExecuteTemplate allows modifying or enhancing the data before the template is executed
 func beforeExecuteTemplate(c CloudProvider, mPtr *map[string]interface{}) error {
-	if c == gcp {
-		m := *mPtr
+	m := *mPtr
 
+	switch c {
+	case gcp:
 		privateKey, ok := m["serviceaccount.json"].(string)
 		if !ok {
-			return errors.New("Invalid serviceaccount in secret")
+			return errors.New("Invalid serviceaccount in Secret")
 		}
 
 		credentials := map[string]interface{}{}
@@ -234,6 +244,20 @@ func beforeExecuteTemplate(c CloudProvider, mPtr *map[string]interface{}) error 
 		if data, err := json.Marshal(credentials); err == nil {
 			m["serviceaccount.json"] = string(data)
 		}
+	case openstack:
+		cloudProfileConfig, ok := m["cloudProfileConfig"].(*openstackv1alpha1.CloudProfileConfig)
+		if !ok {
+			return errors.New("Invalid providerConfig in CloudProfile")
+		}
+
+		region := m["region"].(string)
+
+		authURL, err := getKeyStoneURL(cloudProfileConfig, region)
+		if err != nil {
+			return err
+		}
+
+		m["authURL"] = authURL
 	}
 
 	return nil
@@ -321,8 +345,9 @@ func (s Shell) Validate() error {
 type CloudProvider string
 
 const (
-	alicloud CloudProvider = "alicloud"
-	gcp      CloudProvider = "gcp"
+	alicloud  CloudProvider = "alicloud"
+	gcp       CloudProvider = "gcp"
+	openstack CloudProvider = "openstack"
 )
 
 // CLI returns the CLI for the cloud provider
@@ -335,4 +360,18 @@ func (c CloudProvider) CLI() string {
 	default:
 		return string(c)
 	}
+}
+
+func getKeyStoneURL(config *openstackv1alpha1.CloudProfileConfig, region string) (string, error) {
+	if config.KeyStoneURL != "" {
+		return config.KeyStoneURL, nil
+	}
+
+	for _, keyStoneURL := range config.KeyStoneURLs {
+		if keyStoneURL.Region == region {
+			return keyStoneURL.URL, nil
+		}
+	}
+
+	return "", fmt.Errorf("cannot find KeyStone URL for region %q in CloudProfileConfig", region)
 }

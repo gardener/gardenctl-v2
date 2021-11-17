@@ -20,12 +20,14 @@ import (
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	gardenclientmocks "github.com/gardener/gardenctl-v2/internal/gardenclient/mocks"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/cloudenv"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
+	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
@@ -114,11 +116,14 @@ var _ = Describe("CloudEnv Options", func() {
 				client            *gardenclientmocks.MockClient
 				t                 target.Target
 				secretBindingName string
+				cloudProfileName  string
 				region            string
 				provider          *gardencorev1beta1.Provider
 				secretRef         *corev1.SecretReference
 				shoot             *gardencorev1beta1.Shoot
 				secretBinding     *gardencorev1beta1.SecretBinding
+				cloudProfile      *gardencorev1beta1.CloudProfile
+				providerConfig    *openstackv1alpha1.CloudProfileConfig
 				secret            *corev1.Secret
 			)
 
@@ -128,10 +133,12 @@ var _ = Describe("CloudEnv Options", func() {
 				client = gardenclientmocks.NewMockClient(ctrl)
 				t = target.NewTarget("test", "project", "seed", "shoot")
 				secretBindingName = "secret-binding"
+				cloudProfileName = "cloud-profile"
 				region = "europe"
 				provider = &gardencorev1beta1.Provider{
 					Type: "gcp",
 				}
+				providerConfig = nil
 				secretRef = &corev1.SecretReference{
 					Namespace: "private",
 					Name:      "secret",
@@ -146,6 +153,7 @@ var _ = Describe("CloudEnv Options", func() {
 						Namespace: "garden-" + t.ProjectName(),
 					},
 					Spec: gardencorev1beta1.ShootSpec{
+						CloudProfileName:  cloudProfileName,
 						Region:            region,
 						SecretBindingName: secretBindingName,
 						Provider:          *provider.DeepCopy(),
@@ -167,6 +175,18 @@ var _ = Describe("CloudEnv Options", func() {
 						"serviceaccount.json": []byte(readTestFile(filepath.Join(provider.Type, "serviceaccount.json"))),
 					},
 				}
+				cloudProfile = &gardencorev1beta1.CloudProfile{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: t.ShootName(),
+					},
+					Spec: gardencorev1beta1.CloudProfileSpec{
+						Type: provider.Type,
+						ProviderConfig: &runtime.RawExtension{
+							Object: providerConfig,
+							Raw:    nil,
+						},
+					},
+				}
 			})
 
 			Context("when the command runs successfully", func() {
@@ -179,6 +199,7 @@ var _ = Describe("CloudEnv Options", func() {
 				JustBeforeEach(func() {
 					client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, shoot.Spec.SecretBindingName).Return(secretBinding, nil)
 					client.EXPECT().GetSecret(ctx, secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name).Return(secret, nil)
+					client.EXPECT().GetCloudProfile(ctx, shoot.Spec.CloudProfileName).Return(cloudProfile, nil)
 				})
 
 				Context("and the shoot is targeted via project", func() {
@@ -295,12 +316,15 @@ var _ = Describe("CloudEnv Options", func() {
 				namespace,
 				shootName,
 				secretName,
+				cloudProfileName,
 				region,
 				providerType,
 				serviceaccountJSON,
 				token string
-				shoot  *gardencorev1beta1.Shoot
-				secret *corev1.Secret
+				shoot          *gardencorev1beta1.Shoot
+				secret         *corev1.Secret
+				cloudProfile   *gardencorev1beta1.CloudProfile
+				providerConfig *openstackv1alpha1.CloudProfileConfig
 			)
 
 			BeforeEach(func() {
@@ -309,8 +333,10 @@ var _ = Describe("CloudEnv Options", func() {
 				namespace = "garden-test"
 				shootName = "shoot"
 				secretName = "secret"
+				cloudProfileName = "cloud-profile"
 				region = "europe"
 				providerType = "gcp"
+				providerConfig = nil
 				serviceaccountJSON = readTestFile("gcp/serviceaccount.json")
 				token = "token"
 			})
@@ -322,7 +348,8 @@ var _ = Describe("CloudEnv Options", func() {
 						Namespace: namespace,
 					},
 					Spec: gardencorev1beta1.ShootSpec{
-						Region: region,
+						CloudProfileName: cloudProfileName,
+						Region:           region,
 						Provider: gardencorev1beta1.Provider{
 							Type: providerType,
 						},
@@ -338,6 +365,18 @@ var _ = Describe("CloudEnv Options", func() {
 						"testToken":           []byte(token),
 					},
 				}
+				cloudProfile = &gardencorev1beta1.CloudProfile{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: cloudProfileName,
+					},
+					Spec: gardencorev1beta1.CloudProfileSpec{
+						Type: providerType,
+						ProviderConfig: &runtime.RawExtension{
+							Object: providerConfig,
+							Raw:    nil,
+						},
+					},
+				}
 				options.GardenDir = gardenHomeDir
 			})
 
@@ -347,7 +386,7 @@ var _ = Describe("CloudEnv Options", func() {
 				})
 
 				It("should render the template successfully", func() {
-					Expect(options.ExecTmpl(shoot, secret)).To(Succeed())
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
 					Expect(options.Out()).To(Equal(readTestFile("gcp/export.bash")))
 				})
 			})
@@ -359,18 +398,18 @@ var _ = Describe("CloudEnv Options", func() {
 				})
 
 				It("should render the template successfully", func() {
-					Expect(options.ExecTmpl(shoot, secret)).To(Succeed())
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
 					Expect(options.Out()).To(Equal(readTestFile("gcp/unset.pwsh")))
 				})
 			})
 
 			Context("when JSON input is invalid", func() {
-				BeforeEach(func() {
-					serviceaccountJSON = "{"
+				JustBeforeEach(func() {
+					secret.Data["serviceaccount.json"] = []byte("{")
 				})
 
 				It("should fail to render the template with JSON parse error", func() {
-					Expect(options.ExecTmpl(shoot, secret)).To(MatchError("unexpected end of JSON input"))
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError("unexpected end of JSON input"))
 				})
 			})
 
@@ -381,7 +420,7 @@ var _ = Describe("CloudEnv Options", func() {
 
 				It("should fail to render the template with JSON parse error", func() {
 					noTemplateFmt := "template: no template %q associated with template %q"
-					Expect(options.ExecTmpl(shoot, secret)).To(MatchError(fmt.Sprintf(noTemplateFmt, shell, "base")))
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(fmt.Sprintf(noTemplateFmt, shell, "base")))
 				})
 			})
 
@@ -399,7 +438,7 @@ var _ = Describe("CloudEnv Options", func() {
 				})
 
 				It("should render the template successfully", func() {
-					Expect(options.ExecTmpl(shoot, secret)).To(Succeed())
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
 					Expect(options.Out()).To(Equal(readTestFile("test/export.bash")))
 				})
 			})
@@ -411,7 +450,7 @@ var _ = Describe("CloudEnv Options", func() {
 
 				It("should fail to render the template with a not supported error", func() {
 					notSupportedFmt := "cloud provider %q is not supported"
-					Expect(options.ExecTmpl(shoot, secret)).To(MatchError(MatchRegexp(fmt.Sprintf(notSupportedFmt, providerType))))
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp(fmt.Sprintf(notSupportedFmt, providerType))))
 				})
 			})
 
@@ -430,7 +469,33 @@ var _ = Describe("CloudEnv Options", func() {
 
 				It("should fail to render the template with a not supported error", func() {
 					parseErrorFmt := "parsing template for cloud provider %q failed"
-					Expect(options.ExecTmpl(shoot, secret)).To(MatchError(MatchRegexp(fmt.Sprintf(parseErrorFmt, providerType))))
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp(fmt.Sprintf(parseErrorFmt, providerType))))
+				})
+			})
+
+			Context("when the cloudprovider is openstack", func() {
+				const (
+					username   = "user"
+					password   = "secret"
+					tenantName = "tenant"
+					domainName = "domain"
+				)
+
+				BeforeEach(func() {
+					providerType = "openstack"
+					providerConfig = &openstackv1alpha1.CloudProfileConfig{KeyStoneURL: "keyStoneURL"}
+				})
+
+				JustBeforeEach(func() {
+					secret.Data["username"] = []byte(username)
+					secret.Data["password"] = []byte(password)
+					secret.Data["tenantName"] = []byte(tenantName)
+					secret.Data["domainName"] = []byte(domainName)
+				})
+
+				It("should render the template successfully", func() {
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
+					Expect(options.Out()).To(Equal(readTestFile("openstack/export.bash")))
 				})
 			})
 		})
@@ -568,7 +633,7 @@ var _ = Describe("CloudEnv Options", func() {
 
 			It("should fail with invalid secret", func() {
 				values["serviceaccount.json"] = nil
-				Expect(cloudenv.BeforeExecuteTemplate(c, &values)).To(MatchError("Invalid serviceaccount in secret"))
+				Expect(cloudenv.BeforeExecuteTemplate(c, &values)).To(MatchError("Invalid serviceaccount in Secret"))
 			})
 
 			It("should fail with invalid json", func() {

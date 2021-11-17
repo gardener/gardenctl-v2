@@ -17,8 +17,8 @@ export OS_AUTH_URL={{.authURL | quote}};
 export OS_TENANT_NAME={{.tenantName | quote}};
 export OS_PROJECT_DOMAIN_NAME={{.domainName | quote}};
 export OS_USER_DOMAIN_NAME={{.domainName | quote}};
-export OS_USERNAME={{.accessKeyID | quote}};
-export OS_PASSWORD={{.secretAccessKey | quote}};
+export OS_USERNAME={{.username | quote}};
+export OS_PASSWORD={{.password | quote}};
 export OS_REGION_NAME={{.region | quote}};
 {{end}}
 {{.usageHint}}{{end}}
@@ -45,8 +45,8 @@ set -gx OS_AUTH_URL {{.authURL | quote}};
 set -gx OS_TENANT_NAME {{.tenantName | quote}};
 set -gx OS_PROJECT_DOMAIN_NAME {{.domainName | quote}};
 set -gx OS_USER_DOMAIN_NAME {{.domainName | quote}};
-set -gx OS_USERNAME {{.accessKeyID | quote}};
-set -gx OS_PASSWORD {{.secretAccessKey | quote}};
+set -gx OS_USERNAME {{.username | quote}};
+set -gx OS_PASSWORD {{.password | quote}};
 set -gx OS_REGION_NAME {{.region | quote}};
 {{end}}
 {{.usageHint}}{{end}}
@@ -70,8 +70,8 @@ $Env:OS_AUTH_URL = {{.authURL | quote}};
 $Env:OS_TENANT_NAME = {{.tenantName | quote}};
 $Env:OS_PROJECT_DOMAIN_NAME = {{.domainName | quote}};
 $Env:OS_USER_DOMAIN_NAME = {{.domainName | quote}};
-$Env:OS_USERNAME = {{.accessKeyID | quote}};
-$Env:OS_PASSWORD = {{.secretAccessKey | quote}};
+$Env:OS_USERNAME = {{.username | quote}};
+$Env:OS_PASSWORD = {{.password | quote}};
 $Env:OS_REGION_NAME = {{.region | quote}};
 {{end}}{{.usageHint}}{{end}}
 

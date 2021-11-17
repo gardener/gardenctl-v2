@@ -6,6 +6,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/gardener/gardener v1.25.0
+	github.com/gardener/gardener-extension-provider-openstack v1.3.1-0.20200327120628-280d268ce96f
 	github.com/golang/mock v1.6.0
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect

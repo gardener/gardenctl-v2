@@ -37,8 +37,8 @@ type TestOptions struct {
 	out *util.SafeBytesBuffer
 }
 
-func (o *TestOptions) ExecTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret) error {
-	return o.cmdOptions.execTmpl(shoot, secret)
+func (o *TestOptions) ExecTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, clouldProfile *gardencorev1beta1.CloudProfile) error {
+	return o.cmdOptions.execTmpl(shoot, secret, clouldProfile)
 }
 
 func (o *TestOptions) ParseTmpl(name string) (*template.Template, error) {
