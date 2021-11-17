@@ -3,4 +3,4 @@ Remove-Item -ErrorAction SilentlyContinue Env:\GOOGLE_CREDENTIALS;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_CORE_PROJECT;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_COMPUTE_REGION;
 # Run this command to reset the configuration of the "gcloud" CLI for your shell:
-# & cloud-env -u powershell | Invoke-Expression
+# & gardenctl cloud-env -u powershell | Invoke-Expression

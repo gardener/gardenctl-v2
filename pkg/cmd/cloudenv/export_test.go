@@ -17,13 +17,8 @@ import (
 )
 
 var (
-	ValidShells       = validShells
-	Aliases           = aliases
-	MatchAll          = matchAll
-	ParseCredentials  = parseCredentials
-	GenerateUsageHint = generateUsageHint
-	DetectShell       = detectShell
-	ValidateShell     = validateShell
+	ValidShells           = validShells
+	BeforeExecuteTemplate = beforeExecuteTemplate
 )
 
 func NewTestOptions() *TestOptions {
@@ -47,9 +42,17 @@ func (o *TestOptions) ExecTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Se
 }
 
 func (o *TestOptions) ParseTmpl(name string) (*template.Template, error) {
-	return o.cmdOptions.parseTmpl(name)
+	return parseTemplate(CloudProvider(name), o.GardenDir)
+}
+
+func (o *TestOptions) GenerateUsageHint(name string) string {
+	return o.generateUsageHint(CloudProvider(name))
 }
 
 func (o *TestOptions) Out() string {
 	return o.out.String()
+}
+
+func ValidateShell(name string) error {
+	return Shell(name).Validate()
 }

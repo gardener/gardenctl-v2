@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -18,7 +17,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -36,74 +35,50 @@ var _ = Describe("CloudEnv Options", func() {
 			ctrl    *gomock.Controller
 			factory *utilmocks.MockFactory
 			options *cloudenv.TestOptions
-			cmd     *cobra.Command
-			params,
-			args []string
-			callAs = func(a ...string) error {
-				testCmd := &cobra.Command{Use: "test"}
-				testCmd.AddCommand(&cobra.Command{
-					Use:     "foo",
-					Aliases: []string{"bar"},
-					Run: func(c *cobra.Command, a []string) {
-						cmd = c
-						args = a
-					},
-				})
-				testCmd.SetArgs(a)
-				return testCmd.Execute()
-			}
+			cmdPath,
+			shell string
+			unset bool
 		)
 
 		BeforeEach(func() {
 			ctrl = gomock.NewController(GinkgoT())
 			factory = utilmocks.NewMockFactory(ctrl)
 			options = cloudenv.NewTestOptions()
-			params = []string{"foo"}
+			cmdPath = "gardenctl cloud-env"
+			shell = "default"
 		})
 
 		AfterEach(func() {
-			viper.Reset()
 			ctrl.Finish()
 		})
 
 		JustBeforeEach(func() {
-			Expect(callAs(params...)).To(Succeed())
+			options.Shell = shell
+			options.CmdPath = cmdPath
+			options.Unset = unset
 		})
 
 		Describe("completing the command options", func() {
+			var (
+				root,
+				parent,
+				child *cobra.Command
+			)
+
 			BeforeEach(func() {
+				root = &cobra.Command{Use: "root"}
+				parent = &cobra.Command{Use: "parent"}
+				child = &cobra.Command{Use: "child"}
+				parent.AddCommand(child)
+				root.AddCommand(parent)
 				factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
 			})
 
 			It("should complete options with default shell", func() {
-				Expect(options.Complete(factory, cmd, args)).To(Succeed())
-				Expect(options.Shell).To(Equal("bash"))
+				Expect(options.Complete(factory, child, nil)).To(Succeed())
+				Expect(options.Shell).To(Equal(child.Name()))
 				Expect(options.GardenDir).To(Equal(gardenHomeDir))
-				Expect(options.CmdPath).To(Equal([]string{"test", "foo"}))
-			})
-
-			Context("when the shell is given", func() {
-				BeforeEach(func() {
-					params = []string{"bar", "fish"}
-				})
-
-				It("should complete options with given shell", func() {
-					Expect(options.Complete(factory, cmd, args)).To(Succeed())
-					Expect(options.Shell).To(Equal("fish"))
-					Expect(options.CmdPath).To(Equal([]string{"test", "bar"}))
-				})
-			})
-
-			Context("when the shell is not given but configured", func() {
-				BeforeEach(func() {
-					viper.Set("shell", "powershell")
-				})
-
-				It("should complete options with configured shell", func() {
-					Expect(options.Complete(factory, cmd, args)).To(Succeed())
-					Expect(options.Shell).To(Equal("powershell"))
-					Expect(options.CmdPath).To(Equal([]string{"test", "foo"}))
-				})
+				Expect(options.CmdPath).To(Equal(root.Name() + " " + parent.Name()))
 			})
 		})
 
@@ -115,7 +90,7 @@ var _ = Describe("CloudEnv Options", func() {
 
 			It("should return an error when the shell is empty", func() {
 				options.Shell = ""
-				Expect(options.Validate()).To(MatchError("no shell configured or specified"))
+				Expect(options.Validate()).To(MatchError(pflag.ErrHelp))
 			})
 
 			It("should return an error when the shell is invalid", func() {
@@ -126,6 +101,7 @@ var _ = Describe("CloudEnv Options", func() {
 
 		Describe("adding the command flags", func() {
 			It("should successfully add the unset flag", func() {
+				cmd := &cobra.Command{}
 				options.AddFlags(cmd.Flags())
 				Expect(cmd.Flag("unset")).NotTo(BeNil())
 			})
@@ -160,8 +136,7 @@ var _ = Describe("CloudEnv Options", func() {
 					Namespace: "private",
 					Name:      "secret",
 				}
-				options.CmdPath = []string{"cloud-env"}
-				options.Shell = "bash"
+				shell = "bash"
 			})
 
 			JustBeforeEach(func() {
@@ -317,8 +292,6 @@ var _ = Describe("CloudEnv Options", func() {
 
 		Describe("rendering the template", func() {
 			var (
-				shell,
-				use,
 				namespace,
 				shootName,
 				secretName,
@@ -326,7 +299,6 @@ var _ = Describe("CloudEnv Options", func() {
 				providerType,
 				serviceaccountJSON,
 				token string
-				unset  bool
 				shoot  *gardencorev1beta1.Shoot
 				secret *corev1.Secret
 			)
@@ -334,7 +306,6 @@ var _ = Describe("CloudEnv Options", func() {
 			BeforeEach(func() {
 				shell = "bash"
 				unset = false
-				use = "cloud-env"
 				namespace = "garden-test"
 				shootName = "shoot"
 				secretName = "secret"
@@ -368,9 +339,6 @@ var _ = Describe("CloudEnv Options", func() {
 					},
 				}
 				options.GardenDir = gardenHomeDir
-				options.Shell = shell
-				options.Unset = unset
-				options.CmdPath = []string{use}
 			})
 
 			Context("when configuring the shell", func() {
@@ -442,7 +410,7 @@ var _ = Describe("CloudEnv Options", func() {
 				})
 
 				It("should fail to render the template with a not supported error", func() {
-					notSupportedFmt := "cloudprovider %q is not supported"
+					notSupportedFmt := "cloud provider %q is not supported"
 					Expect(options.ExecTmpl(shoot, secret)).To(MatchError(MatchRegexp(fmt.Sprintf(notSupportedFmt, providerType))))
 				})
 			})
@@ -461,31 +429,91 @@ var _ = Describe("CloudEnv Options", func() {
 				})
 
 				It("should fail to render the template with a not supported error", func() {
-					parseErrorFmt := "parsing template for cloudprovider %q failed"
+					parseErrorFmt := "parsing template for cloud provider %q failed"
 					Expect(options.ExecTmpl(shoot, secret)).To(MatchError(MatchRegexp(fmt.Sprintf(parseErrorFmt, providerType))))
 				})
 			})
 		})
-	})
 
-	Describe("detecting the default shell", func() {
-		originalShell := os.Getenv("SHELL")
+		Describe("generating the usage hint", func() {
+			const (
+				exportFmt = "# Run this command to configure the %q CLI for your shell:"
+				unsetFmt  = "# Run this command to reset the configuration of the %q CLI for your shell:"
+			)
 
-		AfterEach(func() {
-			Expect(os.Setenv("SHELL", originalShell)).To(Succeed())
-		})
+			var (
+				providerType string
+				hint         []string
+			)
 
-		It("should return the default shell ", func() {
-			Expect(os.Unsetenv("SHELL")).To(Succeed())
-			By("Running on Darwin")
-			Expect(cloudenv.DetectShell("darwin")).To(Equal("bash"))
-			By("Running on Windows")
-			Expect(cloudenv.DetectShell("windows")).To(Equal("powershell"))
-		})
+			BeforeEach(func() {
+				providerType = "aws"
+				shell = "bash"
+				unset = false
+			})
 
-		It("should return the shell defined in the environment", func() {
-			Expect(os.Setenv("SHELL", "/bin/fish")).To(Succeed())
-			Expect(cloudenv.DetectShell("*")).To(Equal("fish"))
+			JustBeforeEach(func() {
+				hint = strings.Split(options.GenerateUsageHint(providerType), "\n")
+				Expect(hint).To(HaveLen(2))
+			})
+
+			Context("when configuring the shell", func() {
+				It("should generate the usage hint", func() {
+					Expect(hint[0]).To(Equal(fmt.Sprintf(exportFmt, providerType)))
+					Expect(hint[1]).To(Equal(fmt.Sprintf("# eval $(%s %s)", cmdPath, shell)))
+				})
+			})
+
+			Context("when resetting the shell configuration", func() {
+				BeforeEach(func() {
+					unset = true
+				})
+
+				It("should generate the usage hint", func() {
+					Expect(hint[0]).To(Equal(fmt.Sprintf(unsetFmt, providerType)))
+					Expect(hint[1]).To(Equal(fmt.Sprintf("# eval $(%s -u %s)", cmdPath, shell)))
+				})
+			})
+
+			Context("when clouprovider is alicloud", func() {
+				BeforeEach(func() {
+					providerType = "alicloud"
+				})
+
+				It("should generate the usage hint", func() {
+					Expect(hint[0]).To(Equal(fmt.Sprintf(exportFmt, "aliyun")))
+				})
+			})
+
+			Context("when clouprovider is gcp", func() {
+				BeforeEach(func() {
+					providerType = "gcp"
+				})
+
+				It("should generate the usage hint", func() {
+					Expect(hint[0]).To(Equal(fmt.Sprintf(exportFmt, "gcloud")))
+				})
+			})
+
+			Context("when shell is fish", func() {
+				BeforeEach(func() {
+					shell = "fish"
+				})
+
+				It("should generate the usage hint", func() {
+					Expect(hint[1]).To(Equal(fmt.Sprintf("# eval (%s %s)", cmdPath, shell)))
+				})
+			})
+
+			Context("when shell is powershell", func() {
+				BeforeEach(func() {
+					shell = "powershell"
+				})
+
+				It("should generate the usage hint", func() {
+					Expect(hint[1]).To(Equal(fmt.Sprintf("# & %s %s | Invoke-Expression", cmdPath, shell)))
+				})
+			})
 		})
 	})
 
@@ -502,132 +530,57 @@ var _ = Describe("CloudEnv Options", func() {
 		})
 	})
 
-	Describe("parsing google serviceaccount credentials", func() {
+	Describe("modifying the values before template execution", func() {
 		var (
-			serviceaccountJSON string
-			values             map[string]interface{}
+			c      cloudenv.CloudProvider
+			values map[string]interface{}
 		)
 
 		BeforeEach(func() {
-			serviceaccountJSON = readTestFile("gcp/serviceaccount.json")
+			values = map[string]interface{}{}
 		})
 
-		JustBeforeEach(func() {
-			values = map[string]interface{}{
-				"serviceaccount.json": serviceaccountJSON,
-			}
+		Context("when the cloud provider is not gcp", func() {
+			BeforeEach(func() {
+				c = cloudenv.CloudProvider("foo")
+			})
+
+			It("should do nothing", func() {
+				Expect(cloudenv.BeforeExecuteTemplate(c, &values)).To(Succeed())
+			})
 		})
 
-		It("should succeed for all valid shells", func() {
-			Expect(cloudenv.ParseCredentials(&values)).To(Succeed())
-			Expect(values).To(HaveKeyWithValue("serviceaccount.json", "{\"client_email\":\"test@example.org\",\"project_id\":\"test\"}"))
-			Expect(values).To(HaveKey("credentials"))
-			Expect(values["credentials"]).To(HaveKeyWithValue("project_id", "test"))
-			Expect(values["credentials"]).To(HaveKeyWithValue("client_email", "test@example.org"))
-		})
+		Context("when the cloud provider is gcp", func() {
+			var serviceaccountJSON = readTestFile("gcp/serviceaccount.json")
 
-		It("should fail with invalid secret", func() {
-			values["serviceaccount.json"] = nil
-			Expect(cloudenv.ParseCredentials(&values)).To(MatchError("Invalid serviceaccount in secret"))
-		})
+			BeforeEach(func() {
+				c = cloudenv.CloudProvider("gcp")
+				values["serviceaccount.json"] = serviceaccountJSON
+			})
 
-		It("should fail with invalid json", func() {
-			values["serviceaccount.json"] = "{"
-			Expect(cloudenv.ParseCredentials(&values)).To(MatchError("unexpected end of JSON input"))
-		})
+			It("should succeed for all valid shells", func() {
+				Expect(cloudenv.BeforeExecuteTemplate(c, &values)).To(Succeed())
+				Expect(values).To(HaveKeyWithValue("serviceaccount.json", "{\"client_email\":\"test@example.org\",\"project_id\":\"test\"}"))
+				Expect(values).To(HaveKey("credentials"))
+				Expect(values["credentials"]).To(HaveKeyWithValue("project_id", "test"))
+				Expect(values["credentials"]).To(HaveKeyWithValue("client_email", "test@example.org"))
+			})
 
-		It("should fail with invalid json", func() {
-			values["serviceaccount.json"] = "{"
-			Expect(cloudenv.ParseCredentials(&values)).To(MatchError("unexpected end of JSON input"))
+			It("should fail with invalid secret", func() {
+				values["serviceaccount.json"] = nil
+				Expect(cloudenv.BeforeExecuteTemplate(c, &values)).To(MatchError("Invalid serviceaccount in secret"))
+			})
+
+			It("should fail with invalid json", func() {
+				values["serviceaccount.json"] = "{"
+				Expect(cloudenv.BeforeExecuteTemplate(c, &values)).To(MatchError("unexpected end of JSON input"))
+			})
+
+			It("should fail with invalid json", func() {
+				values["serviceaccount.json"] = "{"
+				Expect(cloudenv.BeforeExecuteTemplate(c, &values)).To(MatchError("unexpected end of JSON input"))
+			})
 		})
 	})
 
-	Describe("generating the usage hint", func() {
-		const (
-			exportFmt = "# Run this command to configure the %q CLI for your shell:"
-			unsetFmt  = "# Run this command to reset the configuration of the %q CLI for your shell:"
-		)
-
-		var (
-			cloudprovider,
-			shell string
-			unset bool
-			args  []string
-			first,
-			second string
-		)
-
-		BeforeEach(func() {
-			cloudprovider = "aws"
-			shell = "bash"
-			unset = false
-			args = []string{"test", "env"}
-		})
-
-		JustBeforeEach(func() {
-			hint := cloudenv.GenerateUsageHint(cloudprovider, shell, unset, args...)
-			lines := strings.Split(hint, "\n")
-			Expect(lines).To(HaveLen(2))
-			first = lines[0]
-			second = lines[1]
-		})
-
-		Context("when configuring the shell", func() {
-			It("should generate the usage hint", func() {
-				Expect(first).To(Equal(fmt.Sprintf(exportFmt, cloudprovider)))
-				Expect(second).To(Equal(fmt.Sprintf("# eval $(test env %s)", shell)))
-			})
-		})
-
-		Context("when resetting the shell configuration", func() {
-			BeforeEach(func() {
-				unset = true
-			})
-
-			It("should generate the usage hint", func() {
-				Expect(first).To(Equal(fmt.Sprintf(unsetFmt, cloudprovider)))
-				Expect(second).To(Equal(fmt.Sprintf("# eval $(test env -u %s)", shell)))
-			})
-		})
-
-		Context("when clouprovider is alicloud", func() {
-			BeforeEach(func() {
-				cloudprovider = "alicloud"
-			})
-
-			It("should generate the usage hint", func() {
-				Expect(first).To(Equal(fmt.Sprintf(exportFmt, "aliyun")))
-			})
-		})
-
-		Context("when clouprovider is gcp", func() {
-			BeforeEach(func() {
-				cloudprovider = "gcp"
-			})
-
-			It("should generate the usage hint", func() {
-				Expect(first).To(Equal(fmt.Sprintf(exportFmt, "gcloud")))
-			})
-		})
-
-		Context("when shell is fish", func() {
-			BeforeEach(func() {
-				shell = "fish"
-			})
-
-			It("should generate the usage hint", func() {
-				Expect(second).To(Equal(fmt.Sprintf("# eval (test env %s)", shell)))
-			})
-		})
-
-		Context("when shell is powershell", func() {
-			BeforeEach(func() {
-				shell = "powershell"
-			})
-
-			It("should generate the usage hint", func() {
-				Expect(second).To(Equal(fmt.Sprintf("# & test env %s | Invoke-Expression", shell)))
-			})
-		})
-	})
 })

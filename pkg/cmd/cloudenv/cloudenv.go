@@ -13,37 +13,43 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
 
-var (
-	validShells = []string{"bash", "fish", "powershell", "zsh"}
-	aliases     = []string{"cloudprovider-env", "provider-env"}
-)
-
 // NewCmdCloudEnv returns a new cloudenv command.
 func NewCmdCloudEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
-	o := NewCmdOptions(ioStreams)
-
-	cmd := &cobra.Command{
-		Use:       "cloud-env [bash | fish | powershell | zsh]",
-		Short:     "Show the commands to configure cloudprovider CLI of the target cluster",
-		Aliases:   aliases,
-		ValidArgs: validShells,
-		Args:      matchAll(cobra.MaximumNArgs(1), cobra.OnlyValidArgs),
-		RunE:      base.WrapRunE(o, f),
+	o := &cmdOptions{
+		Options: base.Options{
+			IOStreams: ioStreams,
+		},
 	}
+	runE := base.WrapRunE(o, f)
+	cmd := &cobra.Command{
+		Use:   "cloud-env",
+		Short: "generate the cloud provider CLI configuration script for the specified shell",
+		Long: `Generate the cloud provider CLI configuration script for the specified shell.
+See each sub-command's help for details on how to use the generated script.
 
-	o.AddFlags(cmd.Flags())
+The generated script sets the environment variables for the cloud provider CLI of the targeted shoot.
+In addition, the Azure CLI requires to sign in with a service principal and the gcloud CLI requires to activate a service-account.
+Since these actions are persistent, they should be undone when closing the shell or changing the target using the --unset flag.
+
+The CLI of a corresponding cloud provider must be installed.
+Please refer to the installation instructions of the respective provider:
+* Amazon Web Services (aws) - https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+* Microsoft Azure (az) - https://docs.microsoft.com/cli/azure/install-azure-cli
+* Google cloud (gcloud) - https://cloud.google.com/sdk/docs/install
+* Openstack (openstack) - https://docs.openstack.org/newton/user-guide/common/cli-install-openstack-command-line-clients.html
+* Alibaba cloud (aliyun) - alicloud - https://www.alibabacloud.com/help/product/29991.htm
+* Hetzner cloud (hcloud) - https://community.hetzner.com/tutorials/howto-hcloud-cli
+
+To extend this list of cloud providers place a template for the new provider in the "templates" folder
+of the gardenctl home directory ($GCTL_HOME or $HOME/.garden).
+Please refer to the templates of the already supported cloud providers which can be found
+here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/cloudenv/templates.`,
+	}
+	o.AddFlags(cmd.PersistentFlags())
+
+	for _, s := range validShells {
+		s.AddCommand(cmd, runE)
+	}
 
 	return cmd
-}
-
-func matchAll(checks ...cobra.PositionalArgs) cobra.PositionalArgs {
-	return func(cmd *cobra.Command, args []string) error {
-		for _, check := range checks {
-			if err := check(cmd, args); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
 }

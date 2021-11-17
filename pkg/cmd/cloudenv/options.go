@@ -20,7 +20,6 @@ import (
 	sprigv3 "github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -47,39 +46,16 @@ type cmdOptions struct {
 	// GardenDir is the configuration directory of gardenctl.
 	GardenDir string
 	// CmdPath is the path of the called command.
-	CmdPath []string
+	CmdPath string
 }
 
 var _ base.CommandOptions = &cmdOptions{}
 
-// NewCmdOptions returns a new CommandOptions instance for the cloudenv command
-func NewCmdOptions(ioStreams util.IOStreams) base.CommandOptions {
-	return &cmdOptions{
-		Options: base.Options{
-			IOStreams: ioStreams,
-		},
-		Unset: false,
-	}
-}
-
 // Complete adapts from the command line args to the data required.
-func (o *cmdOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	if len(args) > 0 {
-		o.Shell = strings.TrimSpace(args[0])
-	} else if viper.IsSet("shell") {
-		o.Shell = viper.GetString("shell")
-	} else {
-		o.Shell = detectShell(runtime.GOOS)
-	}
-
+func (o *cmdOptions) Complete(f util.Factory, cmd *cobra.Command, _ []string) error {
 	o.GardenDir = f.GardenHomeDir()
-
-	o.CmdPath = strings.Fields(cmd.CommandPath())
-
-	calledAs := cmd.CalledAs()
-	if calledAs != "" {
-		o.CmdPath[len(o.CmdPath)-1] = calledAs
-	}
+	o.Shell = cmd.Name()
+	o.CmdPath = cmd.Parent().CommandPath()
 
 	return nil
 }
@@ -87,10 +63,11 @@ func (o *cmdOptions) Complete(f util.Factory, cmd *cobra.Command, args []string)
 // Validate validates the provided command options.
 func (o *cmdOptions) Validate() error {
 	if o.Shell == "" {
-		return errors.New("no shell configured or specified")
+		return pflag.ErrHelp
 	}
 
-	if err := validateShell(o.Shell); err != nil {
+	s := Shell(o.Shell)
+	if err := s.Validate(); err != nil {
 		return err
 	}
 
@@ -162,20 +139,71 @@ func (o *cmdOptions) Run(f util.Factory) error {
 
 // AddFlags binds the command options to a given flagset.
 func (o *cmdOptions) AddFlags(flags *pflag.FlagSet) {
-	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, "Reset environment variables and configuration of the cloudprovider CLI for your shell")
+	usage := fmt.Sprintf("Generate the script to unset environment variables and logout the account of the cloud provider CLI for %s", o.Shell)
+	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, usage)
 }
 
-func (o *cmdOptions) parseTmpl(name string) (*template.Template, error) {
+func (o *cmdOptions) execTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret) error {
+	c := CloudProvider(shoot.Spec.Provider.Type)
+
+	t, err := parseTemplate(c, o.GardenDir)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("parsing template for cloud provider %q failed: %w", c, err)
+		}
+
+		return fmt.Errorf("cloud provider %q is not supported: %w", c, err)
+	}
+
+	m := make(map[string]interface{})
+	m["shell"] = o.Shell
+	m["unset"] = o.Unset
+	m["usageHint"] = o.generateUsageHint(c)
+	m["region"] = shoot.Spec.Region
+
+	for key, value := range secret.Data {
+		m[key] = string(value)
+	}
+
+	if err := beforeExecuteTemplate(c, &m); err != nil {
+		return err
+	}
+
+	return t.ExecuteTemplate(o.IOStreams.Out, o.Shell, m)
+}
+
+// generateUsageHint generate a cloud and shell specific usage hint
+func (o *cmdOptions) generateUsageHint(c CloudProvider) string {
+	cmd := o.CmdPath
+	action := "configure"
+
+	if o.Unset {
+		cmd += " -u"
+		action = "reset the configuration of"
+	}
+
+	cmd += " " + o.Shell
+	s := Shell(o.Shell)
+	prefix := s.Comment() + " "
+
+	return strings.Join([]string{
+		prefix + fmt.Sprintf("Run this command to %s the %q CLI for your shell:", action, c.CLI()),
+		prefix + s.EvalCommand(cmd),
+	}, "\n")
+}
+
+// parseTemplate returns the parsed template found whether in the embedded filesystem or in the given directory
+func parseTemplate(c CloudProvider, dir string) (*template.Template, error) {
 	var tmpl *template.Template
 
 	baseTmpl := template.New("base").Funcs(sprigv3.TxtFuncMap())
-	filename := filepath.Join("templates", name+".tmpl")
+	filename := filepath.Join("templates", string(c)+".tmpl")
 	defaultTmpl, err := baseTmpl.ParseFS(fsys, filename)
 
 	if err != nil {
-		tmpl, err = baseTmpl.ParseFiles(filepath.Join(o.GardenDir, filename))
+		tmpl, err = baseTmpl.ParseFiles(filepath.Join(dir, filename))
 	} else {
-		tmpl, err = defaultTmpl.ParseFiles(filepath.Join(o.GardenDir, filename))
+		tmpl, err = defaultTmpl.ParseFiles(filepath.Join(dir, filename))
 		if err != nil {
 			// use the embedded default template if it does not exist in the garden home dir
 			if errors.Is(err, os.ErrNotExist) {
@@ -187,101 +215,100 @@ func (o *cmdOptions) parseTmpl(name string) (*template.Template, error) {
 	return tmpl, err
 }
 
-func (o *cmdOptions) execTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret) error {
-	cloudprovider := shoot.Spec.Provider.Type
+// beforeExecuteTemplate allows modifying or enhancing the data before the template is executed
+func beforeExecuteTemplate(c CloudProvider, mPtr *map[string]interface{}) error {
+	if c == gcp {
+		m := *mPtr
 
-	t, err := o.parseTmpl(cloudprovider)
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("parsing template for cloudprovider %q failed: %w", cloudprovider, err)
+		privateKey, ok := m["serviceaccount.json"].(string)
+		if !ok {
+			return errors.New("Invalid serviceaccount in secret")
 		}
 
-		return fmt.Errorf("cloudprovider %q is not supported: %w", cloudprovider, err)
-	}
-
-	m := make(map[string]interface{})
-	m["shell"] = o.Shell
-	m["unset"] = o.Unset
-	m["usageHint"] = generateUsageHint(cloudprovider, o.Shell, o.Unset, o.CmdPath...)
-	m["region"] = shoot.Spec.Region
-
-	for key, value := range secret.Data {
-		m[key] = string(value)
-	}
-
-	switch cloudprovider {
-	case "gcp":
-		if err := parseCredentials(&m); err != nil {
+		credentials := map[string]interface{}{}
+		if err := json.Unmarshal([]byte(privateKey), &credentials); err != nil {
 			return err
 		}
-	}
 
-	return t.ExecuteTemplate(o.IOStreams.Out, o.Shell, m)
-}
-
-func generateUsageHint(cloudprovider, shell string, unset bool, a ...string) string {
-	var (
-		cmd     string
-		desc    string
-		cmdLine string
-		comment = "#"
-		cli     = cloudprovider
-	)
-
-	switch cloudprovider {
-	case "alicloud":
-		cli = "aliyun"
-	case "gcp":
-		cli = "gcloud"
-	}
-
-	if unset {
-		desc = fmt.Sprintf("Run this command to reset the configuration of the %q CLI for your shell:", cli)
-		cmdLine = strings.Join(append(a, "-u", shell), " ")
-	} else {
-		desc = fmt.Sprintf("Run this command to configure the %q CLI for your shell:", cli)
-		cmdLine = strings.Join(append(a, shell), " ")
-	}
-
-	switch shell {
-	case "fish":
-		cmd = fmt.Sprintf("eval (%s)", cmdLine)
-	case "powershell":
-		// Invoke-Expression cannot execute multi-line functions!!!
-		cmd = fmt.Sprintf("& %s | Invoke-Expression", cmdLine)
-	default:
-		cmd = fmt.Sprintf("eval $(%s)", cmdLine)
-	}
-
-	return strings.Join([]string{
-		comment + " " + desc,
-		comment + " " + cmd,
-	}, "\n")
-}
-
-func parseCredentials(values *map[string]interface{}) error {
-	m := *values
-
-	privateKey, ok := m["serviceaccount.json"].(string)
-	if !ok {
-		return errors.New("Invalid serviceaccount in secret")
-	}
-
-	credentials := map[string]interface{}{}
-	if err := json.Unmarshal([]byte(privateKey), &credentials); err != nil {
-		return err
-	}
-
-	m["credentials"] = credentials
-	if data, err := json.Marshal(credentials); err == nil {
-		m["serviceaccount.json"] = string(data)
+		m["credentials"] = credentials
+		if data, err := json.Marshal(credentials); err == nil {
+			m["serviceaccount.json"] = string(data)
+		}
 	}
 
 	return nil
 }
 
-func validateShell(shell string) error {
-	for _, s := range validShells {
+// Shell represents the type of shell
+type Shell string
+
+const (
+	bash       Shell = "bash"
+	zsh        Shell = "zsh"
+	fish       Shell = "fish"
+	powershell Shell = "powershell"
+)
+
+var validShells = []Shell{bash, zsh, fish, powershell}
+
+// Comment returns the character use for comments
+func (s Shell) Comment() string {
+	return "#"
+}
+
+// EvalCommand returns the script that evaluates the given command
+func (s Shell) EvalCommand(cmd string) string {
+	var format string
+
+	switch s {
+	case fish:
+		format = "eval (%s)"
+	case powershell:
+		// Invoke-Expression cannot execute multi-line functions!!!
+		format = "& %s | Invoke-Expression"
+	default:
+		format = "eval $(%s)"
+	}
+
+	return fmt.Sprintf(format, cmd)
+}
+
+// Prompt returns the typical prompt for a given os
+func (s Shell) Prompt(goos string) string {
+	switch s {
+	case powershell:
+		if goos == "windows" {
+			return "PS C:\\> "
+		}
+
+		return "PS /> "
+	default:
+		return "$ "
+	}
+}
+
+// AddCommand adds a shell sub command to a parent
+func (s Shell) AddCommand(parent *cobra.Command, runE func(cmd *cobra.Command, args []string) error) {
+	shortFormat := "generate the cloud provider CLI configuration script for %s"
+	longFormat := `Generate the cloud provider CLI configuration script for %s.
+
+To load the cloud provider CLI configuration script in your current shell session:
+%s
+`
+	cmdWithPrompt := s.EvalCommand(fmt.Sprintf("%s%s %s", s.Prompt(runtime.GOOS), parent.CommandPath(), s))
+	shell := string(s)
+	cmd := &cobra.Command{
+		Use:   shell,
+		Short: fmt.Sprintf(shortFormat, shell),
+		Long:  fmt.Sprintf(longFormat, shell, cmdWithPrompt),
+		RunE:  runE,
+	}
+	parent.AddCommand(cmd)
+}
+
+// Validate checks if the shell is valid
+func (s Shell) Validate() error {
+	for _, shell := range validShells {
 		if s == shell {
 			return nil
 		}
@@ -290,15 +317,22 @@ func validateShell(shell string) error {
 	return fmt.Errorf("invalid shell given, must be one of %v", validShells)
 }
 
-func detectShell(goos string) string {
-	if shell, ok := os.LookupEnv("SHELL"); ok && shell != "" {
-		return filepath.Base(shell)
-	}
+// CloudProvider represent the type of cloud provider
+type CloudProvider string
 
-	switch goos {
-	case "windows":
-		return "powershell"
+const (
+	alicloud CloudProvider = "alicloud"
+	gcp      CloudProvider = "gcp"
+)
+
+// CLI returns the CLI for the cloud provider
+func (c CloudProvider) CLI() string {
+	switch c {
+	case alicloud:
+		return "aliyun"
+	case gcp:
+		return "gcloud"
 	default:
-		return "bash"
+		return string(c)
 	}
 }

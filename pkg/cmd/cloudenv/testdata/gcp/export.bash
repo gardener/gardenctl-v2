@@ -5,4 +5,4 @@ export CLOUDSDK_COMPUTE_REGION="europe";
 gcloud auth activate-service-account $GOOGLE_CREDENTIALS_ACCOUNT --key-file <(printf "%s" "$GOOGLE_CREDENTIALS");
 
 # Run this command to configure the "gcloud" CLI for your shell:
-# eval $(cloud-env bash)
+# eval $(gardenctl cloud-env bash)

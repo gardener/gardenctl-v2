@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package cloudenv_test
 
 import (
-	"fmt"
-
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -37,46 +35,19 @@ var _ = Describe("CloudEnv Command", func() {
 			ctrl.Finish()
 		})
 
-		It("should have Use, Aliases, ValidArgs and Flags ", func() {
-			Expect(cmd.Use).To(Equal("cloud-env [bash | fish | powershell | zsh]"))
-			Expect(cmd.Aliases).To(Equal(cloudenv.Aliases))
-			Expect(cmd.ValidArgs).To(Equal(cloudenv.ValidShells))
+		It("should have Use, Flags and SubCommands", func() {
+			Expect(cmd.Use).To(Equal("cloud-env"))
+			Expect(cmd.Flag("output")).To(BeNil())
 			flag := cmd.Flag("unset")
 			Expect(flag).NotTo(BeNil())
 			Expect(flag.Shorthand).To(Equal("u"))
-			Expect(cmd.Flag("output")).To(BeNil())
-		})
-	})
-
-	Describe("matching all positional args checks", func() {
-		var (
-			use       = "test"
-			validArgs = []string{"foo", "bar"}
-			max       = 1
-			cmd       *cobra.Command
-		)
-		BeforeEach(func() {
-			cmd = &cobra.Command{
-				Use:       use,
-				ValidArgs: validArgs,
-				Args:      cloudenv.MatchAll(cobra.MaximumNArgs(max), cobra.OnlyValidArgs),
+			subCmds := cmd.Commands()
+			Expect(len(subCmds)).To(Equal(4))
+			for _, c := range subCmds {
+				Expect(cmd.Flag("unset")).To(BeIdenticalTo(flag))
+				s := cloudenv.Shell(c.Name())
+				Expect(s).To(BeElementOf(cloudenv.ValidShells))
 			}
-		})
-
-		It("should succeed if all check succeed", func() {
-			Expect(cmd.ValidateArgs([]string{})).To(Succeed())
-			Expect(cmd.ValidateArgs([]string{"foo"})).To(Succeed())
-			Expect(cmd.ValidateArgs([]string{"bar"})).To(Succeed())
-		})
-
-		It("should fail if the first check fails", func() {
-			args := []string{"foo", "bar"}
-			Expect(cmd.ValidateArgs(args)).To(MatchError(fmt.Sprintf("accepts at most %d arg(s), received %d", max, len(args))))
-		})
-
-		It("should fail if the first check fails", func() {
-			args := []string{"baz"}
-			Expect(cmd.ValidateArgs(args)).To(MatchError(fmt.Sprintf("invalid argument %q for %q", args[0], use)))
 		})
 	})
 })

@@ -44,3 +44,5 @@ $Env:CLOUDSDK_COMPUTE_REGION = {{.region | quote}};
 function Invoke-WithGoogleCredentials {param([Parameter(Mandatory)] [ScriptBlock] $sb); $f = New-TemporaryFile; try {$Env:GOOGLE_CREDENTIALS | Out-File -Encoding utf8 $f; Invoke-Command -ScriptBlock $sb -ArgumentList $f} finally {Remove-Item -ErrorAction SilentlyContinue $f}};
 Invoke-WithGoogleCredentials {param($f) gcloud auth activate-service-account $Env:GOOGLE_CREDENTIALS_ACCOUNT --key-file $f};
 {{end}}{{.usageHint}}{{end}}
+
+{{define "unset-hint"}}echo "hello"{{end}}
