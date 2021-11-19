@@ -17,7 +17,9 @@ import (
 	"strings"
 	"text/template"
 
-	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
+	"github.com/gardener/gardenctl-v2/pkg/target"
+
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 
 	sprigv3 "github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
@@ -49,6 +51,8 @@ type cmdOptions struct {
 	GardenDir string
 	// CmdPath is the path of the called command.
 	CmdPath string
+	// CurrentTarget is pointing to the current target
+	CurrentTarget target.Target
 }
 
 var _ base.CommandOptions = &cmdOptions{}
@@ -85,15 +89,15 @@ func (o *cmdOptions) Run(f util.Factory) error {
 	}
 
 	// current target
-	target, err := m.CurrentTarget()
+	o.CurrentTarget, err = m.CurrentTarget()
 	if err != nil {
 		return err
 	}
 
-	gardenName := target.GardenName()
-	projectName := target.ProjectName()
-	seedName := target.SeedName()
-	shootName := target.ShootName()
+	gardenName := o.CurrentTarget.GardenName()
+	projectName := o.CurrentTarget.ProjectName()
+	seedName := o.CurrentTarget.SeedName()
+	shootName := o.CurrentTarget.ShootName()
 
 	// validate current target
 	if shootName == "" {
@@ -162,23 +166,63 @@ func (o *cmdOptions) execTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Sec
 		return fmt.Errorf("cloud provider %q is not supported: %w", c, err)
 	}
 
+	region := shoot.Spec.Region
+
 	m := make(map[string]interface{})
 	m["shell"] = o.Shell
 	m["unset"] = o.Unset
 	m["usageHint"] = o.generateUsageHint(c)
-	m["region"] = shoot.Spec.Region
-	m["cloudProfileName"] = shoot.Spec.CloudProfileName
-	m["cloudProfileConfig"] = cloudProfile.Spec.ProviderConfig.Object
+	m["unsetHint"] = o.generateUnsetHint(c)
+	m["region"] = region
 
 	for key, value := range secret.Data {
 		m[key] = string(value)
 	}
 
-	if err := beforeExecuteTemplate(c, &m); err != nil {
-		return err
+	switch c {
+	case gcp:
+		credentials := make(map[string]interface{})
+
+		data, err := parseCredentials(secret, &credentials)
+		if err != nil {
+			return err
+		}
+
+		m["credentials"] = credentials
+		m["serviceaccount.json"] = string(data)
+	case openstack:
+		authURL, err := getKeyStoneURL(cloudProfile, region)
+		if err != nil {
+			return err
+		}
+
+		m["authURL"] = authURL
 	}
 
 	return t.ExecuteTemplate(o.IOStreams.Out, o.Shell, m)
+}
+
+// generateUsageHint generate a cloud and shell specific usage hint
+func (o *cmdOptions) generateUnsetHint(c CloudProvider) string {
+	s := Shell(o.Shell)
+	unsetHintFormat := `printf 'Successfully configured the %q CLI for your current shell session.\nRun the following command to reset this configuration:\n%%s\n' '%s';`
+	t := o.CurrentTarget
+
+	var flags string
+	if t.ProjectName() != "" {
+		flags = fmt.Sprintf("--garden %s --project %s --shoot %s", t.GardenName(), t.ProjectName(), t.ShootName())
+	} else {
+		flags = fmt.Sprintf("--garden %s --seed %s --shoot %s", t.GardenName(), t.SeedName(), t.ShootName())
+	}
+
+	cmdWithPrompt := s.Prompt(runtime.GOOS) + s.EvalCommand(strings.Join([]string{
+		o.CmdPath,
+		flags,
+		"-u",
+		o.Shell,
+	}, " "))
+
+	return fmt.Sprintf(unsetHintFormat, c, cmdWithPrompt)
 }
 
 // generateUsageHint generate a cloud and shell specific usage hint
@@ -222,45 +266,6 @@ func parseTemplate(c CloudProvider, dir string) (*template.Template, error) {
 	}
 
 	return tmpl, err
-}
-
-// beforeExecuteTemplate allows modifying or enhancing the data before the template is executed
-func beforeExecuteTemplate(c CloudProvider, mPtr *map[string]interface{}) error {
-	m := *mPtr
-
-	switch c {
-	case gcp:
-		privateKey, ok := m["serviceaccount.json"].(string)
-		if !ok {
-			return errors.New("Invalid serviceaccount in Secret")
-		}
-
-		credentials := map[string]interface{}{}
-		if err := json.Unmarshal([]byte(privateKey), &credentials); err != nil {
-			return err
-		}
-
-		m["credentials"] = credentials
-		if data, err := json.Marshal(credentials); err == nil {
-			m["serviceaccount.json"] = string(data)
-		}
-	case openstack:
-		cloudProfileConfig, ok := m["cloudProfileConfig"].(*openstackv1alpha1.CloudProfileConfig)
-		if !ok {
-			return errors.New("Invalid providerConfig in CloudProfile")
-		}
-
-		region := m["region"].(string)
-
-		authURL, err := getKeyStoneURL(cloudProfileConfig, region)
-		if err != nil {
-			return err
-		}
-
-		m["authURL"] = authURL
-	}
-
-	return nil
 }
 
 // Shell represents the type of shell
@@ -362,7 +367,12 @@ func (c CloudProvider) CLI() string {
 	}
 }
 
-func getKeyStoneURL(config *openstackv1alpha1.CloudProfileConfig, region string) (string, error) {
+func getKeyStoneURL(cloudProfile *gardencorev1beta1.CloudProfile, region string) (string, error) {
+	config, err := gardenclient.CloudProfile(*cloudProfile).GetOpenstackProviderConfig()
+	if err != nil {
+		return "", fmt.Errorf("invalid providerConfig in CloudProfile %q", cloudProfile.Name)
+	}
+
 	if config.KeyStoneURL != "" {
 		return config.KeyStoneURL, nil
 	}
@@ -373,5 +383,18 @@ func getKeyStoneURL(config *openstackv1alpha1.CloudProfileConfig, region string)
 		}
 	}
 
-	return "", fmt.Errorf("cannot find KeyStone URL for region %q in CloudProfileConfig", region)
+	return "", fmt.Errorf("cannot find keyStoneURL for region %q in CloudProfile %q", region, cloudProfile.Name)
+}
+
+func parseCredentials(secret *corev1.Secret, credentials interface{}) ([]byte, error) {
+	privateKey := secret.Data["serviceaccount.json"]
+	if privateKey == nil {
+		return nil, fmt.Errorf("invalid serviceaccount in Secret %q", secret.Name)
+	}
+
+	if err := json.Unmarshal(privateKey, credentials); err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(credentials)
 }

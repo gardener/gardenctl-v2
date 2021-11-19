@@ -11,9 +11,12 @@ import (
 	"errors"
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
+
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 
@@ -22,7 +25,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	openstackinstall "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/install"
-	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
@@ -75,7 +77,7 @@ type Client interface {
 	// GetSecret returns a Kubernetes secret resource
 	GetSecret(ctx context.Context, namespaceName string, secretName string) (*corev1.Secret, error)
 
-	// GetRuntimeClient returns the underlying kubernetes runtime client
+	// RuntimeClient returns the underlying kubernetes runtime client
 	// TODO: Remove this when we switched all APIs to the new gardenclient
 	RuntimeClient() client.Client
 }
@@ -289,50 +291,41 @@ func (g *clientImpl) GetCloudProfile(ctx context.Context, name string) (*gardenc
 		return nil, fmt.Errorf("failed to get cloudprofile %v: %w", key, err)
 	}
 
-	switch cloudProfile.Spec.Type {
-	case "openstack":
-		if obj, err := getOpenstackCloudProfileConfig(&cloudProfile); err == nil {
-			providerConfig := cloudProfile.Spec.ProviderConfig
-			providerConfig.Object = obj
-			providerConfig.Raw = nil
-		}
-	}
-
 	return &cloudProfile, nil
-}
-
-func getOpenstackCloudProfileConfig(cloudProfile *gardencorev1beta1.CloudProfile) (*openstackv1alpha1.CloudProfileConfig, error) {
-	name := cloudProfile.Name
-
-	providerConfig := cloudProfile.Spec.ProviderConfig
-	if providerConfig == nil {
-		return nil, fmt.Errorf("cannot fetch providerConfig of core.gardener.cloud/v1alpha1.CloudProfile %s", name)
-	}
-
-	cloudProfileConfig := &openstackv1alpha1.CloudProfileConfig{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: openstackv1alpha1.SchemeGroupVersion.String(),
-			Kind:       "CloudProfileConfig",
-		},
-	}
-
-	switch {
-	case providerConfig.Object != nil:
-		var ok bool
-
-		cloudProfileConfig, ok = providerConfig.Object.(*openstackv1alpha1.CloudProfileConfig)
-		if !ok {
-			return nil, fmt.Errorf("cannot cast providerConfig of core.gardener.cloud/v1beta1.CloudProfile %s", name)
-		}
-	case providerConfig.Raw != nil:
-		if _, _, err := decoder.Decode(providerConfig.Raw, nil, cloudProfileConfig); err != nil {
-			return nil, fmt.Errorf("cannot decode providerConfig of core.gardener.cloud/v1beta1.CloudProfile %s", name)
-		}
-	}
-
-	return cloudProfileConfig, nil
 }
 
 func (g *clientImpl) RuntimeClient() client.Client {
 	return g.c
+}
+
+type CloudProfile gardencorev1beta1.CloudProfile
+
+func (cp CloudProfile) GetOpenstackProviderConfig() (*openstackv1alpha1.CloudProfileConfig, error) {
+	providerConfig := cp.Spec.ProviderConfig
+	if providerConfig == nil {
+		return nil, fmt.Errorf("cannot fetch providerConfig of core.gardener.cloud/v1alpha1.CloudProfile %s", cp.Name)
+	}
+
+	var cloudProfileConfig *openstackv1alpha1.CloudProfileConfig
+
+	switch {
+	case providerConfig.Object != nil:
+		var ok bool
+		if cloudProfileConfig, ok = providerConfig.Object.(*openstackv1alpha1.CloudProfileConfig); !ok {
+			return nil, fmt.Errorf("cannot cast providerConfig of core.gardener.cloud/v1beta1.CloudProfile %s", cp.Name)
+		}
+
+	case providerConfig.Raw != nil:
+		cloudProfileConfig = &openstackv1alpha1.CloudProfileConfig{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: openstackv1alpha1.SchemeGroupVersion.String(),
+				Kind:       "CloudProfileConfig",
+			},
+		}
+		if _, _, err := decoder.Decode(providerConfig.Raw, nil, cloudProfileConfig); err != nil {
+			return nil, fmt.Errorf("cannot decode providerConfig of core.gardener.cloud/v1beta1.CloudProfile %s", cp.Name)
+		}
+	}
+
+	return cloudProfileConfig, nil
 }

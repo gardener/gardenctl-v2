@@ -2,12 +2,16 @@
 unset ALICLOUD_ACCESS_KEY_ID;
 unset ALICLOUD_ACCESS_KEY_SECRET;
 unset ALICLOUD_REGION_ID;
+
+{{.usageHint}}
 {{else -}}
 export ALICLOUD_ACCESS_KEY_ID={{.accessKeyID | quote }};
 export ALICLOUD_ACCESS_KEY_SECRET={{.accessKeySecret | quote }};
 export ALICLOUD_REGION_ID={{.region | quote}};
-{{end}}
-{{.usageHint}}{{end}}
+{{.unsetHint}}
+
+{{.usageHint}}
+{{end}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
 {{define "zsh"}}{{template "default" .}}{{end}}
@@ -16,19 +20,26 @@ export ALICLOUD_REGION_ID={{.region | quote}};
 set -e ALICLOUD_ACCESS_KEY_ID;
 set -e ALICLOUD_ACCESS_KEY_SECRET;
 set -e ALICLOUD_REGION_ID;
+{{.unsetHint}}
+
+{{.usageHint}}
 {{else -}}
 set -gx ALICLOUD_ACCESS_KEY_ID {{.accessKeyID | quote}};
 set -gx ALICLOUD_ACCESS_KEY_SECRET {{.accessKeySecret | quote}};
 set -gx ALICLOUD_REGION_ID {{.region | quote}};
-{{end}}
-{{.usageHint}}{{end}}
+
+{{.usageHint}}
+{{end}}{{end}}
 
 {{define "powershell"}}{{if .unset -}}
 Remove-Item -ErrorAction SilentlyContinue Env:\ALICLOUD_ACCESS_KEY_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\ALICLOUD_ACCESS_KEY_SECRET;
 Remove-Item -ErrorAction SilentlyContinue Env:\ALICLOUD_REGION_ID;
+{{.usageHint}}
 {{else -}}
 $Env:ALICLOUD_ACCESS_KEY_ID = {{.accessKeyID | quote}};
 $Env:ALICLOUD_ACCESS_KEY_SECRET = {{.accessKeySecret | quote}};
 $Env:ALICLOUD_REGION_ID = {{.region | quote}};
-{{end}}{{.usageHint}}{{end}}
+{{.unsetHint}}
+{{.usageHint}}
+{{end}}{{end}}

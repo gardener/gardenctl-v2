@@ -2,12 +2,16 @@
 unset AWS_ACCESS_KEY_ID;
 unset AWS_SECRET_ACCESS_KEY;
 unset AWS_DEFAULT_REGION;
+
+{{.usageHint}}
 {{else -}}
 export AWS_ACCESS_KEY_ID={{.accessKeyID | quote }};
 export AWS_SECRET_ACCESS_KEY={{.secretAccessKey | quote }};
 export AWS_DEFAULT_REGION={{.region | quote}};
-{{end}}
-{{.usageHint}}{{end}}
+{{.unsetHint}}
+
+{{.usageHint}}
+{{end}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
 {{define "zsh"}}{{template "default" .}}{{end}}
@@ -16,19 +20,26 @@ export AWS_DEFAULT_REGION={{.region | quote}};
 set -e AWS_ACCESS_KEY_ID;
 set -e AWS_SECRET_ACCESS_KEY;
 set -e AWS_DEFAULT_REGION;
+
+{{.usageHint}}
 {{else -}}
 set -gx AWS_ACCESS_KEY_ID {{.accessKeyID | quote}};
 set -gx AWS_SECRET_ACCESS_KEY {{.secretAccessKey | quote}};
 set -gx AWS_DEFAULT_REGION {{.region | quote}};
-{{end}}
-{{.usageHint}}{{end}}
+{{.unsetHint}}
+
+{{.usageHint}}
+{{end}}{{end}}
 
 {{define "powershell"}}{{if .unset -}}
 Remove-Item -ErrorAction SilentlyContinue Env:\AWS_ACCESS_KEY_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AWS_SECRET_ACCESS_KEY;
 Remove-Item -ErrorAction SilentlyContinue Env:\AWS_DEFAULT_REGION;
+{{.usageHint}}
 {{else -}}
 $Env:AWS_ACCESS_KEY_ID = {{.accessKeyID | quote}};
 $Env:AWS_SECRET_ACCESS_KEY = {{.secretAccessKey | quote}};
 $Env:AWS_DEFAULT_REGION = {{.region | quote}};
-{{end}}{{.usageHint}}{{end}}
+{{.unsetHint}}
+{{.usageHint}}
+{{end}}{{end}}

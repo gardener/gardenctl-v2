@@ -9,6 +9,8 @@ unset OS_USER_DOMAIN_NAME;
 unset OS_USERNAME;
 unset OS_PASSWORD;
 unset OS_REGION_NAME;
+
+{{.usageHint}}
 {{else -}}
 export OS_IDENTITY_API_VERSION="3";
 export OS_AUTH_VERSION="3";
@@ -20,8 +22,10 @@ export OS_USER_DOMAIN_NAME={{.domainName | quote}};
 export OS_USERNAME={{.username | quote}};
 export OS_PASSWORD={{.password | quote}};
 export OS_REGION_NAME={{.region | quote}};
-{{end}}
-{{.usageHint}}{{end}}
+{{.unsetHint}}
+
+{{.usageHint}}
+{{end}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
 {{define "zsh"}}{{template "default" .}}{{end}}
@@ -37,6 +41,8 @@ set -e OS_USER_DOMAIN_NAME;
 set -e OS_USERNAME;
 set -e OS_PASSWORD;
 set -e OS_REGION_NAME;
+
+{{.usageHint}}
 {{else -}}
 set -gx OS_IDENTITY_API_VERSION "3";
 set -gx OS_AUTH_VERSION "3";
@@ -48,8 +54,10 @@ set -gx OS_USER_DOMAIN_NAME {{.domainName | quote}};
 set -gx OS_USERNAME {{.username | quote}};
 set -gx OS_PASSWORD {{.password | quote}};
 set -gx OS_REGION_NAME {{.region | quote}};
-{{end}}
-{{.usageHint}}{{end}}
+{{.unsetHint}}
+
+{{.usageHint}}
+{{end}}{{end}}
 
 {{define "powershell"}}{{if .unset -}}
 Remove-Item -ErrorAction SilentlyContinue Env:\OS_IDENTITY_API_VERSION;
@@ -62,6 +70,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\OS_USER_DOMAIN_NAME;
 Remove-Item -ErrorAction SilentlyContinue Env:\OS_USERNAME;
 Remove-Item -ErrorAction SilentlyContinue Env:\OS_PASSWORD;
 Remove-Item -ErrorAction SilentlyContinue Env:\OS_REGION_NAME;
+{{.usageHint}}
 {{else -}}
 $Env:OS_IDENTITY_API_VERSION = "3";
 $Env:OS_AUTH_VERSION = "3";
@@ -73,5 +82,7 @@ $Env:OS_USER_DOMAIN_NAME = {{.domainName | quote}};
 $Env:OS_USERNAME = {{.username | quote}};
 $Env:OS_PASSWORD = {{.password | quote}};
 $Env:OS_REGION_NAME = {{.region | quote}};
-{{end}}{{.usageHint}}{{end}}
+{{.unsetHint}}
+{{.usageHint}}
+{{end}}{{end}}
 

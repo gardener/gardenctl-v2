@@ -32,7 +32,7 @@ import (
 )
 
 var _ = Describe("CloudEnv Options", func() {
-	Describe("having an instance", func() {
+	Describe("having an Options instance", func() {
 		var (
 			ctrl    *gomock.Controller
 			factory *utilmocks.MockFactory
@@ -229,14 +229,13 @@ var _ = Describe("CloudEnv Options", func() {
 
 					It("does the work when the shoot is targeted via seed", func() {
 						Expect(options.Run(factory)).To(Succeed())
-						Expect(options.Out()).To(Equal(readTestFile("gcp/export.bash")))
+						Expect(options.Out()).To(Equal(readTestFile("gcp/export.seed.bash")))
 					})
 				})
 			})
 
 			Context("when an error occurs before running the command", func() {
 				err := errors.New("error")
-				t := target.NewTarget("test", "project", "seed", "shoot")
 
 				It("should fail with ManagerError", func() {
 					factory.EXPECT().Manager().Return(nil, err)
@@ -307,6 +306,15 @@ var _ = Describe("CloudEnv Options", func() {
 						client.EXPECT().GetSecret(ctx, secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name).Return(nil, err)
 						Expect(options.Run(factory)).To(BeIdenticalTo(err))
 					})
+
+					It("should fail with GetCloudProfileError", func() {
+						manager.EXPECT().CurrentTarget().Return(t.WithSeedName(""), nil)
+						client.EXPECT().GetShootByProject(ctx, t.ProjectName(), t.ShootName()).Return(shoot, nil)
+						client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, shoot.Spec.SecretBindingName).Return(secretBinding, nil)
+						client.EXPECT().GetSecret(ctx, secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name).Return(secret, nil)
+						client.EXPECT().GetCloudProfile(ctx, cloudProfileName).Return(nil, err)
+						Expect(options.Run(factory)).To(BeIdenticalTo(err))
+					})
 				})
 			})
 		})
@@ -339,6 +347,7 @@ var _ = Describe("CloudEnv Options", func() {
 				providerConfig = nil
 				serviceaccountJSON = readTestFile("gcp/serviceaccount.json")
 				token = "token"
+				options.CurrentTarget = target.NewTarget("test", "project", "", shootName)
 			})
 
 			JustBeforeEach(func() {
@@ -497,6 +506,11 @@ var _ = Describe("CloudEnv Options", func() {
 					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
 					Expect(options.Out()).To(Equal(readTestFile("openstack/export.bash")))
 				})
+
+				It("should fail with invalid provider config", func() {
+					cloudProfile.Spec.ProviderConfig = nil
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(fmt.Sprintf("invalid providerConfig in CloudProfile %q", cloudProfileName)))
+				})
 			})
 		})
 
@@ -582,70 +596,120 @@ var _ = Describe("CloudEnv Options", func() {
 		})
 	})
 
-	Describe("validating the shell", func() {
-		It("should succeed for all valid shells", func() {
-			Expect(cloudenv.ValidateShell("bash")).To(Succeed())
-			Expect(cloudenv.ValidateShell("zsh")).To(Succeed())
-			Expect(cloudenv.ValidateShell("fish")).To(Succeed())
-			Expect(cloudenv.ValidateShell("powershell")).To(Succeed())
+	Describe("Shell", func() {
+		Describe("validation", func() {
+			It("should succeed for all valid shells", func() {
+				Expect(cloudenv.Shell("bash").Validate()).To(Succeed())
+				Expect(cloudenv.Shell("zsh").Validate()).To(Succeed())
+				Expect(cloudenv.Shell("fish").Validate()).To(Succeed())
+				Expect(cloudenv.Shell("powershell").Validate()).To(Succeed())
+			})
+
+			It("should fail for a currently unsupported shell", func() {
+				Expect(cloudenv.Shell("cmd").Validate()).To(MatchError(fmt.Sprintf("invalid shell given, must be one of %v", cloudenv.ValidShells)))
+			})
 		})
 
-		It("should fail for an currently unsupported shell", func() {
-			Expect(cloudenv.ValidateShell("cmd")).To(MatchError(fmt.Sprintf("invalid shell given, must be one of %v", cloudenv.ValidShells)))
+		Describe("getting the prompt", func() {
+			It("should return the typical prompt for the given shell and goos", func() {
+				Expect(cloudenv.Shell("bash").Prompt("linux")).To(Equal("$ "))
+				Expect(cloudenv.Shell("powershell").Prompt("darwin")).To(Equal("PS /> "))
+				Expect(cloudenv.Shell("powershell").Prompt("windows")).To(Equal("PS C:\\> "))
+			})
 		})
 	})
 
-	Describe("modifying the values before template execution", func() {
+	Describe("parsing gcp credentials", func() {
 		var (
-			c      cloudenv.CloudProvider
-			values map[string]interface{}
+			serviceaccountJSON = readTestFile("gcp/serviceaccount.json")
+			secretName         = "gcp"
+			secret             *corev1.Secret
+			credentials        map[string]interface{}
 		)
 
 		BeforeEach(func() {
-			values = map[string]interface{}{}
+			secret = &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: secretName,
+				},
+				Data: map[string][]byte{
+					"serviceaccount.json": []byte(serviceaccountJSON),
+				},
+			}
+			credentials = make(map[string]interface{})
 		})
 
-		Context("when the cloud provider is not gcp", func() {
-			BeforeEach(func() {
-				c = cloudenv.CloudProvider("foo")
-			})
-
-			It("should do nothing", func() {
-				Expect(cloudenv.BeforeExecuteTemplate(c, &values)).To(Succeed())
-			})
+		It("should succeed for all valid shells", func() {
+			data, err := cloudenv.ParseCredentials(secret, &credentials)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(data)).To(Equal("{\"client_email\":\"test@example.org\",\"project_id\":\"test\"}"))
+			Expect(credentials).To(HaveKeyWithValue("project_id", "test"))
+			Expect(credentials).To(HaveKeyWithValue("client_email", "test@example.org"))
 		})
 
-		Context("when the cloud provider is gcp", func() {
-			var serviceaccountJSON = readTestFile("gcp/serviceaccount.json")
+		It("should fail with invalid secret", func() {
+			secret.Data["serviceaccount.json"] = nil
+			_, err := cloudenv.ParseCredentials(secret, &credentials)
+			Expect(err).To(MatchError(fmt.Sprintf("invalid serviceaccount in Secret %q", secretName)))
+		})
 
-			BeforeEach(func() {
-				c = cloudenv.CloudProvider("gcp")
-				values["serviceaccount.json"] = serviceaccountJSON
-			})
-
-			It("should succeed for all valid shells", func() {
-				Expect(cloudenv.BeforeExecuteTemplate(c, &values)).To(Succeed())
-				Expect(values).To(HaveKeyWithValue("serviceaccount.json", "{\"client_email\":\"test@example.org\",\"project_id\":\"test\"}"))
-				Expect(values).To(HaveKey("credentials"))
-				Expect(values["credentials"]).To(HaveKeyWithValue("project_id", "test"))
-				Expect(values["credentials"]).To(HaveKeyWithValue("client_email", "test@example.org"))
-			})
-
-			It("should fail with invalid secret", func() {
-				values["serviceaccount.json"] = nil
-				Expect(cloudenv.BeforeExecuteTemplate(c, &values)).To(MatchError("Invalid serviceaccount in Secret"))
-			})
-
-			It("should fail with invalid json", func() {
-				values["serviceaccount.json"] = "{"
-				Expect(cloudenv.BeforeExecuteTemplate(c, &values)).To(MatchError("unexpected end of JSON input"))
-			})
-
-			It("should fail with invalid json", func() {
-				values["serviceaccount.json"] = "{"
-				Expect(cloudenv.BeforeExecuteTemplate(c, &values)).To(MatchError("unexpected end of JSON input"))
-			})
+		It("should fail with invalid json", func() {
+			secret.Data["serviceaccount.json"] = []byte("{")
+			_, err := cloudenv.ParseCredentials(secret, &credentials)
+			Expect(err).To(MatchError("unexpected end of JSON input"))
 		})
 	})
 
+	Describe("getting the keyStoneURL", func() {
+		var (
+			cloudProfileName   = "cloud-profile-name"
+			region             = "europe"
+			cloudProfile       *gardencorev1beta1.CloudProfile
+			cloudProfileConfig *openstackv1alpha1.CloudProfileConfig
+		)
+
+		BeforeEach(func() {
+			cloudProfileConfig = &openstackv1alpha1.CloudProfileConfig{
+				KeyStoneURLs: []openstackv1alpha1.KeyStoneURL{
+					{URL: "bar", Region: region},
+				},
+			}
+			cloudProfile = &gardencorev1beta1.CloudProfile{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: cloudProfileName,
+				},
+				Spec: gardencorev1beta1.CloudProfileSpec{
+					ProviderConfig: &runtime.RawExtension{
+						Object: cloudProfileConfig,
+						Raw:    nil,
+					},
+				},
+			}
+		})
+
+		It("should return a global url", func() {
+			cloudProfileConfig.KeyStoneURL = "foo"
+			url, err := cloudenv.GetKeyStoneURL(cloudProfile, "")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(url).To(Equal(cloudProfileConfig.KeyStoneURL))
+		})
+
+		It("should return region specific url", func() {
+			url, err := cloudenv.GetKeyStoneURL(cloudProfile, region)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(url).To(Equal("bar"))
+		})
+
+		It("should fail with not found", func() {
+			cloudProfile.Spec.ProviderConfig = nil
+			_, err := cloudenv.GetKeyStoneURL(cloudProfile, region)
+			Expect(err).To(MatchError(fmt.Sprintf("invalid providerConfig in CloudProfile %q", cloudProfileName)))
+		})
+
+		It("should fail with not found", func() {
+			region = "asia"
+			_, err := cloudenv.GetKeyStoneURL(cloudProfile, region)
+			Expect(err).To(MatchError(fmt.Sprintf("cannot find keyStoneURL for region %q in CloudProfile %q", region, cloudProfileName)))
+		})
+	})
 })

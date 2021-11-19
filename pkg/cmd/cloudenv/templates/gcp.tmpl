@@ -4,14 +4,18 @@ unset GOOGLE_CREDENTIALS;
 unset GOOGLE_CREDENTIALS_ACCOUNT;
 unset CLOUDSDK_CORE_PROJECT;
 unset CLOUDSDK_COMPUTE_REGION;
+
+{{.usageHint}}
 {{else -}}
 export GOOGLE_CREDENTIALS={{.credentials | toJson | replace "'" "'\\''" | squote}};
 export GOOGLE_CREDENTIALS_ACCOUNT={{.credentials.client_email | quote}};
 export CLOUDSDK_CORE_PROJECT={{.credentials.project_id | quote}};
 export CLOUDSDK_COMPUTE_REGION={{.region | quote}};
 gcloud auth activate-service-account $GOOGLE_CREDENTIALS_ACCOUNT --key-file <(printf "%s" "$GOOGLE_CREDENTIALS");
-{{end}}
-{{.usageHint}}{{end}}
+{{.unsetHint}}
+
+{{.usageHint}}
+{{end}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
 {{define "zsh"}}{{template "default" .}}{{end}}
@@ -22,20 +26,25 @@ set -e GOOGLE_CREDENTIALS;
 set -e GOOGLE_CREDENTIALS_ACCOUNT;
 set -e CLOUDSDK_CORE_PROJECT;
 set -e CLOUDSDK_COMPUTE_REGION;
+
+{{.usageHint}}
 {{else -}}
 set -gx GOOGLE_CREDENTIALS {{.credentials | toJson | replace "'" "''" |  squote}};
 set -gx GOOGLE_CREDENTIALS_ACCOUNT {{.credentials.client_email | quote}};
 set -gx CLOUDSDK_CORE_PROJECT {{.credentials.project_id | quote}};
 set -gx CLOUDSDK_COMPUTE_REGION {{.region | quote}};
 gcloud auth activate-service-account $GOOGLE_CREDENTIALS_ACCOUNT --key-file (printf "%s" "$GOOGLE_CREDENTIALS" | psub);
-{{end}}
-{{.usageHint}}{{end}}
+{{.unsetHint}}
+
+{{.usageHint}}
+{{end}}{{end}}
 
 {{define "powershell"}}{{if .unset -}}
 gcloud auth revoke $Env:GOOGLE_CREDENTIALS_ACCOUNT --verbosity=error;
 Remove-Item -ErrorAction SilentlyContinue Env:\GOOGLE_CREDENTIALS;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_CORE_PROJECT;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_COMPUTE_REGION;
+{{.usageHint}}
 {{else -}}
 $Env:GOOGLE_CREDENTIALS = {{.credentials | toJson | replace "'" "''" | squote}};
 $Env:GOOGLE_CREDENTIALS_ACCOUNT = {{.credentials.client_email | quote}};
@@ -43,6 +52,6 @@ $Env:CLOUDSDK_CORE_PROJECT = {{.credentials.project_id | quote}};
 $Env:CLOUDSDK_COMPUTE_REGION = {{.region | quote}};
 function Invoke-WithGoogleCredentials {param([Parameter(Mandatory)] [ScriptBlock] $sb); $f = New-TemporaryFile; try {$Env:GOOGLE_CREDENTIALS | Out-File -Encoding utf8 $f; Invoke-Command -ScriptBlock $sb -ArgumentList $f} finally {Remove-Item -ErrorAction SilentlyContinue $f}};
 Invoke-WithGoogleCredentials {param($f) gcloud auth activate-service-account $Env:GOOGLE_CREDENTIALS_ACCOUNT --key-file $f};
-{{end}}{{.usageHint}}{{end}}
-
-{{define "unset-hint"}}echo "hello"{{end}}
+{{.unsetHint}}
+{{.usageHint}}
+{{end}}{{end}}

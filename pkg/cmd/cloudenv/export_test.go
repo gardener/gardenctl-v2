@@ -17,8 +17,9 @@ import (
 )
 
 var (
-	ValidShells           = validShells
-	BeforeExecuteTemplate = beforeExecuteTemplate
+	ValidShells      = validShells
+	ParseCredentials = parseCredentials
+	GetKeyStoneURL   = getKeyStoneURL
 )
 
 func NewTestOptions() *TestOptions {
