@@ -1,33 +1,20 @@
-{{define "default"}}{{if .unset -}}
+{{define "default"}}{{if .__meta.unset -}}
 unset HCLOUD_TOKEN;
-
-{{.usageHint}}
 {{else -}}
-export HCLOUD_TOKEN={{.hcloudToken | quote }};
-{{.unsetHint}}
-
-{{.usageHint}}
-{{end}}{{end}}
+export HCLOUD_TOKEN={{.hcloudToken | quote}};
+{{end}}{{template "usage-hint" .__meta}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
 {{define "zsh"}}{{template "default" .}}{{end}}
 
-{{define "fish"}}{{if .unset -}}
+{{define "fish"}}{{if .__meta.unset -}}
 set -e HCLOUD_TOKEN;
-
-{{.usageHint}}
 {{else -}}
 set -gx HCLOUD_TOKEN {{.hcloudToken | quote}};
-{{.unsetHint}}
+{{end}}{{template "usage-hint" .__meta}}{{end}}
 
-{{.usageHint}}
-{{end}}{{end}}
-
-{{define "powershell"}}{{if .unset -}}
+{{define "powershell"}}{{if .__meta.unset -}}
 Remove-Item -ErrorAction SilentlyContinue Env:\HCLOUD_TOKEN;
-{{.usageHint}}
 {{else -}}
 $Env:HCLOUD_TOKEN = {{.hcloudToken | quote}};
-{{.unsetHint}}
-{{.usageHint}}
-{{end}}{{end}}
+{{end}}{{template "usage-hint" .__meta}}{{end}}

@@ -1,11 +1,9 @@
-{{define "default"}}{{if .unset -}}
+{{define "default"}}{{if .__meta.unset -}}
 az logout --username "$AZURE_CLIENT_ID";
 unset AZURE_CLIENT_ID;
 unset AZURE_CLIENT_SECRET;
 unset AZURE_TENANT_ID;
 unset AZURE_SUBSCRIPTION_ID;
-
-{{.usageHint}}
 {{else -}}
 export AZURE_CLIENT_ID={{.clientID | quote}};
 export AZURE_CLIENT_SECRET={{.clientSecret | quote}};
@@ -13,22 +11,17 @@ export AZURE_TENANT_ID={{.tenantID | quote}};
 export AZURE_SUBSCRIPTION_ID={{.subscriptionID | quote}};
 az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID";
 az account set --subscription "$AZURE_SUBSCRIPTION_ID";
-{{.unsetHint}}
-
-{{.usageHint}}
-{{end}}{{end}}
+{{end}}{{template "usage-hint" .__meta}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
 {{define "zsh"}}{{template "default" .}}{{end}}
 
-{{define "fish"}}{{if .unset -}}
+{{define "fish"}}{{if .__meta.unset -}}
 az logout --username "$AZURE_CLIENT_ID";
 set -e AZURE_CLIENT_ID;
 set -e AZURE_CLIENT_SECRET;
 set -e AZURE_TENANT_ID;
 set -e AZURE_SUBSCRIPTION_ID;
-
-{{.usageHint}}
 {{else -}}
 set -gx AZURE_CLIENT_ID {{.clientID | quote}};
 set -gx AZURE_CLIENT_SECRET {{.clientSecret | quote}};
@@ -36,19 +29,15 @@ set -gx AZURE_TENANT_ID {{.tenantID | quote}};
 set -gx AZURE_SUBSCRIPTION_ID {{.subscriptionID | quote}};
 az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID";
 az account set --subscription "$AZURE_SUBSCRIPTION_ID";
-{{.unsetHint}}
+{{end}}{{template "usage-hint" .__meta}}{{end}}
 
-{{.usageHint}}
-{{end}}{{end}}
-
-{{define "powershell"}}{{if .unset -}}
+{{define "powershell"}}{{if .__meta.unset -}}
 az logout --username "$AZURE_CLIENT_ID";
 Remove-Item -ErrorAction SilentlyContinue Env:\HCLOUD_TOKEN;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CLIENT_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CLIENT_SECRET;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_TENANT_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_SUBSCRIPTION_ID;
-{{.usageHint}}
 {{else -}}
 $Env:AZURE_CLIENT_ID = {{.clientID | quote}};
 $Env:AZURE_CLIENT_SECRET = {{.clientSecret | quote}};
@@ -56,6 +45,4 @@ $Env:AZURE_TENANT_ID = {{.tenantID | quote}};
 $Env:AZURE_SUBSCRIPTION_ID = {{.subscriptionID | quote}};
 az login --service-principal --username "$Env:AZURE_CLIENT_ID" --password "$Env:AZURE_CLIENT_SECRET" --tenant "$Env:AZURE_TENANT_ID";
 az account set --subscription "$Env:AZURE_SUBSCRIPTION_ID";
-{{.unsetHint}}
-{{.usageHint}}
-{{end}}{{end}}
+{{end}}{{template "usage-hint" .__meta}}{{end}}

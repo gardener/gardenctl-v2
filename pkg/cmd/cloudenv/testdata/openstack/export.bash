@@ -8,7 +8,7 @@ export OS_USER_DOMAIN_NAME="domain";
 export OS_USERNAME="user";
 export OS_PASSWORD="secret";
 export OS_REGION_NAME="europe";
-printf 'Successfully configured the "openstack" CLI for your current shell session.\nRun the following command to reset this configuration:\n%s\n' '$ eval $(gardenctl cloud-env --garden test --project project --shoot shoot -u bash)';
+printf 'Successfully configured the "openstack" CLI for your current shell session.\n\n# Run the following command to reset this configuration:\n# eval $(gardenctl cloud-env --garden test --project project --shoot shoot -u bash)\n';
 
 # Run this command to configure the "openstack" CLI for your shell:
 # eval $(gardenctl cloud-env bash)

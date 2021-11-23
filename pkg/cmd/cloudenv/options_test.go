@@ -11,7 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"strings"
+	"regexp"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -396,6 +396,7 @@ var _ = Describe("CloudEnv Options", func() {
 
 				It("should render the template successfully", func() {
 					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
+					fmt.Println(options.Out())
 					Expect(options.Out()).To(Equal(readTestFile("gcp/export.bash")))
 				})
 			})
@@ -469,7 +470,7 @@ var _ = Describe("CloudEnv Options", func() {
 				BeforeEach(func() {
 					providerType = "fail"
 					filename = filepath.Join("templates", providerType+".tmpl")
-					writeTempFile(filename, "{{define \"bash\"}}\nexport TEST_TOKEN={{.testToken | quote }};")
+					writeTempFile(filename, "{{define \"bash\"}}\nexport TEST_TOKEN={{.testToken | quote}};")
 				})
 
 				AfterEach(func() {
@@ -514,32 +515,45 @@ var _ = Describe("CloudEnv Options", func() {
 			})
 		})
 
-		Describe("generating the usage hint", func() {
-			const (
-				exportFmt = "# Run this command to configure the %q CLI for your shell:"
-				unsetFmt  = "# Run this command to reset the configuration of the %q CLI for your shell:"
-			)
-
+		Describe("rendering the usage hint", func() {
 			var (
-				providerType string
-				hint         []string
+				providerType,
+				targetFlags,
+				cli string
+				meta map[string]interface{}
+				t    = target.NewTarget("test", "project", "seed", "shoot")
 			)
 
 			BeforeEach(func() {
-				providerType = "aws"
+				providerType = "alicloud"
+				cli = cloudenv.CloudProvider(providerType).CLI()
 				shell = "bash"
 				unset = false
+				options.CurrentTarget = t.WithSeedName("")
 			})
 
 			JustBeforeEach(func() {
-				hint = strings.Split(options.GenerateUsageHint(providerType), "\n")
-				Expect(hint).To(HaveLen(2))
+				meta = options.GenerateMetadata(providerType)
+				targetFlags = fmt.Sprintf("--garden %s --project %s --shoot %s", t.GardenName(), t.ProjectName(), t.ShootName())
+				Expect(cloudenv.BaseTemplate().ExecuteTemplate(options.IOStreams.Out, "usage-hint", meta)).To(Succeed())
 			})
 
 			Context("when configuring the shell", func() {
-				It("should generate the usage hint", func() {
-					Expect(hint[0]).To(Equal(fmt.Sprintf(exportFmt, providerType)))
-					Expect(hint[1]).To(Equal(fmt.Sprintf("# eval $(%s %s)", cmdPath, shell)))
+				It("should generate the metadata and render the export hint", func() {
+					Expect(meta["unset"]).To(BeFalse())
+					Expect(meta["shell"]).To(Equal(shell))
+					Expect(meta["cli"]).To(Equal(cli))
+					Expect(meta["commandPath"]).To(Equal(options.CmdPath))
+					Expect(meta["targetFlags"]).To(Equal(targetFlags))
+					regex := regexp.MustCompile(`(?m)\Aprintf '(.*)\\n\\n(.*)\\n(.*)\\n';\n\n(.*)\n(.*)\n\z`)
+					match := regex.FindStringSubmatch(options.Out())
+					Expect(match).NotTo(BeNil())
+					Expect(len(match)).To(Equal(6))
+					Expect(match[1]).To(Equal(fmt.Sprintf("Successfully configured the %q CLI for your current shell session.", cli)))
+					Expect(match[2]).To(Equal("# Run the following command to reset this configuration:"))
+					Expect(match[3]).To(Equal(fmt.Sprintf("# eval $(%s %s -u %s)", options.CmdPath, targetFlags, shell)))
+					Expect(match[4]).To(Equal(fmt.Sprintf("# Run this command to configure the %q CLI for your shell:", cli)))
+					Expect(match[5]).To(Equal(fmt.Sprintf("# eval $(%s %s)", options.CmdPath, shell)))
 				})
 			})
 
@@ -548,49 +562,14 @@ var _ = Describe("CloudEnv Options", func() {
 					unset = true
 				})
 
-				It("should generate the usage hint", func() {
-					Expect(hint[0]).To(Equal(fmt.Sprintf(unsetFmt, providerType)))
-					Expect(hint[1]).To(Equal(fmt.Sprintf("# eval $(%s -u %s)", cmdPath, shell)))
-				})
-			})
-
-			Context("when clouprovider is alicloud", func() {
-				BeforeEach(func() {
-					providerType = "alicloud"
-				})
-
-				It("should generate the usage hint", func() {
-					Expect(hint[0]).To(Equal(fmt.Sprintf(exportFmt, "aliyun")))
-				})
-			})
-
-			Context("when clouprovider is gcp", func() {
-				BeforeEach(func() {
-					providerType = "gcp"
-				})
-
-				It("should generate the usage hint", func() {
-					Expect(hint[0]).To(Equal(fmt.Sprintf(exportFmt, "gcloud")))
-				})
-			})
-
-			Context("when shell is fish", func() {
-				BeforeEach(func() {
-					shell = "fish"
-				})
-
-				It("should generate the usage hint", func() {
-					Expect(hint[1]).To(Equal(fmt.Sprintf("# eval (%s %s)", cmdPath, shell)))
-				})
-			})
-
-			Context("when shell is powershell", func() {
-				BeforeEach(func() {
-					shell = "powershell"
-				})
-
-				It("should generate the usage hint", func() {
-					Expect(hint[1]).To(Equal(fmt.Sprintf("# & %s %s | Invoke-Expression", cmdPath, shell)))
+				It("should generate the metadata and render the unset", func() {
+					Expect(meta["unset"]).To(BeTrue())
+					regex := regexp.MustCompile(`(?m)\A\n(.*)\n(.*)\n\z`)
+					match := regex.FindStringSubmatch(options.Out())
+					Expect(match).NotTo(BeNil())
+					Expect(len(match)).To(Equal(3))
+					Expect(match[1]).To(Equal(fmt.Sprintf("# Run this command to reset the configuration of the %q CLI for your shell:", cli)))
+					Expect(match[2]).To(Equal(fmt.Sprintf("# eval $(%s -u %s)", options.CmdPath, shell)))
 				})
 			})
 		})

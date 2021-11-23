@@ -20,6 +20,7 @@ var (
 	ValidShells      = validShells
 	ParseCredentials = parseCredentials
 	GetKeyStoneURL   = getKeyStoneURL
+	BaseTemplate     = baseTemplate
 )
 
 func NewTestOptions() *TestOptions {
@@ -43,17 +44,13 @@ func (o *TestOptions) ExecTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Se
 }
 
 func (o *TestOptions) ParseTmpl(name string) (*template.Template, error) {
-	return parseTemplate(CloudProvider(name), o.GardenDir)
+	return parseTemplate(baseTemplate(), CloudProvider(name), o.GardenDir)
 }
 
-func (o *TestOptions) GenerateUsageHint(name string) string {
-	return o.generateUsageHint(CloudProvider(name))
+func (o *TestOptions) GenerateMetadata(name string) map[string]interface{} {
+	return o.generateMetadata(CloudProvider(name))
 }
 
 func (o *TestOptions) Out() string {
 	return o.out.String()
-}
-
-func ValidateShell(name string) error {
-	return Shell(name).Validate()
 }

@@ -14,20 +14,17 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"text/template"
-
-	"github.com/gardener/gardenctl-v2/pkg/target"
-
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 
 	sprigv3 "github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/target"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
@@ -157,7 +154,7 @@ func (o *cmdOptions) AddFlags(flags *pflag.FlagSet) {
 func (o *cmdOptions) execTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile) error {
 	c := CloudProvider(shoot.Spec.Provider.Type)
 
-	t, err := parseTemplate(c, o.GardenDir)
+	t, err := parseTemplate(baseTemplate(), c, o.GardenDir)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("parsing template for cloud provider %q failed: %w", c, err)
@@ -169,10 +166,7 @@ func (o *cmdOptions) execTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Sec
 	region := shoot.Spec.Region
 
 	m := make(map[string]interface{})
-	m["shell"] = o.Shell
-	m["unset"] = o.Unset
-	m["usageHint"] = o.generateUsageHint(c)
-	m["unsetHint"] = o.generateUnsetHint(c)
+	m["__meta"] = o.generateMetadata(c)
 	m["region"] = region
 
 	for key, value := range secret.Data {
@@ -202,59 +196,44 @@ func (o *cmdOptions) execTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Sec
 	return t.ExecuteTemplate(o.IOStreams.Out, o.Shell, m)
 }
 
-// generateUsageHint generate a cloud and shell specific usage hint
-func (o *cmdOptions) generateUnsetHint(c CloudProvider) string {
-	s := Shell(o.Shell)
-	unsetHintFormat := `printf 'Successfully configured the %q CLI for your current shell session.\nRun the following command to reset this configuration:\n%%s\n' '%s';`
-	t := o.CurrentTarget
-
+// generateMetadata generate a cloud and shell specific usage hint
+func (o *cmdOptions) generateMetadata(c CloudProvider) map[string]interface{} {
 	var flags string
+
+	t := o.CurrentTarget
 	if t.ProjectName() != "" {
 		flags = fmt.Sprintf("--garden %s --project %s --shoot %s", t.GardenName(), t.ProjectName(), t.ShootName())
 	} else {
 		flags = fmt.Sprintf("--garden %s --seed %s --shoot %s", t.GardenName(), t.SeedName(), t.ShootName())
 	}
 
-	cmdWithPrompt := s.Prompt(runtime.GOOS) + s.EvalCommand(strings.Join([]string{
-		o.CmdPath,
-		flags,
-		"-u",
-		o.Shell,
-	}, " "))
-
-	return fmt.Sprintf(unsetHintFormat, c, cmdWithPrompt)
+	return map[string]interface{}{
+		"unset":       o.Unset,
+		"shell":       o.Shell,
+		"cli":         c.CLI(),
+		"prompt":      Shell(o.Shell).Prompt(runtime.GOOS),
+		"commandPath": o.CmdPath,
+		"targetFlags": flags,
+	}
 }
 
-// generateUsageHint generate a cloud and shell specific usage hint
-func (o *cmdOptions) generateUsageHint(c CloudProvider) string {
-	cmd := o.CmdPath
-	action := "configure"
+// bBaseTemplate returns a new base template with sprig function and the generic usage hint templates
+func baseTemplate() *template.Template {
+	tmpl := template.New("base").Funcs(sprigv3.TxtFuncMap())
+	filename := filepath.Join("templates", "usage-hint.tmpl")
 
-	if o.Unset {
-		cmd += " -u"
-		action = "reset the configuration of"
-	}
-
-	cmd += " " + o.Shell
-	s := Shell(o.Shell)
-	prefix := s.Comment() + " "
-
-	return strings.Join([]string{
-		prefix + fmt.Sprintf("Run this command to %s the %q CLI for your shell:", action, c.CLI()),
-		prefix + s.EvalCommand(cmd),
-	}, "\n")
+	return template.Must(tmpl.ParseFS(fsys, filename))
 }
 
 // parseTemplate returns the parsed template found whether in the embedded filesystem or in the given directory
-func parseTemplate(c CloudProvider, dir string) (*template.Template, error) {
+func parseTemplate(bt *template.Template, c CloudProvider, dir string) (*template.Template, error) {
 	var tmpl *template.Template
 
-	baseTmpl := template.New("base").Funcs(sprigv3.TxtFuncMap())
 	filename := filepath.Join("templates", string(c)+".tmpl")
-	defaultTmpl, err := baseTmpl.ParseFS(fsys, filename)
 
+	defaultTmpl, err := bt.ParseFS(fsys, filename)
 	if err != nil {
-		tmpl, err = baseTmpl.ParseFiles(filepath.Join(dir, filename))
+		tmpl, err = bt.ParseFiles(filepath.Join(dir, filename))
 	} else {
 		tmpl, err = defaultTmpl.ParseFiles(filepath.Join(dir, filename))
 		if err != nil {
@@ -279,11 +258,6 @@ const (
 )
 
 var validShells = []Shell{bash, zsh, fish, powershell}
-
-// Comment returns the character use for comments
-func (s Shell) Comment() string {
-	return "#"
-}
 
 // EvalCommand returns the script that evaluates the given command
 func (s Shell) EvalCommand(cmd string) string {
@@ -324,7 +298,7 @@ func (s Shell) AddCommand(parent *cobra.Command, runE func(cmd *cobra.Command, a
 To load the cloud provider CLI configuration script in your current shell session:
 %s
 `
-	cmdWithPrompt := s.EvalCommand(fmt.Sprintf("%s%s %s", s.Prompt(runtime.GOOS), parent.CommandPath(), s))
+	cmdWithPrompt := s.Prompt(runtime.GOOS) + s.EvalCommand(fmt.Sprintf("%s %s", parent.CommandPath(), s))
 	shell := string(s)
 	cmd := &cobra.Command{
 		Use:   shell,

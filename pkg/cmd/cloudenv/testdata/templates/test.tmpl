@@ -1,6 +1,5 @@
-{{define "bash"}}{{if .unset -}}
+{{define "bash"}}{{if .__meta.unset -}}
 unset TEST_TOKEN;
 {{else -}}
-export TEST_TOKEN={{.testToken | quote }};
-{{end}}
-{{.usageHint}}{{end}}
+export TEST_TOKEN={{.testToken | quote}};
+{{end}}{{template "usage-hint" .__meta}}{{end}}

@@ -44,6 +44,7 @@ To extend this list of cloud providers place a template for the new provider in 
 of the gardenctl home directory ($GCTL_HOME or $HOME/.garden).
 Please refer to the templates of the already supported cloud providers which can be found
 here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/cloudenv/templates.`,
+		Aliases: []string{"provider-env"},
 	}
 	o.AddFlags(cmd.PersistentFlags())
 
