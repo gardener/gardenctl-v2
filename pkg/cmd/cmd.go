@@ -14,7 +14,8 @@ import (
 	"path/filepath"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
-	cmdcloudenv "github.com/gardener/gardenctl-v2/pkg/cmd/cloudenv"
+	cmdpenv "github.com/gardener/gardenctl-v2/pkg/cmd/cloudenv"
+	cmdkenv "github.com/gardener/gardenctl-v2/pkg/cmd/kenv"
 	cmdssh "github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	cmdversion "github.com/gardener/gardenctl-v2/pkg/cmd/version"
@@ -98,7 +99,8 @@ func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.C
 	cmd.AddCommand(cmdssh.NewCmdSSH(f, cmdssh.NewSSHOptions(ioStreams)))
 	cmd.AddCommand(cmdtarget.NewCmdTarget(f, cmdtarget.NewTargetOptions(ioStreams)))
 	cmd.AddCommand(cmdversion.NewCmdVersion(f, cmdversion.NewVersionOptions(ioStreams)))
-	cmd.AddCommand(cmdcloudenv.NewCmdCloudEnv(f, ioStreams))
+	cmd.AddCommand(cmdpenv.NewCmdCloudEnv(f, ioStreams))
+	cmd.AddCommand(cmdkenv.NewCmdKubectlEnv(f, ioStreams))
 
 	return cmd
 }

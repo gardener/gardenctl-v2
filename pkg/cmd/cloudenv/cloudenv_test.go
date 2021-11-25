@@ -36,9 +36,9 @@ var _ = Describe("CloudEnv Command", func() {
 		})
 
 		It("should have Use, Flags and SubCommands", func() {
-			Expect(cmd.Use).To(Equal("cloud-env"))
-			Expect(cmd.Aliases).To(HaveLen(1))
-			Expect(cmd.Aliases[0]).To(Equal("provider-env"))
+			Expect(cmd.Use).To(Equal("provider-env"))
+			Expect(cmd.Aliases).To(HaveLen(2))
+			Expect(cmd.Aliases).To(Equal([]string{"p-env", "cloud-env"}))
 			Expect(cmd.Flag("output")).To(BeNil())
 			flag := cmd.Flag("unset")
 			Expect(flag).NotTo(BeNil())

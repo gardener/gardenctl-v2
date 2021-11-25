@@ -82,6 +82,21 @@ func (mr *MockManagerMockRecorder) GardenClient(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GardenClient", reflect.TypeOf((*MockManager)(nil).GardenClient), arg0)
 }
 
+// Kubeconfig mocks base method.
+func (m *MockManager) Kubeconfig(arg0 context.Context, arg1 target.Target) ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Kubeconfig", arg0, arg1)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Kubeconfig indicates an expected call of Kubeconfig.
+func (mr *MockManagerMockRecorder) Kubeconfig(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Kubeconfig", reflect.TypeOf((*MockManager)(nil).Kubeconfig), arg0, arg1)
+}
+
 // SeedClient mocks base method.
 func (m *MockManager) SeedClient(arg0 context.Context, arg1 target.Target) (client.Client, error) {
 	m.ctrl.T.Helper()
@@ -97,19 +112,19 @@ func (mr *MockManagerMockRecorder) SeedClient(arg0, arg1 interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SeedClient", reflect.TypeOf((*MockManager)(nil).SeedClient), arg0, arg1)
 }
 
-// ShootClusterClient mocks base method.
-func (m *MockManager) ShootClusterClient(arg0 context.Context, arg1 target.Target) (client.Client, error) {
+// ShootClient mocks base method.
+func (m *MockManager) ShootClient(arg0 context.Context, arg1 target.Target) (client.Client, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ShootClusterClient", arg0, arg1)
+	ret := m.ctrl.Call(m, "ShootClient", arg0, arg1)
 	ret0, _ := ret[0].(client.Client)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ShootClusterClient indicates an expected call of ShootClusterClient.
-func (mr *MockManagerMockRecorder) ShootClusterClient(arg0, arg1 interface{}) *gomock.Call {
+// ShootClient indicates an expected call of ShootClient.
+func (mr *MockManagerMockRecorder) ShootClient(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShootClusterClient", reflect.TypeOf((*MockManager)(nil).ShootClusterClient), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShootClient", reflect.TypeOf((*MockManager)(nil).ShootClient), arg0, arg1)
 }
 
 // TargetFlags mocks base method.

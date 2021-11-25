@@ -22,7 +22,7 @@ func NewCmdCloudEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	}
 	runE := base.WrapRunE(o, f)
 	cmd := &cobra.Command{
-		Use:   "cloud-env",
+		Use:   "provider-env",
 		Short: "generate the cloud provider CLI configuration script for the specified shell",
 		Long: `Generate the cloud provider CLI configuration script for the specified shell.
 See each sub-command's help for details on how to use the generated script.
@@ -44,7 +44,7 @@ To overwrite the default templates or add support for custom (out of tree) cloud
 for the respective provider in the "templates" folder of the gardenctl home directory ($GCTL_HOME or $HOME/.garden).
 Please refer to the templates of the already supported cloud providers which can be found
 here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/cloudenv/templates.`,
-		Aliases: []string{"provider-env"},
+		Aliases: []string{"p-env", "cloud-env"},
 	}
 	o.AddFlags(cmd.PersistentFlags())
 

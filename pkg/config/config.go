@@ -108,6 +108,17 @@ func contains(values []string, value string) bool {
 	return false
 }
 
+// Kubeconfig returns the kubeconfig for a configured garden cluster
+func (config *Config) Kubeconfig(name string) ([]byte, error) {
+	for _, g := range config.Gardens {
+		if g.Name == name {
+			return []byte(g.Kubeconfig), nil
+		}
+	}
+
+	return nil, fmt.Errorf("garden cluster %q is not configured", name)
+}
+
 // GardenName returns the unique name of a Garden cluster from the list of configured Gardens
 // The first Garden name where nameOrAlias matches either name or one of the defined aliases will be returned
 func (config *Config) GardenName(nameOrAlias string) (string, error) {

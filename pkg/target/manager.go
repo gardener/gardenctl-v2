@@ -17,10 +17,11 @@ import (
 )
 
 var (
-	ErrNoGardenTargeted  = errors.New("no garden cluster targeted")
-	ErrNoProjectTargeted = errors.New("no project targeted")
-	ErrNoSeedTargeted    = errors.New("no seed cluster targeted")
-	ErrNoShootTargeted   = errors.New("no shoot targeted")
+	ErrNoGardenTargeted              = errors.New("no garden cluster targeted")
+	ErrNoProjectTargeted             = errors.New("no project targeted")
+	ErrNoSeedTargeted                = errors.New("no seed cluster targeted")
+	ErrNoShootTargeted               = errors.New("no shoot targeted")
+	ErrNeitherProjectNorSeedTargeted = errors.New("neither project nor seed are targeted")
 )
 
 //go:generate mockgen -destination=./mocks/mock_manager.go -package=mocks github.com/gardener/gardenctl-v2/pkg/target Manager
@@ -62,10 +63,12 @@ type Manager interface {
 	// of a pattern
 	TargetMatchPattern(ctx context.Context, value string) error
 
+	// Kubeconfig returns the kubeconfig for the given target cluster
+	Kubeconfig(ctx context.Context, t Target) ([]byte, error)
 	// SeedClient controller-runtime client for accessing the configured seed cluster
 	SeedClient(ctx context.Context, t Target) (client.Client, error)
 	// ShootClusterClient controller-runtime client for accessing the configured shoot cluster
-	ShootClusterClient(ctx context.Context, t Target) (client.Client, error)
+	ShootClient(ctx context.Context, t Target) (client.Client, error)
 
 	// Configuration returns the current gardenctl configuration
 	Configuration() *config.Config
@@ -338,6 +341,44 @@ func (m *managerImpl) patchTargetWithTarget(target Target) error {
 	})
 }
 
+func (m *managerImpl) Kubeconfig(ctx context.Context, t Target) ([]byte, error) {
+	if t.ShootName() != "" {
+		return m.ensureKubeconfig(t, func(client gardenclient.Client) ([]byte, error) {
+			var namespace string
+
+			if t.ProjectName() != "" {
+				project, err := client.GetProject(ctx, t.ProjectName())
+				if err != nil {
+					return nil, err
+				}
+
+				namespace = *project.Spec.Namespace
+			} else {
+				shoot, err := client.FindShoot(ctx, t.AsListOption())
+				if err != nil {
+					return nil, err
+				}
+
+				namespace = shoot.Namespace
+			}
+
+			return client.GetShootKubeconfig(ctx, namespace, t.ShootName())
+		})
+	}
+
+	if t.SeedName() != "" {
+		return m.ensureKubeconfig(t, func(client gardenclient.Client) ([]byte, error) {
+			return client.GetSeedKubeconfig(ctx, t.SeedName())
+		})
+	}
+
+	if t.GardenName() != "" {
+		return m.Configuration().Kubeconfig(t.GardenName())
+	}
+
+	return nil, ErrNoGardenTargeted
+}
+
 func (m *managerImpl) SeedClient(ctx context.Context, t Target) (client.Client, error) {
 	t, err := m.getTarget(t)
 	if err != nil {
@@ -352,7 +393,7 @@ func (m *managerImpl) SeedClient(ctx context.Context, t Target) (client.Client, 
 		return nil, ErrNoSeedTargeted
 	}
 
-	kubeconfig, err := m.ensureSeedKubeconfig(ctx, t)
+	kubeconfig, err := m.Kubeconfig(ctx, t)
 	if err != nil {
 		return nil, err
 	}
@@ -360,34 +401,7 @@ func (m *managerImpl) SeedClient(ctx context.Context, t Target) (client.Client, 
 	return m.clientProvider.FromBytes(kubeconfig)
 }
 
-func (m *managerImpl) ensureSeedKubeconfig(ctx context.Context, t Target) ([]byte, error) {
-	if kubeconfig, err := m.kubeconfigCache.Read(t); err == nil {
-		return kubeconfig, nil
-	}
-
-	gardenClient, err := m.GardenClient(t.GardenName())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
-	}
-
-	seed, err := gardenClient.GetSeed(ctx, t.SeedName())
-	if err != nil {
-		return nil, fmt.Errorf("invalid seed cluster: %w", err)
-	}
-
-	secret, err := gardenClient.GetSecret(ctx, seed.Spec.SecretRef.Namespace, seed.Spec.SecretRef.Name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve seed kubeconfig: %w", err)
-	}
-
-	if err := m.kubeconfigCache.Write(t, secret.Data["kubeconfig"]); err != nil {
-		return nil, fmt.Errorf("failed to update kubeconfig cache: %w", err)
-	}
-
-	return secret.Data["kubeconfig"], nil
-}
-
-func (m *managerImpl) ShootClusterClient(ctx context.Context, t Target) (client.Client, error) {
+func (m *managerImpl) ShootClient(ctx context.Context, t Target) (client.Client, error) {
 	t, err := m.getTarget(t)
 	if err != nil {
 		return nil, err
@@ -403,14 +417,14 @@ func (m *managerImpl) ShootClusterClient(ctx context.Context, t Target) (client.
 	// the shoot, which is also needed because we need to locate the kubeconfig
 	// on disk.
 	if t.SeedName() == "" && t.ProjectName() == "" {
-		return nil, errors.New("neither project nor seed are targeted")
+		return nil, ErrNeitherProjectNorSeedTargeted
 	}
 
 	if t.ShootName() == "" {
 		return nil, ErrNoShootTargeted
 	}
 
-	kubeconfig, err := m.ensureShootKubeconfig(ctx, t)
+	kubeconfig, err := m.Kubeconfig(ctx, t)
 	if err != nil {
 		return nil, err
 	}
@@ -418,31 +432,26 @@ func (m *managerImpl) ShootClusterClient(ctx context.Context, t Target) (client.
 	return m.clientProvider.FromBytes(kubeconfig)
 }
 
-func (m *managerImpl) ensureShootKubeconfig(ctx context.Context, t Target) ([]byte, error) {
+func (m *managerImpl) ensureKubeconfig(t Target, loader func(gardenclient.Client) ([]byte, error)) ([]byte, error) {
 	if kubeconfig, err := m.kubeconfigCache.Read(t); err == nil {
 		return kubeconfig, nil
 	}
 
-	gardenClient, err := m.GardenClient(t.GardenName())
+	client, err := m.GardenClient(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	shoot, err := gardenClient.FindShoot(ctx, t.AsListOption())
+	value, err := loader(client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch shoot: %w", err)
+		return nil, err
 	}
 
-	secret, err := gardenClient.GetSecret(ctx, shoot.Namespace, fmt.Sprintf("%s.kubeconfig", shoot.Name))
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve seed kubeconfig: %w", err)
-	}
-
-	if err := m.kubeconfigCache.Write(t, secret.Data["kubeconfig"]); err != nil {
+	if err := m.kubeconfigCache.Write(t, value); err != nil {
 		return nil, fmt.Errorf("failed to update kubeconfig cache: %w", err)
 	}
 
-	return secret.Data["kubeconfig"], nil
+	return value, nil
 }
 
 func (m *managerImpl) patchTarget(patch func(t *targetImpl) error) error {

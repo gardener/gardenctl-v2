@@ -1,0 +1,29 @@
+{{define "default"}}{{if .__meta.unset -}}
+rm -f $KUBECONFIG;
+export KUBECONFIG=$KUBECONFIG_SAVED;
+unset KUBECONFIG_SAVED;
+{{else -}}
+export KUBECONFIG_SAVED=$KUBECONFIG;
+export KUBECONFIG={{.filename | quote}};
+{{end}}{{template "usage-hint" .__meta}}{{end}}
+
+{{define "bash"}}{{template "default" .}}{{end}}
+{{define "zsh"}}{{template "default" .}}{{end}}
+
+{{define "fish"}}{{if .__meta.unset -}}
+rm -f $KUBECONFIG;
+set -gx KUBECONFIG $KUBECONFIG_SAVED;
+set -e KUBECONFIG_SAVED;
+{{else -}}
+set -gx KUBECONFIG_SAVED $KUBECONFIG;
+set -gx KUBECONFIG {{.filename | quote}};
+{{end}}{{template "usage-hint" .__meta}}{{end}}
+
+{{define "powershell"}}{{if .__meta.unset -}}
+if (Test-Path $Env:KUBECONFIG) { Remove-Item $Env:KUBECONFIG }
+$Env:KUBECONFIG = $Env:KUBECONFIG_SAVED;
+Remove-Item -ErrorAction SilentlyContinue Env:\KUBECONFIG_SAVED;
+{{else -}}
+$Env:KUBECONFIG_SAVED = $Env:KUBECONFIG;
+$Env:KUBECONFIG = {{.filename | quote}};
+{{end}}{{template "usage-hint" .__meta}}{{end}}
