@@ -8,6 +8,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"regexp"
 
@@ -112,7 +113,7 @@ func contains(values []string, value string) bool {
 func (config *Config) Kubeconfig(name string) ([]byte, error) {
 	for _, g := range config.Gardens {
 		if g.Name == name {
-			return []byte(g.Kubeconfig), nil
+			return ioutil.ReadFile(g.Kubeconfig)
 		}
 	}
 

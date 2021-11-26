@@ -150,7 +150,7 @@ func (m *managerImpl) TargetGarden(ctx context.Context, gardenNameOrAlias string
 		return err
 	}
 
-	return m.patchTargetWithTarget(target)
+	return m.updateTarget(target)
 }
 
 func (m *managerImpl) UnsetTargetGarden() (string, error) {
@@ -189,7 +189,7 @@ func (m *managerImpl) TargetProject(ctx context.Context, projectName string) err
 		return err
 	}
 
-	return m.patchTargetWithTarget(target)
+	return m.updateTarget(target)
 }
 
 func (m *managerImpl) UnsetTargetProject() (string, error) {
@@ -226,7 +226,7 @@ func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 		return err
 	}
 
-	return m.patchTargetWithTarget(target)
+	return m.updateTarget(target)
 }
 
 func (m *managerImpl) UnsetTargetSeed() (string, error) {
@@ -262,7 +262,7 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 		return err
 	}
 
-	return m.patchTargetWithTarget(target)
+	return m.updateTarget(target)
 }
 
 func (m *managerImpl) UnsetTargetShoot() (string, error) {
@@ -327,10 +327,10 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		return err
 	}
 
-	return m.patchTargetWithTarget(target)
+	return m.updateTarget(target)
 }
 
-func (m *managerImpl) patchTargetWithTarget(target Target) error {
+func (m *managerImpl) updateTarget(target Target) error {
 	return m.patchTarget(func(t *targetImpl) error {
 		t.Garden = target.GardenName()
 		t.Project = target.ProjectName()
@@ -343,7 +343,7 @@ func (m *managerImpl) patchTargetWithTarget(target Target) error {
 
 func (m *managerImpl) Kubeconfig(ctx context.Context, t Target) ([]byte, error) {
 	if t.ShootName() != "" {
-		return m.ensureKubeconfig(t, func(client gardenclient.Client) ([]byte, error) {
+		return m.getKubeconfig(t, func(client gardenclient.Client) ([]byte, error) {
 			var namespace string
 
 			if t.ProjectName() != "" {
@@ -367,7 +367,7 @@ func (m *managerImpl) Kubeconfig(ctx context.Context, t Target) ([]byte, error) 
 	}
 
 	if t.SeedName() != "" {
-		return m.ensureKubeconfig(t, func(client gardenclient.Client) ([]byte, error) {
+		return m.getKubeconfig(t, func(client gardenclient.Client) ([]byte, error) {
 			return client.GetSeedKubeconfig(ctx, t.SeedName())
 		})
 	}
@@ -432,9 +432,9 @@ func (m *managerImpl) ShootClient(ctx context.Context, t Target) (client.Client,
 	return m.clientProvider.FromBytes(kubeconfig)
 }
 
-func (m *managerImpl) ensureKubeconfig(t Target, loader func(gardenclient.Client) ([]byte, error)) ([]byte, error) {
-	if kubeconfig, err := m.kubeconfigCache.Read(t); err == nil {
-		return kubeconfig, nil
+func (m *managerImpl) getKubeconfig(t Target, loadKubeconfig func(gardenclient.Client) ([]byte, error)) ([]byte, error) {
+	if value, err := m.kubeconfigCache.Read(t); err == nil {
+		return value, nil
 	}
 
 	client, err := m.GardenClient(t.GardenName())
@@ -442,7 +442,7 @@ func (m *managerImpl) ensureKubeconfig(t Target, loader func(gardenclient.Client
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	value, err := loader(client)
+	value, err := loadKubeconfig(client)
 	if err != nil {
 		return nil, err
 	}
