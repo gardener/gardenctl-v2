@@ -225,7 +225,6 @@ func (g *clientImpl) GetShootBySeed(ctx context.Context, seedName string, shootN
 
 // GetShootByProject returns a Gardener shoot resource in a project by name
 func (g *clientImpl) GetShootByProject(ctx context.Context, projectName, shootName string) (*gardencorev1beta1.Shoot, error) {
-	// project name set, get shoot within project namespace
 	project, err := g.GetProject(ctx, projectName)
 	if err != nil {
 		return nil, err
