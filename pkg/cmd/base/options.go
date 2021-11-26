@@ -20,7 +20,7 @@ import (
 
 //go:generate mockgen -destination=./mocks/mock_options.go -package=mocks github.com/gardener/gardenctl-v2/pkg/cmd/base CommandOptions
 
-// CommandOptions is the basic interface for command options.
+// CommandOptions is the base interface for command options.
 type CommandOptions interface {
 	// Complete adapts from the command line args to the data required.
 	Complete(util.Factory, *cobra.Command, []string) error

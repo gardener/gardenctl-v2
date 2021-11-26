@@ -396,7 +396,6 @@ var _ = Describe("CloudEnv Options", func() {
 
 				It("should render the template successfully", func() {
 					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
-					fmt.Println(options.Out())
 					Expect(options.Out()).To(Equal(readTestFile("gcp/export.bash")))
 				})
 			})
@@ -510,7 +509,7 @@ var _ = Describe("CloudEnv Options", func() {
 
 				It("should fail with invalid provider config", func() {
 					cloudProfile.Spec.ProviderConfig = nil
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(fmt.Sprintf("invalid providerConfig in CloudProfile %q", cloudProfileName)))
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to get openstack provider config:")))
 				})
 			})
 		})
@@ -619,7 +618,7 @@ var _ = Describe("CloudEnv Options", func() {
 		})
 
 		It("should succeed for all valid shells", func() {
-			data, err := cloudenv.ParseCredentials(secret, &credentials)
+			data, err := cloudenv.ParseGCPCredentials(secret, &credentials)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(data)).To(Equal("{\"client_email\":\"test@example.org\",\"project_id\":\"test\"}"))
 			Expect(credentials).To(HaveKeyWithValue("project_id", "test"))
@@ -628,13 +627,13 @@ var _ = Describe("CloudEnv Options", func() {
 
 		It("should fail with invalid secret", func() {
 			secret.Data["serviceaccount.json"] = nil
-			_, err := cloudenv.ParseCredentials(secret, &credentials)
-			Expect(err).To(MatchError(fmt.Sprintf("invalid serviceaccount in Secret %q", secretName)))
+			_, err := cloudenv.ParseGCPCredentials(secret, &credentials)
+			Expect(err).To(MatchError(fmt.Sprintf("no \"serviceaccount.json\" data in Secret %q", secretName)))
 		})
 
 		It("should fail with invalid json", func() {
 			secret.Data["serviceaccount.json"] = []byte("{")
-			_, err := cloudenv.ParseCredentials(secret, &credentials)
+			_, err := cloudenv.ParseGCPCredentials(secret, &credentials)
 			Expect(err).To(MatchError("unexpected end of JSON input"))
 		})
 	})
@@ -682,13 +681,13 @@ var _ = Describe("CloudEnv Options", func() {
 		It("should fail with not found", func() {
 			cloudProfile.Spec.ProviderConfig = nil
 			_, err := cloudenv.GetKeyStoneURL(cloudProfile, region)
-			Expect(err).To(MatchError(fmt.Sprintf("invalid providerConfig in CloudProfile %q", cloudProfileName)))
+			Expect(err).To(MatchError(MatchRegexp("^failed to get openstack provider config:")))
 		})
 
 		It("should fail with not found", func() {
 			region = "asia"
 			_, err := cloudenv.GetKeyStoneURL(cloudProfile, region)
-			Expect(err).To(MatchError(fmt.Sprintf("cannot find keyStoneURL for region %q in CloudProfile %q", region, cloudProfileName)))
+			Expect(err).To(MatchError(fmt.Sprintf("cannot find keystone URL for region %q in cloudprofile %q", region, cloudProfileName)))
 		})
 	})
 })

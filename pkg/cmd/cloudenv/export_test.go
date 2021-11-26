@@ -17,10 +17,10 @@ import (
 )
 
 var (
-	ValidShells      = validShells
-	ParseCredentials = parseCredentials
-	GetKeyStoneURL   = getKeyStoneURL
-	BaseTemplate     = baseTemplate
+	ValidShells         = validShells
+	ParseGCPCredentials = parseGCPCredentials
+	GetKeyStoneURL      = getKeyStoneURL
+	BaseTemplate        = baseTemplate
 )
 
 func NewTestOptions() *TestOptions {

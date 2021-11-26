@@ -250,6 +250,7 @@ func (g *clientImpl) ListShoots(ctx context.Context, listOpt client.ListOption) 
 	return shootList.Items, nil
 }
 
+// GetSecret returns a Kubernetes namespace resource
 func (g *clientImpl) GetNamespace(ctx context.Context, namespaceName string) (*corev1.Namespace, error) {
 	namespace := &corev1.Namespace{}
 	key := types.NamespacedName{Name: namespaceName}
@@ -263,14 +264,17 @@ func (g *clientImpl) GetNamespace(ctx context.Context, namespaceName string) (*c
 
 // GetSecretBinding returns a Gardener secretbinding resource
 func (g *clientImpl) GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error) {
-	secretBinding := &gardencorev1beta1.SecretBinding{}
-	if err := g.c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, secretBinding); err != nil {
-		return nil, fmt.Errorf("failed to get secretbinding %q in namespace %q: %w", name, namespace, err)
+	secretBinding := gardencorev1beta1.SecretBinding{}
+	key := types.NamespacedName{Namespace: namespace, Name: name}
+
+	if err := g.c.Get(ctx, key, &secretBinding); err != nil {
+		return nil, fmt.Errorf("failed to get secretbinding %v: %w", key, err)
 	}
 
-	return secretBinding, nil
+	return &secretBinding, nil
 }
 
+// GetSecret returns a Kubernetes secret resource
 func (g *clientImpl) GetSecret(ctx context.Context, namespaceName string, secretName string) (*corev1.Secret, error) {
 	secret := corev1.Secret{}
 	key := types.NamespacedName{Name: secretName, Namespace: namespaceName}
@@ -282,6 +286,7 @@ func (g *clientImpl) GetSecret(ctx context.Context, namespaceName string, secret
 	return &secret, nil
 }
 
+// GetCloudProfile returns a Gardener cloudprofile resource
 func (g *clientImpl) GetCloudProfile(ctx context.Context, name string) (*gardencorev1beta1.CloudProfile, error) {
 	cloudProfile := gardencorev1beta1.CloudProfile{}
 	key := types.NamespacedName{Name: name}
@@ -293,6 +298,7 @@ func (g *clientImpl) GetCloudProfile(ctx context.Context, name string) (*gardenc
 	return &cloudProfile, nil
 }
 
+// RuntimeClient returns the underlying Kubernetes runtime client
 func (g *clientImpl) RuntimeClient() client.Client {
 	return g.c
 }
@@ -300,9 +306,11 @@ func (g *clientImpl) RuntimeClient() client.Client {
 type CloudProfile gardencorev1beta1.CloudProfile
 
 func (cp CloudProfile) GetOpenstackProviderConfig() (*openstackv1alpha1.CloudProfileConfig, error) {
+	const apiVersion = "core.gardener.cloud/v1alpha1.CloudProfile"
+
 	providerConfig := cp.Spec.ProviderConfig
 	if providerConfig == nil {
-		return nil, fmt.Errorf("cannot fetch providerConfig of core.gardener.cloud/v1alpha1.CloudProfile %s", cp.Name)
+		return nil, fmt.Errorf("providerConfig of %s %s is empty", apiVersion, cp.Name)
 	}
 
 	var cloudProfileConfig *openstackv1alpha1.CloudProfileConfig
@@ -311,7 +319,7 @@ func (cp CloudProfile) GetOpenstackProviderConfig() (*openstackv1alpha1.CloudPro
 	case providerConfig.Object != nil:
 		var ok bool
 		if cloudProfileConfig, ok = providerConfig.Object.(*openstackv1alpha1.CloudProfileConfig); !ok {
-			return nil, fmt.Errorf("cannot cast providerConfig of core.gardener.cloud/v1beta1.CloudProfile %s", cp.Name)
+			return nil, fmt.Errorf("cannot cast providerConfig of %s %s", apiVersion, cp.Name)
 		}
 
 	case providerConfig.Raw != nil:
@@ -322,8 +330,10 @@ func (cp CloudProfile) GetOpenstackProviderConfig() (*openstackv1alpha1.CloudPro
 			},
 		}
 		if _, _, err := decoder.Decode(providerConfig.Raw, nil, cloudProfileConfig); err != nil {
-			return nil, fmt.Errorf("cannot decode providerConfig of core.gardener.cloud/v1beta1.CloudProfile %s", cp.Name)
+			return nil, fmt.Errorf("cannot decode providerConfig of %s %s", apiVersion, cp.Name)
 		}
+	default:
+		return nil, fmt.Errorf("providerConfig of %s %s contains neither raw data nor a decoded object", apiVersion, cp.Name)
 	}
 
 	return cloudProfileConfig, nil

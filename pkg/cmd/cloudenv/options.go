@@ -177,7 +177,7 @@ func (o *cmdOptions) execTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Sec
 	case gcp:
 		credentials := make(map[string]interface{})
 
-		data, err := parseCredentials(secret, &credentials)
+		data, err := parseGCPCredentials(secret, &credentials)
 		if err != nil {
 			return err
 		}
@@ -344,11 +344,7 @@ func (c CloudProvider) CLI() string {
 func getKeyStoneURL(cloudProfile *gardencorev1beta1.CloudProfile, region string) (string, error) {
 	config, err := gardenclient.CloudProfile(*cloudProfile).GetOpenstackProviderConfig()
 	if err != nil {
-		return "", fmt.Errorf("invalid providerConfig in CloudProfile %q", cloudProfile.Name)
-	}
-
-	if config.KeyStoneURL != "" {
-		return config.KeyStoneURL, nil
+		return "", fmt.Errorf("failed to get openstack provider config: %w", err)
 	}
 
 	for _, keyStoneURL := range config.KeyStoneURLs {
@@ -357,16 +353,20 @@ func getKeyStoneURL(cloudProfile *gardencorev1beta1.CloudProfile, region string)
 		}
 	}
 
-	return "", fmt.Errorf("cannot find keyStoneURL for region %q in CloudProfile %q", region, cloudProfile.Name)
-}
-
-func parseCredentials(secret *corev1.Secret, credentials interface{}) ([]byte, error) {
-	privateKey := secret.Data["serviceaccount.json"]
-	if privateKey == nil {
-		return nil, fmt.Errorf("invalid serviceaccount in Secret %q", secret.Name)
+	if config.KeyStoneURL != "" {
+		return config.KeyStoneURL, nil
 	}
 
-	if err := json.Unmarshal(privateKey, credentials); err != nil {
+	return "", fmt.Errorf("cannot find keystone URL for region %q in cloudprofile %q", region, cloudProfile.Name)
+}
+
+func parseGCPCredentials(secret *corev1.Secret, credentials interface{}) ([]byte, error) {
+	data := secret.Data["serviceaccount.json"]
+	if data == nil {
+		return nil, fmt.Errorf("no \"serviceaccount.json\" data in Secret %q", secret.Name)
+	}
+
+	if err := json.Unmarshal(data, credentials); err != nil {
 		return nil, err
 	}
 
