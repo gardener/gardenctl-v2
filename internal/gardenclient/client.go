@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/fields"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
@@ -62,9 +64,9 @@ type Client interface {
 	GetShootBySeed(ctx context.Context, seedName string, shootName string) (*gardencorev1beta1.Shoot, error)
 	// FindShoot tries to get a shoot via project (namespace) first, if not provided it tries to find the shot
 	// with an (optional) seedname
-	FindShoot(ctx context.Context, shootName string, projectName string, seedName string) (*gardencorev1beta1.Shoot, error)
+	FindShoot(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.Shoot, error)
 	// ListShoots returns all Gardener shoot resources, filtered by a list option
-	ListShoots(ctx context.Context, listOpt client.ListOption) ([]gardencorev1beta1.Shoot, error)
+	ListShoots(ctx context.Context, opts ...client.ListOption) ([]gardencorev1beta1.Shoot, error)
 
 	// GetSecretBinding returns a Gardener secretbinding resource
 	GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error)
@@ -92,8 +94,6 @@ func NewGardenClient(client client.Client) Client {
 		c: client,
 	}
 }
-
-var _ Client = &clientImpl{}
 
 func (g *clientImpl) GetProject(ctx context.Context, projectName string) (*gardencorev1beta1.Project, error) {
 	project := &gardencorev1beta1.Project{}
@@ -233,21 +233,82 @@ func (g *clientImpl) GetShootByProject(ctx context.Context, projectName, shootNa
 	return g.GetShoot(ctx, *project.Spec.Namespace, shootName)
 }
 
-func (g *clientImpl) FindShoot(ctx context.Context, shootName string, projectName string, seedName string) (*gardencorev1beta1.Shoot, error) {
-	if projectName != "" {
-		return g.GetShootByProject(ctx, projectName, shootName)
+func (g *clientImpl) FindShoot(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.Shoot, error) {
+	shoots, err := g.ListShoots(ctx, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list shoot clusters: %w", err)
 	}
 
-	return g.GetShootBySeed(ctx, seedName, shootName)
+	if len(shoots) == 0 {
+		return nil, fmt.Errorf("no shoot found matching the given list options %q", opts)
+	}
+
+	if len(shoots) > 1 {
+		return nil, fmt.Errorf("multiple shoots found matching the given list options %q, please target a project or seed to make your choice unambiguous", opts)
+	}
+
+	return &shoots[0], nil
 }
 
-func (g *clientImpl) ListShoots(ctx context.Context, listOpt client.ListOption) ([]gardencorev1beta1.Shoot, error) {
-	shootList := &gardencorev1beta1.ShootList{}
-	if err := g.c.List(ctx, shootList, listOpt); err != nil {
-		return nil, fmt.Errorf("failed to list shoots with list option %q: %w", listOpt, err)
+func (g *clientImpl) resolveListOptions(ctx context.Context, opts ...client.ListOption) error {
+	for _, o := range opts {
+		if o, ok := o.(InProject); ok {
+			if err := o.resolve(ctx, g); err != nil {
+				return err
+			}
+		}
 	}
 
-	return shootList.Items, nil
+	return nil
+}
+
+func (g *clientImpl) ListShoots(ctx context.Context, opts ...client.ListOption) ([]gardencorev1beta1.Shoot, error) {
+	shootList := &gardencorev1beta1.ShootList{}
+
+	if err := g.resolveListOptions(ctx, opts...); err != nil {
+		return nil, err
+	}
+
+	if err := g.c.List(ctx, shootList, opts...); err != nil {
+		return nil, fmt.Errorf("failed to list shoots with list options %q: %w", opts, err)
+	}
+
+	selectors := []fields.Selector{}
+
+	for _, opt := range opts {
+		o := &client.ListOptions{}
+		opt.ApplyToList(o)
+		selector := o.FieldSelector
+
+		if selector != nil && !selector.Empty() {
+			selectors = append(selectors, selector)
+		}
+	}
+
+	if len(selectors) == 0 {
+		return shootList.Items, nil
+	}
+
+	// filter found shoots
+	items := []gardencorev1beta1.Shoot{}
+
+	for _, shoot := range shootList.Items {
+		matches := true
+		fields := shootFields(shoot)
+
+		for _, selector := range selectors {
+			if !selector.Matches(&fields) {
+				matches = false
+				break
+			}
+		}
+
+		if matches {
+			items = append(items, shoot)
+		}
+	}
+
+	return items, nil
 }
 
 // GetSecret returns a Kubernetes namespace resource
@@ -337,4 +398,79 @@ func (cp CloudProfile) GetOpenstackProviderConfig() (*openstackv1alpha1.CloudPro
 	}
 
 	return cloudProfileConfig, nil
+}
+
+// NewInProject creates a new InProject list option.
+func NewInProject(name string) InProject {
+	return &inProjectImpl{name: name}
+}
+
+// InProject restricts the list operation to the namespace of the given project.
+type InProject interface {
+	client.ListOption
+	resolve(context.Context, Client) error
+}
+
+type inProjectImpl struct {
+	name string
+	o    *client.InNamespace
+}
+
+var _ InProject = &inProjectImpl{}
+
+// ApplyToList applies this configuration to the given list options.
+func (p *inProjectImpl) ApplyToList(opts *client.ListOptions) {
+	if p.o != nil {
+		p.o.ApplyToList(opts)
+	}
+}
+
+func (p *inProjectImpl) resolve(ctx context.Context, g Client) error {
+	if p.o == nil {
+		project, err := g.GetProject(ctx, p.name)
+		if err != nil {
+			return fmt.Errorf("failed to resolve project namespace: %w", err)
+		}
+
+		if project.Spec.Namespace == nil || *project.Spec.Namespace == "" {
+			return fmt.Errorf("project %q has not yet been assigned to a namespace", p.name)
+		}
+
+		inNamespace := client.InNamespace(*project.Spec.Namespace)
+		p.o = &inNamespace
+	}
+
+	return nil
+}
+
+type shootFields gardencorev1beta1.Shoot
+
+var _ fields.Fields = &shootFields{}
+
+func (f *shootFields) Has(field string) bool {
+	switch field {
+	case "metadata.name":
+		return true
+	case "metadata.namespace":
+		return true
+	case gardencore.ShootSeedName:
+		return f.Spec.SeedName != nil
+	}
+
+	return false
+}
+
+func (f *shootFields) Get(field string) string {
+	switch field {
+	case "metadata.name":
+		return f.Name
+	case "metadata.namespace":
+		return f.Namespace
+	case gardencore.ShootSeedName:
+		if f.Spec.SeedName != nil {
+			return *f.Spec.SeedName
+		}
+	}
+
+	return ""
 }

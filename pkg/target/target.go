@@ -9,6 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+	gardencore "github.com/gardener/gardener/pkg/apis/core"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 /*
@@ -47,6 +52,8 @@ type Target interface {
 	Validate() error
 	// IsEmpty returns true if all values of the target are empty
 	IsEmpty() bool
+	// AsListOptions returns the target as list option
+	AsListOptions() []client.ListOption
 }
 
 type targetImpl struct {
@@ -152,4 +159,20 @@ func (t *targetImpl) String() string {
 
 func (t *targetImpl) IsEmpty() bool {
 	return t.Garden == "" && t.Project == "" && t.Seed == "" && t.Shoot == ""
+}
+
+func (t *targetImpl) AsListOptions() []client.ListOption {
+	opts := []client.ListOption{}
+
+	if t.ShootName() != "" {
+		opts = append(opts, client.MatchingFields{"metadata.name": t.ShootName()})
+	}
+
+	if t.ProjectName() != "" {
+		opts = append(opts, gardenclient.NewInProject(t.ProjectName()))
+	} else if t.SeedName() != "" {
+		opts = append(opts, client.MatchingFields{gardencore.ShootSeedName: t.SeedName()})
+	}
+
+	return opts
 }

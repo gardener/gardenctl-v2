@@ -8,7 +8,6 @@ import (
 	context "context"
 	reflect "reflect"
 
-	v1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	gomock "github.com/golang/mock/gomock"
 	v1 "k8s.io/api/core/v1"
@@ -39,18 +38,23 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // FindShoot mocks base method.
-func (m *MockClient) FindShoot(arg0 context.Context, arg1, arg2, arg3 string) (*v1beta1.Shoot, error) {
+func (m *MockClient) FindShoot(arg0 context.Context, arg1 ...client.ListOption) (*v1beta1.Shoot, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindShoot", arg0, arg1, arg2, arg3)
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "FindShoot", varargs...)
 	ret0, _ := ret[0].(*v1beta1.Shoot)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindShoot indicates an expected call of FindShoot.
-func (mr *MockClientMockRecorder) FindShoot(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) FindShoot(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindShoot", reflect.TypeOf((*MockClient)(nil).FindShoot), arg0, arg1, arg2, arg3)
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindShoot", reflect.TypeOf((*MockClient)(nil).FindShoot), varargs...)
 }
 
 // GetCloudProfile mocks base method.
@@ -81,21 +85,6 @@ func (m *MockClient) GetNamespace(arg0 context.Context, arg1 string) (*v1.Namesp
 func (mr *MockClientMockRecorder) GetNamespace(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNamespace", reflect.TypeOf((*MockClient)(nil).GetNamespace), arg0, arg1)
-}
-
-// GetOpenstackCloudProfileConfig mocks base method.
-func (m *MockClient) GetOpenstackCloudProfileConfig(arg0 context.Context, arg1 string) (*v1alpha1.CloudProfileConfig, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetOpenstackCloudProfileConfig", arg0, arg1)
-	ret0, _ := ret[0].(*v1alpha1.CloudProfileConfig)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetOpenstackCloudProfileConfig indicates an expected call of GetOpenstackCloudProfileConfig.
-func (mr *MockClientMockRecorder) GetOpenstackCloudProfileConfig(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOpenstackCloudProfileConfig", reflect.TypeOf((*MockClient)(nil).GetOpenstackCloudProfileConfig), arg0, arg1)
 }
 
 // GetProject mocks base method.
@@ -249,18 +238,23 @@ func (mr *MockClientMockRecorder) ListSeeds(arg0 interface{}) *gomock.Call {
 }
 
 // ListShoots mocks base method.
-func (m *MockClient) ListShoots(arg0 context.Context, arg1 client.ListOption) ([]v1beta1.Shoot, error) {
+func (m *MockClient) ListShoots(arg0 context.Context, arg1 ...client.ListOption) ([]v1beta1.Shoot, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListShoots", arg0, arg1)
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListShoots", varargs...)
 	ret0, _ := ret[0].([]v1beta1.Shoot)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListShoots indicates an expected call of ListShoots.
-func (mr *MockClientMockRecorder) ListShoots(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) ListShoots(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListShoots", reflect.TypeOf((*MockClient)(nil).ListShoots), arg0, arg1)
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListShoots", reflect.TypeOf((*MockClient)(nil).ListShoots), varargs...)
 }
 
 // RuntimeClient mocks base method.

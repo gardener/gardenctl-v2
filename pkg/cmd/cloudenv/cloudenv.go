@@ -40,8 +40,8 @@ Please refer to the installation instructions of the respective provider:
 * Alibaba cloud (aliyun) - alicloud - https://www.alibabacloud.com/help/product/29991.htm
 * Hetzner cloud (hcloud) - https://community.hetzner.com/tutorials/howto-hcloud-cli
 
-To extend this list of cloud providers place a template for the new provider in the "templates" folder
-of the gardenctl home directory ($GCTL_HOME or $HOME/.garden).
+To overwrite the default templates or add support for custom (out of tree) cloud providers place a template
+for the respective provider in the "templates" folder of the gardenctl home directory ($GCTL_HOME or $HOME/.garden).
 Please refer to the templates of the already supported cloud providers which can be found
 here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/cloudenv/templates.`,
 		Aliases: []string{"provider-env"},

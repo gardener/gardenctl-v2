@@ -204,8 +204,9 @@ var _ = Describe("CloudEnv Options", func() {
 
 				Context("and the shoot is targeted via project", func() {
 					JustBeforeEach(func() {
-						manager.EXPECT().CurrentTarget().Return(t.WithSeedName(""), nil)
-						client.EXPECT().GetShootByProject(ctx, t.ProjectName(), t.ShootName()).Return(shoot, nil)
+						currentTarget := t.WithSeedName("")
+						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+						client.EXPECT().FindShoot(ctx, currentTarget.AsListOptions()).Return(shoot, nil)
 					})
 
 					It("does the work when the shoot is targeted via project", func() {
@@ -223,8 +224,9 @@ var _ = Describe("CloudEnv Options", func() {
 
 				Context("and the shoot is targeted via seed", func() {
 					JustBeforeEach(func() {
-						manager.EXPECT().CurrentTarget().Return(t.WithProjectName(""), nil)
-						client.EXPECT().GetShootBySeed(ctx, t.SeedName(), t.ShootName()).Return(shoot, nil)
+						currentTarget := t.WithProjectName("")
+						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+						client.EXPECT().FindShoot(ctx, currentTarget.AsListOptions()).Return(shoot, nil)
 					})
 
 					It("does the work when the shoot is targeted via seed", func() {
@@ -281,35 +283,40 @@ var _ = Describe("CloudEnv Options", func() {
 					})
 
 					It("should fail with GetShootByProjectError", func() {
-						manager.EXPECT().CurrentTarget().Return(t.WithSeedName(""), nil)
-						client.EXPECT().GetShootByProject(ctx, t.ProjectName(), t.ShootName()).Return(nil, err)
+						currentTarget := t.WithSeedName("")
+						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+						client.EXPECT().FindShoot(ctx, currentTarget.AsListOptions()).Return(nil, err)
 						Expect(options.Run(factory)).To(BeIdenticalTo(err))
 					})
 
 					It("should fail with GetShootBySeedError", func() {
-						manager.EXPECT().CurrentTarget().Return(t.WithProjectName(""), nil)
-						client.EXPECT().GetShootBySeed(ctx, t.SeedName(), t.ShootName()).Return(nil, err)
+						currentTarget := t.WithProjectName("")
+						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+						client.EXPECT().FindShoot(ctx, currentTarget.AsListOptions()).Return(nil, err)
 						Expect(options.Run(factory)).To(BeIdenticalTo(err))
 					})
 
 					It("should fail with GetSecretBindingError", func() {
-						manager.EXPECT().CurrentTarget().Return(t.WithSeedName(""), nil)
-						client.EXPECT().GetShootByProject(ctx, t.ProjectName(), t.ShootName()).Return(shoot, nil)
+						currentTarget := t.WithSeedName("")
+						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+						client.EXPECT().FindShoot(ctx, currentTarget.AsListOptions()).Return(shoot, nil)
 						client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, shoot.Spec.SecretBindingName).Return(nil, err)
 						Expect(options.Run(factory)).To(BeIdenticalTo(err))
 					})
 
 					It("should fail with GetSecretError", func() {
-						manager.EXPECT().CurrentTarget().Return(t.WithSeedName(""), nil)
-						client.EXPECT().GetShootByProject(ctx, t.ProjectName(), t.ShootName()).Return(shoot, nil)
+						currentTarget := t.WithSeedName("")
+						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+						client.EXPECT().FindShoot(ctx, currentTarget.AsListOptions()).Return(shoot, nil)
 						client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, shoot.Spec.SecretBindingName).Return(secretBinding, nil)
 						client.EXPECT().GetSecret(ctx, secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name).Return(nil, err)
 						Expect(options.Run(factory)).To(BeIdenticalTo(err))
 					})
 
 					It("should fail with GetCloudProfileError", func() {
-						manager.EXPECT().CurrentTarget().Return(t.WithSeedName(""), nil)
-						client.EXPECT().GetShootByProject(ctx, t.ProjectName(), t.ShootName()).Return(shoot, nil)
+						currentTarget := t.WithSeedName("")
+						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+						client.EXPECT().FindShoot(ctx, currentTarget.AsListOptions()).Return(shoot, nil)
 						client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, shoot.Spec.SecretBindingName).Return(secretBinding, nil)
 						client.EXPECT().GetSecret(ctx, secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name).Return(secret, nil)
 						client.EXPECT().GetCloudProfile(ctx, cloudProfileName).Return(nil, err)

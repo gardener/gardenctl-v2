@@ -113,18 +113,9 @@ func (o *cmdOptions) Run(f util.Factory) error {
 
 	ctx := f.Context()
 
-	var shoot *gardencorev1beta1.Shoot
-
-	if projectName != "" {
-		shoot, err = gardenClient.GetShootByProject(ctx, projectName, shootName)
-		if err != nil {
-			return err
-		}
-	} else {
-		shoot, err = gardenClient.GetShootBySeed(ctx, seedName, shootName)
-		if err != nil {
-			return err
-		}
+	shoot, err := gardenClient.FindShoot(ctx, o.CurrentTarget.AsListOptions()...)
+	if err != nil {
+		return err
 	}
 
 	secretBinding, err := gardenClient.GetSecretBinding(ctx, shoot.Namespace, shoot.Spec.SecretBindingName)
@@ -156,11 +147,11 @@ func (o *cmdOptions) execTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Sec
 
 	t, err := parseTemplate(baseTemplate(), c, o.GardenDir)
 	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("parsing template for cloud provider %q failed: %w", c, err)
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("cloud provider %q is not supported: %w", c, err)
 		}
 
-		return fmt.Errorf("cloud provider %q is not supported: %w", c, err)
+		return fmt.Errorf("parsing template for cloud provider %q failed: %w", c, err)
 	}
 
 	region := shoot.Spec.Region

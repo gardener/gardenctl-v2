@@ -164,7 +164,7 @@ func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBui
 			return err
 		}
 
-		shoot, err := gardenClient.FindShoot(ctx, name, t.ProjectName(), t.SeedName())
+		shoot, err := gardenClient.FindShoot(ctx, t.WithShootName(name).AsListOptions()...)
 		if err != nil {
 			return fmt.Errorf("failed to fetch shoot: %w", err)
 		}

@@ -9,18 +9,18 @@ package util_test
 import (
 	"context"
 	"fmt"
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 
-	. "github.com/gardener/gardenctl-v2/internal/util"
-	"github.com/gardener/gardenctl-v2/pkg/target"
-
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+	. "github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/target"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 var _ = Describe("Target Utilities", func() {
@@ -149,13 +149,14 @@ var _ = Describe("Target Utilities", func() {
 			Expect(project.Name).To(Equal(testUnreadyProject.Name))
 		})
 
-		It("should require a project or seed when targeting a shoot", func() {
+		It("should a valid shoot when not using a project or seed", func() {
 			t := target.NewTarget("a", "", "", testShoot.Name)
 			ctx := context.Background()
 
 			shoot, err := ShootForTarget(ctx, gardenClient, t)
-			Expect(shoot).To(BeNil())
-			Expect(err).To(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(shoot).NotTo(BeNil())
+			Expect(shoot.Name).To(Equal(testShoot.Name))
 		})
 
 		It("should return a valid shoot when using a project", func() {
