@@ -42,9 +42,33 @@ func (w *clientWrapper) List(ctx context.Context, list client.ObjectList, opts .
 		if apiVersion == "core.gardener.cloud/v1beta1" {
 			switch kind {
 			case "ShootList":
-				filterShootItems(list, fieldSelector)
+				filterItems(list, fieldSelector, func(vItem reflect.Value) fields.Set {
+					fieldSet := fields.Set{}
+					vName := vItem.FieldByName("Name")
+					fieldSet["metadata.name"] = vName.String()
+					vSpec := vItem.FieldByName("Spec")
+					vSeedName := vSpec.FieldByName("SeedName")
+
+					if !vSeedName.IsNil() {
+						fieldSet[gardencore.ShootSeedName] = reflect.Indirect(vSeedName).String()
+					}
+
+					return fieldSet
+				})
 			case "ProjectList":
-				filterProjectItems(list, fieldSelector)
+				filterItems(list, fieldSelector, func(vItem reflect.Value) fields.Set {
+					fieldSet := fields.Set{}
+					vName := vItem.FieldByName("Name")
+					fieldSet["metadata.name"] = vName.String()
+					vSpec := vItem.FieldByName("Spec")
+					vNamespace := vSpec.FieldByName("Namespace")
+
+					if !vNamespace.IsNil() {
+						fieldSet[gardencore.ProjectNamespace] = reflect.Indirect(vNamespace).String()
+					}
+
+					return fieldSet
+				})
 			}
 		}
 	}
@@ -99,50 +123,19 @@ func getFieldSelector(opts ...client.ListOption) fields.Selector {
 	return fields.AndSelectors(fieldSelectors...)
 }
 
-func filterProjectItems(list client.ObjectList, selector fields.Selector) {
+func filterItems(list client.ObjectList, selector fields.Selector, getFieldSet func(reflect.Value) fields.Set) {
 	vList := reflect.Indirect(reflect.ValueOf(list))
 	vItems := vList.FieldByName("Items")
-	items := reflect.MakeSlice(vItems.Type(), 0, vItems.Len())
+	vFilteredItems := reflect.MakeSlice(vItems.Type(), 0, vItems.Len())
 
 	for i := 0; i < vItems.Len(); i++ {
 		vItem := vItems.Index(i)
-		vName := vItem.FieldByName("Name")
-		set := fields.Set{"metadata.name": vName.String()}
-		vSpec := vItem.FieldByName("Spec")
-		vNamespace := vSpec.FieldByName("Namespace")
+		fieldSet := getFieldSet(vItem)
 
-		if !vNamespace.IsNil() {
-			set[gardencore.ProjectNamespace] = reflect.Indirect(vNamespace).String()
-		}
-
-		if selector.Matches(set) {
-			items = reflect.Append(items, vItem)
+		if selector.Matches(fieldSet) {
+			vFilteredItems = reflect.Append(vFilteredItems, vItem)
 		}
 	}
 
-	vItems.Set(items)
-}
-
-func filterShootItems(list client.ObjectList, selector fields.Selector) {
-	vList := reflect.Indirect(reflect.ValueOf(list))
-	vItems := vList.FieldByName("Items")
-	items := reflect.MakeSlice(vItems.Type(), 0, vItems.Len())
-
-	for i := 0; i < vItems.Len(); i++ {
-		vItem := vItems.Index(i)
-		vName := vItem.FieldByName("Name")
-		set := fields.Set{"metadata.name": vName.String()}
-		vSpec := vItem.FieldByName("Spec")
-		vSeedName := vSpec.FieldByName("SeedName")
-
-		if !vSeedName.IsNil() {
-			set[gardencore.ShootSeedName] = reflect.Indirect(vSeedName).String()
-		}
-
-		if selector.Matches(set) {
-			items = reflect.Append(items, vItem)
-		}
-	}
-
-	vItems.Set(items)
+	vItems.Set(vFilteredItems)
 }
