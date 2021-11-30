@@ -8,9 +8,9 @@ package fake
 import (
 	"fmt"
 
-	"github.com/gardener/gardenctl-v2/pkg/target"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 type ClientProvider struct {
@@ -30,7 +30,7 @@ func NewFakeClientProvider() *ClientProvider {
 // WithClient adds an additional client to the provider, which it will
 // return whenever a consumer requests a client with the same key.
 func (p *ClientProvider) WithClient(key string, c client.Client) *ClientProvider {
-	p.fakeClients[key] = c
+	p.fakeClients[key] = Wrap(c)
 	return p
 }
 

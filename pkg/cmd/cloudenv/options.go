@@ -113,7 +113,7 @@ func (o *cmdOptions) Run(f util.Factory) error {
 
 	ctx := f.Context()
 
-	shoot, err := gardenClient.FindShoot(ctx, o.CurrentTarget.AsListOptions()...)
+	shoot, err := gardenClient.FindShoot(ctx, o.CurrentTarget.AsListOption())
 	if err != nil {
 		return err
 	}

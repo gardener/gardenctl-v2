@@ -428,7 +428,7 @@ func (m *managerImpl) ensureShootKubeconfig(ctx context.Context, t Target) ([]by
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	shoot, err := gardenClient.FindShoot(ctx, t.AsListOptions()...)
+	shoot, err := gardenClient.FindShoot(ctx, t.AsListOption())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch shoot: %w", err)
 	}

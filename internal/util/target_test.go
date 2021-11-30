@@ -149,7 +149,7 @@ var _ = Describe("Target Utilities", func() {
 			Expect(project.Name).To(Equal(testUnreadyProject.Name))
 		})
 
-		It("should a valid shoot when not using a project or seed", func() {
+		It("should return a valid shoot when not using a project or seed", func() {
 			t := target.NewTarget("a", "", "", testShoot.Name)
 			ctx := context.Background()
 

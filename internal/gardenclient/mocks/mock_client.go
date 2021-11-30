@@ -177,75 +177,55 @@ func (mr *MockClientMockRecorder) GetShoot(arg0, arg1, arg2 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShoot", reflect.TypeOf((*MockClient)(nil).GetShoot), arg0, arg1, arg2)
 }
 
-// GetShootByProject mocks base method.
-func (m *MockClient) GetShootByProject(arg0 context.Context, arg1, arg2 string) (*v1beta1.Shoot, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetShootByProject", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*v1beta1.Shoot)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetShootByProject indicates an expected call of GetShootByProject.
-func (mr *MockClientMockRecorder) GetShootByProject(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootByProject", reflect.TypeOf((*MockClient)(nil).GetShootByProject), arg0, arg1, arg2)
-}
-
-// GetShootBySeed mocks base method.
-func (m *MockClient) GetShootBySeed(arg0 context.Context, arg1, arg2 string) (*v1beta1.Shoot, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetShootBySeed", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*v1beta1.Shoot)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetShootBySeed indicates an expected call of GetShootBySeed.
-func (mr *MockClientMockRecorder) GetShootBySeed(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootBySeed", reflect.TypeOf((*MockClient)(nil).GetShootBySeed), arg0, arg1, arg2)
-}
-
 // ListProjects mocks base method.
-func (m *MockClient) ListProjects(arg0 context.Context) ([]v1beta1.Project, error) {
+func (m *MockClient) ListProjects(arg0 context.Context, arg1 ...client.ListOption) (*v1beta1.ProjectList, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListProjects", arg0)
-	ret0, _ := ret[0].([]v1beta1.Project)
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListProjects", varargs...)
+	ret0, _ := ret[0].(*v1beta1.ProjectList)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListProjects indicates an expected call of ListProjects.
-func (mr *MockClientMockRecorder) ListProjects(arg0 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) ListProjects(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListProjects", reflect.TypeOf((*MockClient)(nil).ListProjects), arg0)
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListProjects", reflect.TypeOf((*MockClient)(nil).ListProjects), varargs...)
 }
 
 // ListSeeds mocks base method.
-func (m *MockClient) ListSeeds(arg0 context.Context) ([]v1beta1.Seed, error) {
+func (m *MockClient) ListSeeds(arg0 context.Context, arg1 ...client.ListOption) (*v1beta1.SeedList, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSeeds", arg0)
-	ret0, _ := ret[0].([]v1beta1.Seed)
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListSeeds", varargs...)
+	ret0, _ := ret[0].(*v1beta1.SeedList)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListSeeds indicates an expected call of ListSeeds.
-func (mr *MockClientMockRecorder) ListSeeds(arg0 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) ListSeeds(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeeds", reflect.TypeOf((*MockClient)(nil).ListSeeds), arg0)
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeeds", reflect.TypeOf((*MockClient)(nil).ListSeeds), varargs...)
 }
 
 // ListShoots mocks base method.
-func (m *MockClient) ListShoots(arg0 context.Context, arg1 ...client.ListOption) ([]v1beta1.Shoot, error) {
+func (m *MockClient) ListShoots(arg0 context.Context, arg1 ...client.ListOption) (*v1beta1.ShootList, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0}
 	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "ListShoots", varargs...)
-	ret0, _ := ret[0].([]v1beta1.Shoot)
+	ret0, _ := ret[0].(*v1beta1.ShootList)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

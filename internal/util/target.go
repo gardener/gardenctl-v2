@@ -11,35 +11,32 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
-
-	"github.com/gardener/gardenctl-v2/pkg/target"
-
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+	"github.com/gardener/gardenctl-v2/pkg/target"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 // ShootForTarget returns the targeted shoot, if a shoot cluster is targeted and exists otherwise an error.
 func ShootForTarget(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
-	return gardenClient.FindShoot(ctx, t.AsListOptions()...)
+	return gardenClient.FindShoot(ctx, t.AsListOption())
 }
 
-// ShootNamesForTarget returns all possible shoots for a given target. The
-// target must either target a project or a seed (both including a garden).
+// ShootNamesForTarget returns all possible shoots for a given target.
 func ShootNamesForTarget(ctx context.Context, manager target.Manager, t target.Target) ([]string, error) {
 	gardenClient, err := manager.GardenClient(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
 	}
 
-	shoots, err := gardenClient.ListShoots(ctx, t.WithShootName("").AsListOptions()...)
+	shootList, err := gardenClient.ListShoots(ctx, t.WithShootName("").AsListOption())
 	if err != nil {
 		return nil, err
 	}
 
 	names := sets.NewString()
-	for _, shoot := range shoots {
+	for _, shoot := range shootList.Items {
 		names.Insert(shoot.Name)
 	}
 
@@ -64,13 +61,13 @@ func SeedNamesForTarget(ctx context.Context, manager target.Manager, t target.Ta
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
 	}
 
-	seedItems, err := gardenClient.ListSeeds(ctx)
+	seedList, err := gardenClient.ListSeeds(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	names := sets.NewString()
-	for _, seed := range seedItems {
+	for _, seed := range seedList.Items {
 		names.Insert(seed.Name)
 	}
 
@@ -95,13 +92,13 @@ func ProjectNamesForTarget(ctx context.Context, manager target.Manager, t target
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
 	}
 
-	projectItems, err := gardenClient.ListProjects(ctx)
+	projectList, err := gardenClient.ListProjects(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	names := sets.NewString()
-	for _, project := range projectItems {
+	for _, project := range projectList.Items {
 		names.Insert(project.Name)
 	}
 

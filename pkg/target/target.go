@@ -52,8 +52,8 @@ type Target interface {
 	Validate() error
 	// IsEmpty returns true if all values of the target are empty
 	IsEmpty() bool
-	// AsListOptions returns the target as list option
-	AsListOptions() []client.ListOption
+	// AsListOption returns the target as list option
+	AsListOption() client.ListOption
 }
 
 type targetImpl struct {
@@ -161,18 +161,18 @@ func (t *targetImpl) IsEmpty() bool {
 	return t.Garden == "" && t.Project == "" && t.Seed == "" && t.Shoot == ""
 }
 
-func (t *targetImpl) AsListOptions() []client.ListOption {
-	opts := []client.ListOption{}
+func (t *targetImpl) AsListOption() client.ListOption {
+	opt := gardenclient.ShootFilter{}
 
 	if t.ShootName() != "" {
-		opts = append(opts, client.MatchingFields{"metadata.name": t.ShootName()})
+		opt["metadata.name"] = t.ShootName()
 	}
 
 	if t.ProjectName() != "" {
-		opts = append(opts, gardenclient.NewInProject(t.ProjectName()))
+		opt["project"] = t.ProjectName()
 	} else if t.SeedName() != "" {
-		opts = append(opts, client.MatchingFields{gardencore.ShootSeedName: t.SeedName()})
+		opt[gardencore.ShootSeedName] = t.SeedName()
 	}
 
-	return opts
+	return opt
 }
