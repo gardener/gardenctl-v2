@@ -115,7 +115,8 @@ func (o *cmdOptions) execTmpl(kubeconfig []byte) error {
 		m["filename"] = filename
 	}
 
-	t := template.Must(template.New("base").Funcs(sprigv3.TxtFuncMap()).ParseFS(fsys,
+	t := template.New("base").Funcs(sprigv3.TxtFuncMap()).Funcs(template.FuncMap{"shellEscape": util.ShellEscape})
+	t = template.Must(t.ParseFS(fsys,
 		filepath.Join("templates", "kubectl.tmpl"),
 		filepath.Join("templates", "usage-hint.tmpl"),
 	))

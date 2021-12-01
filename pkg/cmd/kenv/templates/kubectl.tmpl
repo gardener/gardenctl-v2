@@ -4,7 +4,7 @@ export KUBECONFIG=$KUBECONFIG_SAVED;
 unset KUBECONFIG_SAVED;
 {{else -}}
 export KUBECONFIG_SAVED=$KUBECONFIG;
-export KUBECONFIG={{.filename | quote}};
+export KUBECONFIG={{.filename | shellEscape}};
 {{end}}{{template "usage-hint" .__meta}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
@@ -16,7 +16,7 @@ set -gx KUBECONFIG $KUBECONFIG_SAVED;
 set -e KUBECONFIG_SAVED;
 {{else -}}
 set -gx KUBECONFIG_SAVED $KUBECONFIG;
-set -gx KUBECONFIG {{.filename | quote}};
+set -gx KUBECONFIG {{.filename | shellEscape}};
 {{end}}{{template "usage-hint" .__meta}}{{end}}
 
 {{define "powershell"}}{{if .__meta.unset -}}
@@ -25,5 +25,5 @@ $Env:KUBECONFIG = $Env:KUBECONFIG_SAVED;
 Remove-Item -ErrorAction SilentlyContinue Env:\KUBECONFIG_SAVED;
 {{else -}}
 $Env:KUBECONFIG_SAVED = $Env:KUBECONFIG;
-$Env:KUBECONFIG = {{.filename | quote}};
+$Env:KUBECONFIG = {{.filename | shellEscape}};
 {{end}}{{template "usage-hint" .__meta}}{{end}}
