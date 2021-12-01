@@ -10,16 +10,16 @@ unset OS_USERNAME;
 unset OS_PASSWORD;
 unset OS_REGION_NAME;
 {{else -}}
-export OS_IDENTITY_API_VERSION="3";
-export OS_AUTH_VERSION="3";
-export OS_AUTH_STRATEGY="keystone";
-export OS_AUTH_URL={{.authURL | quote}};
-export OS_TENANT_NAME={{.tenantName | quote}};
-export OS_PROJECT_DOMAIN_NAME={{.domainName | quote}};
-export OS_USER_DOMAIN_NAME={{.domainName | quote}};
-export OS_USERNAME={{.username | quote}};
-export OS_PASSWORD={{.password | quote}};
-export OS_REGION_NAME={{.region | quote}};
+export OS_IDENTITY_API_VERSION='3';
+export OS_AUTH_VERSION='3';
+export OS_AUTH_STRATEGY='keystone';
+export OS_AUTH_URL={{.authURL | shellEscape}};
+export OS_TENANT_NAME={{.tenantName | shellEscape}};
+export OS_PROJECT_DOMAIN_NAME={{.domainName | shellEscape}};
+export OS_USER_DOMAIN_NAME={{.domainName | shellEscape}};
+export OS_USERNAME={{.username | shellEscape}};
+export OS_PASSWORD={{.password | shellEscape}};
+export OS_REGION_NAME={{.region | shellEscape}};
 {{end}}{{template "usage-hint" .__meta}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
@@ -37,16 +37,16 @@ set -e OS_USERNAME;
 set -e OS_PASSWORD;
 set -e OS_REGION_NAME;
 {{else -}}
-set -gx OS_IDENTITY_API_VERSION "3";
-set -gx OS_AUTH_VERSION "3";
-set -gx OS_AUTH_STRATEGY "keystone";
-set -gx OS_AUTH_URL {{.authURL | quote}};
-set -gx OS_TENANT_NAME {{.tenantName | quote}};
-set -gx OS_PROJECT_DOMAIN_NAME {{.domainName | quote}};
-set -gx OS_USER_DOMAIN_NAME {{.domainName | quote}};
-set -gx OS_USERNAME {{.username | quote}};
-set -gx OS_PASSWORD {{.password | quote}};
-set -gx OS_REGION_NAME {{.region | quote}};
+set -gx OS_IDENTITY_API_VERSION '3';
+set -gx OS_AUTH_VERSION '3';
+set -gx OS_AUTH_STRATEGY 'keystone';
+set -gx OS_AUTH_URL {{.authURL | shellEscape}};
+set -gx OS_TENANT_NAME {{.tenantName | shellEscape}};
+set -gx OS_PROJECT_DOMAIN_NAME {{.domainName | shellEscape}};
+set -gx OS_USER_DOMAIN_NAME {{.domainName | shellEscape}};
+set -gx OS_USERNAME {{.username | shellEscape}};
+set -gx OS_PASSWORD {{.password | shellEscape}};
+set -gx OS_REGION_NAME {{.region | shellEscape}};
 {{end}}{{template "usage-hint" .__meta}}{{end}}
 
 {{define "powershell"}}{{if .__meta.unset -}}
@@ -61,15 +61,15 @@ Remove-Item -ErrorAction SilentlyContinue Env:\OS_USERNAME;
 Remove-Item -ErrorAction SilentlyContinue Env:\OS_PASSWORD;
 Remove-Item -ErrorAction SilentlyContinue Env:\OS_REGION_NAME;
 {{else -}}
-$Env:OS_IDENTITY_API_VERSION = "3";
-$Env:OS_AUTH_VERSION = "3";
-$Env:OS_AUTH_STRATEGY = "keystone";
-$Env:OS_AUTH_URL = {{.authURL | quote}};
-$Env:OS_TENANT_NAME = {{.tenantName | quote}};
-$Env:OS_PROJECT_DOMAIN_NAME = {{.domainName | quote}};
-$Env:OS_USER_DOMAIN_NAME = {{.domainName | quote}};
-$Env:OS_USERNAME = {{.username | quote}};
-$Env:OS_PASSWORD = {{.password | quote}};
-$Env:OS_REGION_NAME = {{.region | quote}};
+$Env:OS_IDENTITY_API_VERSION = '3';
+$Env:OS_AUTH_VERSION = '3';
+$Env:OS_AUTH_STRATEGY = 'keystone';
+$Env:OS_AUTH_URL = {{.authURL | shellEscape}};
+$Env:OS_TENANT_NAME = {{.tenantName | shellEscape}};
+$Env:OS_PROJECT_DOMAIN_NAME = {{.domainName | shellEscape}};
+$Env:OS_USER_DOMAIN_NAME = {{.domainName | shellEscape}};
+$Env:OS_USERNAME = {{.username | shellEscape}};
+$Env:OS_PASSWORD = {{.password | shellEscape}};
+$Env:OS_REGION_NAME = {{.region | shellEscape}};
 {{end}}{{template "usage-hint" .__meta}}{{end}}
 
