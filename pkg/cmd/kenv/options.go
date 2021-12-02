@@ -107,7 +107,7 @@ func (o *cmdOptions) execTmpl(kubeconfig []byte) error {
 	m["__meta"] = o.generateMetadata()
 
 	if !o.Unset {
-		filename, err := writeKubeconfig(o.GardenDir, "kubeconfig.*.yaml", kubeconfig)
+		filename, err := writeKubeconfig(os.TempDir(), "kubeconfig.*.yaml", kubeconfig)
 		if err != nil {
 			return err
 		}
@@ -125,7 +125,7 @@ func (o *cmdOptions) execTmpl(kubeconfig []byte) error {
 }
 
 func writeKubeconfig(dir, pattern string, data []byte) (string, error) {
-	tmpDir := filepath.Join(dir, "tmp")
+	tmpDir := filepath.Join(dir, "garden")
 	if _, err := os.Stat(tmpDir); os.IsNotExist(err) {
 		err := os.Mkdir(tmpDir, os.ModePerm)
 		if err != nil {
