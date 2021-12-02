@@ -65,7 +65,7 @@ type Client interface {
 	GetCloudProfile(ctx context.Context, name string) (*gardencorev1beta1.CloudProfile, error)
 
 	// GetNamespace returns a Kubernetes namespace resource
-	GetNamespace(ctx context.Context, namespace string) (*corev1.Namespace, error)
+	GetNamespace(ctx context.Context, name string) (*corev1.Namespace, error)
 	// GetSecret returns a Kubernetes secret resource
 	GetSecret(ctx context.Context, namespace, name string) (*corev1.Secret, error)
 

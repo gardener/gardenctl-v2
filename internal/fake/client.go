@@ -33,47 +33,50 @@ func (w *clientWrapper) Get(ctx context.Context, key client.ObjectKey, obj clien
 
 func (w *clientWrapper) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
 	err := w.delegate.List(ctx, list, opts...)
+	if err != nil {
+		return err
+	}
 
 	fieldSelector := getFieldSelector(opts...)
-	if !fieldSelector.Empty() {
-		gvk := list.GetObjectKind().GroupVersionKind()
-		apiVersion, kind := gvk.ToAPIVersionAndKind()
+	if fieldSelector.Empty() {
+		return nil
+	}
 
-		if apiVersion == "core.gardener.cloud/v1beta1" {
-			switch kind {
-			case "ShootList":
-				filterItems(list, fieldSelector, func(vItem reflect.Value) fields.Set {
-					fieldSet := fields.Set{}
-					vName := vItem.FieldByName("Name")
-					fieldSet["metadata.name"] = vName.String()
-					vSpec := vItem.FieldByName("Spec")
-					vSeedName := vSpec.FieldByName("SeedName")
+	apiVersion, kind := list.GetObjectKind().GroupVersionKind().ToAPIVersionAndKind()
+	if apiVersion == "core.gardener.cloud/v1beta1" {
+		switch kind {
+		case "ShootList":
+			filterItems(list, fieldSelector, func(vItem reflect.Value) fields.Set {
+				fieldSet := fields.Set{}
+				vName := vItem.FieldByName("Name")
+				fieldSet["metadata.name"] = vName.String()
+				vSpec := vItem.FieldByName("Spec")
+				vSeedName := vSpec.FieldByName("SeedName")
 
-					if !vSeedName.IsNil() {
-						fieldSet[gardencore.ShootSeedName] = reflect.Indirect(vSeedName).String()
-					}
+				if !vSeedName.IsNil() {
+					fieldSet[gardencore.ShootSeedName] = reflect.Indirect(vSeedName).String()
+				}
 
-					return fieldSet
-				})
-			case "ProjectList":
-				filterItems(list, fieldSelector, func(vItem reflect.Value) fields.Set {
-					fieldSet := fields.Set{}
-					vName := vItem.FieldByName("Name")
-					fieldSet["metadata.name"] = vName.String()
-					vSpec := vItem.FieldByName("Spec")
-					vNamespace := vSpec.FieldByName("Namespace")
+				return fieldSet
+			})
+		case "ProjectList":
+			filterItems(list, fieldSelector, func(vItem reflect.Value) fields.Set {
+				fieldSet := fields.Set{}
+				vName := vItem.FieldByName("Name")
+				fieldSet["metadata.name"] = vName.String()
+				vSpec := vItem.FieldByName("Spec")
+				vNamespace := vSpec.FieldByName("Namespace")
 
-					if !vNamespace.IsNil() {
-						fieldSet[gardencore.ProjectNamespace] = reflect.Indirect(vNamespace).String()
-					}
+				if !vNamespace.IsNil() {
+					fieldSet[gardencore.ProjectNamespace] = reflect.Indirect(vNamespace).String()
+				}
 
-					return fieldSet
-				})
-			}
+				return fieldSet
+			})
 		}
 	}
 
-	return err
+	return nil
 }
 
 func (w *clientWrapper) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
