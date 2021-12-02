@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -273,19 +274,36 @@ func (g *clientImpl) GetSeedKubeconfig(ctx context.Context, name string) ([]byte
 }
 
 func (g *clientImpl) GetShootKubeconfig(ctx context.Context, namespace, name string) ([]byte, error) {
+	var data map[string][]byte
+
 	key := types.NamespacedName{Namespace: namespace, Name: name}
 
 	cm, err := g.GetConfigMap(ctx, namespace, name+".kubeconfig")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get kubeconfig for shoot %v: %w", key, err)
+		// TODO: remove this fallback before relasing v1
+		if !apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to get kubeconfig for shoot %v: %w", key, err)
+		}
+
+		secret, err := g.GetSecret(ctx, namespace, name+".kubeconfig")
+		if err != nil {
+			return nil, fmt.Errorf("failed to get kubeconfig for shoot %v: %w", key, err)
+		}
+
+		data = secret.Data
+	} else {
+		data = map[string][]byte{}
+		for key, value := range cm.Data {
+			data[key] = []byte(value)
+		}
 	}
 
-	value, ok := cm.Data["kubeconfig"]
+	value, ok := data["kubeconfig"]
 	if !ok {
 		return nil, fmt.Errorf("invalid kubeconfig-configmap for shoot %v: %w", key, err)
 	}
 
-	return []byte(value), nil
+	return value, nil
 }
 
 func (g *clientImpl) GetCloudProfile(ctx context.Context, name string) (*gardencorev1beta1.CloudProfile, error) {
