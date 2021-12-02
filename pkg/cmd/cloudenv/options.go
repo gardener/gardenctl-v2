@@ -14,9 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"text/template"
-	"unicode"
 
 	sprigv3 "github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
@@ -212,7 +210,7 @@ func (o *cmdOptions) generateMetadata(c CloudProvider) map[string]interface{} {
 
 // bBaseTemplate returns a new base template with sprig function and the generic usage hint templates
 func baseTemplate() *template.Template {
-	tmpl := template.New("base").Funcs(sprigv3.TxtFuncMap()).Funcs(template.FuncMap{"shellEscape": shellEscape})
+	tmpl := template.New("base").Funcs(sprigv3.TxtFuncMap()).Funcs(template.FuncMap{"shellEscape": util.ShellEscape})
 	filename := filepath.Join("templates", "usage-hint.tmpl")
 
 	return template.Must(tmpl.ParseFS(fsys, filename))
@@ -364,30 +362,4 @@ func parseGCPCredentials(secret *corev1.Secret, credentials interface{}) ([]byte
 	}
 
 	return json.Marshal(credentials)
-}
-
-func shellEscape(values ...interface{}) string {
-	out := make([]string, 0, len(values))
-
-	for _, v := range values {
-		if v != nil {
-			s := fmt.Sprintf("%v", v)
-			s = strings.ReplaceAll(s, "'", "'\"'\"'")
-			s = stripUnsafe(s)
-			s = "'" + s + "'"
-			out = append(out, s)
-		}
-	}
-
-	return strings.Join(out, " ")
-}
-
-func stripUnsafe(s string) string {
-	return strings.Map(func(r rune) rune {
-		if unicode.IsPrint(r) {
-			return r
-		}
-
-		return -1
-	}, s)
 }
