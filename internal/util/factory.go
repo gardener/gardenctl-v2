@@ -34,6 +34,10 @@ type Factory interface {
 	// returned slice can contain IPv6, IPv4 or both, in no particular
 	// order.
 	PublicIPs(context.Context) ([]string, error)
+	// GetConfigFile returns the location of the gardenctlv2 configuration file.
+	// This can be overriden via a CLI flag and defaults to ~/.garden/gardenctlv2.yaml
+	// if empty.
+	GetConfigFile() string
 }
 
 // FactoryImpl implements util.Factory interface
@@ -58,6 +62,10 @@ type FactoryImpl struct {
 }
 
 var _ Factory = &FactoryImpl{}
+
+func (f *FactoryImpl) GetConfigFile() string {
+	return f.ConfigFile
+}
 
 func (f *FactoryImpl) Context() context.Context {
 	return context.Background()

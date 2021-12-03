@@ -11,6 +11,8 @@ import (
 	"os"
 	"regexp"
 
+	"k8s.io/component-base/cli/flag"
+
 	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v3"
 )
@@ -27,14 +29,27 @@ type Config struct {
 
 // Garden represents one garden cluster
 type Garden struct {
-	// Name is a unique identifier of this Garden that can be used to target this Garden
-	// The value is considered when evaluating the garden matcher pattern
-	Name string `yaml:"name"`
+	// ClusterIdentity is a unique identifier of this Garden that can be used to target this Garden
+	ClusterIdentity string `yaml:"clusterIdentifier"`
 	// Kubeconfig holds the path for the kubeconfig of the garden cluster
 	Kubeconfig string `yaml:"kubeconfig"`
-	// Aliases is a list of alternative names that can be used to target this Garden
-	// Each value is considered when evaluating the garden matcher pattern
-	Aliases []string `yaml:"aliases"`
+	// Context if set, context overwrites the current-context of the cluster kubeconfig
+	Context string `yaml:"context"`
+	// Alias is an alternativ name that can be used to target this Garden
+	Alias string `yaml:"alias"`
+	// MatchPatterns is a list of regex patterns that can be defined to use custom input formats for targeting
+	// Use named capturing groups to match target values.
+	// Supported capturing groups: project, namespace, shoot
+	MatchPatterns []string `yaml:"matchPatterns"`
+}
+
+// Name returns the name of the Garden which is either the cluster identity or, if configured, the cluster alias
+func (garden *Garden) Name() string {
+	if garden.Alias != "" {
+		return garden.Alias
+	}
+
+	return garden.ClusterIdentity
 }
 
 // LoadFromFile parses a gardenctl config file and returns a Config struct
@@ -98,30 +113,15 @@ type PatternMatch struct {
 	Shoot string
 }
 
-func contains(values []string, value string) bool {
-	for _, v := range values {
-		if v == value {
-			return true
-		}
-	}
-
-	return false
-}
-
-// GardenName returns the unique name of a Garden cluster from the list of configured Gardens
-// The first Garden name where nameOrAlias matches either name or one of the defined aliases will be returned
-func (config *Config) GardenName(nameOrAlias string) (string, error) {
+// Garden returns a Garden cluster from the list of configured Gardens
+func (config *Config) Garden(name string) (*Garden, error) {
 	for _, g := range config.Gardens {
-		if g.Name == nameOrAlias {
-			return g.Name, nil
-		}
-
-		if contains(g.Aliases, nameOrAlias) {
-			return g.Name, nil
+		if g.ClusterIdentity == name || g.Name() == name {
+			return &g, nil
 		}
 	}
 
-	return "", fmt.Errorf("garden with name or alias %q is not defined in gardenctl configuration", nameOrAlias)
+	return nil, fmt.Errorf("garden with identity or alias %q is not defined in gardenctl configuration", name)
 }
 
 // PatternKey is a key that can be used to identify a value in a pattern
@@ -173,4 +173,70 @@ func (config *Config) MatchPattern(value string) (*PatternMatch, error) {
 	}
 
 	return nil, errors.New("the provided value does not match any pattern")
+}
+
+// SetGarden adds or updates a Garden in the configuration
+func (config *Config) SetGarden(clusterIdentity string, kubeconfigFile flag.StringFlag, contextName flag.StringFlag, alias flag.StringFlag, patterns []string, configFilename string) error {
+	var garden *Garden
+
+	for i, g := range config.Gardens {
+		if g.ClusterIdentity == clusterIdentity {
+			garden = &config.Gardens[i]
+			break
+		}
+	}
+
+	if garden != nil {
+		// update existing garden in configuration
+		if kubeconfigFile.Provided() {
+			garden.Kubeconfig = kubeconfigFile.Value()
+		}
+
+		if contextName.Provided() {
+			garden.Context = contextName.Value()
+		}
+
+		if alias.Provided() {
+			garden.Alias = alias.Value()
+		}
+
+		if patterns != nil {
+			if len(patterns[0]) > 0 {
+				garden.MatchPatterns = patterns
+			} else {
+				garden.MatchPatterns = []string{}
+			}
+		}
+	} else {
+		newGarden := Garden{
+			ClusterIdentity: clusterIdentity,
+			Kubeconfig:      kubeconfigFile.Value(),
+			Context:         contextName.Value(),
+			Alias:           alias.Value(),
+			MatchPatterns:   patterns,
+		}
+
+		config.Gardens = append(config.Gardens, newGarden)
+	}
+
+	return config.SaveToFile(configFilename)
+}
+
+// DeleteGarden deletes a Garden from the configuration
+func (config *Config) DeleteGarden(clusterIdentity string, configFilename string) error {
+	var newGardens []Garden
+
+	for _, g := range config.Gardens {
+		if g.ClusterIdentity != clusterIdentity {
+			newGardens = append(newGardens, g)
+		}
+	}
+
+	if len(config.Gardens) == len(newGardens) {
+		return fmt.Errorf("failed to delete garden with cluster identity %q", clusterIdentity)
+	}
+
+	config.Gardens = newGardens
+
+	return config.SaveToFile(configFilename)
 }

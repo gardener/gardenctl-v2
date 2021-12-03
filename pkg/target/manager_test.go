@@ -97,8 +97,8 @@ var _ = Describe("Manager", func() {
 	BeforeEach(func() {
 		cfg = &config.Config{
 			Gardens: []config.Garden{{
-				Name:       gardenName,
-				Kubeconfig: gardenKubeconfig,
+				ClusterIdentity: gardenName,
+				Kubeconfig:      gardenKubeconfig,
 			}},
 			MatchPatterns: []string{
 				"^((?P<garden>[^/]+)/)?shoot--(?P<project>.+)--(?P<shoot>.+)$",

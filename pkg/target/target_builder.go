@@ -66,12 +66,12 @@ func (b *targetBuilderImpl) Init(t Target) TargetBuilder {
 
 func (b *targetBuilderImpl) SetGarden(name string) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
-		gardenName, err := b.config.GardenName(name)
+		garden, err := b.config.Garden(name)
 		if err != nil {
 			return fmt.Errorf("failed to set target garden: %w", err)
 		}
 
-		t.Garden = gardenName
+		t.Garden = garden.Name()
 		t.Project = ""
 		t.Seed = ""
 		t.Shoot = ""

@@ -58,11 +58,11 @@ var _ = Describe("Completion", func() {
 	BeforeEach(func() {
 		cfg = &config.Config{
 			Gardens: []config.Garden{{
-				Name:       gardenName,
-				Kubeconfig: gardenKubeconfigFile,
+				ClusterIdentity: gardenName,
+				Kubeconfig:      gardenKubeconfigFile,
 			}, {
-				Name:       "abc",
-				Kubeconfig: gardenKubeconfigFile,
+				ClusterIdentity: "abc",
+				Kubeconfig:      gardenKubeconfigFile,
 			}},
 		}
 

@@ -16,8 +16,9 @@ import (
 // from a file and return a controller-runtime client for it.
 type ClientProvider interface {
 	// FromFile reads a kubeconfig (marshalled as YAML) from a file
-	// and returns a Kubernetes client.
-	FromFile(kubeconfigFile string) (client.Client, error)
+	// and returns a Kubernetes client. If context provided, it overwrites
+	// current-context with the provided context
+	FromFile(kubeconfigFile string, context string) (client.Client, error)
 	// FromBytes reads YAML directly and returns a Kubernetes client.
 	FromBytes(kubeconfig []byte) (client.Client, error)
 }
@@ -33,10 +34,19 @@ func NewClientProvider() ClientProvider {
 
 // FromFile reads a kubeconfig (marshalled as YAML) from a file
 // and returns a Kubernetes client.
-func (p *clientProvider) FromFile(kubeconfigFile string) (client.Client, error) {
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigFile)
+func (p *clientProvider) FromFile(kubeconfigFile string, context string) (client.Client, error) {
+	configOverrides := &clientcmd.ConfigOverrides{}
+	if context != "" {
+		configOverrides = &clientcmd.ConfigOverrides{
+			CurrentContext: context,
+		}
+	}
+
+	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigFile},
+		configOverrides).ClientConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load kubeconfig from %q: %w", kubeconfigFile, err)
+		return nil, fmt.Errorf("failed to load kubeconfig from %q with context %q: %w", kubeconfigFile, context, err)
 	}
 
 	return client.New(config, client.Options{})

@@ -13,7 +13,6 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -22,6 +21,8 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 func init() {
@@ -43,8 +44,8 @@ var _ = Describe("Command", func() {
 		gardenName := "mygarden"
 		cfg := &config.Config{
 			Gardens: []config.Garden{{
-				Name:       gardenName,
-				Kubeconfig: "",
+				ClusterIdentity: gardenName,
+				Kubeconfig:      "",
 			}},
 		}
 		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget(gardenName, "", "", ""))
@@ -67,8 +68,8 @@ var _ = Describe("Command", func() {
 		gardenKubeconfig := ""
 		cfg := &config.Config{
 			Gardens: []config.Garden{{
-				Name:       gardenName,
-				Kubeconfig: gardenKubeconfig,
+				ClusterIdentity: gardenName,
+				Kubeconfig:      gardenKubeconfig,
 			}},
 		}
 
@@ -113,8 +114,8 @@ var _ = Describe("Command", func() {
 		gardenKubeconfig := ""
 		cfg := &config.Config{
 			Gardens: []config.Garden{{
-				Name:       gardenName,
-				Kubeconfig: gardenKubeconfig,
+				ClusterIdentity: gardenName,
+				Kubeconfig:      gardenKubeconfig,
 			}},
 		}
 
@@ -163,8 +164,8 @@ var _ = Describe("Command", func() {
 		shootName := "myshoot"
 		cfg := &config.Config{
 			Gardens: []config.Garden{{
-				Name:       gardenName,
-				Kubeconfig: gardenKubeconfig,
+				ClusterIdentity: gardenName,
+				Kubeconfig:      gardenKubeconfig,
 			}},
 		}
 

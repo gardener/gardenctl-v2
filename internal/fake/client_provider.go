@@ -42,7 +42,7 @@ func (p *ClientProvider) tryGetClient(key string) (client.Client, error) {
 	return nil, fmt.Errorf("no fake client configured for %q", key)
 }
 
-func (p *ClientProvider) FromFile(kubeconfigFile string) (client.Client, error) {
+func (p *ClientProvider) FromFile(kubeconfigFile string, context string) (client.Client, error) {
 	return p.tryGetClient(kubeconfigFile)
 }
 

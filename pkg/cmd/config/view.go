@@ -3,22 +3,20 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package target
+package config
 
 import (
-	"fmt"
-
-	"github.com/spf13/cobra"
-
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+
+	"github.com/spf13/cobra"
 )
 
-// NewCmdView returns a new (target) view command.
-func NewCmdView(f util.Factory, o *ViewOptions) *cobra.Command {
+// NewCmdConfigView returns a new (config) view command.
+func NewCmdConfigView(f util.Factory, o *ViewOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "view",
-		Short: "Print the current target",
+		Short: "Print the gardenctl configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := o.Validate(); err != nil {
 				return err
@@ -39,17 +37,13 @@ func runViewCommand(f util.Factory, opt *ViewOptions) error {
 		return err
 	}
 
-	currentTarget, err := m.CurrentTarget()
-	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+	configuration := m.Configuration()
+
+	if opt.Output == "" {
+		opt.Output = "yaml"
 	}
 
-	if opt.Output == "" && currentTarget.IsEmpty() {
-		_, err = fmt.Fprintf(opt.IOStreams.Out, "target is empty")
-		return err
-	}
-
-	return opt.PrintObject(currentTarget)
+	return opt.PrintObject(configuration)
 }
 
 // ViewOptions is a struct to support view command

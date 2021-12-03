@@ -79,6 +79,10 @@ func (f *Factory) Manager() (target.Manager, error) {
 	return target.NewManager(f.Config, f.TargetProviderImpl, f.ClientProviderImpl, f.KubeconfigCacheImpl)
 }
 
+func (f *Factory) GetConfigFile() string {
+	return "not/a/real/file"
+}
+
 func (f *Factory) Context() context.Context {
 	if f.ContextImpl != nil {
 		return f.ContextImpl
