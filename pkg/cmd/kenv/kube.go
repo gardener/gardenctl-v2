@@ -26,7 +26,7 @@ func NewCmdKubectlEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 		Long: `Generate a script that points the KUBECONFIG environment variable to the targeted cluster for the specified shell.
 See each sub-command's help for details on how to use the generated script.
 
-The generated script points the KUBECONFIG environment variable to the currently targeted shoot or seed cluster.
+The generated script points the KUBECONFIG environment variable to the currently targeted shoot, seed or garden cluster.
 `,
 		Aliases: []string{"k-env", "cluster-env"},
 	}
