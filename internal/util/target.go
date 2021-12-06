@@ -174,7 +174,7 @@ func ProjectNamesForTarget(ctx context.Context, manager target.Manager, t target
 func GardenNames(manager target.Manager) ([]string, error) {
 	names := sets.NewString()
 	for _, garden := range manager.Configuration().Gardens {
-		names.Insert(garden.Name())
+		names.Insert(garden.TargetName())
 	}
 
 	return names.List(), nil

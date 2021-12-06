@@ -35,18 +35,18 @@ type Garden struct {
 	Kubeconfig string `yaml:"kubeconfig"`
 	// Context if set, context overwrites the current-context of the cluster kubeconfig
 	Context string `yaml:"context"`
-	// Alias is an alternativ name that can be used to target this Garden
-	Alias string `yaml:"alias"`
+	// Name is an alternative name that can be used to target this Garden
+	Name string `yaml:"name"`
 	// MatchPatterns is a list of regex patterns that can be defined to use custom input formats for targeting
 	// Use named capturing groups to match target values.
 	// Supported capturing groups: project, namespace, shoot
 	MatchPatterns []string `yaml:"matchPatterns"`
 }
 
-// Name returns the name of the Garden which is either the cluster identity or, if configured, the cluster alias
-func (garden *Garden) Name() string {
-	if garden.Alias != "" {
-		return garden.Alias
+// TargetName returns the name of the Garden which is either the cluster identity or, if configured, the cluster name
+func (garden *Garden) TargetName() string {
+	if garden.Name != "" {
+		return garden.Name
 	}
 
 	return garden.ClusterIdentity
@@ -116,19 +116,19 @@ type PatternMatch struct {
 // Garden returns a Garden cluster from the list of configured Gardens
 func (config *Config) Garden(name string) (*Garden, error) {
 	for _, g := range config.Gardens {
-		if g.ClusterIdentity == name || g.Name() == name {
+		if g.ClusterIdentity == name || g.TargetName() == name {
 			return &g, nil
 		}
 	}
 
-	return nil, fmt.Errorf("garden with identity or alias %q is not defined in gardenctl configuration", name)
+	return nil, fmt.Errorf("garden with identity or name %q is not defined in gardenctl configuration", name)
 }
 
 // PatternKey is a key that can be used to identify a value in a pattern
 type PatternKey string
 
 const (
-	// PatternKeyGarden is used to identify a Garden by name or alias
+	// PatternKeyGarden is used to identify a Garden by name or identity
 	PatternKeyGarden = PatternKey("garden")
 	// PatternKeyProject is used to identify a Project
 	PatternKeyProject = PatternKey("project")
@@ -176,7 +176,7 @@ func (config *Config) MatchPattern(value string) (*PatternMatch, error) {
 }
 
 // SetGarden adds or updates a Garden in the configuration
-func (config *Config) SetGarden(clusterIdentity string, kubeconfigFile flag.StringFlag, contextName flag.StringFlag, alias flag.StringFlag, patterns []string, configFilename string) error {
+func (config *Config) SetGarden(clusterIdentity string, kubeconfigFile flag.StringFlag, contextName flag.StringFlag, name flag.StringFlag, patterns []string, configFilename string) error {
 	var garden *Garden
 
 	for i, g := range config.Gardens {
@@ -196,8 +196,8 @@ func (config *Config) SetGarden(clusterIdentity string, kubeconfigFile flag.Stri
 			garden.Context = contextName.Value()
 		}
 
-		if alias.Provided() {
-			garden.Alias = alias.Value()
+		if name.Provided() {
+			garden.Name = name.Value()
 		}
 
 		if patterns != nil {
@@ -212,7 +212,7 @@ func (config *Config) SetGarden(clusterIdentity string, kubeconfigFile flag.Stri
 			ClusterIdentity: clusterIdentity,
 			Kubeconfig:      kubeconfigFile.Value(),
 			Context:         contextName.Value(),
-			Alias:           alias.Value(),
+			Name:            name.Value(),
 			MatchPatterns:   patterns,
 		}
 
