@@ -723,6 +723,11 @@ func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *
 
 			// add the keepalive annotation
 			oldBastion := bastion.DeepCopy()
+
+			if bastion.Annotations == nil {
+				bastion.Annotations = map[string]string{}
+			}
+
 			bastion.Annotations[corev1beta1constants.GardenerOperation] = corev1beta1constants.GardenerOperationKeepalive
 
 			if err := gardenClient.Patch(ctx, bastion, client.MergeFrom(oldBastion)); err != nil {
