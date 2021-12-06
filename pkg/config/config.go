@@ -21,10 +21,6 @@ import (
 type Config struct {
 	// Gardens is a list of known Garden clusters
 	Gardens []Garden `yaml:"gardens"`
-	// MatchPatterns is a list of regex patterns that can be defined to use custom input formats for targeting
-	// Use named capturing groups to match target values.
-	// Supported capturing groups: garden, project, namespace, shoot
-	MatchPatterns []string `yaml:"matchPatterns"`
 }
 
 // Garden represents one garden cluster
@@ -128,8 +124,6 @@ func (config *Config) Garden(name string) (*Garden, error) {
 type PatternKey string
 
 const (
-	// PatternKeyGarden is used to identify a Garden by name or identity
-	PatternKeyGarden = PatternKey("garden")
 	// PatternKeyProject is used to identify a Project
 	PatternKeyProject = PatternKey("project")
 	// PatternKeyNamespace is used to identify a Project by the namespace it refers to
@@ -140,8 +134,39 @@ const (
 
 // MatchPattern matches a string against patterns defined in gardenctl config
 // If matched, the function creates and returns a PatternMatch from the provided target string
-func (config *Config) MatchPattern(value string) (*PatternMatch, error) {
-	for _, p := range config.MatchPatterns {
+func (config *Config) MatchPattern(value string, currentGarden string) (*PatternMatch, error) {
+	var patternMatch *PatternMatch
+
+	for _, g := range config.Gardens {
+		match, err := matchPattern(g.MatchPatterns, value)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if match != nil {
+			match.Garden = g.TargetName()
+
+			if currentGarden == "" || g.TargetName() == currentGarden {
+				// Directly return match of selected garden
+				return match, nil
+			}
+
+			patternMatch = match
+		}
+	}
+
+	if patternMatch != nil {
+		// Did not match pattern of current garden, but did match other pattern
+		return patternMatch, nil
+	}
+
+	return nil, errors.New("the provided value does not match any pattern")
+}
+
+// matchPattern matches pattern with provided list of patterns
+func matchPattern(patterns []string, value string) (*PatternMatch, error) {
+	for _, p := range patterns {
 		r, err := regexp.Compile(p)
 		if err != nil {
 			return nil, fmt.Errorf("failed to compile configured regular expression %q: %w", p, err)
@@ -158,8 +183,6 @@ func (config *Config) MatchPattern(value string) (*PatternMatch, error) {
 
 		for i, name := range names {
 			switch PatternKey(name) {
-			case PatternKeyGarden:
-				tm.Garden = matches[i]
 			case PatternKeyProject:
 				tm.Project = matches[i]
 			case PatternKeyNamespace:
@@ -172,7 +195,7 @@ func (config *Config) MatchPattern(value string) (*PatternMatch, error) {
 		return tm, nil
 	}
 
-	return nil, errors.New("the provided value does not match any pattern")
+	return nil, nil
 }
 
 // SetGarden adds or updates a Garden in the configuration

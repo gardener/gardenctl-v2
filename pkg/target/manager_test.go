@@ -99,11 +99,11 @@ var _ = Describe("Manager", func() {
 			Gardens: []config.Garden{{
 				ClusterIdentity: gardenName,
 				Kubeconfig:      gardenKubeconfig,
+				MatchPatterns: []string{
+					fmt.Sprintf("^(%s/)?shoot--(?P<project>.+)--(?P<shoot>.+)$", gardenName),
+					"^namespace:(?P<namespace>[^/]+)$",
+				},
 			}},
-			MatchPatterns: []string{
-				"^((?P<garden>[^/]+)/)?shoot--(?P<project>.+)--(?P<shoot>.+)$",
-				"^namespace:(?P<namespace>[^/]+)$",
-			},
 		}
 
 		prod1Project = &gardencorev1beta1.Project{
@@ -321,14 +321,6 @@ var _ = Describe("Manager", func() {
 
 		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
-	})
-
-	It("should fail to target shoot by matching a pattern if garden is not set", func() {
-		t := target.NewTarget("", "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
-
-		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).NotTo(Succeed())
-		assertTargetProvider(targetProvider, t)
 	})
 
 	It("should not target anything if target is not completely valid", func() {

@@ -292,17 +292,19 @@ func (m *managerImpl) UnsetTargetShoot() (string, error) {
 }
 
 func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) error {
-	tm, err := m.config.MatchPattern(value)
+	currentTarget, err := m.CurrentTarget()
+	if err != nil {
+		return fmt.Errorf("failed to get current target: %v", err)
+	}
+
+	gardenName := currentTarget.GardenName()
+
+	tm, err := m.config.MatchPattern(value, gardenName)
 	if err != nil {
 		return fmt.Errorf("error occurred while trying to match value: %w", err)
 	}
 
 	tb := NewTargetBuilder(m.config, m.clientProvider)
-
-	currentTarget, err := m.CurrentTarget()
-	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
-	}
 
 	tb.Init(currentTarget)
 

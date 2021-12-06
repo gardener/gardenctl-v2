@@ -21,7 +21,7 @@ var _ = Describe("Command", func() {
 		gardenName2 := "barGarden"
 		kubeconfig := "not/a/file"
 		matchPatterns := []string{
-			"^((?P<garden>[^/]+)/)?shoot--(?P<project>.+)--(?P<shoot>.+)$",
+			"^shoot--(?P<project>.+)--(?P<shoot>.+)$",
 			"^namespace:(?P<namespace>[^/]+)$",
 		}
 		cfg := &config.Config{
@@ -32,8 +32,8 @@ var _ = Describe("Command", func() {
 				{
 					ClusterIdentity: gardenName2,
 					Kubeconfig:      kubeconfig,
+					MatchPatterns:   matchPatterns,
 				}},
-			MatchPatterns: matchPatterns,
 		}
 
 		// setup command
