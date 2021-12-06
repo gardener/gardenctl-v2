@@ -10,11 +10,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
-
-	"github.com/gardener/gardenctl-v2/pkg/config"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
 var (
@@ -23,6 +22,8 @@ var (
 	ErrNoSeedTargeted    = errors.New("no seed cluster targeted")
 	ErrNoShootTargeted   = errors.New("no shoot targeted")
 )
+
+//go:generate mockgen -destination=./mocks/mock_manager.go -package=mocks github.com/gardener/gardenctl-v2/pkg/target Manager
 
 // Manager sets and gets the current target configuration
 type Manager interface {
@@ -441,7 +442,7 @@ func (m *managerImpl) ensureShootKubeconfig(ctx context.Context, t Target) ([]by
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	shoot, err := gardenClient.FindShoot(ctx, t.ShootName(), t.ProjectName(), t.SeedName())
+	shoot, err := gardenClient.FindShoot(ctx, t.AsListOption())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch shoot: %w", err)
 	}

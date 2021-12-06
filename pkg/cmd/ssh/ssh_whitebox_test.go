@@ -448,7 +448,7 @@ var _ = Describe("Command", func() {
 				}
 
 				return bastion.Annotations != nil && bastion.Annotations[corev1beta1constants.GardenerOperation] == corev1beta1constants.GardenerOperationKeepalive
-			}).Should(BeTrue())
+			}, "2s", "10ms").Should(BeTrue())
 
 			signalChan <- os.Interrupt
 		}()

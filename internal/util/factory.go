@@ -19,6 +19,8 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
+//go:generate mockgen -destination=./mocks/mock_factory.go -package=mocks github.com/gardener/gardenctl-v2/internal/util Factory
+
 // Factory provides abstractions that allow the command to be extended across multiple types of resources and different API sets.
 type Factory interface {
 	// Context returns the root context any command should use.
