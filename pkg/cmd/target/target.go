@@ -11,10 +11,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
-
-	"github.com/spf13/cobra"
 )
 
 // NewCmdTarget returns a new target command.
@@ -49,7 +49,7 @@ func NewCmdTarget(f util.Factory, o *TargetOptions) *cobra.Command {
 	cmd.AddCommand(NewCmdUnset(f, NewUnsetOptions(ioStreams)))
 	cmd.AddCommand(NewCmdView(f, NewViewOptions(ioStreams)))
 
-	o.AddOutputFlags(cmd)
+	o.AddFlags(cmd.Flags())
 
 	return cmd
 }

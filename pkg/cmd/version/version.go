@@ -9,6 +9,8 @@ package version
 import (
 	"fmt"
 
+	"github.com/spf13/pflag"
+
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 
@@ -33,8 +35,7 @@ func NewCmdVersion(f util.Factory, o *VersionOptions) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&o.Short, "short", o.Short, "If true, print just the version number.")
-	o.AddOutputFlags(cmd)
+	o.AddFlags(cmd.Flags())
 
 	return cmd
 }
@@ -74,7 +75,8 @@ func NewVersionOptions(ioStreams util.IOStreams) *VersionOptions {
 	}
 }
 
-// Complete adapts from the command line args to the data required.
-func (o *VersionOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	return nil
+// AddFlags adds flags to adjust the output to a cobra command
+func (o *VersionOptions) AddFlags(flags *pflag.FlagSet) {
+	flags.BoolVar(&o.Short, "short", o.Short, "If true, print just the version number.")
+	o.Options.AddFlags(flags)
 }

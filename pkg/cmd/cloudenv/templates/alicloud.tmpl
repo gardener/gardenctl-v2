@@ -1,0 +1,32 @@
+{{define "default"}}{{if .__meta.unset -}}
+unset ALICLOUD_ACCESS_KEY_ID;
+unset ALICLOUD_ACCESS_KEY_SECRET;
+unset ALICLOUD_REGION_ID;
+{{else -}}
+export ALICLOUD_ACCESS_KEY_ID={{.accessKeyID | shellEscape}};
+export ALICLOUD_ACCESS_KEY_SECRET={{.accessKeySecret | shellEscape}};
+export ALICLOUD_REGION_ID={{.region | shellEscape}};
+{{end}}{{template "usage-hint" .__meta}}{{end}}
+
+{{define "bash"}}{{template "default" .}}{{end}}
+{{define "zsh"}}{{template "default" .}}{{end}}
+
+{{define "fish"}}{{if .__meta.unset -}}
+set -e ALICLOUD_ACCESS_KEY_ID;
+set -e ALICLOUD_ACCESS_KEY_SECRET;
+set -e ALICLOUD_REGION_ID;
+{{else -}}
+set -gx ALICLOUD_ACCESS_KEY_ID {{.accessKeyID | shellEscape}};
+set -gx ALICLOUD_ACCESS_KEY_SECRET {{.accessKeySecret | shellEscape}};
+set -gx ALICLOUD_REGION_ID {{.region | shellEscape}};
+{{end}}{{template "usage-hint" .__meta}}{{end}}
+
+{{define "powershell"}}{{if .__meta.unset -}}
+Remove-Item -ErrorAction SilentlyContinue Env:\ALICLOUD_ACCESS_KEY_ID;
+Remove-Item -ErrorAction SilentlyContinue Env:\ALICLOUD_ACCESS_KEY_SECRET;
+Remove-Item -ErrorAction SilentlyContinue Env:\ALICLOUD_REGION_ID;
+{{else -}}
+$Env:ALICLOUD_ACCESS_KEY_ID = {{.accessKeyID | shellEscape}};
+$Env:ALICLOUD_ACCESS_KEY_SECRET = {{.accessKeySecret | shellEscape}};
+$Env:ALICLOUD_REGION_ID = {{.region | shellEscape}};
+{{end}}{{template "usage-hint" .__meta}}{{end}}
