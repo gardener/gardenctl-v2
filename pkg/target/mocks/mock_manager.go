@@ -8,11 +8,12 @@ import (
 	context "context"
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
+	client "sigs.k8s.io/controller-runtime/pkg/client"
+
 	gardenclient "github.com/gardener/gardenctl-v2/internal/gardenclient"
 	config "github.com/gardener/gardenctl-v2/pkg/config"
 	target "github.com/gardener/gardenctl-v2/pkg/target"
-	gomock "github.com/golang/mock/gomock"
-	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // MockManager is a mock of Manager interface.
@@ -80,6 +81,21 @@ func (m *MockManager) GardenClient(arg0 string) (gardenclient.Client, error) {
 func (mr *MockManagerMockRecorder) GardenClient(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GardenClient", reflect.TypeOf((*MockManager)(nil).GardenClient), arg0)
+}
+
+// GardenClientForKubeconfig mocks base method.
+func (m *MockManager) GardenClientForKubeconfig(arg0 string, arg1 string) (gardenclient.Client, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GardenClientForKubeconfig", arg0, arg1)
+	ret0, _ := ret[0].(gardenclient.Client)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GardenClientForKubeconfig indicates an expected call of GardenClientForKubeconfig.
+func (mr *MockManagerMockRecorder) GardenClientForKubeconfig(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GardenClientForKubeconfig", reflect.TypeOf((*MockManager)(nil).GardenClientForKubeconfig), arg0, arg1)
 }
 
 // SeedClient mocks base method.

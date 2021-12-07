@@ -45,14 +45,6 @@ func (m *MockFactory) Clock() util.Clock {
 	return ret0
 }
 
-// GetConfigFile mocks base method.
-func (m *MockFactory) GetConfigFile() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetConfigFile")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
 // Clock indicates an expected call of Clock.
 func (mr *MockFactoryMockRecorder) Clock() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
@@ -71,6 +63,20 @@ func (m *MockFactory) Context() context.Context {
 func (mr *MockFactoryMockRecorder) Context() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Context", reflect.TypeOf((*MockFactory)(nil).Context))
+}
+
+// GetConfigFile mocks base method.
+func (m *MockFactory) GetConfigFile() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetConfigFile")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetConfigFile indicates an expected call of Context.
+func (mr *MockFactoryMockRecorder) GetConfigFile() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfigFile", reflect.TypeOf((*MockFactory)(nil).GetConfigFile))
 }
 
 // GardenHomeDir mocks base method.
