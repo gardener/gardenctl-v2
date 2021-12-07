@@ -24,14 +24,19 @@ export LD_FLAGS=$(shell ./hack/get-build-ld-flags.sh)
 # More info on the awk command:
 # http://linuxcommand.org/lc3_adv_awk.php
 
+.PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-13s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 ##@ Development
 
 .PHONY: test
-test: lint ## Run tests.
-	go test ./... -coverprofile cover.out
+test: fmt lint ## Run tests.
+	@./hack/test-integration.sh
+
+.PHONY: fmt
+fmt: ## Run go fmt against code.
+	go fmt ./...
 
 .PHONY: lint
 lint: ## Run golangci-lint against code.
