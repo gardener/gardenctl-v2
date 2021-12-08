@@ -65,20 +65,6 @@ func (mr *MockFactoryMockRecorder) Context() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Context", reflect.TypeOf((*MockFactory)(nil).Context))
 }
 
-// GetConfigFile mocks base method.
-func (m *MockFactory) GetConfigFile() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetConfigFile")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// GetConfigFile indicates an expected call of Context.
-func (mr *MockFactoryMockRecorder) GetConfigFile() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfigFile", reflect.TypeOf((*MockFactory)(nil).GetConfigFile))
-}
-
 // GardenHomeDir mocks base method.
 func (m *MockFactory) GardenHomeDir() string {
 	m.ctrl.T.Helper()
@@ -91,6 +77,20 @@ func (m *MockFactory) GardenHomeDir() string {
 func (mr *MockFactoryMockRecorder) GardenHomeDir() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GardenHomeDir", reflect.TypeOf((*MockFactory)(nil).GardenHomeDir))
+}
+
+// GetConfigFile mocks base method.
+func (m *MockFactory) GetConfigFile() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetConfigFile")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetConfigFile indicates an expected call of GetConfigFile.
+func (mr *MockFactoryMockRecorder) GetConfigFile() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfigFile", reflect.TypeOf((*MockFactory)(nil).GetConfigFile))
 }
 
 // Manager mocks base method.
