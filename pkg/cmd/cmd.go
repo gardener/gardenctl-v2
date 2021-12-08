@@ -73,6 +73,11 @@ func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.C
 	// register initializers
 	cobra.OnInitialize(func() {
 		initConfig(f)
+
+		manager, err := f.Manager()
+		if err == nil {
+			f.TargetFlags.SetConfig(manager.Configuration())
+		}
 	})
 
 	flags := cmd.PersistentFlags()
