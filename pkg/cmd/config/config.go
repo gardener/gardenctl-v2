@@ -43,3 +43,20 @@ func NewConfigOptions(ioStreams util.IOStreams) *ConfigOptions {
 		},
 	}
 }
+
+func validGardenArgsFunction(f util.Factory, args []string) ([]string, error) {
+	manager, err := f.Manager()
+	if err != nil {
+		return nil, err
+	}
+
+	var gNames []string
+	if len(args) == 0 {
+		for _, g := range manager.Configuration().Gardens {
+			gNames = append(gNames, g.ShortOrIdentity())
+		}
+		return gNames, nil
+	}
+
+	return nil, nil
+}

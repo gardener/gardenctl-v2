@@ -18,7 +18,7 @@ import (
 var _ = Describe("Config", func() {
 	var (
 		clusterIdentity1 = "testgarden"
-		gardenName1      = "test.garden"
+		shortName1       = "test.garden"
 		clusterIdentity2 = "foogarden"
 		project          = "fooproject"
 		shoot            = "fooshoot"
@@ -29,15 +29,15 @@ var _ = Describe("Config", func() {
 	BeforeEach(func() {
 		cfg = &config.Config{
 			Gardens: []config.Garden{{
-				ClusterIdentity: clusterIdentity1,
-				Name:            gardenName1,
+				Identity: clusterIdentity1,
+				Short:    shortName1,
 				MatchPatterns: []string{
-					fmt.Sprintf("^(%s/)?shoot--(?P<project>.+)--(?P<shoot>.+)$", gardenName1),
+					fmt.Sprintf("^(%s/)?shoot--(?P<project>.+)--(?P<shoot>.+)$", shortName1),
 					"^namespace:(?P<namespace>[^/]+)$",
 				},
 			},
 				{
-					ClusterIdentity: clusterIdentity2,
+					Identity: clusterIdentity2,
 					MatchPatterns: []string{
 						fmt.Sprintf("^(%s)?shoot--(?P<project>.+)--(?P<shoot>.+)$", clusterIdentity2),
 						"^namespace:(?P<namespace>[^/]+)$",
@@ -46,28 +46,28 @@ var _ = Describe("Config", func() {
 		}
 	})
 
-	It("should find garden by cluster identity", func() {
+	It("should find garden by identity", func() {
 		garden, err := cfg.Garden(clusterIdentity1)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(garden.ClusterIdentity).Should(Equal(clusterIdentity1))
+		Expect(garden.Identity).Should(Equal(clusterIdentity1))
 
 	})
 
 	It("should find garden by name", func() {
-		garden, err := cfg.Garden(gardenName1)
+		garden, err := cfg.Garden(shortName1)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(garden.Name).Should(Equal(gardenName1))
+		Expect(garden.Short).Should(Equal(shortName1))
 
 	})
 
-	It("TargetName() should return name if defined", func() {
+	It("TargetName() should return short name if defined", func() {
 		garden, err := cfg.Garden(clusterIdentity1)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(garden.TargetName()).Should(Equal(gardenName1))
+		Expect(garden.ShortOrIdentity()).Should(Equal(shortName1))
 
 		garden, err = cfg.Garden(clusterIdentity2)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(garden.TargetName()).Should(Equal(clusterIdentity2))
+		Expect(garden.ShortOrIdentity()).Should(Equal(clusterIdentity2))
 
 	})
 
@@ -77,17 +77,17 @@ var _ = Describe("Config", func() {
 	})
 
 	It("should return a PatternMatch for a given value", func() {
-		tm, err := cfg.MatchPattern(fmt.Sprintf("%s/shoot--%s--%s", gardenName1, project, shoot), gardenName1)
+		tm, err := cfg.MatchPattern(fmt.Sprintf("%s/shoot--%s--%s", shortName1, project, shoot), shortName1)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(tm.Garden).Should(Equal(gardenName1))
+		Expect(tm.Garden).Should(Equal(clusterIdentity1))
 		Expect(tm.Project).Should(Equal(project))
 		Expect(tm.Shoot).Should(Equal(shoot))
 	})
 
 	It("should prefer PatternMatch for current garden", func() {
-		tm, err := cfg.MatchPattern(fmt.Sprintf("namespace:%s", namespace), gardenName1)
+		tm, err := cfg.MatchPattern(fmt.Sprintf("namespace:%s", namespace), clusterIdentity1)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(tm.Garden).Should(Equal(gardenName1))
+		Expect(tm.Garden).Should(Equal(clusterIdentity1))
 		Expect(tm.Namespace).Should(Equal(namespace))
 	})
 })

@@ -52,6 +52,7 @@ func NewDefaultGardenctlCommand() *cobra.Command {
 	factory := util.FactoryImpl{
 		TargetFlags: target.NewTargetFlags("", "", "", ""),
 	}
+
 	ioStreams := util.NewIOStreams()
 
 	return NewGardenctlCommand(&factory, ioStreams)
@@ -192,8 +193,13 @@ func completionWrapper(f *util.FactoryImpl, ioStreams util.IOStreams, completer 
 
 func getCurrentTarget(tf target.TargetFlags, manager target.Manager) (target.Target, error) {
 	// any --garden flag has precedence over the config file
-	if tf.GardenName() != "" {
-		return target.NewTarget(tf.GardenName(), "", "", ""), nil
+	if tf.GardenIdentity() != "" {
+		garden, err := manager.Configuration().Garden(tf.GardenIdentity())
+		if err != nil {
+			return nil, fmt.Errorf("failed to set target garden: %w", err)
+		}
+
+		return target.NewTarget(garden.Identity, "", "", ""), nil
 	}
 
 	currentTarget, err := manager.CurrentTarget()

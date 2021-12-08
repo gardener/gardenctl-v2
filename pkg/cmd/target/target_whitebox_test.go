@@ -37,7 +37,7 @@ var _ = Describe("Completion", func() {
 	utilruntime.Must(operationsv1alpha1.AddToScheme(scheme.Scheme))
 
 	const (
-		gardenName           = "mygarden"
+		gardenIdentity       = "mygarden"
 		gardenKubeconfigFile = "/not/a/real/kubeconfig"
 	)
 
@@ -58,11 +58,11 @@ var _ = Describe("Completion", func() {
 	BeforeEach(func() {
 		cfg = &config.Config{
 			Gardens: []config.Garden{{
-				ClusterIdentity: gardenName,
-				Kubeconfig:      gardenKubeconfigFile,
+				Identity:   gardenIdentity,
+				Kubeconfig: gardenKubeconfigFile,
 			}, {
-				ClusterIdentity: "abc",
-				Kubeconfig:      gardenKubeconfigFile,
+				Identity:   "abc",
+				Kubeconfig: gardenKubeconfigFile,
 			}},
 		}
 
@@ -165,7 +165,7 @@ var _ = Describe("Completion", func() {
 		).Build()
 
 		// setup fakes
-		currentTarget := target.NewTarget(gardenName, testProject1.Name, "", testShoot1.Name)
+		currentTarget := target.NewTarget(gardenIdentity, testProject1.Name, "", testShoot1.Name)
 		targetProvider = internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider()
 
@@ -199,11 +199,11 @@ var _ = Describe("Completion", func() {
 		It("should return all garden names", func() {
 			values, err := validTargetArgsFunction(factory, nil, []string{string(TargetKindGarden)}, "")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal([]string{"abc", gardenName}))
+			Expect(values).To(Equal([]string{"abc", gardenIdentity}))
 		})
 
 		It("should return all project names", func() {
-			targetProvider.Target = target.NewTarget(gardenName, "", "", "")
+			targetProvider.Target = target.NewTarget(gardenIdentity, "", "", "")
 
 			values, err := validTargetArgsFunction(factory, nil, []string{string(TargetKindProject)}, "")
 			Expect(err).NotTo(HaveOccurred())
@@ -211,7 +211,7 @@ var _ = Describe("Completion", func() {
 		})
 
 		It("should return all seed names", func() {
-			targetProvider.Target = target.NewTarget(gardenName, "", "", "")
+			targetProvider.Target = target.NewTarget(gardenIdentity, "", "", "")
 
 			values, err := validTargetArgsFunction(factory, nil, []string{string(TargetKindSeed)}, "")
 			Expect(err).NotTo(HaveOccurred())
@@ -219,7 +219,7 @@ var _ = Describe("Completion", func() {
 		})
 
 		It("should return all shoot names when using a project", func() {
-			targetProvider.Target = target.NewTarget(gardenName, testProject1.Name, "", "")
+			targetProvider.Target = target.NewTarget(gardenIdentity, testProject1.Name, "", "")
 
 			values, err := validTargetArgsFunction(factory, nil, []string{string(TargetKindShoot)}, "")
 			Expect(err).NotTo(HaveOccurred())
@@ -227,7 +227,7 @@ var _ = Describe("Completion", func() {
 		})
 
 		It("should return all shoot names when using a seed", func() {
-			targetProvider.Target = target.NewTarget(gardenName, "", testSeed1.Name, "")
+			targetProvider.Target = target.NewTarget(gardenIdentity, "", testSeed1.Name, "")
 
 			values, err := validTargetArgsFunction(factory, nil, []string{string(TargetKindShoot)}, "")
 			Expect(err).NotTo(HaveOccurred())

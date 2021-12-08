@@ -33,7 +33,7 @@ func init() {
 
 var _ = Describe("Command", func() {
 	const (
-		gardenName       = "mygarden"
+		gardenIdentity   = "mygarden"
 		gardenKubeconfig = "/not/a/real/file"
 		projectName      = "myproject"
 		seedName         = "myseed"
@@ -53,8 +53,8 @@ var _ = Describe("Command", func() {
 	BeforeEach(func() {
 		cfg = &config.Config{
 			Gardens: []config.Garden{{
-				ClusterIdentity: gardenName,
-				Kubeconfig:      gardenKubeconfig,
+				Identity:   gardenIdentity,
+				Kubeconfig: gardenKubeconfig,
 			}},
 		}
 
@@ -108,19 +108,19 @@ var _ = Describe("Command", func() {
 		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
 		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
 
-		Expect(cmd.RunE(cmd, []string{"garden", gardenName})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully targeted garden %q\n", gardenName))
+		Expect(cmd.RunE(cmd, []string{"garden", gardenIdentity})).To(Succeed())
+		Expect(out.String()).To(ContainSubstring("Successfully targeted garden %q\n", gardenIdentity))
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(currentTarget.GardenName()).To(Equal(gardenName))
+		Expect(currentTarget.GardenIdentity()).To(Equal(gardenIdentity))
 	})
 
 	It("should be able to target a project", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		// user has already targeted a garden
-		currentTarget := target.NewTarget(gardenName, "", "", "")
+		currentTarget := target.NewTarget(gardenIdentity, "", "", "")
 
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
@@ -134,7 +134,7 @@ var _ = Describe("Command", func() {
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(currentTarget.GardenName()).To(Equal(gardenName))
+		Expect(currentTarget.GardenIdentity()).To(Equal(gardenIdentity))
 		Expect(currentTarget.ProjectName()).To(Equal(projectName))
 	})
 
@@ -142,7 +142,7 @@ var _ = Describe("Command", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		// user has already targeted a garden
-		currentTarget := target.NewTarget(gardenName, "", "", "")
+		currentTarget := target.NewTarget(gardenIdentity, "", "", "")
 
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
@@ -156,7 +156,7 @@ var _ = Describe("Command", func() {
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(currentTarget.GardenName()).To(Equal(gardenName))
+		Expect(currentTarget.GardenIdentity()).To(Equal(gardenIdentity))
 		Expect(currentTarget.SeedName()).To(Equal(seedName))
 	})
 
@@ -164,7 +164,7 @@ var _ = Describe("Command", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		// user has already targeted a garden and project
-		currentTarget := target.NewTarget(gardenName, projectName, "", "")
+		currentTarget := target.NewTarget(gardenIdentity, projectName, "", "")
 
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
@@ -178,7 +178,7 @@ var _ = Describe("Command", func() {
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(currentTarget.GardenName()).To(Equal(gardenName))
+		Expect(currentTarget.GardenIdentity()).To(Equal(gardenIdentity))
 		Expect(currentTarget.ProjectName()).To(Equal(projectName))
 		Expect(currentTarget.SeedName()).To(BeEmpty())
 		Expect(currentTarget.ShootName()).To(Equal(shootName))

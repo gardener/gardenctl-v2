@@ -25,7 +25,7 @@ func NewFakeKubeconfigCache() target.KubeconfigCache {
 }
 
 func (c *fakeKubeconfigCache) key(t target.Target) string {
-	return fmt.Sprintf("%s;%s;%s;%s", t.GardenName(), t.ProjectName(), t.SeedName(), t.ShootName())
+	return fmt.Sprintf("%s;%s;%s;%s", t.GardenIdentity(), t.ProjectName(), t.SeedName(), t.ShootName())
 }
 
 func (c *fakeKubeconfigCache) Read(t target.Target) ([]byte, error) {

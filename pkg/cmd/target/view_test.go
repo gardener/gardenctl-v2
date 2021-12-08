@@ -21,16 +21,16 @@ import (
 var _ = Describe("Command", func() {
 	It("should print current target information", func() {
 		// user has already targeted a garden, project and shoot
-		gardenName := "mygarden"
+		gardenIdentity := "mygarden"
 		projectName := "myproject"
 		shootName := "myshoot"
 		cfg := &config.Config{
 			Gardens: []config.Garden{{
-				ClusterIdentity: gardenName,
-				Kubeconfig:      "",
+				Identity:   gardenIdentity,
+				Kubeconfig: "",
 			}},
 		}
-		currentTarget := target.NewTarget(gardenName, projectName, "", shootName)
+		currentTarget := target.NewTarget(gardenIdentity, projectName, "", shootName)
 
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
@@ -42,7 +42,7 @@ var _ = Describe("Command", func() {
 		cmd := cmdtarget.NewCmdView(factory, o)
 
 		Expect(cmd.RunE(cmd, nil)).To(Succeed())
-		Expect(out.String()).To(Equal(fmt.Sprintf("garden:\"%s\", project:\"%s\", shoot:\"%s\"", gardenName, projectName, shootName)))
+		Expect(out.String()).To(Equal(fmt.Sprintf("garden:\"%s\", project:\"%s\", shoot:\"%s\"", gardenIdentity, projectName, shootName)))
 	})
 })
 

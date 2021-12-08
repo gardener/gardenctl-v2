@@ -17,8 +17,8 @@ import (
 
 var _ = Describe("Command", func() {
 	It("should print configuration", func() {
-		gardenName1 := "fooGarden"
-		gardenName2 := "barGarden"
+		gardenIdentity1 := "fooGarden"
+		gardenIdentity2 := "barGarden"
 		kubeconfig := "not/a/file"
 		matchPatterns := []string{
 			"^shoot--(?P<project>.+)--(?P<shoot>.+)$",
@@ -26,13 +26,13 @@ var _ = Describe("Command", func() {
 		}
 		cfg := &config.Config{
 			Gardens: []config.Garden{{
-				ClusterIdentity: gardenName1,
-				Kubeconfig:      kubeconfig,
+				Identity:   gardenIdentity1,
+				Kubeconfig: kubeconfig,
 			},
 				{
-					ClusterIdentity: gardenName2,
-					Kubeconfig:      kubeconfig,
-					MatchPatterns:   matchPatterns,
+					Identity:      gardenIdentity2,
+					Kubeconfig:    kubeconfig,
+					MatchPatterns: matchPatterns,
 				}},
 		}
 
@@ -45,8 +45,8 @@ var _ = Describe("Command", func() {
 
 		Expect(cmd.RunE(cmd, nil)).To(Succeed())
 		Expect(out.String()).To(ContainSubstring("gardens"))
-		Expect(out.String()).To(ContainSubstring(gardenName1))
-		Expect(out.String()).To(ContainSubstring(gardenName2))
+		Expect(out.String()).To(ContainSubstring(gardenIdentity1))
+		Expect(out.String()).To(ContainSubstring(gardenIdentity2))
 		Expect(out.String()).To(ContainSubstring("matchPatterns"))
 		Expect(out.String()).To(ContainSubstring(matchPatterns[1]))
 	})

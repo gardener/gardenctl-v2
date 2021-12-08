@@ -91,7 +91,7 @@ func (o *cmdOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	gardenName := o.CurrentTarget.GardenName()
+	gardenIdentity := o.CurrentTarget.GardenIdentity()
 	projectName := o.CurrentTarget.ProjectName()
 	seedName := o.CurrentTarget.SeedName()
 	shootName := o.CurrentTarget.ShootName()
@@ -106,7 +106,7 @@ func (o *cmdOptions) Run(f util.Factory) error {
 	}
 
 	// garden client
-	gardenClient, err := m.GardenClient(gardenName)
+	gardenClient, err := m.GardenClient(gardenIdentity)
 	if err != nil {
 		return fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
@@ -193,9 +193,9 @@ func (o *cmdOptions) generateMetadata(c CloudProvider) map[string]interface{} {
 
 	t := o.CurrentTarget
 	if t.ProjectName() != "" {
-		flags = fmt.Sprintf("--garden %s --project %s --shoot %s", t.GardenName(), t.ProjectName(), t.ShootName())
+		flags = fmt.Sprintf("--garden %s --project %s --shoot %s", t.GardenIdentity(), t.ProjectName(), t.ShootName())
 	} else {
-		flags = fmt.Sprintf("--garden %s --seed %s --shoot %s", t.GardenName(), t.SeedName(), t.ShootName())
+		flags = fmt.Sprintf("--garden %s --seed %s --shoot %s", t.GardenIdentity(), t.SeedName(), t.ShootName())
 	}
 
 	return map[string]interface{}{

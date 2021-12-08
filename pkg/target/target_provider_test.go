@@ -18,7 +18,7 @@ import (
 )
 
 func expectEqualTargets(actual, expected target.Target) {
-	ExpectWithOffset(1, actual.GardenName()).To(Equal(expected.GardenName()))
+	ExpectWithOffset(1, actual.GardenIdentity()).To(Equal(expected.GardenIdentity()))
 	ExpectWithOffset(1, actual.ProjectName()).To(Equal(expected.ProjectName()))
 	ExpectWithOffset(1, actual.SeedName()).To(Equal(expected.SeedName()))
 	ExpectWithOffset(1, actual.ShootName()).To(Equal(expected.ShootName()))
@@ -72,7 +72,7 @@ var _ = Describe("Target Provider", func() {
 		target, err := provider.Read()
 		Expect(err).To(Succeed())
 		Expect(target).NotTo(BeNil())
-		Expect(target.GardenName()).To(Equal(t.GardenName()))
+		Expect(target.GardenIdentity()).To(Equal(t.GardenIdentity()))
 		Expect(target.ProjectName()).To(Equal(t.ProjectName()))
 		Expect(target.SeedName()).To(Equal(t.SeedName()))
 		Expect(target.ShootName()).To(Equal(t.ShootName()))

@@ -61,11 +61,11 @@ func (c *fsKubeconfigCache) Write(t Target, kubeconfig []byte) error {
 }
 
 func (c *fsKubeconfigCache) filename(t Target) (string, error) {
-	if t.GardenName() == "" {
+	if t.GardenIdentity() == "" {
 		return "", ErrNoGardenTargeted
 	}
 
-	directory := filepath.Join(c.baseDirectory, t.GardenName())
+	directory := filepath.Join(c.baseDirectory, t.GardenIdentity())
 
 	if t.ShootName() != "" {
 		if t.ProjectName() != "" {

@@ -218,7 +218,7 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 			o.Kind = TargetKindProject
 		} else if tf.SeedName() != "" {
 			o.Kind = TargetKindSeed
-		} else if tf.GardenName() != "" {
+		} else if tf.GardenIdentity() != "" {
 			o.Kind = TargetKindGarden
 		}
 	}
@@ -226,7 +226,7 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 	if o.TargetName == "" {
 		switch o.Kind {
 		case TargetKindGarden:
-			o.TargetName = tf.GardenName()
+			o.TargetName = tf.GardenIdentity()
 		case TargetKindProject:
 			o.TargetName = tf.ProjectName()
 		case TargetKindSeed:

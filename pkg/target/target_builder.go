@@ -22,7 +22,7 @@ type TargetBuilder interface {
 	// Use this function to overwrite target baseline data before updating with new values
 	Init(Target) TargetBuilder
 	// SetGarden updates TargetBuilder with a Garden name
-	// name can be Garden cluster identity or name as defined in the config
+	// name can be Garden identity or short as defined in the config
 	SetGarden(string) TargetBuilder
 	// SetProject updates TargetBuilder with a Project name
 	SetProject(context.Context, string) TargetBuilder
@@ -63,14 +63,14 @@ func (b *targetBuilderImpl) Init(t Target) TargetBuilder {
 	return b
 }
 
-func (b *targetBuilderImpl) SetGarden(name string) TargetBuilder {
+func (b *targetBuilderImpl) SetGarden(shortOrIdentity string) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
-		garden, err := b.config.Garden(name)
+		garden, err := b.config.Garden(shortOrIdentity)
 		if err != nil {
 			return fmt.Errorf("failed to set target garden: %w", err)
 		}
 
-		t.Garden = garden.TargetName()
+		t.Garden = garden.Identity
 		t.Project = ""
 		t.Seed = ""
 		t.Shoot = ""
@@ -83,12 +83,12 @@ func (b *targetBuilderImpl) SetGarden(name string) TargetBuilder {
 
 func (b *targetBuilderImpl) SetProject(ctx context.Context, name string) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
-		if t.GardenName() == "" {
+		if t.GardenIdentity() == "" {
 			return ErrNoGardenTargeted
 		}
 
 		// validate that the project exists
-		project, err := b.validateProject(ctx, t.GardenName(), name)
+		project, err := b.validateProject(ctx, t.GardenIdentity(), name)
 		if err != nil {
 			return fmt.Errorf("failed to set target project: %w", err)
 		}
@@ -105,17 +105,17 @@ func (b *targetBuilderImpl) SetProject(ctx context.Context, name string) TargetB
 
 func (b *targetBuilderImpl) SetNamespace(ctx context.Context, name string) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
-		if t.GardenName() == "" {
+		if t.GardenIdentity() == "" {
 			return ErrNoGardenTargeted
 		}
 
-		projectName, err := b.getProjectNameByNamespace(ctx, t.GardenName(), name)
+		projectName, err := b.getProjectNameByNamespace(ctx, t.GardenIdentity(), name)
 		if err != nil {
 			return fmt.Errorf("failed to set target project: %w", err)
 		}
 
 		// validate that the project exists
-		project, err := b.validateProject(ctx, t.GardenName(), projectName)
+		project, err := b.validateProject(ctx, t.GardenIdentity(), projectName)
 		if err != nil {
 			return fmt.Errorf("failed to set target project: %w", err)
 		}
@@ -132,12 +132,12 @@ func (b *targetBuilderImpl) SetNamespace(ctx context.Context, name string) Targe
 
 func (b *targetBuilderImpl) SetSeed(ctx context.Context, name string) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
-		if t.GardenName() == "" {
+		if t.GardenIdentity() == "" {
 			return ErrNoGardenTargeted
 		}
 
 		// validate that the seed exists
-		seed, err := b.validateSeed(ctx, t.GardenName(), name)
+		seed, err := b.validateSeed(ctx, t.GardenIdentity(), name)
 		if err != nil {
 			return fmt.Errorf("failed to set target seed: %w", err)
 		}
@@ -154,11 +154,11 @@ func (b *targetBuilderImpl) SetSeed(ctx context.Context, name string) TargetBuil
 
 func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
-		if t.GardenName() == "" {
+		if t.GardenIdentity() == "" {
 			return ErrNoGardenTargeted
 		}
 
-		gardenClient, err := b.getGardenClient(t.GardenName())
+		gardenClient, err := b.getGardenClient(t.GardenIdentity())
 		if err != nil {
 			return err
 		}
@@ -195,7 +195,7 @@ func (b *targetBuilderImpl) Build() (Target, error) {
 	}
 
 	t := &targetImpl{
-		target.GardenName(),
+		target.GardenIdentity(),
 		target.ProjectName(),
 		target.SeedName(),
 		target.ShootName(),

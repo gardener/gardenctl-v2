@@ -15,8 +15,8 @@ import (
 // TargetFlags represents the target cobra flags.
 //nolint
 type TargetFlags interface {
-	// GardenName returns the value that is tied to the corresponding cobra flag.
-	GardenName() string
+	// GardenIdentity returns the value that is tied to the corresponding cobra flag.
+	GardenIdentity() string
 	// ProjectName returns the value that is tied to the corresponding cobra flag.
 	ProjectName() string
 	// SeedName returns the value that is tied to the corresponding cobra flag.
@@ -29,8 +29,8 @@ type TargetFlags interface {
 	ToTarget() Target
 	// IsTargetValid returns true if the set of given CLI flags is enough
 	// to create a meaningful target. For example, if only the SeedName is
-	// given, false is returned because for targeting a seed, the GardenName
-	// must also be given. If ShootName and GardenName are set, false is
+	// given, false is returned because for targeting a seed, the GardenIdentity
+	// must also be given. If ShootName and GardenIdentity are set, false is
 	// returned because either project or seed have to be given as well.
 	IsTargetValid() bool
 	// OverrideTarget overrides the given target with the values of the target flags
@@ -39,22 +39,22 @@ type TargetFlags interface {
 
 func NewTargetFlags(garden, project, seed, shoot string) TargetFlags {
 	return &targetFlagsImpl{
-		gardenName:  garden,
-		projectName: project,
-		seedName:    seed,
-		shootName:   shoot,
+		gardenIdentity: garden,
+		projectName:    project,
+		seedName:       seed,
+		shootName:      shoot,
 	}
 }
 
 type targetFlagsImpl struct {
-	gardenName  string
-	projectName string
-	seedName    string
-	shootName   string
+	gardenIdentity string
+	projectName    string
+	seedName       string
+	shootName      string
 }
 
-func (tf *targetFlagsImpl) GardenName() string {
-	return tf.gardenName
+func (tf *targetFlagsImpl) GardenIdentity() string {
+	return tf.gardenIdentity
 }
 
 func (tf *targetFlagsImpl) ProjectName() string {
@@ -70,18 +70,18 @@ func (tf *targetFlagsImpl) ShootName() string {
 }
 
 func (tf *targetFlagsImpl) AddFlags(flags *pflag.FlagSet) {
-	flags.StringVar(&tf.gardenName, "garden", "", "target the given garden cluster")
+	flags.StringVar(&tf.gardenIdentity, "garden", "", "target the given garden cluster")
 	flags.StringVar(&tf.projectName, "project", "", "target the given project")
 	flags.StringVar(&tf.seedName, "seed", "", "target the given seed cluster")
 	flags.StringVar(&tf.shootName, "shoot", "", "target the given shoot cluster")
 }
 
 func (tf *targetFlagsImpl) ToTarget() Target {
-	return NewTarget(tf.gardenName, tf.projectName, tf.seedName, tf.shootName)
+	return NewTarget(tf.gardenIdentity, tf.projectName, tf.seedName, tf.shootName)
 }
 
 func (tf *targetFlagsImpl) isEmpty() bool {
-	return tf.gardenName == "" && tf.projectName == "" && tf.seedName == "" && tf.shootName == ""
+	return tf.gardenIdentity == "" && tf.projectName == "" && tf.seedName == "" && tf.shootName == ""
 }
 
 func (tf *targetFlagsImpl) OverrideTarget(current Target) (Target, error) {
@@ -92,8 +92,8 @@ func (tf *targetFlagsImpl) OverrideTarget(current Target) (Target, error) {
 		// user to "move up", e.g. when they have targeted a shoot, just
 		// specifying "--garden mygarden" should target the garden, not the same
 		// shoot on the garden mygarden.
-		if tf.gardenName != "" {
-			current = current.WithGardenName(tf.gardenName).WithProjectName("").WithSeedName("").WithShootName("")
+		if tf.gardenIdentity != "" {
+			current = current.WithGardenIdentity(tf.gardenIdentity).WithProjectName("").WithSeedName("").WithShootName("")
 		}
 
 		if tf.projectName != "" && tf.seedName != "" {
@@ -122,7 +122,7 @@ func (tf *targetFlagsImpl) OverrideTarget(current Target) (Target, error) {
 
 func (tf *targetFlagsImpl) IsTargetValid() bool {
 	// garden name is always required for a complete set of flags
-	if tf.gardenName == "" {
+	if tf.gardenIdentity == "" {
 		return false
 	}
 

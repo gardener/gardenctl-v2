@@ -41,40 +41,40 @@ var _ = Describe("Command", func() {
 	It("should be able to unset a targeted garden", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
-		gardenName := "mygarden"
+		gardenIdentity := "mygarden"
 		cfg := &config.Config{
 			Gardens: []config.Garden{{
-				ClusterIdentity: gardenName,
-				Kubeconfig:      "",
+				Identity:   gardenIdentity,
+				Kubeconfig: "",
 			}},
 		}
-		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget(gardenName, "", "", ""))
+		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget(gardenIdentity, "", "", ""))
 		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
 		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
 
 		Expect(cmd.RunE(cmd, []string{"garden"})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully unset targeted garden %q\n", gardenName))
+		Expect(out.String()).To(ContainSubstring("Successfully unset targeted garden %q\n", gardenIdentity))
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(currentTarget.GardenName()).To(BeEmpty())
+		Expect(currentTarget.GardenIdentity()).To(BeEmpty())
 	})
 
 	It("should be able to unset a targeted project", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
-		gardenName := "mygarden"
+		gardenIdentity := "mygarden"
 		projectName := "myproject"
 		gardenKubeconfig := ""
 		cfg := &config.Config{
 			Gardens: []config.Garden{{
-				ClusterIdentity: gardenName,
-				Kubeconfig:      gardenKubeconfig,
+				Identity:   gardenIdentity,
+				Kubeconfig: gardenKubeconfig,
 			}},
 		}
 
 		// user has already targeted a garden and project
-		currentTarget := target.NewTarget(gardenName, projectName, "", "")
+		currentTarget := target.NewTarget(gardenIdentity, projectName, "", "")
 
 		// garden cluster contains the targeted project
 		project := &gardencorev1beta1.Project{
@@ -102,25 +102,25 @@ var _ = Describe("Command", func() {
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(currentTarget.GardenName()).To(Equal(gardenName))
+		Expect(currentTarget.GardenIdentity()).To(Equal(gardenIdentity))
 		Expect(currentTarget.ProjectName()).To(BeEmpty())
 	})
 
 	It("should be able to unset targeted seed", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
-		gardenName := "mygarden"
+		gardenIdentity := "mygarden"
 		seedName := "myseed"
 		gardenKubeconfig := ""
 		cfg := &config.Config{
 			Gardens: []config.Garden{{
-				ClusterIdentity: gardenName,
-				Kubeconfig:      gardenKubeconfig,
+				Identity:   gardenIdentity,
+				Kubeconfig: gardenKubeconfig,
 			}},
 		}
 
 		// user has already targeted a garden and seed
-		currentTarget := target.NewTarget(gardenName, "", seedName, "")
+		currentTarget := target.NewTarget(gardenIdentity, "", seedName, "")
 
 		// garden cluster contains the targeted seed
 		seed := &gardencorev1beta1.Seed{
@@ -151,21 +151,21 @@ var _ = Describe("Command", func() {
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(currentTarget.GardenName()).To(Equal(gardenName))
+		Expect(currentTarget.GardenIdentity()).To(Equal(gardenIdentity))
 		Expect(currentTarget.SeedName()).To(BeEmpty())
 	})
 
 	It("should be able to unset targeted shoot", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
-		gardenName := "mygarden"
+		gardenIdentity := "mygarden"
 		gardenKubeconfig := ""
 		projectName := "myproject"
 		shootName := "myshoot"
 		cfg := &config.Config{
 			Gardens: []config.Garden{{
-				ClusterIdentity: gardenName,
-				Kubeconfig:      gardenKubeconfig,
+				Identity:   gardenIdentity,
+				Kubeconfig: gardenKubeconfig,
 			}},
 		}
 
@@ -188,7 +188,7 @@ var _ = Describe("Command", func() {
 		}
 
 		// user has already targeted a garden, project and shoot
-		currentTarget := target.NewTarget(gardenName, projectName, "", shootName)
+		currentTarget := target.NewTarget(gardenIdentity, projectName, "", shootName)
 
 		fakeGardenClient := fake.NewClientBuilder().WithObjects(project, shoot).Build()
 
@@ -206,7 +206,7 @@ var _ = Describe("Command", func() {
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(currentTarget.GardenName()).To(Equal(gardenName))
+		Expect(currentTarget.GardenIdentity()).To(Equal(gardenIdentity))
 		Expect(currentTarget.ProjectName()).To(Equal(projectName))
 		Expect(currentTarget.SeedName()).To(BeEmpty())
 		Expect(currentTarget.ShootName()).To(BeEmpty())

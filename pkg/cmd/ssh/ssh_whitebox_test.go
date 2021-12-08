@@ -78,7 +78,7 @@ func waitForBastionThenPatchStatus(ctx context.Context, gardenClient client.Clie
 
 var _ = Describe("Command", func() {
 	const (
-		gardenName           = "mygarden"
+		gardenIdentity       = "mygarden"
 		gardenKubeconfigFile = "/not/a/real/kubeconfig"
 		bastionName          = "test-bastion"
 		bastionHostname      = "example.invalid"
@@ -132,8 +132,8 @@ var _ = Describe("Command", func() {
 
 		cfg = &config.Config{
 			Gardens: []config.Garden{{
-				ClusterIdentity: gardenName,
-				Kubeconfig:      gardenKubeconfigFile,
+				Identity:   gardenIdentity,
+				Kubeconfig: gardenKubeconfigFile,
 			}},
 		}
 
@@ -241,7 +241,7 @@ var _ = Describe("Command", func() {
 		defer cancel()
 
 		// setup fakes
-		currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name)
+		currentTarget := target.NewTarget(gardenIdentity, testProject.Name, "", testShoot.Name)
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider()
 
@@ -305,7 +305,7 @@ var _ = Describe("Command", func() {
 		ctx, cancel := context.WithCancel(ctxTimeout)
 		defer cancel()
 
-		currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name)
+		currentTarget := target.NewTarget(gardenIdentity, testProject.Name, "", testShoot.Name)
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider()
 
@@ -393,7 +393,7 @@ var _ = Describe("Command", func() {
 		defer cancel()
 
 		// setup fakes
-		currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name)
+		currentTarget := target.NewTarget(gardenIdentity, testProject.Name, "", testShoot.Name)
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider()
 
@@ -472,7 +472,7 @@ var _ = Describe("Command", func() {
 			ctx, cancel := context.WithCancel(ctxTimeout)
 			defer cancel()
 
-			currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name)
+			currentTarget := target.NewTarget(gardenIdentity, testProject.Name, "", testShoot.Name)
 			targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 			clientProvider := internalfake.NewFakeClientProvider()
 

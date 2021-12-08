@@ -25,27 +25,27 @@ type Config struct {
 
 // Garden represents one garden cluster
 type Garden struct {
-	// ClusterIdentity is a unique identifier of this Garden that can be used to target this Garden
-	ClusterIdentity string `yaml:"clusterIdentifier"`
+	// Identity is a unique identifier of this Garden that can be used to target this Garden
+	Identity string `yaml:"identity"`
 	// Kubeconfig holds the path for the kubeconfig of the garden cluster
 	Kubeconfig string `yaml:"kubeconfig"`
 	// Context if set, context overwrites the current-context of the cluster kubeconfig
 	Context string `yaml:"context"`
-	// Name is an alternative name that can be used to target this Garden
-	Name string `yaml:"name"`
+	// Short is a custom short name to target this Garden
+	Short string `yaml:"short"`
 	// MatchPatterns is a list of regex patterns that can be defined to use custom input formats for targeting
 	// Use named capturing groups to match target values.
 	// Supported capturing groups: project, namespace, shoot
 	MatchPatterns []string `yaml:"matchPatterns"`
 }
 
-// TargetName returns the name of the Garden which is either the cluster identity or, if configured, the cluster name
-func (garden *Garden) TargetName() string {
-	if garden.Name != "" {
-		return garden.Name
+// ShortOrIdentity returns the name of the Garden which is either the identity or, if configured, the short name
+func (garden *Garden) ShortOrIdentity() string {
+	if garden.Short != "" {
+		return garden.Short
 	}
 
-	return garden.ClusterIdentity
+	return garden.Identity
 }
 
 // LoadFromFile parses a gardenctl config file and returns a Config struct
@@ -110,14 +110,17 @@ type PatternMatch struct {
 }
 
 // Garden returns a Garden cluster from the list of configured Gardens
-func (config *Config) Garden(name string) (*Garden, error) {
+// This function accepts both identity and short name as lookup string
+func (config *Config) Garden(shortOrIdentity string) (*Garden, error) {
 	for _, g := range config.Gardens {
-		if g.ClusterIdentity == name || g.TargetName() == name {
+		if g.Identity == shortOrIdentity {
+			return &g, nil
+		} else if g.Short != "" && g.Short == shortOrIdentity {
 			return &g, nil
 		}
 	}
 
-	return nil, fmt.Errorf("garden with identity or name %q is not defined in gardenctl configuration", name)
+	return nil, fmt.Errorf("garden with identity or short %q is not defined in gardenctl configuration", shortOrIdentity)
 }
 
 // PatternKey is a key that can be used to identify a value in a pattern
@@ -134,7 +137,7 @@ const (
 
 // MatchPattern matches a string against patterns defined in gardenctl config
 // If matched, the function creates and returns a PatternMatch from the provided target string
-func (config *Config) MatchPattern(value string, currentGarden string) (*PatternMatch, error) {
+func (config *Config) MatchPattern(value string, currentIdentity string) (*PatternMatch, error) {
 	var patternMatch *PatternMatch
 
 	for _, g := range config.Gardens {
@@ -145,9 +148,9 @@ func (config *Config) MatchPattern(value string, currentGarden string) (*Pattern
 		}
 
 		if match != nil {
-			match.Garden = g.TargetName()
+			match.Garden = g.Identity
 
-			if currentGarden == "" || g.TargetName() == currentGarden {
+			if currentIdentity == "" || g.Identity == currentIdentity {
 				// Directly return match of selected garden
 				return match, nil
 			}
@@ -199,11 +202,11 @@ func matchPattern(patterns []string, value string) (*PatternMatch, error) {
 }
 
 // SetGarden adds or updates a Garden in the configuration
-func (config *Config) SetGarden(clusterIdentity string, kubeconfigFile flag.StringFlag, contextName flag.StringFlag, name flag.StringFlag, patterns []string, configFilename string) error {
+func (config *Config) SetGarden(identity string, kubeconfigFile flag.StringFlag, contextName flag.StringFlag, short flag.StringFlag, patterns []string, configFilename string) error {
 	var garden *Garden
 
 	for i, g := range config.Gardens {
-		if g.ClusterIdentity == clusterIdentity {
+		if g.Identity == identity {
 			garden = &config.Gardens[i]
 			break
 		}
@@ -219,8 +222,8 @@ func (config *Config) SetGarden(clusterIdentity string, kubeconfigFile flag.Stri
 			garden.Context = contextName.Value()
 		}
 
-		if name.Provided() {
-			garden.Name = name.Value()
+		if short.Provided() {
+			garden.Short = short.Value()
 		}
 
 		if patterns != nil {
@@ -232,11 +235,11 @@ func (config *Config) SetGarden(clusterIdentity string, kubeconfigFile flag.Stri
 		}
 	} else {
 		newGarden := Garden{
-			ClusterIdentity: clusterIdentity,
-			Kubeconfig:      kubeconfigFile.Value(),
-			Context:         contextName.Value(),
-			Name:            name.Value(),
-			MatchPatterns:   patterns,
+			Identity:      identity,
+			Kubeconfig:    kubeconfigFile.Value(),
+			Context:       contextName.Value(),
+			Short:         short.Value(),
+			MatchPatterns: patterns,
 		}
 
 		config.Gardens = append(config.Gardens, newGarden)
@@ -246,17 +249,17 @@ func (config *Config) SetGarden(clusterIdentity string, kubeconfigFile flag.Stri
 }
 
 // DeleteGarden deletes a Garden from the configuration
-func (config *Config) DeleteGarden(clusterIdentity string, configFilename string) error {
+func (config *Config) DeleteGarden(identity string, configFilename string) error {
 	var newGardens []Garden
 
 	for _, g := range config.Gardens {
-		if g.ClusterIdentity != clusterIdentity {
+		if g.Identity != identity {
 			newGardens = append(newGardens, g)
 		}
 	}
 
 	if len(config.Gardens) == len(newGardens) {
-		return fmt.Errorf("failed to delete garden with cluster identity %q", clusterIdentity)
+		return fmt.Errorf("failed to delete garden with identity %q", identity)
 	}
 
 	config.Gardens = newGardens

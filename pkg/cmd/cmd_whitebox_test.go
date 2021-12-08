@@ -39,7 +39,7 @@ var _ = Describe("Gardenctl command", func() {
 	utilruntime.Must(operationsv1alpha1.AddToScheme(scheme.Scheme))
 
 	const (
-		gardenName           = "mygarden"
+		gardenIdentity       = "mygarden"
 		projectName          = "myproject"
 		gardenKubeconfigFile = "/not/a/real/garden/kubeconfig"
 		foobarKubeconfigFile = "/not/a/real/foobar/kubeconfig"
@@ -70,11 +70,11 @@ var _ = Describe("Gardenctl command", func() {
 	BeforeEach(func() {
 		cfg = &config.Config{
 			Gardens: []config.Garden{{
-				ClusterIdentity: gardenName,
-				Kubeconfig:      gardenKubeconfigFile,
+				Identity:   gardenIdentity,
+				Kubeconfig: gardenKubeconfigFile,
 			}, {
-				ClusterIdentity: "foobar",
-				Kubeconfig:      foobarKubeconfigFile,
+				Identity:   "foobar",
+				Kubeconfig: foobarKubeconfigFile,
 			}},
 		}
 
@@ -86,7 +86,7 @@ var _ = Describe("Gardenctl command", func() {
 		targetFile = filepath.Join(gardenDir, targetFilename)
 		Expect(cfg.SaveToFile(configFile)).To(Succeed())
 		fsTargetProvider := target.NewTargetProvider(targetFile, nil)
-		Expect(fsTargetProvider.Write(target.NewTarget(gardenName, projectName, "", "myshoot"))).To(Succeed())
+		Expect(fsTargetProvider.Write(target.NewTarget(gardenIdentity, projectName, "", "myshoot"))).To(Succeed())
 		Expect(os.Setenv(envGardenHomeDir, gardenDir)).To(Succeed())
 
 		testProject1 = &gardencorev1beta1.Project{
@@ -220,7 +220,7 @@ var _ = Describe("Gardenctl command", func() {
 		shootClient = fakeclient.NewClientBuilder().WithObjects(testNode).Build()
 
 		// setup fakes
-		currentTarget := target.NewTarget(gardenName, testProject1.Name, "", testShoot1.Name)
+		currentTarget := target.NewTarget(gardenIdentity, testProject1.Name, "", testShoot1.Name)
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider()
 
@@ -255,7 +255,7 @@ var _ = Describe("Gardenctl command", func() {
 
 			values, err := gardenFlagCompletionFunc(factory.Context(), manager, targetFlags)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal([]string{"foobar", gardenName}))
+			Expect(values).To(Equal([]string{"foobar", gardenIdentity}))
 		})
 	})
 
@@ -431,7 +431,7 @@ var _ = Describe("Gardenctl command", func() {
 			// check target flags values
 			tf := manager.TargetFlags()
 			Expect(tf).To(BeIdenticalTo(factory.TargetFlags))
-			Expect(tf.GardenName()).To(BeEmpty())
+			Expect(tf.GardenIdentity()).To(BeEmpty())
 			Expect(tf.ProjectName()).To(BeEmpty())
 			Expect(tf.SeedName()).To(BeEmpty())
 			Expect(tf.ShootName()).To(Equal(shootName))
@@ -439,7 +439,7 @@ var _ = Describe("Gardenctl command", func() {
 			// check current target values
 			current, err := manager.CurrentTarget()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(current.GardenName()).To(Equal(gardenName))
+			Expect(current.GardenIdentity()).To(Equal(gardenIdentity))
 			Expect(current.ProjectName()).To(Equal(projectName))
 			Expect(current.SeedName()).To(BeEmpty())
 			Expect(current.ShootName()).To(Equal(shootName))

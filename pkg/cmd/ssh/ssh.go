@@ -209,7 +209,7 @@ func runCmdSSH(f util.Factory, o *SSHOptions) error {
 	printTargetInformation(o.IOStreams.Out, currentTarget)
 
 	// create client for the garden cluster
-	gardenClient, err := manager.GardenClient(currentTarget.GardenName())
+	gardenClient, err := manager.GardenClient(currentTarget.GardenIdentity())
 	if err != nil {
 		return err
 	}
@@ -364,7 +364,7 @@ func printTargetInformation(out io.Writer, t target.Target) {
 		step = t.SeedName()
 	}
 
-	fmt.Fprintf(out, "Preparing SSH access to %s/%s on %s…\n", step, t.ShootName(), t.GardenName())
+	fmt.Fprintf(out, "Preparing SSH access to %s/%s on %s…\n", step, t.ShootName(), t.GardenIdentity())
 }
 
 func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string) {

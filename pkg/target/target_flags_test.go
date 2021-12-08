@@ -18,7 +18,7 @@ var _ = Describe("Target Flags", func() {
 	It("should return an empty set of target flags", func() {
 		tf := target.NewTargetFlags("", "", "", "")
 		Expect(tf).NotTo(BeNil())
-		Expect(tf.GardenName()).To(BeEmpty())
+		Expect(tf.GardenIdentity()).To(BeEmpty())
 		Expect(tf.ProjectName()).To(BeEmpty())
 		Expect(tf.SeedName()).To(BeEmpty())
 		Expect(tf.ShootName()).To(BeEmpty())
@@ -28,7 +28,7 @@ var _ = Describe("Target Flags", func() {
 	It("should return valid set of target flags", func() {
 		tf := target.NewTargetFlags("garden", "project", "", "shoot")
 		Expect(tf).NotTo(BeNil())
-		Expect(tf.GardenName()).To(Equal("garden"))
+		Expect(tf.GardenIdentity()).To(Equal("garden"))
 		Expect(tf.ProjectName()).To(Equal("project"))
 		Expect(tf.SeedName()).To(BeEmpty())
 		Expect(tf.ShootName()).To(Equal("shoot"))
@@ -62,7 +62,7 @@ var _ = Describe("Target Flags", func() {
 		tf := target.NewTargetFlags("garden", "project", "", "shoot")
 		t, err := tf.OverrideTarget(target.NewTarget("a", "b", "c", "d"))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(t.GardenName()).To(Equal("garden"))
+		Expect(t.GardenIdentity()).To(Equal("garden"))
 		Expect(t.ProjectName()).To(Equal("project"))
 		Expect(t.SeedName()).To(BeEmpty())
 		Expect(t.ShootName()).To(Equal("shoot"))

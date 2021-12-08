@@ -25,9 +25,9 @@ func ShootForTarget(ctx context.Context, gardenClient gardenclient.Client, t tar
 
 // ShootNamesForTarget returns all possible shoots for a given target.
 func ShootNamesForTarget(ctx context.Context, manager target.Manager, t target.Target) ([]string, error) {
-	gardenClient, err := manager.GardenClient(t.GardenName())
+	gardenClient, err := manager.GardenClient(t.GardenIdentity())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
+		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster with identity %q: %w", t.GardenIdentity(), err)
 	}
 
 	shootList, err := gardenClient.ListShoots(ctx, t.WithShootName("").AsListOption())
@@ -56,9 +56,9 @@ func SeedForTarget(ctx context.Context, gardenClient gardenclient.Client, t targ
 // SeedNamesForTarget returns all possible seeds for a given target. The
 // target must at least point to a garden.
 func SeedNamesForTarget(ctx context.Context, manager target.Manager, t target.Target) ([]string, error) {
-	gardenClient, err := manager.GardenClient(t.GardenName())
+	gardenClient, err := manager.GardenClient(t.GardenIdentity())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
+		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster with identity %q: %w", t.GardenIdentity(), err)
 	}
 
 	seedList, err := gardenClient.ListSeeds(ctx)
@@ -87,9 +87,9 @@ func ProjectForTarget(ctx context.Context, gardenClient gardenclient.Client, t t
 // ProjectNamesForTarget returns all projects for the targeted garden.
 // target must at least point to a garden.
 func ProjectNamesForTarget(ctx context.Context, manager target.Manager, t target.Target) ([]string, error) {
-	gardenClient, err := manager.GardenClient(t.GardenName())
+	gardenClient, err := manager.GardenClient(t.GardenIdentity())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
+		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster with identity %q: %w", t.GardenIdentity(), err)
 	}
 
 	projectList, err := gardenClient.ListProjects(ctx)
@@ -105,11 +105,12 @@ func ProjectNamesForTarget(ctx context.Context, manager target.Manager, t target
 	return names.List(), nil
 }
 
-// GardenNames returns all names of configured Gardens
+// GardenNames returns all names of configured Gardens.
+// If a short name is configured it is returned instead of identity
 func GardenNames(manager target.Manager) ([]string, error) {
 	names := sets.NewString()
 	for _, garden := range manager.Configuration().Gardens {
-		names.Insert(garden.TargetName())
+		names.Insert(garden.ShortOrIdentity())
 	}
 
 	return names.List(), nil

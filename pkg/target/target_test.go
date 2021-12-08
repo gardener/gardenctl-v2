@@ -17,7 +17,7 @@ var _ = Describe("Target", func() {
 	It("should keep data", func() {
 		t := target.NewTarget("a", "b", "c", "d")
 
-		Expect(t.GardenName()).To(Equal("a"))
+		Expect(t.GardenIdentity()).To(Equal("a"))
 		Expect(t.ProjectName()).To(Equal("b"))
 		Expect(t.SeedName()).To(Equal("c"))
 		Expect(t.ShootName()).To(Equal("d"))

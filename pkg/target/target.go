@@ -27,17 +27,17 @@ import (
 // be the target for user operations in gardenctl. It works similar
 // to the context defined in a kubeconfig.
 type Target interface {
-	// GardenName returns the currently targeted garden cluster name.
-	GardenName() string
+	// GardenIdentity returns the currently targeted garden cluster identity.
+	GardenIdentity() string
 	// ProjectName returns the currently targeted project name.
 	ProjectName() string
 	// SeedName returns the currently targeted seed cluster name.
 	SeedName() string
 	// ShootName returns the currently targeted shoot cluster name.
 	ShootName() string
-	// WithGardenName returns a copy of the target with the garden name updated.
+	// WithGardenIdentity returns a copy of the target with the garden identity updated.
 	// The returned target can be invalid.
-	WithGardenName(name string) Target
+	WithGardenIdentity(identity string) Target
 	// WithProjectName returns a copy of the target with the project name updated.
 	// The returned target can be invalid.
 	WithProjectName(name string) Target
@@ -67,9 +67,9 @@ var _ Target = &targetImpl{}
 
 // NewTarget returns a new target. This function does not perform any validation,
 // so the returned target can be invalid.
-func NewTarget(gardenName, projectName, seedName, shootName string) Target {
+func NewTarget(identity, projectName, seedName, shootName string) Target {
 	return &targetImpl{
-		Garden:  gardenName,
+		Garden:  identity,
 		Project: projectName,
 		Seed:    seedName,
 		Shoot:   shootName,
@@ -86,8 +86,8 @@ func (t *targetImpl) Validate() error {
 	return nil
 }
 
-// GardenName returns the currently targeted garden cluster name.
-func (t *targetImpl) GardenName() string {
+// GardenIdentity returns the currently targeted garden cluster identity.
+func (t *targetImpl) GardenIdentity() string {
 	return t.Garden
 }
 
@@ -106,10 +106,10 @@ func (t *targetImpl) ShootName() string {
 	return t.Shoot
 }
 
-// WithGardenName returns a copy of the target with the garden name updated.
+// WithGardenIdentity returns a copy of the target with the garden identity updated.
 // The returned target can be invalid.
-func (t *targetImpl) WithGardenName(name string) Target {
-	return NewTarget(name, t.Project, t.Seed, t.Shoot)
+func (t *targetImpl) WithGardenIdentity(identity string) Target {
+	return NewTarget(identity, t.Project, t.Seed, t.Shoot)
 }
 
 // WithProjectName returns a copy of the target with the project name updated.

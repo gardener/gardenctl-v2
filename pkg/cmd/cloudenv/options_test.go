@@ -192,7 +192,7 @@ var _ = Describe("CloudEnv Options", func() {
 			Context("when the command runs successfully", func() {
 				BeforeEach(func() {
 					factory.EXPECT().Manager().Return(manager, nil)
-					manager.EXPECT().GardenClient(t.GardenName()).Return(client, nil)
+					manager.EXPECT().GardenClient(t.GardenIdentity()).Return(client, nil)
 					factory.EXPECT().Context().Return(ctx)
 				})
 
@@ -271,14 +271,14 @@ var _ = Describe("CloudEnv Options", func() {
 				It("should fail with GardenClientError", func() {
 					factory.EXPECT().Manager().Return(manager, nil)
 					manager.EXPECT().CurrentTarget().Return(t.WithSeedName(""), nil)
-					manager.EXPECT().GardenClient(t.GardenName()).Return(nil, err)
+					manager.EXPECT().GardenClient(t.GardenIdentity()).Return(nil, err)
 					Expect(options.Run(factory)).To(MatchError("failed to create garden cluster client: error"))
 				})
 
 				Context("and the error occurs with the GardenClient instance", func() {
 					BeforeEach(func() {
 						factory.EXPECT().Manager().Return(manager, nil)
-						manager.EXPECT().GardenClient(t.GardenName()).Return(client, nil)
+						manager.EXPECT().GardenClient(t.GardenIdentity()).Return(client, nil)
 						factory.EXPECT().Context().Return(ctx)
 					})
 
@@ -540,7 +540,7 @@ var _ = Describe("CloudEnv Options", func() {
 
 			JustBeforeEach(func() {
 				meta = options.GenerateMetadata(providerType)
-				targetFlags = fmt.Sprintf("--garden %s --project %s --shoot %s", t.GardenName(), t.ProjectName(), t.ShootName())
+				targetFlags = fmt.Sprintf("--garden %s --project %s --shoot %s", t.GardenIdentity(), t.ProjectName(), t.ShootName())
 				Expect(cloudenv.BaseTemplate().ExecuteTemplate(options.IOStreams.Out, "usage-hint", meta)).To(Succeed())
 			})
 
