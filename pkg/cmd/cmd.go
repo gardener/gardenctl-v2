@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,8 +22,10 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 )
 
@@ -74,6 +77,13 @@ func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.C
 	})
 
 	flags := cmd.PersistentFlags()
+
+	// Normalize all flags that are coming from other packages or pre-configurations
+	// a.k.a. change all "_" to "-". e.g. klog package
+	flags.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)
+
+	addKlogFlags(flags)
+
 	// Do not precalculate what $HOME is for the help text, because it prevents
 	// usage where the current user has no home directory (which might _just_ be
 	// the reason the user chose to specify an explicit config file).
@@ -237,4 +247,14 @@ func shootFlagCompletionFunc(ctx context.Context, manager target.Manager, tf tar
 	}
 
 	return util.ShootNamesForTarget(ctx, manager, currentTarget)
+}
+
+// addKlogFlags adds flags from k8s.io/klog
+func addKlogFlags(fs *pflag.FlagSet) {
+	local := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	klog.InitFlags(local)
+
+	local.VisitAll(func(fl *flag.Flag) {
+		fs.AddGoFlag(fl)
+	})
 }
