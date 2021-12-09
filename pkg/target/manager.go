@@ -68,7 +68,7 @@ type Manager interface {
 	ShootClusterClient(ctx context.Context, t Target) (client.Client, error)
 
 	// Configuration returns the current gardenctl configuration
-	Configuration() *config.Config
+	Configuration() config.Config
 
 	// GardenClient returns a gardenClient for a garden cluster
 	GardenClient(gardenIdentity string) (gardenclient.Client, error)
@@ -77,7 +77,7 @@ type Manager interface {
 }
 
 type managerImpl struct {
-	config          *config.Config
+	config          config.Config
 	targetProvider  TargetProvider
 	clientProvider  ClientProvider
 	kubeconfigCache KubeconfigCache
@@ -87,7 +87,7 @@ var _ Manager = &managerImpl{}
 
 // GardenClient creates a new Garden client by creating a runtime client via the ClientProvider
 // it then wraps the runtime client and returns a Garden client
-func GardenClient(identity string, config *config.Config, provider ClientProvider) (gardenclient.Client, error) {
+func GardenClient(identity string, config config.Config, provider ClientProvider) (gardenclient.Client, error) {
 	g, err := config.Garden(identity)
 	if err != nil {
 		return nil, fmt.Errorf("targeted garden cluster with identity %q is not configured", identity)
@@ -113,7 +113,7 @@ func GardenClientForKubeConfig(kubeconfigFile string, contextName string, provid
 }
 
 // NewManager returns a new manager
-func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider ClientProvider, kubeconfigCache KubeconfigCache) (Manager, error) {
+func NewManager(config config.Config, targetProvider TargetProvider, clientProvider ClientProvider, kubeconfigCache KubeconfigCache) (Manager, error) {
 	return &managerImpl{
 		config:          config,
 		targetProvider:  targetProvider,
@@ -140,7 +140,7 @@ func (m *managerImpl) TargetFlags() TargetFlags {
 	return tf
 }
 
-func (m *managerImpl) Configuration() *config.Config {
+func (m *managerImpl) Configuration() config.Config {
 	return m.config
 }
 

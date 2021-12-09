@@ -38,7 +38,7 @@ type TargetFlags interface {
 	// OverrideTarget overrides the given target with the values of the target flags
 	OverrideTarget(current Target) (Target, error)
 	// SetConfig set config to lookup garden for given garden short name
-	SetConfig(config *config.Config)
+	SetConfig(config config.Config)
 }
 
 func NewTargetFlags(gardenIdentity, project, seed, shoot string) TargetFlags {
@@ -55,7 +55,7 @@ type targetFlagsImpl struct {
 	projectName           string
 	seedName              string
 	shootName             string
-	config                *config.Config
+	config                config.Config
 }
 
 func (tf *targetFlagsImpl) GardenIdentity() string {
@@ -65,6 +65,7 @@ func (tf *targetFlagsImpl) GardenIdentity() string {
 			return g.Identity
 		}
 	}
+
 	return tf.gardenShortOrIdentity
 }
 
@@ -140,6 +141,6 @@ func (tf *targetFlagsImpl) IsTargetValid() bool {
 	return tf.ToTarget().Validate() == nil
 }
 
-func (tf *targetFlagsImpl) SetConfig(config *config.Config) {
+func (tf *targetFlagsImpl) SetConfig(config config.Config) {
 	tf.config = config
 }

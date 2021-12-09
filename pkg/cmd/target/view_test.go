@@ -24,7 +24,7 @@ var _ = Describe("Command", func() {
 		gardenIdentity := "mygarden"
 		projectName := "myproject"
 		shootName := "myshoot"
-		cfg := &config.Config{
+		cfg := &config.ConfigImpl{
 			Gardens: []config.Garden{{
 				Identity:   gardenIdentity,
 				Kubeconfig: "",

@@ -42,7 +42,7 @@ type TargetBuilder interface {
 type handler func(t *targetImpl) error
 
 type targetBuilderImpl struct {
-	config         *config.Config
+	config         config.Config
 	clientProvider ClientProvider
 	target         Target
 	actions        []handler
@@ -51,7 +51,7 @@ type targetBuilderImpl struct {
 var _ TargetBuilder = &targetBuilderImpl{}
 
 // NewTargetBuilder returns a new target builder
-func NewTargetBuilder(config *config.Config, clientProvider ClientProvider) TargetBuilder {
+func NewTargetBuilder(config config.Config, clientProvider ClientProvider) TargetBuilder {
 	return &targetBuilderImpl{
 		config:         config,
 		clientProvider: clientProvider,

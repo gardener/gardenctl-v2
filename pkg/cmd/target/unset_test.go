@@ -42,7 +42,7 @@ var _ = Describe("Command", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		gardenIdentity := "mygarden"
-		cfg := &config.Config{
+		cfg := &config.ConfigImpl{
 			Gardens: []config.Garden{{
 				Identity:   gardenIdentity,
 				Kubeconfig: "",
@@ -66,7 +66,7 @@ var _ = Describe("Command", func() {
 		gardenIdentity := "mygarden"
 		projectName := "myproject"
 		gardenKubeconfig := ""
-		cfg := &config.Config{
+		cfg := &config.ConfigImpl{
 			Gardens: []config.Garden{{
 				Identity:   gardenIdentity,
 				Kubeconfig: gardenKubeconfig,
@@ -112,7 +112,7 @@ var _ = Describe("Command", func() {
 		gardenIdentity := "mygarden"
 		seedName := "myseed"
 		gardenKubeconfig := ""
-		cfg := &config.Config{
+		cfg := &config.ConfigImpl{
 			Gardens: []config.Garden{{
 				Identity:   gardenIdentity,
 				Kubeconfig: gardenKubeconfig,
@@ -162,7 +162,7 @@ var _ = Describe("Command", func() {
 		gardenKubeconfig := ""
 		projectName := "myproject"
 		shootName := "myshoot"
-		cfg := &config.Config{
+		cfg := &config.ConfigImpl{
 			Gardens: []config.Garden{{
 				Identity:   gardenIdentity,
 				Kubeconfig: gardenKubeconfig,

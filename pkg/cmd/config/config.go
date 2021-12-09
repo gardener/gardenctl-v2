@@ -51,10 +51,12 @@ func validGardenArgsFunction(f util.Factory, args []string) ([]string, error) {
 	}
 
 	var gNames []string
+
 	if len(args) == 0 {
-		for _, g := range manager.Configuration().Gardens {
+		for _, g := range manager.Configuration().AllGardens() {
 			gNames = append(gNames, g.ShortOrIdentity())
 		}
+
 		return gNames, nil
 	}
 

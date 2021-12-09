@@ -87,7 +87,7 @@ var _ = Describe("Command", func() {
 	)
 
 	var (
-		cfg                 *config.Config
+		cfg                 config.Config
 		testProject         *gardencorev1beta1.Project
 		testSeed            *gardencorev1beta1.Seed
 		testShoot           *gardencorev1beta1.Shoot
@@ -130,7 +130,7 @@ var _ = Describe("Command", func() {
 		// do not waste time in tests
 		pollBastionStatusInterval = 1 * time.Second
 
-		cfg = &config.Config{
+		cfg = &config.ConfigImpl{
 			Gardens: []config.Garden{{
 				Identity:   gardenIdentity,
 				Kubeconfig: gardenKubeconfigFile,

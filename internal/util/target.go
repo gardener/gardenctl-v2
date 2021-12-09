@@ -109,7 +109,7 @@ func ProjectNamesForTarget(ctx context.Context, manager target.Manager, t target
 // If a short name is configured it is returned instead of identity
 func GardenNames(manager target.Manager) ([]string, error) {
 	names := sets.NewString()
-	for _, garden := range manager.Configuration().Gardens {
+	for _, garden := range manager.Configuration().AllGardens() {
 		names.Insert(garden.ShortOrIdentity())
 	}
 

@@ -42,7 +42,7 @@ var _ = Describe("Completion", func() {
 	)
 
 	var (
-		cfg                  *config.Config
+		cfg                  config.Config
 		testProject1         *gardencorev1beta1.Project
 		testProject2         *gardencorev1beta1.Project
 		testSeed1            *gardencorev1beta1.Seed
@@ -56,7 +56,7 @@ var _ = Describe("Completion", func() {
 	)
 
 	BeforeEach(func() {
-		cfg = &config.Config{
+		cfg = &config.ConfigImpl{
 			Gardens: []config.Garden{{
 				Identity:   gardenIdentity,
 				Kubeconfig: gardenKubeconfigFile,

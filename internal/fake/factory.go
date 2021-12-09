@@ -8,6 +8,8 @@ package fake
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/config"
@@ -24,7 +26,7 @@ type Factory struct {
 	ManagerImpl target.Manager
 
 	// Override these to customize the created manager.
-	Config              *config.Config
+	Config              config.Config
 	ClientProviderImpl  target.ClientProvider
 	KubeconfigCacheImpl target.KubeconfigCache
 	TargetProviderImpl  target.TargetProvider
@@ -41,9 +43,9 @@ type Factory struct {
 
 var _ util.Factory = &Factory{}
 
-func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider target.ClientProvider, kubeconfigCache target.KubeconfigCache, targetProvider target.TargetProvider) *Factory {
+func NewFakeFactory(cfg config.Config, clock util.Clock, clientProvider target.ClientProvider, kubeconfigCache target.KubeconfigCache, targetProvider target.TargetProvider) *Factory {
 	if cfg == nil {
-		cfg = &config.Config{}
+		cfg = &config.ConfigImpl{}
 	}
 
 	if clientProvider == nil {
@@ -80,7 +82,10 @@ func (f *Factory) Manager() (target.Manager, error) {
 }
 
 func (f *Factory) GetConfigFile() string {
-	return "not/a/real/file"
+	dir, _ := os.MkdirTemp(os.TempDir(), "gctlv2-*")
+	configFile := filepath.Join(dir, "gardenctl-testconfig"+".yaml")
+
+	return configFile
 }
 
 func (f *Factory) Context() context.Context {
