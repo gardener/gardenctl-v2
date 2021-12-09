@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-PACKAGE_PATH="${1:-k8s.io/component-base}"
+PACKAGE_PATHS="${1:-"k8s.io/component-base k8s.io/client-go/pkg"}"
 VERSION_PATH="${2:-$(dirname $0)/../VERSION}"
 PROGRAM_NAME="${3:-gardenctl-v2}"
 VERSION_VERSIONFILE="$(cat "$VERSION_PATH")"
@@ -29,10 +29,13 @@ fi
 # version-to-build in our pipelines (see https://github.com/gardener/cc-utils/issues/431).
 TREE_STATE="$([ -z "$(git status --porcelain 2>/dev/null | grep -vf <(git ls-files --cached --deleted --ignored --exclude-from=.dockerignore) -e 'VERSION')" ] && echo clean || echo dirty)"
 
-echo "-X $PACKAGE_PATH/version.gitMajor=$MAJOR_VERSION
-      -X $PACKAGE_PATH/version.gitMinor=$MINOR_VERSION
-      -X $PACKAGE_PATH/version.gitVersion=$VERSION
-      -X $PACKAGE_PATH/version.gitTreeState=$TREE_STATE
-      -X $PACKAGE_PATH/version.gitCommit=$(git rev-parse --verify HEAD)
-      -X $PACKAGE_PATH/version.buildDate=$(date '+%Y-%m-%dT%H:%M:%S%z' | sed 's/\([0-9][0-9]\)$/:\1/g')
-      -X $PACKAGE_PATH/version/verflag.programName=$PROGRAM_NAME"
+for PACKAGE_PATH in $PACKAGE_PATHS
+do
+  echo "-X $PACKAGE_PATH/version.gitMajor=$MAJOR_VERSION
+        -X $PACKAGE_PATH/version.gitMinor=$MINOR_VERSION
+        -X $PACKAGE_PATH/version.gitVersion=$VERSION
+        -X $PACKAGE_PATH/version.gitTreeState=$TREE_STATE
+        -X $PACKAGE_PATH/version.gitCommit=$(git rev-parse --verify HEAD)
+        -X $PACKAGE_PATH/version.buildDate=$(date '+%Y-%m-%dT%H:%M:%S%z' | sed 's/\([0-9][0-9]\)$/:\1/g')
+        -X $PACKAGE_PATH/version/verflag.programName=$PROGRAM_NAME"
+done
