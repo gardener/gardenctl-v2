@@ -87,7 +87,7 @@ func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.C
 	// Do not precalculate what $HOME is for the help text, because it prevents
 	// usage where the current user has no home directory (which might _just_ be
 	// the reason the user chose to specify an explicit config file).
-	flags.StringVar(&f.ConfigFile, "config", "", fmt.Sprintf("config file (default is $HOME/%s/%s.yaml)", gardenHomeFolder, configName))
+	flags.StringVar(&f.ConfigFile, "config", "", fmt.Sprintf("config file (default is %s)", filepath.Join("~", gardenHomeFolder, configName+".yaml")))
 
 	// allow to temporarily re-target a different cluster
 	f.TargetFlags.AddFlags(flags)
@@ -117,7 +117,7 @@ func initConfig(f *util.FactoryImpl) {
 
 		configPath := filepath.Join(home, gardenHomeFolder)
 
-		// Search config in $HOME/.garden or in path provided with the env variable GCTL_HOME with name ".garden-login" (without extension) or name from env variable GCTL_CONFIG_NAME.
+		// Search config in ~/.garden or in path provided with the env variable GCTL_HOME with name "gardenctl-v2" (without extension) or name from env variable GCTL_CONFIG_NAME.
 		envHomeDir, err := homedir.Expand(os.Getenv(envGardenHomeDir))
 		cobra.CheckErr(err)
 
