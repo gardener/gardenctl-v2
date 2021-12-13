@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 package config_test
 
 import (
+	"k8s.io/component-base/cli/flag"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -22,6 +24,7 @@ var _ = Describe("Command", func() {
 		cfg             config.Config
 		gardenIdentity1 string
 		gardenIdentity2 string
+		gardenContext1  string
 		targetProvider  target.TargetProvider
 		factory         util.Factory
 	)
@@ -29,13 +32,12 @@ var _ = Describe("Command", func() {
 	BeforeEach(func() {
 		gardenIdentity1 = "fooGarden"
 		gardenIdentity2 = "barGarden"
+		gardenContext1 = "my-context"
 		cfg = &config.ConfigImpl{
 			Gardens: []config.Garden{{
 				Identity: gardenIdentity1,
-			},
-				{
-					Identity: gardenIdentity2,
-				}},
+				Context:  gardenContext1,
+			}},
 		}
 
 		// setup fakes
@@ -43,28 +45,49 @@ var _ = Describe("Command", func() {
 		factory = internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
 	})
 
-	It("should delete garden from configuration", func() {
+	It("should add new garden to configuration", func() {
 		// setup command
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := cmdconfig.NewDeleteGardenOptions(streams)
+		o := cmdconfig.NewSetGardenOptions(streams)
 
-		_, err := cfg.Garden(gardenIdentity1)
+		Expect(len(cfg.AllGardens())).To(Equal(1))
+
+		cmd := cmdconfig.NewCmdConfigSetGarden(factory, o)
+		Expect(cmd.RunE(cmd, []string{gardenIdentity2})).To(Succeed())
+
+		_, err := cfg.Garden(gardenIdentity2)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(cfg.AllGardens())).To(Equal(2))
+	})
 
-		cmd := cmdconfig.NewCmdConfigDeleteGarden(factory, o)
+	It("should modify an existing garden configuration", func() {
+		// setup command
+		streams, _, _, _ := util.NewTestIOStreams()
+		o := cmdconfig.NewSetGardenOptions(streams)
+
+		Expect(len(cfg.AllGardens())).To(Equal(1))
+
+		shortName := flag.StringFlag{}
+		shortName.Set("custom")
+
+		o.Short = shortName
+		cmd := cmdconfig.NewCmdConfigSetGarden(factory, o)
 		Expect(cmd.RunE(cmd, []string{gardenIdentity1})).To(Succeed())
 
-		_, err = cfg.Garden(gardenIdentity1)
-		Expect(err).To(HaveOccurred())
+		g, err := cfg.Garden(gardenIdentity1)
+		Expect(err).ToNot(HaveOccurred())
 		Expect(len(cfg.AllGardens())).To(Equal(1))
+		Expect(g.Identity).To(Equal(gardenIdentity1))
+		Expect(g.Short).To(Equal(shortName.Value()))
+		// Check that existing value does not get overwritten
+		Expect(g.Context).To(Equal(gardenContext1))
 	})
 })
 
-var _ = Describe("DeleteGardenOptions", func() {
+var _ = Describe("SetGardenOptions", func() {
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := cmdconfig.NewDeleteGardenOptions(streams)
+		o := cmdconfig.NewSetGardenOptions(streams)
 		o.Identity = "foo"
 		err := o.Validate()
 		Expect(err).ToNot(HaveOccurred())
@@ -72,7 +95,7 @@ var _ = Describe("DeleteGardenOptions", func() {
 
 	It("should reject if no identity is set", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := cmdconfig.NewDeleteGardenOptions(streams)
+		o := cmdconfig.NewSetGardenOptions(streams)
 
 		Expect(o.Validate()).NotTo(Succeed())
 	})
