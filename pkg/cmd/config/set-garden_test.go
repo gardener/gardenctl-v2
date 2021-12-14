@@ -68,7 +68,8 @@ var _ = Describe("Command", func() {
 		Expect(len(cfg.AllGardens())).To(Equal(1))
 
 		shortName := flag.StringFlag{}
-		shortName.Set("custom")
+		err := shortName.Set("custom")
+		Expect(err).ToNot(HaveOccurred())
 
 		o.Short = shortName
 		cmd := cmdconfig.NewCmdConfigSetGarden(factory, o)
