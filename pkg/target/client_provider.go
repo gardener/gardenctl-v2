@@ -37,9 +37,7 @@ func NewClientProvider() ClientProvider {
 func (p *clientProvider) FromFile(kubeconfigFile string, context string) (client.Client, error) {
 	configOverrides := &clientcmd.ConfigOverrides{}
 	if context != "" {
-		configOverrides = &clientcmd.ConfigOverrides{
-			CurrentContext: context,
-		}
+		configOverrides.CurrentContext = context
 	}
 
 	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
