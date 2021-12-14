@@ -18,7 +18,6 @@ import (
 var _ = Describe("Config", func() {
 	var (
 		clusterIdentity1 = "testgarden"
-		shortName1       = "test.garden"
 		clusterIdentity2 = "foogarden"
 		project          = "fooproject"
 		shoot            = "fooshoot"
@@ -30,15 +29,14 @@ var _ = Describe("Config", func() {
 		cfg = &config.ConfigImpl{
 			Gardens: []config.Garden{{
 				Identity: clusterIdentity1,
-				Short:    shortName1,
-				MatchPatterns: []string{
-					fmt.Sprintf("^(%s/)?shoot--(?P<project>.+)--(?P<shoot>.+)$", shortName1),
+				Patterns: []string{
+					fmt.Sprintf("^(%s/)?shoot--(?P<project>.+)--(?P<shoot>.+)$", clusterIdentity1),
 					"^namespace:(?P<namespace>[^/]+)$",
 				},
 			},
 				{
 					Identity: clusterIdentity2,
-					MatchPatterns: []string{
+					Patterns: []string{
 						fmt.Sprintf("^(%s)?shoot--(?P<project>.+)--(?P<shoot>.+)$", clusterIdentity2),
 						"^namespace:(?P<namespace>[^/]+)$",
 					},
@@ -53,31 +51,13 @@ var _ = Describe("Config", func() {
 
 	})
 
-	It("should find garden by name", func() {
-		garden, err := cfg.Garden(shortName1)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(garden.Short).Should(Equal(shortName1))
-
-	})
-
-	It("TargetName() should return short name if defined", func() {
-		garden, err := cfg.Garden(clusterIdentity1)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(garden.ShortOrIdentity()).Should(Equal(shortName1))
-
-		garden, err = cfg.Garden(clusterIdentity2)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(garden.ShortOrIdentity()).Should(Equal(clusterIdentity2))
-
-	})
-
 	It("should throw an error if garden not found", func() {
 		_, err := cfg.Garden("foobar")
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should return a PatternMatch for a given value", func() {
-		tm, err := cfg.MatchPattern(fmt.Sprintf("%s/shoot--%s--%s", shortName1, project, shoot), shortName1)
+		tm, err := cfg.MatchPattern(fmt.Sprintf("%s/shoot--%s--%s", clusterIdentity1, project, shoot), clusterIdentity1)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(tm.Garden).Should(Equal(clusterIdentity1))
 		Expect(tm.Project).Should(Equal(project))

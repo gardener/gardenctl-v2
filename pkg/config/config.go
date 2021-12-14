@@ -21,15 +21,14 @@ type Config interface {
 	// SaveToFile updates a gardenctl config file with the values passed via Config struct
 	SaveToFile(filename string) error
 	// Garden returns a Garden cluster from the list of configured Gardens
-	// This function accepts both identity and short name as lookup string
-	Garden(shortOrIdentity string) (*Garden, error)
+	Garden(identity string) (*Garden, error)
 	// AllGardens returns all Gardens configured
 	AllGardens() []Garden
 	// MatchPattern matches a string against patterns defined in gardenctl config
 	// If matched, the function creates and returns a PatternMatch from the provided target string
 	MatchPattern(value string, currentIdentity string) (*PatternMatch, error)
 	// SetGarden adds or updates a Garden in the configuration
-	SetGarden(identity string, kubeconfigFile flag.StringFlag, contextName flag.StringFlag, short flag.StringFlag, patterns []string, configFilename string) error
+	SetGarden(identity string, kubeconfigFile flag.StringFlag, contextName flag.StringFlag, patterns []string, configFilename string) error
 	// DeleteGarden deletes a Garden from the configuration
 	DeleteGarden(identity string, configFilename string) error
 }
@@ -83,21 +82,10 @@ type Garden struct {
 	Kubeconfig string `yaml:"kubeconfig"`
 	// Context if set, context overwrites the current-context of the cluster kubeconfig
 	Context string `yaml:"context"`
-	// Short is a custom short name to target this Garden
-	Short string `yaml:"short"`
-	// MatchPatterns is a list of regex patterns that can be defined to use custom input formats for targeting
+	// Patterns is a list of regex patterns that can be defined to use custom input formats for targeting
 	// Use named capturing groups to match target values.
 	// Supported capturing groups: project, namespace, shoot
-	MatchPatterns []string `yaml:"matchPatterns"`
-}
-
-// ShortOrIdentity returns the name of the Garden which is either the identity or, if configured, the short name
-func (garden *Garden) ShortOrIdentity() string {
-	if garden.Short != "" {
-		return garden.Short
-	}
-
-	return garden.Identity
+	Patterns []string `yaml:"matchPatterns"`
 }
 
 // SaveToFile updates a gardenctl config file with the values passed via Config struct
@@ -116,17 +104,14 @@ func (config *ConfigImpl) SaveToFile(filename string) error {
 }
 
 // Garden returns a Garden cluster from the list of configured Gardens
-// This function accepts both identity and short name as lookup string
-func (config *ConfigImpl) Garden(shortOrIdentity string) (*Garden, error) {
+func (config *ConfigImpl) Garden(identity string) (*Garden, error) {
 	for _, g := range config.Gardens {
-		if g.Identity == shortOrIdentity {
-			return &g, nil
-		} else if g.Short != "" && g.Short == shortOrIdentity {
+		if g.Identity == identity {
 			return &g, nil
 		}
 	}
 
-	return nil, fmt.Errorf("garden with identity or short %q is not defined in gardenctl configuration", shortOrIdentity)
+	return nil, fmt.Errorf("garden with identity  %q is not defined in gardenctl configuration", identity)
 }
 
 func (config *ConfigImpl) AllGardens() []Garden {
@@ -163,7 +148,7 @@ func (config *ConfigImpl) MatchPattern(value string, currentIdentity string) (*P
 	var patternMatch *PatternMatch
 
 	for _, g := range config.Gardens {
-		match, err := matchPattern(g.MatchPatterns, value)
+		match, err := matchPattern(g.Patterns, value)
 
 		if err != nil {
 			return nil, err
@@ -224,7 +209,7 @@ func matchPattern(patterns []string, value string) (*PatternMatch, error) {
 }
 
 // SetGarden adds or updates a Garden in the configuration
-func (config *ConfigImpl) SetGarden(identity string, kubeconfigFile flag.StringFlag, contextName flag.StringFlag, short flag.StringFlag, patterns []string, configFilename string) error {
+func (config *ConfigImpl) SetGarden(identity string, kubeconfigFile flag.StringFlag, contextName flag.StringFlag, patterns []string, configFilename string) error {
 	var garden *Garden
 
 	for i, g := range config.Gardens {
@@ -244,24 +229,19 @@ func (config *ConfigImpl) SetGarden(identity string, kubeconfigFile flag.StringF
 			garden.Context = contextName.Value()
 		}
 
-		if short.Provided() {
-			garden.Short = short.Value()
-		}
-
 		if patterns != nil {
 			if len(patterns[0]) > 0 {
-				garden.MatchPatterns = patterns
+				garden.Patterns = patterns
 			} else {
-				garden.MatchPatterns = []string{}
+				garden.Patterns = []string{}
 			}
 		}
 	} else {
 		newGarden := Garden{
-			Identity:      identity,
-			Kubeconfig:    kubeconfigFile.Value(),
-			Context:       contextName.Value(),
-			Short:         short.Value(),
-			MatchPatterns: patterns,
+			Identity:   identity,
+			Kubeconfig: kubeconfigFile.Value(),
+			Context:    contextName.Value(),
+			Patterns:   patterns,
 		}
 
 		config.Gardens = append(config.Gardens, newGarden)

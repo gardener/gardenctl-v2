@@ -67,11 +67,11 @@ var _ = Describe("Command", func() {
 
 		Expect(len(cfg.AllGardens())).To(Equal(1))
 
-		shortName := flag.StringFlag{}
-		err := shortName.Set("custom")
+		kubeconfig := flag.StringFlag{}
+		err := kubeconfig.Set("path/to/kubeconfig")
 		Expect(err).ToNot(HaveOccurred())
 
-		o.Short = shortName
+		o.KubeconfigFile = kubeconfig
 		cmd := cmdconfig.NewCmdConfigSetGarden(factory, o)
 		Expect(cmd.RunE(cmd, []string{gardenIdentity1})).To(Succeed())
 
@@ -79,7 +79,7 @@ var _ = Describe("Command", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(cfg.AllGardens())).To(Equal(1))
 		Expect(g.Identity).To(Equal(gardenIdentity1))
-		Expect(g.Short).To(Equal(shortName.Value()))
+		Expect(g.Kubeconfig).To(Equal(kubeconfig.Value()))
 		// Check that existing value does not get overwritten
 		Expect(g.Context).To(Equal(gardenContext1))
 	})

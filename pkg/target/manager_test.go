@@ -99,7 +99,7 @@ var _ = Describe("Manager", func() {
 			Gardens: []config.Garden{{
 				Identity:   gardenIdentity,
 				Kubeconfig: gardenKubeconfig,
-				MatchPatterns: []string{
+				Patterns: []string{
 					fmt.Sprintf("^(%s/)?shoot--(?P<project>.+)--(?P<shoot>.+)$", gardenIdentity),
 					"^namespace:(?P<namespace>[^/]+)$",
 				},

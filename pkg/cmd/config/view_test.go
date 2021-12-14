@@ -30,9 +30,9 @@ var _ = Describe("Command", func() {
 				Kubeconfig: kubeconfig,
 			},
 				{
-					Identity:      gardenIdentity2,
-					Kubeconfig:    kubeconfig,
-					MatchPatterns: matchPatterns,
+					Identity:   gardenIdentity2,
+					Kubeconfig: kubeconfig,
+					Patterns:   matchPatterns,
 				}},
 		}
 

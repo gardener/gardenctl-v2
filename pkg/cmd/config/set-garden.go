@@ -47,7 +47,6 @@ func NewCmdConfigSetGarden(f util.Factory, o *SetGardenOptions) *cobra.Command {
 
 	cmd.Flags().Var(&o.KubeconfigFile, "kubeconfig", "path to kubeconfig file for this Garden cluster. If used without --context, current-context of kubeconfig will be set as context")
 	cmd.Flags().Var(&o.ContextName, "context", "use specific context of kubeconfig")
-	cmd.Flags().Var(&o.Short, "short", "use alternative name for targeting this garden")
 	cmd.Flags().StringArrayVar(&o.Pattern, "pattern", nil, "define regex match patterns for this garden. This flag will overwrite the complete list. You can supply it multiple times to define multiple patterns for this garden")
 
 	return cmd
@@ -59,7 +58,7 @@ func runSetGardenCommand(f util.Factory, opt *SetGardenOptions) error {
 		return err
 	}
 
-	err = manager.Configuration().SetGarden(opt.Identity, opt.KubeconfigFile, opt.ContextName, opt.Short, opt.Pattern, f.GetConfigFile())
+	err = manager.Configuration().SetGarden(opt.Identity, opt.KubeconfigFile, opt.ContextName, opt.Pattern, f.GetConfigFile())
 
 	if err != nil {
 		return err
@@ -82,9 +81,6 @@ type SetGardenOptions struct {
 
 	// Context to use for kubeconfig
 	ContextName flag.StringFlag
-
-	// Short is an alternative name to identify this cluster
-	Short flag.StringFlag
 
 	// Pattern is a list of regex patterns for targeting
 	Pattern []string

@@ -73,11 +73,6 @@ func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.C
 	// register initializers
 	cobra.OnInitialize(func() {
 		initConfig(f)
-
-		manager, err := f.Manager()
-		if err == nil {
-			f.TargetFlags.SetConfig(manager.Configuration())
-		}
 	})
 
 	flags := cmd.PersistentFlags()
@@ -199,12 +194,7 @@ func completionWrapper(f *util.FactoryImpl, ioStreams util.IOStreams, completer 
 func getCurrentTarget(tf target.TargetFlags, manager target.Manager) (target.Target, error) {
 	// any --garden flag has precedence over the config file
 	if tf.GardenIdentity() != "" {
-		garden, err := manager.Configuration().Garden(tf.GardenIdentity())
-		if err != nil {
-			return nil, fmt.Errorf("failed to set target garden: %w", err)
-		}
-
-		return target.NewTarget(garden.Identity, "", "", ""), nil
+		return target.NewTarget(tf.GardenIdentity(), "", "", ""), nil
 	}
 
 	currentTarget, err := manager.CurrentTarget()
