@@ -16,12 +16,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCmdConfigDeleteGarden returns a new (config) set-garden command.
+// NewCmdConfigDeleteGarden returns a new (config) delete-garden command.
 func NewCmdConfigDeleteGarden(f util.Factory, o *DeleteGardenOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete-garden",
-		Short: "delete Garden from gardenctl configuration.",
-		Long:  "Delete Garden from gardenctl configuration. E.g. \"gardenctl config delete-config my-garden to delete my-garden",
+		Short: "delete Garden from gardenctl configuration",
+		Long:  "Delete Garden from gardenctl configuration. E.g. \"gardenctl config delete-garden my-garden to delete my-garden",
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			suggestions, err := validGardenArgsFunction(f, args)
 			if err != nil {
@@ -52,10 +52,18 @@ func runDeleteGardenCommand(f util.Factory, opt *DeleteGardenOptions) error {
 		return err
 	}
 
-	return manager.Configuration().DeleteGarden(opt.Identity, f.GetConfigFile())
+	err = manager.Configuration().DeleteGarden(opt.Identity, f.GetConfigFile())
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(opt.IOStreams.Out, "Successfully deleted garden %q\n", opt.Identity)
+
+	return nil
 }
 
-// DeleteGardenOptions is a struct to support view command
+// DeleteGardenOptions is a struct to support delete command
 type DeleteGardenOptions struct {
 	base.Options
 

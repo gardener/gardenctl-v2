@@ -22,8 +22,8 @@ import (
 func NewCmdConfigSetGarden(f util.Factory, o *SetGardenOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set-garden",
-		Short: "modify or add Garden to gardenctl configuration.",
-		Long:  "Modify or add Garden to gardenctl configuration. E.g. \"gardenctl config set-config my-garden --kubeconfig ~/.kube/kubeconfig.yaml\" to configure or add a garden with identity 'my-garden'.",
+		Short: "modify or add Garden to gardenctl configuration",
+		Long:  "Modify or add Garden to gardenctl configuration. E.g. \"gardenctl config set-garden my-garden --kubeconfig ~/.kube/kubeconfig.yaml\" to configure or add a garden with identity 'my-garden'",
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			suggestions, err := validGardenArgsFunction(f, args)
 			if err != nil {
@@ -48,7 +48,7 @@ func NewCmdConfigSetGarden(f util.Factory, o *SetGardenOptions) *cobra.Command {
 	cmd.Flags().Var(&o.KubeconfigFile, "kubeconfig", "path to kubeconfig file for this Garden cluster. If used without --context, current-context of kubeconfig will be set as context")
 	cmd.Flags().Var(&o.ContextName, "context", "use specific context of kubeconfig")
 	cmd.Flags().Var(&o.Short, "short", "use alternative name for targeting this garden")
-	cmd.Flags().StringArrayVar(&o.Patterns, "patterns", nil, "define regex match patterns for this garden. This flag will overwrite the complete list")
+	cmd.Flags().StringArrayVar(&o.Pattern, "pattern", nil, "define regex match patterns for this garden. This flag will overwrite the complete list. You can supply it multiple times to define multiple patterns for this garden")
 
 	return cmd
 }
@@ -59,10 +59,18 @@ func runSetGardenCommand(f util.Factory, opt *SetGardenOptions) error {
 		return err
 	}
 
-	return manager.Configuration().SetGarden(opt.Identity, opt.KubeconfigFile, opt.ContextName, opt.Short, opt.Patterns, f.GetConfigFile())
+	err = manager.Configuration().SetGarden(opt.Identity, opt.KubeconfigFile, opt.ContextName, opt.Short, opt.Pattern, f.GetConfigFile())
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(opt.IOStreams.Out, "Successfully configured garden %q\n", opt.Identity)
+
+	return nil
 }
 
-// SetGardenOptions is a struct to support view command
+// SetGardenOptions is a struct to support set command
 type SetGardenOptions struct {
 	base.Options
 
@@ -78,8 +86,8 @@ type SetGardenOptions struct {
 	// Short is an alternative name to identify this cluster
 	Short flag.StringFlag
 
-	// Patterns is a list of regex patterns for targeting
-	Patterns []string
+	// Pattern is a list of regex patterns for targeting
+	Pattern []string
 }
 
 // NewSetGardenOptions returns initialized SetGardenOptions

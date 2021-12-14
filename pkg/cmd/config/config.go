@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCmdConfig returns a new target command.
+// NewCmdConfig returns a new config command.
 func NewCmdConfig(f util.Factory, o *ConfigOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
