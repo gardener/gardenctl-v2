@@ -16,6 +16,22 @@ else
   export SOURCE_PATH="$(readlink -f ${SOURCE_PATH})"
 fi
 
-export GO_TEST_ADDITIONAL_FLAGS="-race"
+GO_TEST_ADDITIONAL_FLAGS=${GO_TEST_ADDITIONAL_FLAGS:-""}
 
-"${SOURCE_PATH}"/hack/test-integration.sh
+OS=${OS:-$(go env GOOS)}
+ARCH=${ARCH:-$(go env GOARCH)}
+
+function run_test {
+  local component=$1
+  local target_dir=$2
+  local go_test_additional_flags=$3
+  echo "> Test $component"
+
+  pushd "$target_dir"
+
+  GO111MODULE=on go test ./... ${go_test_additional_flags} -coverprofile cover.out
+
+  popd
+}
+
+run_test gardenctl-v2 "${SOURCE_PATH}" "${GO_TEST_ADDITIONAL_FLAGS}"
