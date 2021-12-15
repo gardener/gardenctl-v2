@@ -21,7 +21,7 @@ func NewCmdConfigDeleteGarden(f util.Factory, o *DeleteGardenOptions) *cobra.Com
 	cmd := &cobra.Command{
 		Use:   "delete-garden",
 		Short: "delete Garden from gardenctl configuration",
-		Long:  "Delete Garden from gardenctl configuration. E.g. \"gardenctl config delete-garden my-garden to delete my-garden",
+		Long:  "Delete Garden from gardenctl configuration. E.g. \"gardenctl config delete-garden my-garden\" to delete my-garden",
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			suggestions, err := validGardenArgsFunction(f, args)
 			if err != nil {
