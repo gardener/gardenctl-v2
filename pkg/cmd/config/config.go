@@ -40,7 +40,7 @@ type ConfigOptions struct {
 	base.Options
 }
 
-// NewConfigOptions returns initialized NewConfigOptions
+// NewConfigOptions returns initialized ConfigOptions
 // nolint
 func NewConfigOptions(ioStreams util.IOStreams) *ConfigOptions {
 	return &ConfigOptions{
