@@ -31,34 +31,25 @@ func NewCmdConfigDeleteGarden(f util.Factory, o *DeleteGardenOptions) *cobra.Com
 
 			return util.FilterStringsByPrefix(toComplete, suggestions), cobra.ShellCompDirectiveNoFileComp
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := o.Complete(f, cmd, args); err != nil {
-				return fmt.Errorf("failed to complete command options: %w", err)
-			}
-			if err := o.Validate(); err != nil {
-				return err
-			}
-
-			return runDeleteGardenCommand(f, o)
-		},
+		RunE: base.WrapRunE(o, f),
 	}
 
 	return cmd
 }
 
-func runDeleteGardenCommand(f util.Factory, opt *DeleteGardenOptions) error {
+// Run executes the command
+func (o *DeleteGardenOptions) Run(f util.Factory) error {
 	manager, err := f.Manager()
 	if err != nil {
 		return err
 	}
 
-	err = manager.Configuration().DeleteGarden(opt.Identity, f.GetConfigFile())
-
+	err = manager.Configuration().DeleteGarden(o.Identity, f.GetConfigFile())
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(opt.IOStreams.Out, "Successfully deleted garden %q\n", opt.Identity)
+	fmt.Fprintf(o.IOStreams.Out, "Successfully deleted garden %q\n", o.Identity)
 
 	return nil
 }

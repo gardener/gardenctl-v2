@@ -17,13 +17,7 @@ func NewCmdConfigView(f util.Factory, o *ViewOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "view",
 		Short: "Print the gardenctl configuration",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := o.Validate(); err != nil {
-				return err
-			}
-
-			return runViewCommand(f, o)
-		},
+		RunE:  base.WrapRunE(o, f),
 	}
 
 	o.AddFlags(cmd.Flags())
@@ -31,7 +25,8 @@ func NewCmdConfigView(f util.Factory, o *ViewOptions) *cobra.Command {
 	return cmd
 }
 
-func runViewCommand(f util.Factory, opt *ViewOptions) error {
+// Run executes the command
+func (o *ViewOptions) Run(f util.Factory) error {
 	m, err := f.Manager()
 	if err != nil {
 		return err
@@ -39,11 +34,11 @@ func runViewCommand(f util.Factory, opt *ViewOptions) error {
 
 	configuration := m.Configuration()
 
-	if opt.Output == "" {
-		opt.Output = "yaml"
+	if o.Output == "" {
+		o.Output = "yaml"
 	}
 
-	return opt.PrintObject(configuration)
+	return o.PrintObject(configuration)
 }
 
 // ViewOptions is a struct to support view command

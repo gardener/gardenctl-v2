@@ -33,16 +33,7 @@ func NewCmdConfigSetGarden(f util.Factory, o *SetGardenOptions) *cobra.Command {
 
 			return util.FilterStringsByPrefix(toComplete, suggestions), cobra.ShellCompDirectiveNoFileComp
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := o.Complete(f, cmd, args); err != nil {
-				return fmt.Errorf("failed to complete command options: %w", err)
-			}
-			if err := o.Validate(); err != nil {
-				return err
-			}
-
-			return runSetGardenCommand(f, o)
-		},
+		RunE: base.WrapRunE(o, f),
 	}
 
 	cmd.Flags().Var(&o.KubeconfigFile, "kubeconfig", "path to kubeconfig file for this Garden cluster. If used without --context, current-context of kubeconfig will be set as context")
@@ -52,19 +43,19 @@ func NewCmdConfigSetGarden(f util.Factory, o *SetGardenOptions) *cobra.Command {
 	return cmd
 }
 
-func runSetGardenCommand(f util.Factory, opt *SetGardenOptions) error {
+// Run executes the command
+func (o *SetGardenOptions) Run(f util.Factory) error {
 	manager, err := f.Manager()
 	if err != nil {
 		return err
 	}
 
-	err = manager.Configuration().SetGarden(opt.Identity, opt.KubeconfigFile, opt.ContextName, opt.Pattern, f.GetConfigFile())
-
+	err = manager.Configuration().SetGarden(o.Identity, o.KubeconfigFile, o.ContextName, o.Pattern, f.GetConfigFile())
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(opt.IOStreams.Out, "Successfully configured garden %q\n", opt.Identity)
+	fmt.Fprintf(o.IOStreams.Out, "Successfully configured garden %q\n", o.Identity)
 
 	return nil
 }
