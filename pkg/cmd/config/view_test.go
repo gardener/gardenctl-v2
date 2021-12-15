@@ -24,7 +24,7 @@ var _ = Describe("Command", func() {
 			"^shoot--(?P<project>.+)--(?P<shoot>.+)$",
 			"^namespace:(?P<namespace>[^/]+)$",
 		}
-		cfg := &config.ConfigImpl{
+		cfg := &config.Config{
 			Gardens: []config.Garden{{
 				Identity:   gardenIdentity1,
 				Kubeconfig: kubeconfig,

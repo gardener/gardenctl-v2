@@ -40,10 +40,10 @@ func (m *MockManager) EXPECT() *MockManagerMockRecorder {
 }
 
 // Configuration mocks base method.
-func (m *MockManager) Configuration() config.Config {
+func (m *MockManager) Configuration() *config.Config {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Configuration")
-	ret0, _ := ret[0].(config.Config)
+	ret0, _ := ret[0].(*config.Config)
 	return ret0
 }
 

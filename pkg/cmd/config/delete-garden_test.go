@@ -19,7 +19,7 @@ import (
 
 var _ = Describe("Command", func() {
 	var (
-		cfg             config.Config
+		cfg             *config.Config
 		gardenIdentity1 string
 		gardenIdentity2 string
 		targetProvider  target.TargetProvider
@@ -29,7 +29,7 @@ var _ = Describe("Command", func() {
 	BeforeEach(func() {
 		gardenIdentity1 = "fooGarden"
 		gardenIdentity2 = "barGarden"
-		cfg = &config.ConfigImpl{
+		cfg = &config.Config{
 			Gardens: []config.Garden{{
 				Identity: gardenIdentity1,
 			},

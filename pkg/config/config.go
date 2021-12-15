@@ -17,31 +17,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type Config interface {
-	// SaveToFile updates a gardenctl config file with the values passed via Config struct
-	SaveToFile(filename string) error
-	// Garden returns a Garden cluster from the list of configured Gardens
-	Garden(identity string) (*Garden, error)
-	// AllGardens returns all Gardens configured
-	AllGardens() []Garden
-	// MatchPattern matches a string against patterns defined in gardenctl config
-	// If matched, the function creates and returns a PatternMatch from the provided target string
-	MatchPattern(value string, currentIdentity string) (*PatternMatch, error)
-	// SetGarden adds or updates a Garden in the configuration
-	SetGarden(identity string, kubeconfigFile flag.StringFlag, contextName flag.StringFlag, patterns []string, configFilename string) error
-	// DeleteGarden deletes a Garden from the configuration
-	DeleteGarden(identity string, configFilename string) error
-}
-
-// ConfigImpl holds the gardenctl configuration
+// Config holds the gardenctl configuration
 // nolint
-type ConfigImpl struct {
+type Config struct {
 	// Gardens is a list of known Garden clusters
 	Gardens []Garden `yaml:"gardens"`
 }
 
 // LoadFromFile parses a gardenctl config file and returns a Config struct
-func LoadFromFile(filename string) (Config, error) {
+func LoadFromFile(filename string) (*Config, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
@@ -53,7 +37,7 @@ func LoadFromFile(filename string) (Config, error) {
 		return nil, fmt.Errorf("failed to determine filesize: %w", err)
 	}
 
-	config := &ConfigImpl{}
+	config := &Config{}
 
 	if stat.Size() > 0 {
 		if err := yaml.NewDecoder(f).Decode(config); err != nil {
@@ -89,7 +73,7 @@ type Garden struct {
 }
 
 // SaveToFile updates a gardenctl config file with the values passed via Config struct
-func (config *ConfigImpl) SaveToFile(filename string) error {
+func (config *Config) SaveToFile(filename string) error {
 	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
@@ -104,7 +88,7 @@ func (config *ConfigImpl) SaveToFile(filename string) error {
 }
 
 // Garden returns a Garden cluster from the list of configured Gardens
-func (config *ConfigImpl) Garden(identity string) (*Garden, error) {
+func (config *Config) Garden(identity string) (*Garden, error) {
 	for _, g := range config.Gardens {
 		if g.Identity == identity {
 			return &g, nil
@@ -114,7 +98,7 @@ func (config *ConfigImpl) Garden(identity string) (*Garden, error) {
 	return nil, fmt.Errorf("garden with identity  %q is not defined in gardenctl configuration", identity)
 }
 
-func (config *ConfigImpl) AllGardens() []Garden {
+func (config *Config) AllGardens() []Garden {
 	return config.Gardens
 }
 
@@ -144,7 +128,7 @@ const (
 
 // MatchPattern matches a string against patterns defined in gardenctl config
 // If matched, the function creates and returns a PatternMatch from the provided target string
-func (config *ConfigImpl) MatchPattern(value string, currentIdentity string) (*PatternMatch, error) {
+func (config *Config) MatchPattern(value string, currentIdentity string) (*PatternMatch, error) {
 	var patternMatch *PatternMatch
 
 	for _, g := range config.Gardens {
@@ -209,7 +193,7 @@ func matchPattern(patterns []string, value string) (*PatternMatch, error) {
 }
 
 // SetGarden adds or updates a Garden in the configuration
-func (config *ConfigImpl) SetGarden(identity string, kubeconfigFile flag.StringFlag, contextName flag.StringFlag, patterns []string, configFilename string) error {
+func (config *Config) SetGarden(identity string, kubeconfigFile flag.StringFlag, contextName flag.StringFlag, patterns []string, configFilename string) error {
 	var garden *Garden
 
 	for i, g := range config.Gardens {
@@ -251,7 +235,7 @@ func (config *ConfigImpl) SetGarden(identity string, kubeconfigFile flag.StringF
 }
 
 // DeleteGarden deletes a Garden from the configuration
-func (config *ConfigImpl) DeleteGarden(identity string, configFilename string) error {
+func (config *Config) DeleteGarden(identity string, configFilename string) error {
 	var newGardens []Garden
 
 	for _, g := range config.Gardens {

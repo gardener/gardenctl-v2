@@ -45,13 +45,13 @@ var _ = Describe("Command", func() {
 		project          *gardencorev1beta1.Project
 		seed             *gardencorev1beta1.Seed
 		shoot            *gardencorev1beta1.Shoot
-		cfg              config.Config
+		cfg              *config.Config
 		fakeGardenClient client.Client
 		clientProvider   *internalfake.ClientProvider
 	)
 
 	BeforeEach(func() {
-		cfg = &config.ConfigImpl{
+		cfg = &config.Config{
 			Gardens: []config.Garden{{
 				Identity:   gardenIdentity,
 				Kubeconfig: gardenKubeconfig,

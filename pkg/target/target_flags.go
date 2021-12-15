@@ -53,7 +53,7 @@ type targetFlagsImpl struct {
 	projectName string
 	seedName    string
 	shootName   string
-	config      config.Config
+	config      *config.Config
 }
 
 func (tf *targetFlagsImpl) GardenIdentity() string {
@@ -132,6 +132,6 @@ func (tf *targetFlagsImpl) IsTargetValid() bool {
 	return tf.ToTarget().Validate() == nil
 }
 
-func (tf *targetFlagsImpl) SetConfig(config config.Config) {
+func (tf *targetFlagsImpl) SetConfig(config *config.Config) {
 	tf.config = config
 }

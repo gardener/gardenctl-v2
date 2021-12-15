@@ -62,7 +62,7 @@ func createFakeShoot(name string, namespace string, seedName *string) (*gardenco
 	return shoot, kubeconfigSecret
 }
 
-func createTestManager(t target.Target, cfg config.Config, clientProvider target.ClientProvider, kubeconfigCache target.KubeconfigCache) (target.Manager, target.TargetProvider) {
+func createTestManager(t target.Target, cfg *config.Config, clientProvider target.ClientProvider, kubeconfigCache target.KubeconfigCache) (target.Manager, target.TargetProvider) {
 	targetProvider := fake.NewFakeTargetProvider(t)
 
 	manager, err := target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
@@ -87,7 +87,7 @@ var _ = Describe("Manager", func() {
 		prod1AmbiguousShoot *gardencorev1beta1.Shoot
 		prod2AmbiguousShoot *gardencorev1beta1.Shoot
 		prod1PendingShoot   *gardencorev1beta1.Shoot
-		cfg                 config.Config
+		cfg                 *config.Config
 		gardenClient        client.Client
 		clientProvider      *fake.ClientProvider
 		kubeconfigCache     target.KubeconfigCache
@@ -95,7 +95,7 @@ var _ = Describe("Manager", func() {
 	)
 
 	BeforeEach(func() {
-		cfg = &config.ConfigImpl{
+		cfg = &config.Config{
 			Gardens: []config.Garden{{
 				Identity:   gardenIdentity,
 				Kubeconfig: gardenKubeconfig,

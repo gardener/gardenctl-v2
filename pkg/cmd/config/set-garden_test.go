@@ -21,7 +21,7 @@ import (
 
 var _ = Describe("Command", func() {
 	var (
-		cfg             config.Config
+		cfg             *config.Config
 		gardenIdentity1 string
 		gardenIdentity2 string
 		gardenContext1  string
@@ -33,7 +33,7 @@ var _ = Describe("Command", func() {
 		gardenIdentity1 = "fooGarden"
 		gardenIdentity2 = "barGarden"
 		gardenContext1 = "my-context"
-		cfg = &config.ConfigImpl{
+		cfg = &config.Config{
 			Gardens: []config.Garden{{
 				Identity: gardenIdentity1,
 				Context:  gardenContext1,

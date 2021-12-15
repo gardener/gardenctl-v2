@@ -26,7 +26,7 @@ type Factory struct {
 	ManagerImpl target.Manager
 
 	// Override these to customize the created manager.
-	Config              config.Config
+	Config              *config.Config
 	ClientProviderImpl  target.ClientProvider
 	KubeconfigCacheImpl target.KubeconfigCache
 	TargetProviderImpl  target.TargetProvider
@@ -43,9 +43,9 @@ type Factory struct {
 
 var _ util.Factory = &Factory{}
 
-func NewFakeFactory(cfg config.Config, clock util.Clock, clientProvider target.ClientProvider, kubeconfigCache target.KubeconfigCache, targetProvider target.TargetProvider) *Factory {
+func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider target.ClientProvider, kubeconfigCache target.KubeconfigCache, targetProvider target.TargetProvider) *Factory {
 	if cfg == nil {
-		cfg = &config.ConfigImpl{}
+		cfg = &config.Config{}
 	}
 
 	if clientProvider == nil {

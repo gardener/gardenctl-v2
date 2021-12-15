@@ -22,11 +22,11 @@ var _ = Describe("Config", func() {
 		project          = "fooproject"
 		shoot            = "fooshoot"
 		namespace        = "foonamespace"
-		cfg              config.Config
+		cfg              *config.Config
 	)
 
 	BeforeEach(func() {
-		cfg = &config.ConfigImpl{
+		cfg = &config.Config{
 			Gardens: []config.Garden{{
 				Identity: clusterIdentity1,
 				Patterns: []string{

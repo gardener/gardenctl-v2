@@ -53,7 +53,7 @@ func validGardenArgsFunction(f util.Factory, args []string) ([]string, error) {
 	var gNames []string
 
 	if len(args) == 0 {
-		for _, g := range manager.Configuration().AllGardens() {
+		for _, g := range manager.Configuration().Gardens {
 			gNames = append(gNames, g.Identity)
 		}
 
