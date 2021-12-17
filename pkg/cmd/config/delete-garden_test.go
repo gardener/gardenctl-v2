@@ -32,7 +32,8 @@ var _ = Describe("Command", func() {
 		cfg = &config.Config{
 			Gardens: []config.Garden{
 				{
-					Identity: gardenIdentity1},
+					Identity: gardenIdentity1,
+				},
 				{
 					Identity: gardenIdentity2,
 				}},
