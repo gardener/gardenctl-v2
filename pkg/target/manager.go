@@ -88,21 +88,25 @@ var _ Manager = &managerImpl{}
 // GardenClient creates a new Garden client by creating a runtime client via the ClientProvider
 // it then wraps the runtime client and returns a Garden client
 func GardenClient(identity string, config *config.Config, provider ClientProvider) (gardenclient.Client, error) {
+	if config == nil {
+		return nil, errors.New("config must not be nil")
+	}
+
 	g, err := config.Garden(identity)
 	if err != nil {
-		return nil, fmt.Errorf("targeted garden cluster with identity %q is not configured", identity)
+		return nil, fmt.Errorf("failed to get garden configuration: %w", err)
 	}
 
 	runtimeClient, err := provider.FromFile(g.Kubeconfig, g.Context)
 	if err != nil {
-		return nil, fmt.Errorf("could not create runtime client with identity for garden cluster %q", identity)
+		return nil, fmt.Errorf("could not create runtime client for garden cluster with identity %q: %w", identity, err)
 	}
 
 	return gardenclient.NewGardenClient(runtimeClient), nil
 }
 
 // GardenClientForKubeConfig creates a new Garden client by creating a runtime client for provided
-// kubeconfig file via the ClientProvider it then wraps the runtime client and returns a Garden client
+// kubeconfig file via the ClientProvider. It then wraps the runtime client and returns a Garden client
 func GardenClientForKubeConfig(kubeconfigFile string, contextName string, provider ClientProvider) (gardenclient.Client, error) {
 	runtimeClient, err := provider.FromFile(kubeconfigFile, contextName)
 	if err != nil {
@@ -145,18 +149,21 @@ func (m *managerImpl) Configuration() *config.Config {
 }
 
 func (m *managerImpl) TargetGarden(ctx context.Context, identity string) error {
-	tb := NewTargetBuilder(m.config, m.clientProvider)
+	tb, err := NewTargetBuilder(m.config, m.clientProvider)
+	if err != nil {
+		return fmt.Errorf("failed to target garden: %w", err)
+	}
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
 
 	target, err := tb.SetGarden(identity).Build()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to target garden: %w", err)
 	}
 
 	return m.patchTargetWithTarget(target)
@@ -165,30 +172,33 @@ func (m *managerImpl) TargetGarden(ctx context.Context, identity string) error {
 func (m *managerImpl) UnsetTargetGarden() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %v", err)
+		return "", fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedGarden := currentTarget.GardenIdentity()
-	if targetedGarden != "" {
-		return targetedGarden, m.patchTarget(func(t *targetImpl) error {
-			t.Garden = ""
-			t.Project = ""
-			t.Seed = ""
-			t.Shoot = ""
-
-			return nil
-		})
+	if targetedGarden == "" {
+		return "", ErrNoGardenTargeted
 	}
 
-	return "", ErrNoGardenTargeted
+	return targetedGarden, m.patchTarget(func(t *targetImpl) error {
+		t.Garden = ""
+		t.Project = ""
+		t.Seed = ""
+		t.Shoot = ""
+
+		return nil
+	})
 }
 
 func (m *managerImpl) TargetProject(ctx context.Context, projectName string) error {
-	tb := NewTargetBuilder(m.config, m.clientProvider)
+	tb, err := NewTargetBuilder(m.config, m.clientProvider)
+	if err != nil {
+		return fmt.Errorf("failed to target project: %w", err)
+	}
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
@@ -204,7 +214,7 @@ func (m *managerImpl) TargetProject(ctx context.Context, projectName string) err
 func (m *managerImpl) UnsetTargetProject() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %v", err)
+		return "", fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedName := currentTarget.ProjectName()
@@ -221,11 +231,14 @@ func (m *managerImpl) UnsetTargetProject() (string, error) {
 }
 
 func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
-	tb := NewTargetBuilder(m.config, m.clientProvider)
+	tb, err := NewTargetBuilder(m.config, m.clientProvider)
+	if err != nil {
+		return fmt.Errorf("failed to target seed: %w", err)
+	}
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
@@ -241,7 +254,7 @@ func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 func (m *managerImpl) UnsetTargetSeed() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %v", err)
+		return "", fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedName := currentTarget.SeedName()
@@ -257,11 +270,14 @@ func (m *managerImpl) UnsetTargetSeed() (string, error) {
 }
 
 func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
-	tb := NewTargetBuilder(m.config, m.clientProvider)
+	tb, err := NewTargetBuilder(m.config, m.clientProvider)
+	if err != nil {
+		return fmt.Errorf("failed to target shoot: %w", err)
+	}
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
@@ -277,7 +293,7 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 func (m *managerImpl) UnsetTargetShoot() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %v", err)
+		return "", fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedName := currentTarget.ShootName()
@@ -295,23 +311,26 @@ func (m *managerImpl) UnsetTargetShoot() (string, error) {
 func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) error {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	gardenIdentity := currentTarget.GardenIdentity()
+
+	if m.config == nil {
+		return errors.New("config must not be nil")
+	}
 
 	tm, err := m.config.MatchPattern(value, gardenIdentity)
 	if err != nil {
 		return fmt.Errorf("error occurred while trying to match value: %w", err)
 	}
 
-	tb := NewTargetBuilder(m.config, m.clientProvider)
+	tb, err := NewTargetBuilder(m.config, m.clientProvider)
+	if err != nil {
+		return fmt.Errorf("failed to target with match pattern: %w", err)
+	}
 
 	tb.Init(currentTarget)
-
-	if err != nil {
-		return err
-	}
 
 	if tm.Project != "" && tm.Namespace != "" {
 		return fmt.Errorf("project %q and Namespace %q set in target match value. It is forbidden to have both values set", tm.Project, tm.Namespace)

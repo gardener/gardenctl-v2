@@ -69,13 +69,14 @@ var _ = Describe("Gardenctl command", func() {
 
 	BeforeEach(func() {
 		cfg = &config.Config{
-			Gardens: []config.Garden{{
-				Identity:   gardenIdentity,
-				Kubeconfig: gardenKubeconfigFile,
-			}, {
-				Identity:   "foobar",
-				Kubeconfig: foobarKubeconfigFile,
-			}},
+			Gardens: []config.Garden{
+				{
+					Identity:   gardenIdentity,
+					Kubeconfig: gardenKubeconfigFile,
+				}, {
+					Identity:   "foobar",
+					Kubeconfig: foobarKubeconfigFile,
+				}},
 		}
 
 		dir, err := os.MkdirTemp(os.TempDir(), "gctlv2-*")

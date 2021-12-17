@@ -44,9 +44,14 @@ func (o *DeleteGardenOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	err = manager.Configuration().DeleteGarden(o.Identity, f.GetConfigFile())
+	config := manager.Configuration()
+	if config == nil {
+		return errors.New("could not get configuration")
+	}
+
+	err = config.DeleteGarden(o.Identity, f.GetConfigFile())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete garden from configuration: %w", err)
 	}
 
 	fmt.Fprintf(o.IOStreams.Out, "Successfully deleted garden %q\n", o.Identity)

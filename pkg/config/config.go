@@ -64,11 +64,13 @@ type Garden struct {
 	Identity string `yaml:"identity"`
 	// Kubeconfig holds the path for the kubeconfig of the garden cluster
 	Kubeconfig string `yaml:"kubeconfig"`
-	// Context if set, context overwrites the current-context of the cluster kubeconfig
+	// Context overrides the current-context of the garden cluster kubeconfig
+	// +optional
 	Context string `yaml:"context"`
 	// Patterns is a list of regex patterns that can be defined to use custom input formats for targeting
 	// Use named capturing groups to match target values.
 	// Supported capturing groups: project, namespace, shoot
+	// +optional
 	Patterns []string `yaml:"matchPatterns"`
 }
 
@@ -245,7 +247,7 @@ func (config *Config) DeleteGarden(identity string, configFilename string) error
 	}
 
 	if len(config.Gardens) == len(newGardens) {
-		return fmt.Errorf("failed to delete garden with identity %q", identity)
+		return fmt.Errorf("no garden found with identity %q", identity)
 	}
 
 	config.Gardens = newGardens

@@ -36,9 +36,14 @@ func NewCmdConfigSetGarden(f util.Factory, o *SetGardenOptions) *cobra.Command {
 		RunE: base.WrapRunE(o, f),
 	}
 
-	cmd.Flags().Var(&o.KubeconfigFile, "kubeconfig", "path to kubeconfig file for this Garden cluster. If used without --context, current-context of kubeconfig will be set as context")
+	cmd.Flags().Var(&o.KubeconfigFile, "kubeconfig", "path to kubeconfig file for this Garden cluster")
 	cmd.Flags().Var(&o.ContextName, "context", "override the current-context of the garden cluster kubeconfig")
-	cmd.Flags().StringArrayVar(&o.Pattern, "pattern", nil, "define regex match patterns for this garden. This flag will overwrite the complete list. You can supply it multiple times to define multiple patterns for this garden")
+	cmd.Flags().StringArrayVar(&o.Pattern, "pattern", nil, `define regex match patterns for this garden for custom input formats for targeting.
+Use named capturing groups to match target values.
+Supported capturing groups: project, namespace, shoot.
+Note that if you should set this flag it will overwrite the pattern list in the config file.
+You may specify any number of extra patterns.
+Example: ^((?Pmy-garden[^/]+)/)?shoot--(?P<project>.+)--(?P<shoot>.+)$`)
 
 	return cmd
 }
@@ -47,12 +52,17 @@ func NewCmdConfigSetGarden(f util.Factory, o *SetGardenOptions) *cobra.Command {
 func (o *SetGardenOptions) Run(f util.Factory) error {
 	manager, err := f.Manager()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get target manager: %w", err)
 	}
 
-	err = manager.Configuration().SetGarden(o.Identity, o.KubeconfigFile, o.ContextName, o.Pattern, f.GetConfigFile())
+	config := manager.Configuration()
+	if config == nil {
+		return errors.New("could not get configuration")
+	}
+
+	err = config.SetGarden(o.Identity, o.KubeconfigFile, o.ContextName, o.Pattern, f.GetConfigFile())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to configure garden: %w", err)
 	}
 
 	fmt.Fprintf(o.IOStreams.Out, "Successfully configured garden %q\n", o.Identity)
@@ -67,7 +77,7 @@ type SetGardenOptions struct {
 	// Identity identifies a garden cluster
 	Identity string
 
-	// KubeconfigFile is the path to the kubeconfig file of the Garden cluster that shall be added
+	// KubeconfigFile is the path to the kubeconfig file of the Garden cluster
 	KubeconfigFile flag.StringFlag
 
 	// ContextName Overrides the current-context of the garden cluster kubeconfig

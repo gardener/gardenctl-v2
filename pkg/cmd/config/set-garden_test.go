@@ -68,8 +68,7 @@ var _ = Describe("Command", func() {
 		Expect(len(cfg.AllGardens())).To(Equal(1))
 
 		kubeconfig := flag.StringFlag{}
-		err := kubeconfig.Set("path/to/kubeconfig")
-		Expect(err).ToNot(HaveOccurred())
+		Expect(kubeconfig.Set("path/to/kubeconfig")).To(Succeed())
 
 		o.KubeconfigFile = kubeconfig
 		cmd := cmdconfig.NewCmdConfigSetGarden(factory, o)
@@ -90,8 +89,7 @@ var _ = Describe("SetGardenOptions", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
 		o := cmdconfig.NewSetGardenOptions(streams)
 		o.Identity = "foo"
-		err := o.Validate()
-		Expect(err).ToNot(HaveOccurred())
+		Expect(o.Validate()).To(Succeed())
 	})
 
 	It("should reject if no identity is set", func() {

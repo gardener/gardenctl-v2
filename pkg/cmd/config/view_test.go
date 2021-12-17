@@ -25,10 +25,11 @@ var _ = Describe("Command", func() {
 			"^namespace:(?P<namespace>[^/]+)$",
 		}
 		cfg := &config.Config{
-			Gardens: []config.Garden{{
-				Identity:   gardenIdentity1,
-				Kubeconfig: kubeconfig,
-			},
+			Gardens: []config.Garden{
+				{
+					Identity:   gardenIdentity1,
+					Kubeconfig: kubeconfig,
+				},
 				{
 					Identity:   gardenIdentity2,
 					Kubeconfig: kubeconfig,
@@ -56,7 +57,6 @@ var _ = Describe("ViewOptions", func() {
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
 		o := cmdconfig.NewViewOptions(streams)
-		err := o.Validate()
-		Expect(err).ToNot(HaveOccurred())
+		Expect(o.Validate()).To(Succeed())
 	})
 })

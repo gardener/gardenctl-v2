@@ -57,13 +57,14 @@ var _ = Describe("Completion", func() {
 
 	BeforeEach(func() {
 		cfg = &config.Config{
-			Gardens: []config.Garden{{
-				Identity:   gardenIdentity,
-				Kubeconfig: gardenKubeconfigFile,
-			}, {
-				Identity:   "abc",
-				Kubeconfig: gardenKubeconfigFile,
-			}},
+			Gardens: []config.Garden{
+				{
+					Identity:   gardenIdentity,
+					Kubeconfig: gardenKubeconfigFile,
+				}, {
+					Identity:   "abc",
+					Kubeconfig: gardenKubeconfigFile,
+				}},
 		}
 
 		testProject1 = &gardencorev1beta1.Project{

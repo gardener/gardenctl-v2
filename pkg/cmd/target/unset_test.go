@@ -43,10 +43,11 @@ var _ = Describe("Command", func() {
 
 		gardenIdentity := "mygarden"
 		cfg := &config.Config{
-			Gardens: []config.Garden{{
-				Identity:   gardenIdentity,
-				Kubeconfig: "",
-			}},
+			Gardens: []config.Garden{
+				{
+					Identity:   gardenIdentity,
+					Kubeconfig: "",
+				}},
 		}
 		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget(gardenIdentity, "", "", ""))
 		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
@@ -67,10 +68,11 @@ var _ = Describe("Command", func() {
 		projectName := "myproject"
 		gardenKubeconfig := ""
 		cfg := &config.Config{
-			Gardens: []config.Garden{{
-				Identity:   gardenIdentity,
-				Kubeconfig: gardenKubeconfig,
-			}},
+			Gardens: []config.Garden{
+				{
+					Identity:   gardenIdentity,
+					Kubeconfig: gardenKubeconfig,
+				}},
 		}
 
 		// user has already targeted a garden and project
@@ -113,10 +115,11 @@ var _ = Describe("Command", func() {
 		seedName := "myseed"
 		gardenKubeconfig := ""
 		cfg := &config.Config{
-			Gardens: []config.Garden{{
-				Identity:   gardenIdentity,
-				Kubeconfig: gardenKubeconfig,
-			}},
+			Gardens: []config.Garden{
+				{
+					Identity:   gardenIdentity,
+					Kubeconfig: gardenKubeconfig,
+				}},
 		}
 
 		// user has already targeted a garden and seed
@@ -163,10 +166,11 @@ var _ = Describe("Command", func() {
 		projectName := "myproject"
 		shootName := "myshoot"
 		cfg := &config.Config{
-			Gardens: []config.Garden{{
-				Identity:   gardenIdentity,
-				Kubeconfig: gardenKubeconfig,
-			}},
+			Gardens: []config.Garden{
+				{
+					Identity:   gardenIdentity,
+					Kubeconfig: gardenKubeconfig,
+				}},
 		}
 
 		// garden cluster contains the targeted project and shoot

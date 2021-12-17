@@ -41,7 +41,7 @@ func runViewCommand(f util.Factory, opt *ViewOptions) error {
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	if opt.Output == "" && currentTarget.IsEmpty() {

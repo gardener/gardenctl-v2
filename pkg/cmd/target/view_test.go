@@ -25,10 +25,11 @@ var _ = Describe("Command", func() {
 		projectName := "myproject"
 		shootName := "myshoot"
 		cfg := &config.Config{
-			Gardens: []config.Garden{{
-				Identity:   gardenIdentity,
-				Kubeconfig: "",
-			}},
+			Gardens: []config.Garden{
+				{
+					Identity:   gardenIdentity,
+					Kubeconfig: "",
+				}},
 		}
 		currentTarget := target.NewTarget(gardenIdentity, projectName, "", shootName)
 
@@ -50,7 +51,6 @@ var _ = Describe("ViewOptions", func() {
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
 		o := cmdtarget.NewViewOptions(streams)
-		err := o.Validate()
-		Expect(err).ToNot(HaveOccurred())
+		Expect(o.Validate()).To(Succeed())
 	})
 })

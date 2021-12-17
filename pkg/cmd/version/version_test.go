@@ -9,10 +9,11 @@ package version_test
 import (
 	"encoding/json"
 
-	"github.com/gardener/gardenctl-v2/internal/util"
-	. "github.com/gardener/gardenctl-v2/pkg/cmd/version"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/gardener/gardenctl-v2/internal/util"
+	. "github.com/gardener/gardenctl-v2/pkg/cmd/version"
 )
 
 var _ = Describe("Version Command", func() {
@@ -72,7 +73,6 @@ var _ = Describe("Version Command", func() {
 	})
 
 	It("should validate the options", func() {
-		err := o.Validate()
-		Expect(err).ToNot(HaveOccurred())
+		Expect(o.Validate()).To(Succeed())
 	})
 })

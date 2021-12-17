@@ -266,13 +266,13 @@ func runCmdSSH(f util.Factory, o *SSHOptions) error {
 
 	sshPublicKey, err := ioutil.ReadFile(o.SSHPublicKeyFile)
 	if err != nil {
-		return fmt.Errorf("failed to read SSH public key: %v", err)
+		return fmt.Errorf("failed to read SSH public key: %w", err)
 	}
 
 	// avoid GenerateName because we want to immediately fetch and check the bastion
 	bastionName, err := bastionNameProvider()
 	if err != nil {
-		return fmt.Errorf("failed to create bastion name: %v", err)
+		return fmt.Errorf("failed to create bastion name: %w", err)
 	}
 
 	bastion := &operationsv1alpha1.Bastion{
@@ -310,7 +310,7 @@ func runCmdSSH(f util.Factory, o *SSHOptions) error {
 	fmt.Fprintf(o.IOStreams.Out, "Creating bastion %s…\n", bastion.Name)
 
 	if err := gardenClient.RuntimeClient().Create(ctx, bastion); err != nil {
-		return fmt.Errorf("failed to create bastion: %v", err)
+		return fmt.Errorf("failed to create bastion: %w", err)
 	}
 
 	// continuously keep the bastion alive by renewing its annotation

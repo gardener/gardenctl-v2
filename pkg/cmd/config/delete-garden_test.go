@@ -30,9 +30,9 @@ var _ = Describe("Command", func() {
 		gardenIdentity1 = "fooGarden"
 		gardenIdentity2 = "barGarden"
 		cfg = &config.Config{
-			Gardens: []config.Garden{{
-				Identity: gardenIdentity1,
-			},
+			Gardens: []config.Garden{
+				{
+					Identity: gardenIdentity1},
 				{
 					Identity: gardenIdentity2,
 				}},
@@ -66,8 +66,7 @@ var _ = Describe("DeleteGardenOptions", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
 		o := cmdconfig.NewDeleteGardenOptions(streams)
 		o.Identity = "foo"
-		err := o.Validate()
-		Expect(err).ToNot(HaveOccurred())
+		Expect(o.Validate()).To(Succeed())
 	})
 
 	It("should reject if no identity is set", func() {

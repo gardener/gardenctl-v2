@@ -102,7 +102,7 @@ func (g *clientImpl) GetProjectByNamespace(ctx context.Context, namespace string
 	limit := client.Limit(1)
 
 	if err := g.c.List(ctx, &projectList, fieldSelector, limit); err != nil {
-		return nil, fmt.Errorf("failed to fetch project by namespace: %v", err)
+		return nil, fmt.Errorf("failed to fetch project by namespace: %w", err)
 	}
 
 	if len(projectList.Items) == 0 {

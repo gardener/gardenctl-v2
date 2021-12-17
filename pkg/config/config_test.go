@@ -27,13 +27,14 @@ var _ = Describe("Config", func() {
 
 	BeforeEach(func() {
 		cfg = &config.Config{
-			Gardens: []config.Garden{{
-				Identity: clusterIdentity1,
-				Patterns: []string{
-					fmt.Sprintf("^(%s/)?shoot--(?P<project>.+)--(?P<shoot>.+)$", clusterIdentity1),
-					"^namespace:(?P<namespace>[^/]+)$",
+			Gardens: []config.Garden{
+				{
+					Identity: clusterIdentity1,
+					Patterns: []string{
+						fmt.Sprintf("^(%s/)?shoot--(?P<project>.+)--(?P<shoot>.+)$", clusterIdentity1),
+						"^namespace:(?P<namespace>[^/]+)$",
+					},
 				},
-			},
 				{
 					Identity: clusterIdentity2,
 					Patterns: []string{

@@ -107,8 +107,13 @@ func ProjectNamesForTarget(ctx context.Context, manager target.Manager, t target
 
 // GardenNames returns all names of configured Gardens.
 func GardenNames(manager target.Manager) ([]string, error) {
+	config := manager.Configuration()
+	if config == nil {
+		return nil, errors.New("could not get configuration")
+	}
+
 	names := sets.NewString()
-	for _, garden := range manager.Configuration().Gardens {
+	for _, garden := range config.Gardens {
 		names.Insert(garden.Identity)
 	}
 

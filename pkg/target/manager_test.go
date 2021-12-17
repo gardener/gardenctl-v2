@@ -96,14 +96,15 @@ var _ = Describe("Manager", func() {
 
 	BeforeEach(func() {
 		cfg = &config.Config{
-			Gardens: []config.Garden{{
-				Identity:   gardenIdentity,
-				Kubeconfig: gardenKubeconfig,
-				Patterns: []string{
-					fmt.Sprintf("^(%s/)?shoot--(?P<project>.+)--(?P<shoot>.+)$", gardenIdentity),
-					"^namespace:(?P<namespace>[^/]+)$",
-				},
-			}},
+			Gardens: []config.Garden{
+				{
+					Identity:   gardenIdentity,
+					Kubeconfig: gardenKubeconfig,
+					Patterns: []string{
+						fmt.Sprintf("^(%s/)?shoot--(?P<project>.+)--(?P<shoot>.+)$", gardenIdentity),
+						"^namespace:(?P<namespace>[^/]+)$",
+					},
+				}},
 		}
 
 		prod1Project = &gardencorev1beta1.Project{

@@ -6,6 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 
@@ -29,16 +32,15 @@ func NewCmdConfigView(f util.Factory, o *ViewOptions) *cobra.Command {
 func (o *ViewOptions) Run(f util.Factory) error {
 	m, err := f.Manager()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get target manager: %w", err)
 	}
 
-	configuration := m.Configuration()
-
-	if o.Output == "" {
-		o.Output = "yaml"
+	config := m.Configuration()
+	if config == nil {
+		return errors.New("could not get configuration")
 	}
 
-	return o.PrintObject(configuration)
+	return o.PrintObject(config)
 }
 
 // ViewOptions is a struct to support view command
@@ -53,4 +55,13 @@ func NewViewOptions(ioStreams util.IOStreams) *ViewOptions {
 			IOStreams: ioStreams,
 		},
 	}
+}
+
+// Complete adapts from the command line args to the data required.
+func (o *ViewOptions) Complete(_ util.Factory, cmd *cobra.Command, args []string) error {
+	if o.Output == "" {
+		o.Output = "yaml"
+	}
+
+	return nil
 }
