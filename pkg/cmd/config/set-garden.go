@@ -41,7 +41,7 @@ func NewCmdConfigSetGarden(f util.Factory, o *SetGardenOptions) *cobra.Command {
 	cmd.Flags().StringArrayVar(&o.Pattern, "pattern", nil, `define regex match patterns for this garden for custom input formats for targeting.
 Use named capturing groups to match target values.
 Supported capturing groups: project, namespace, shoot.
-Note that if you should set this flag it will overwrite the pattern list in the config file.
+Note that if you set this flag it will overwrite the pattern list in the config file.
 You may specify any number of extra patterns.
 Example: ^((?Pmy-garden[^/]+)/)?shoot--(?P<project>.+)--(?P<shoot>.+)$`)
 
