@@ -19,8 +19,6 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
@@ -31,6 +29,9 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 )
 
 var _ = Describe("Gardenctl command", func() {
@@ -85,7 +86,7 @@ var _ = Describe("Gardenctl command", func() {
 		targetFile = filepath.Join(gardenDir, targetFilename)
 		Expect(cfg.SaveToFile(configFile)).To(Succeed())
 		fsTargetProvider := target.NewTargetProvider(targetFile, nil)
-		Expect(fsTargetProvider.Write(target.NewTarget(gardenName, projectName, "", "myshoot"))).To(Succeed())
+		Expect(fsTargetProvider.Write(target.NewTarget(gardenName, projectName, "", "myshoot", false))).To(Succeed())
 		Expect(os.Setenv(envGardenHomeDir, gardenDir)).To(Succeed())
 
 		testProject1 = &gardencorev1beta1.Project{
@@ -219,7 +220,7 @@ var _ = Describe("Gardenctl command", func() {
 		shootClient = fakeclient.NewClientBuilder().WithObjects(testNode).Build()
 
 		// setup fakes
-		currentTarget := target.NewTarget(gardenName, testProject1.Name, "", testShoot1.Name)
+		currentTarget := target.NewTarget(gardenName, testProject1.Name, "", testShoot1.Name, false)
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider()
 
@@ -236,7 +237,7 @@ var _ = Describe("Gardenctl command", func() {
 		factory = internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
 
 		// prepare CLI flags
-		targetFlags = target.NewTargetFlags("", "", "", "")
+		targetFlags = target.NewTargetFlags("", "", "", "", false)
 
 		Expect(shootClient).NotTo(BeNil())
 		Expect(gardenClient).NotTo(BeNil())
@@ -272,7 +273,7 @@ var _ = Describe("Gardenctl command", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
-			targetFlags = target.NewTargetFlags("foobar", "", "", "")
+			targetFlags = target.NewTargetFlags("foobar", "", "", "", false)
 			values, err := projectFlagCompletionFunc(factory.Context(), manager, targetFlags)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testProject2.Name}))
@@ -301,7 +302,7 @@ var _ = Describe("Gardenctl command", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
-			targetFlags = target.NewTargetFlags("foobar", "", "", "")
+			targetFlags = target.NewTargetFlags("foobar", "", "", "", false)
 			values, err := seedFlagCompletionFunc(factory.Context(), manager, targetFlags)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testSeed2.Name}))
@@ -330,7 +331,7 @@ var _ = Describe("Gardenctl command", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
-			targetFlags = target.NewTargetFlags("", "prod2", "", "")
+			targetFlags = target.NewTargetFlags("", "prod2", "", "", false)
 			values, err := shootFlagCompletionFunc(factory.Context(), manager, targetFlags)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testShoot3.Name}))
@@ -340,7 +341,7 @@ var _ = Describe("Gardenctl command", func() {
 			manager, err := factory.Manager()
 			Expect(err).NotTo(HaveOccurred())
 
-			targetFlags = target.NewTargetFlags("", "", testSeed1.Name, "")
+			targetFlags = target.NewTargetFlags("", "", testSeed1.Name, "", false)
 			values, err := shootFlagCompletionFunc(factory.Context(), manager, targetFlags)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal([]string{testShoot2.Name, testShoot3.Name, testShoot1.Name}))

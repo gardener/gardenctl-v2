@@ -30,7 +30,7 @@ var _ = Describe("Kubeconfig Cache", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		cache = target.NewFilesystemKubeconfigCache(tmpDir)
-		t = target.NewTarget("g", "p", "s", "shoot")
+		t = target.NewTarget("g", "p", "s", "shoot", false)
 	})
 
 	AfterEach(func() {
@@ -43,7 +43,7 @@ var _ = Describe("Kubeconfig Cache", func() {
 	})
 
 	It("should require a garden to be targeted", func() {
-		badTarget := target.NewTarget("", "", "", "")
+		badTarget := target.NewTarget("", "", "", "", false)
 
 		data := []byte("hello world")
 		Expect(cache.Write(badTarget, data)).NotTo(Succeed())
@@ -59,8 +59,8 @@ var _ = Describe("Kubeconfig Cache", func() {
 	})
 
 	It("should separate different targets", func() {
-		targetA := target.NewTarget("garden", "project", "", "shootA")
-		targetB := target.NewTarget("garden", "project", "", "shootB")
+		targetA := target.NewTarget("garden", "project", "", "shootA", false)
+		targetB := target.NewTarget("garden", "project", "", "shootB", false)
 		dataA := []byte("hello A")
 		dataB := []byte("hello B")
 
@@ -77,8 +77,8 @@ var _ = Describe("Kubeconfig Cache", func() {
 	})
 
 	It("should separate based on the path", func() {
-		targetA := target.NewTarget("garden", "project", "", "shoot")
-		targetB := target.NewTarget("garden", "", "seed", "shoot")
+		targetA := target.NewTarget("garden", "project", "", "shoot", false)
+		targetB := target.NewTarget("garden", "", "seed", "shoot", false)
 		dataA := []byte("hello A")
 		dataB := []byte("hello B")
 

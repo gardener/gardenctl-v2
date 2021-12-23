@@ -35,6 +35,8 @@ type Target interface {
 	SeedName() string
 	// ShootName returns the currently targeted shoot cluster name.
 	ShootName() string
+	// ShootControlPlane returns true if shot control plane is targeted.
+	ShootControlPlane() bool
 	// WithGardenName returns a copy of the target with the garden name updated.
 	// The returned target can be invalid.
 	WithGardenName(name string) Target
@@ -47,6 +49,9 @@ type Target interface {
 	// WithShootName returns a copy of the target with the shoot name updated.
 	// The returned target can be invalid.
 	WithShootName(name string) Target
+	// WithControlPlane returns a copy of the target with the control plane flag updated.
+	// The returned target can be invalid.
+	WithControlPlane(controlPlane bool) Target
 	// Validate checks for semantical correctness of the target, without
 	// actually connecting to the targeted clusters.
 	Validate() error
@@ -57,22 +62,24 @@ type Target interface {
 }
 
 type targetImpl struct {
-	Garden  string `yaml:"garden,omitempty" json:"garden,omitempty"`
-	Project string `yaml:"project,omitempty" json:"project,omitempty"`
-	Seed    string `yaml:"seed,omitempty" json:"seed,omitempty"`
-	Shoot   string `yaml:"shoot,omitempty" json:"shoot,omitempty"`
+	Garden       string `yaml:"garden,omitempty" json:"garden,omitempty"`
+	Project      string `yaml:"project,omitempty" json:"project,omitempty"`
+	Seed         string `yaml:"seed,omitempty" json:"seed,omitempty"`
+	Shoot        string `yaml:"shoot,omitempty" json:"shoot,omitempty"`
+	ControlPlane bool   `yaml:"controlPlane,omitempty" json:"controlPlane,omitempty"`
 }
 
 var _ Target = &targetImpl{}
 
 // NewTarget returns a new target. This function does not perform any validation,
 // so the returned target can be invalid.
-func NewTarget(gardenName, projectName, seedName, shootName string) Target {
+func NewTarget(gardenName, projectName, seedName, shootName string, shootControlPlane bool) Target {
 	return &targetImpl{
-		Garden:  gardenName,
-		Project: projectName,
-		Seed:    seedName,
-		Shoot:   shootName,
+		Garden:       gardenName,
+		Project:      projectName,
+		Seed:         seedName,
+		Shoot:        shootName,
+		ControlPlane: shootControlPlane,
 	}
 }
 
@@ -106,28 +113,39 @@ func (t *targetImpl) ShootName() string {
 	return t.Shoot
 }
 
+// ShootControlPlane returns true if shot control plane is targeted.
+func (t *targetImpl) ShootControlPlane() bool {
+	return t.ControlPlane
+}
+
 // WithGardenName returns a copy of the target with the garden name updated.
 // The returned target can be invalid.
 func (t *targetImpl) WithGardenName(name string) Target {
-	return NewTarget(name, t.Project, t.Seed, t.Shoot)
+	return NewTarget(name, t.Project, t.Seed, t.Shoot, t.ControlPlane)
 }
 
 // WithProjectName returns a copy of the target with the project name updated.
 // The returned target can be invalid.
 func (t *targetImpl) WithProjectName(name string) Target {
-	return NewTarget(t.Garden, name, t.Seed, t.Shoot)
+	return NewTarget(t.Garden, name, t.Seed, t.Shoot, t.ControlPlane)
 }
 
 // WithSeedName returns a copy of the target with the seed name updated.
 // The returned target can be invalid.
 func (t *targetImpl) WithSeedName(name string) Target {
-	return NewTarget(t.Garden, t.Project, name, t.Shoot)
+	return NewTarget(t.Garden, t.Project, name, t.Shoot, t.ControlPlane)
 }
 
 // WithShootName returns a copy of the target with the shoot name updated.
 // The returned target can be invalid.
 func (t *targetImpl) WithShootName(name string) Target {
-	return NewTarget(t.Garden, t.Project, t.Seed, name)
+	return NewTarget(t.Garden, t.Project, t.Seed, name, t.ControlPlane)
+}
+
+// WithControlPlane returns a copy of the target with the control plane flag updated.
+// The returned target can be invalid.
+func (t *targetImpl) WithControlPlane(controlPlane bool) Target {
+	return NewTarget(t.Garden, t.Project, t.Seed, t.Shoot, controlPlane)
 }
 
 // String returns a readable representation of the target.
@@ -150,6 +168,10 @@ func (t *targetImpl) String() string {
 		steps = append(steps, fmt.Sprintf("shoot:%q", t.Shoot))
 	}
 
+	if t.ControlPlane {
+		steps = append(steps, "control plane targeted")
+	}
+
 	if len(steps) == 0 {
 		return "<empty>"
 	}
@@ -158,7 +180,7 @@ func (t *targetImpl) String() string {
 }
 
 func (t *targetImpl) IsEmpty() bool {
-	return t.Garden == "" && t.Project == "" && t.Seed == "" && t.Shoot == ""
+	return t.Garden == "" && t.Project == "" && t.Seed == "" && t.Shoot == "" && !t.ControlPlane
 }
 
 func (t *targetImpl) AsListOption() client.ListOption {

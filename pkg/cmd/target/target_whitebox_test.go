@@ -165,7 +165,7 @@ var _ = Describe("Completion", func() {
 		).Build()
 
 		// setup fakes
-		currentTarget := target.NewTarget(gardenName, testProject1.Name, "", testShoot1.Name)
+		currentTarget := target.NewTarget(gardenName, testProject1.Name, "", testShoot1.Name, false)
 		targetProvider = internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider()
 
@@ -203,7 +203,7 @@ var _ = Describe("Completion", func() {
 		})
 
 		It("should return all project names", func() {
-			targetProvider.Target = target.NewTarget(gardenName, "", "", "")
+			targetProvider.Target = target.NewTarget(gardenName, "", "", "", false)
 
 			values, err := validTargetArgsFunction(factory, nil, []string{string(TargetKindProject)}, "")
 			Expect(err).NotTo(HaveOccurred())
@@ -211,7 +211,7 @@ var _ = Describe("Completion", func() {
 		})
 
 		It("should return all seed names", func() {
-			targetProvider.Target = target.NewTarget(gardenName, "", "", "")
+			targetProvider.Target = target.NewTarget(gardenName, "", "", "", false)
 
 			values, err := validTargetArgsFunction(factory, nil, []string{string(TargetKindSeed)}, "")
 			Expect(err).NotTo(HaveOccurred())
@@ -219,7 +219,7 @@ var _ = Describe("Completion", func() {
 		})
 
 		It("should return all shoot names when using a project", func() {
-			targetProvider.Target = target.NewTarget(gardenName, testProject1.Name, "", "")
+			targetProvider.Target = target.NewTarget(gardenName, testProject1.Name, "", "", false)
 
 			values, err := validTargetArgsFunction(factory, nil, []string{string(TargetKindShoot)}, "")
 			Expect(err).NotTo(HaveOccurred())
@@ -227,7 +227,7 @@ var _ = Describe("Completion", func() {
 		})
 
 		It("should return all shoot names when using a seed", func() {
-			targetProvider.Target = target.NewTarget(gardenName, "", testSeed1.Name, "")
+			targetProvider.Target = target.NewTarget(gardenName, "", testSeed1.Name, "", false)
 
 			values, err := validTargetArgsFunction(factory, nil, []string{string(TargetKindShoot)}, "")
 			Expect(err).NotTo(HaveOccurred())

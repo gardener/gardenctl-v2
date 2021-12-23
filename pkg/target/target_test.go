@@ -15,7 +15,7 @@ import (
 
 var _ = Describe("Target", func() {
 	It("should keep data", func() {
-		t := target.NewTarget("a", "b", "c", "d")
+		t := target.NewTarget("a", "b", "c", "d", false)
 
 		Expect(t.GardenName()).To(Equal("a"))
 		Expect(t.ProjectName()).To(Equal("b"))
@@ -25,11 +25,11 @@ var _ = Describe("Target", func() {
 
 	It("should validate", func() {
 		// valid
-		Expect(target.NewTarget("a", "b", "", "d").Validate()).To(Succeed())
-		Expect(target.NewTarget("a", "", "c", "d").Validate()).To(Succeed())
-		Expect(target.NewTarget("a", "", "", "d").Validate()).To(Succeed())
+		Expect(target.NewTarget("a", "b", "", "d", false).Validate()).To(Succeed())
+		Expect(target.NewTarget("a", "", "c", "d", false).Validate()).To(Succeed())
+		Expect(target.NewTarget("a", "", "", "d", false).Validate()).To(Succeed())
 
 		// invalid because both project and seed are defined
-		Expect(target.NewTarget("a", "b", "c", "d").Validate()).NotTo(Succeed())
+		Expect(target.NewTarget("a", "b", "c", "d", false).Validate()).NotTo(Succeed())
 	})
 })

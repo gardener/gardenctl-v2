@@ -7,6 +7,7 @@ package target_test
 
 import (
 	"fmt"
+
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
@@ -29,7 +30,7 @@ var _ = Describe("Command", func() {
 				Kubeconfig: "",
 			}},
 		}
-		currentTarget := target.NewTarget(gardenName, projectName, "", shootName)
+		currentTarget := target.NewTarget(gardenName, projectName, "", shootName, false)
 
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)

@@ -131,7 +131,7 @@ var _ = Describe("CloudEnv Options", func() {
 				ctx = context.Background()
 				manager = targetmocks.NewMockManager(ctrl)
 				client = gardenclientmocks.NewMockClient(ctrl)
-				t = target.NewTarget("test", "project", "seed", "shoot")
+				t = target.NewTarget("test", "project", "seed", "shoot", false)
 				secretBindingName = "secret-binding"
 				cloudProfileName = "cloud-profile"
 				region = "europe"
@@ -354,7 +354,7 @@ var _ = Describe("CloudEnv Options", func() {
 				providerConfig = nil
 				serviceaccountJSON = readTestFile("gcp/serviceaccount.json")
 				token = "token"
-				options.CurrentTarget = target.NewTarget("test", "project", "", shootName)
+				options.CurrentTarget = target.NewTarget("test", "project", "", shootName, false)
 			})
 
 			JustBeforeEach(func() {
@@ -527,7 +527,7 @@ var _ = Describe("CloudEnv Options", func() {
 				targetFlags,
 				cli string
 				meta map[string]interface{}
-				t    = target.NewTarget("test", "project", "seed", "shoot")
+				t    = target.NewTarget("test", "project", "seed", "shoot", false)
 			)
 
 			BeforeEach(func() {

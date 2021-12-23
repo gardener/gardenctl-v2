@@ -13,7 +13,6 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -22,6 +21,8 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 func init() {
@@ -47,7 +48,7 @@ var _ = Describe("Command", func() {
 				Kubeconfig: "",
 			}},
 		}
-		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget(gardenName, "", "", ""))
+		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget(gardenName, "", "", "", false))
 		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
 		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
 
@@ -73,7 +74,7 @@ var _ = Describe("Command", func() {
 		}
 
 		// user has already targeted a garden and project
-		currentTarget := target.NewTarget(gardenName, projectName, "", "")
+		currentTarget := target.NewTarget(gardenName, projectName, "", "", false)
 
 		// garden cluster contains the targeted project
 		project := &gardencorev1beta1.Project{
@@ -119,7 +120,7 @@ var _ = Describe("Command", func() {
 		}
 
 		// user has already targeted a garden and seed
-		currentTarget := target.NewTarget(gardenName, "", seedName, "")
+		currentTarget := target.NewTarget(gardenName, "", seedName, "", false)
 
 		// garden cluster contains the targeted seed
 		seed := &gardencorev1beta1.Seed{
@@ -187,7 +188,7 @@ var _ = Describe("Command", func() {
 		}
 
 		// user has already targeted a garden, project and shoot
-		currentTarget := target.NewTarget(gardenName, projectName, "", shootName)
+		currentTarget := target.NewTarget(gardenName, projectName, "", shootName, false)
 
 		fakeGardenClient := fake.NewClientBuilder().WithObjects(project, shoot).Build()
 

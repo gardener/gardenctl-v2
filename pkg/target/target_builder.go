@@ -33,6 +33,8 @@ type TargetBuilder interface {
 	SetSeed(context.Context, string) TargetBuilder
 	// SetShoot updates TargetBuilder with a Shoot name
 	SetShoot(context.Context, string) TargetBuilder
+	// SetShootControlPlane updates TargetBuilder shoot control plane flag
+	SetShootControlPlane(context.Context, bool) TargetBuilder
 	// Build uses the values set for TargetBuilder to create and return a new target
 	// This function validates the target values and tries to complete missing values
 	// If the provided values do not represent a valid and unique target, an error is returned
@@ -74,6 +76,7 @@ func (b *targetBuilderImpl) SetGarden(name string) TargetBuilder {
 		t.Project = ""
 		t.Seed = ""
 		t.Shoot = ""
+		t.ControlPlane = false
 
 		return nil
 	})
@@ -96,6 +99,7 @@ func (b *targetBuilderImpl) SetProject(ctx context.Context, name string) TargetB
 		t.Project = project.Name
 		t.Seed = ""
 		t.Shoot = ""
+		t.ControlPlane = false
 
 		return nil
 	})
@@ -123,6 +127,7 @@ func (b *targetBuilderImpl) SetNamespace(ctx context.Context, name string) Targe
 		t.Project = project.Name
 		t.Seed = ""
 		t.Shoot = ""
+		t.ControlPlane = false
 
 		return nil
 	})
@@ -145,6 +150,7 @@ func (b *targetBuilderImpl) SetSeed(ctx context.Context, name string) TargetBuil
 		t.Project = ""
 		t.Seed = seed.Name
 		t.Shoot = ""
+		t.ControlPlane = false
 
 		return nil
 	})
@@ -181,6 +187,21 @@ func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBui
 
 		t.Seed = ""
 		t.Shoot = shoot.Name
+		t.ControlPlane = false
+
+		return nil
+	})
+
+	return b
+}
+
+func (b *targetBuilderImpl) SetShootControlPlane(ctx context.Context, controlPlane bool) TargetBuilder {
+	b.actions = append(b.actions, func(t *targetImpl) error {
+		if t.Shoot == "" {
+			return ErrNoShootTargeted
+		}
+
+		t.ControlPlane = controlPlane
 
 		return nil
 	})
@@ -191,7 +212,7 @@ func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBui
 func (b *targetBuilderImpl) Build() (Target, error) {
 	target := b.target
 	if target == nil {
-		target = NewTarget("", "", "", "")
+		target = NewTarget("", "", "", "", false)
 	}
 
 	t := &targetImpl{
@@ -199,6 +220,7 @@ func (b *targetBuilderImpl) Build() (Target, error) {
 		target.ProjectName(),
 		target.SeedName(),
 		target.ShootName(),
+		target.ShootControlPlane(),
 	}
 
 	for _, a := range b.actions {

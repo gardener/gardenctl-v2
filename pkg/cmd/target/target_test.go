@@ -102,7 +102,7 @@ var _ = Describe("Command", func() {
 	It("should be able to target a garden", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
-		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget("", "", "", ""))
+		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget("", "", "", "", false))
 		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
 		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
 
@@ -118,7 +118,7 @@ var _ = Describe("Command", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		// user has already targeted a garden
-		currentTarget := target.NewTarget(gardenName, "", "", "")
+		currentTarget := target.NewTarget(gardenName, "", "", "", false)
 
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
@@ -140,7 +140,7 @@ var _ = Describe("Command", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		// user has already targeted a garden
-		currentTarget := target.NewTarget(gardenName, "", "", "")
+		currentTarget := target.NewTarget(gardenName, "", "", "", false)
 
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
@@ -162,7 +162,7 @@ var _ = Describe("Command", func() {
 		streams, _, out, _ := util.NewTestIOStreams()
 
 		// user has already targeted a garden and project
-		currentTarget := target.NewTarget(gardenName, projectName, "", "")
+		currentTarget := target.NewTarget(gardenName, projectName, "", "", false)
 
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
@@ -186,19 +186,21 @@ var _ = Describe("Command", func() {
 var _ = Describe("TargetOptions", func() {
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
+		factory := internalfake.NewFakeFactory(nil, nil, nil, nil, nil)
 		o := cmdtarget.NewTargetOptions(streams)
 		o.Kind = cmdtarget.TargetKindGarden
 		o.TargetName = "foo"
 
-		Expect(o.Validate()).To(Succeed())
+		Expect(o.Validate(factory)).To(Succeed())
 	})
 
 	It("should reject invalid kinds", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
+		factory := internalfake.NewFakeFactory(nil, nil, nil, nil, nil)
 		o := cmdtarget.NewTargetOptions(streams)
 		o.Kind = cmdtarget.TargetKind("not a kind")
 		o.TargetName = "foo"
 
-		Expect(o.Validate()).NotTo(Succeed())
+		Expect(o.Validate(factory)).NotTo(Succeed())
 	})
 })

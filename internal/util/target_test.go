@@ -102,7 +102,7 @@ var _ = Describe("Target Utilities", func() {
 
 	Describe("SeedForTarget", func() {
 		It("should require a targeted seed", func() {
-			t := target.NewTarget("a", "", "", "")
+			t := target.NewTarget("a", "", "", "", false)
 			ctx := context.Background()
 
 			seed, err := SeedForTarget(ctx, gardenClient, t)
@@ -111,7 +111,7 @@ var _ = Describe("Target Utilities", func() {
 		})
 
 		It("should return a valid seed", func() {
-			t := target.NewTarget("a", "", testSeed.Name, "")
+			t := target.NewTarget("a", "", testSeed.Name, "", false)
 			ctx := context.Background()
 
 			seed, err := SeedForTarget(ctx, gardenClient, t)
@@ -121,7 +121,7 @@ var _ = Describe("Target Utilities", func() {
 		})
 
 		It("should require a targeted project", func() {
-			t := target.NewTarget("a", "", "", "")
+			t := target.NewTarget("a", "", "", "", false)
 			ctx := context.Background()
 
 			project, err := ProjectForTarget(ctx, gardenClient, t)
@@ -130,7 +130,7 @@ var _ = Describe("Target Utilities", func() {
 		})
 
 		It("should return a valid project", func() {
-			t := target.NewTarget("a", testReadyProject.Name, "", "")
+			t := target.NewTarget("a", testReadyProject.Name, "", "", false)
 			ctx := context.Background()
 
 			project, err := ProjectForTarget(ctx, gardenClient, t)
@@ -140,7 +140,7 @@ var _ = Describe("Target Utilities", func() {
 		})
 
 		It("should return an unready project", func() {
-			t := target.NewTarget("a", testUnreadyProject.Name, "", "")
+			t := target.NewTarget("a", testUnreadyProject.Name, "", "", false)
 			ctx := context.Background()
 
 			project, err := ProjectForTarget(ctx, gardenClient, t)
@@ -150,7 +150,7 @@ var _ = Describe("Target Utilities", func() {
 		})
 
 		It("should return a valid shoot when not using a project or seed", func() {
-			t := target.NewTarget("a", "", "", testShoot.Name)
+			t := target.NewTarget("a", "", "", testShoot.Name, false)
 			ctx := context.Background()
 
 			shoot, err := ShootForTarget(ctx, gardenClient, t)
@@ -160,7 +160,7 @@ var _ = Describe("Target Utilities", func() {
 		})
 
 		It("should return a valid shoot when using a project", func() {
-			t := target.NewTarget("a", testReadyProject.Name, "", testShoot.Name)
+			t := target.NewTarget("a", testReadyProject.Name, "", testShoot.Name, false)
 			ctx := context.Background()
 
 			shoot, err := ShootForTarget(ctx, gardenClient, t)
@@ -170,7 +170,7 @@ var _ = Describe("Target Utilities", func() {
 		})
 
 		It("should return an error when using an unready project", func() {
-			t := target.NewTarget("a", testUnreadyProject.Name, "", testShoot.Name)
+			t := target.NewTarget("a", testUnreadyProject.Name, "", testShoot.Name, false)
 			ctx := context.Background()
 
 			shoot, err := ShootForTarget(ctx, gardenClient, t)
@@ -179,7 +179,7 @@ var _ = Describe("Target Utilities", func() {
 		})
 
 		It("should return a valid shoot when using a seed", func() {
-			t := target.NewTarget("a", "", testSeed.Name, testShoot.Name)
+			t := target.NewTarget("a", "", testSeed.Name, testShoot.Name, false)
 			ctx := context.Background()
 
 			shoot, err := ShootForTarget(ctx, gardenClient, t)
