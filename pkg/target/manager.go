@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -65,6 +66,8 @@ type Manager interface {
 
 	// Kubeconfig returns the kubeconfig for the given target cluster
 	Kubeconfig(ctx context.Context, t Target) ([]byte, error)
+	// WriteKubeconfig creates a kubeconfig file in the temporary directory of the os
+	WriteKubeconfig(data []byte) (string, error)
 	// SeedClient controller-runtime client for accessing the configured seed cluster
 	SeedClient(ctx context.Context, t Target) (client.Client, error)
 	// ShootClusterClient controller-runtime client for accessing the configured shoot cluster
@@ -377,6 +380,27 @@ func (m *managerImpl) Kubeconfig(ctx context.Context, t Target) ([]byte, error) 
 	}
 
 	return nil, ErrNoGardenTargeted
+}
+
+func (m *managerImpl) WriteKubeconfig(data []byte) (string, error) {
+	tempDir, err := os.MkdirTemp("", "garden")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temporary gardenctl directory: %w", err)
+	}
+
+	tempFile, err := os.CreateTemp(tempDir, "kubeconfig.*.yaml")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temporary kubeconfig file: %w", err)
+	}
+
+	filename := tempFile.Name()
+
+	err = os.WriteFile(filename, data, 0600)
+	if err != nil {
+		return "", fmt.Errorf("failed to write temporary kubeconfig file to %s: %w", filename, err)
+	}
+
+	return filename, nil
 }
 
 func (m *managerImpl) SeedClient(ctx context.Context, t Target) (client.Client, error) {

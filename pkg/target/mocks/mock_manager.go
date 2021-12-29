@@ -270,3 +270,18 @@ func (mr *MockManagerMockRecorder) UnsetTargetShoot() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetTargetShoot", reflect.TypeOf((*MockManager)(nil).UnsetTargetShoot))
 }
+
+// WriteKubeconfig mocks base method.
+func (m *MockManager) WriteKubeconfig(arg0 []byte) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WriteKubeconfig", arg0)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// WriteKubeconfig indicates an expected call of WriteKubeconfig.
+func (mr *MockManagerMockRecorder) WriteKubeconfig(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteKubeconfig", reflect.TypeOf((*MockManager)(nil).WriteKubeconfig), arg0)
+}

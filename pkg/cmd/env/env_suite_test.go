@@ -4,10 +4,9 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package cloudenv_test
+package env_test
 
 import (
-	"embed"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,11 +16,10 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 
+	"github.com/gardener/gardenctl-v2/pkg/cmd/env/testdata"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
-//go:embed testdata
-var testdata embed.FS
 var gardenHomeDir string
 
 func init() {
@@ -50,7 +48,7 @@ func makeTempGardenHomeDir() string {
 }
 
 func readTestFile(filename string) string {
-	data, err := testdata.ReadFile(filepath.Join("testdata", filename))
+	data, err := testdata.FS.ReadFile(filename)
 	Expect(err).NotTo(HaveOccurred())
 
 	return string(data)
