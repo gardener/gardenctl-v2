@@ -7,9 +7,11 @@ package target
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -383,21 +385,24 @@ func (m *managerImpl) Kubeconfig(ctx context.Context, t Target) ([]byte, error) 
 }
 
 func (m *managerImpl) WriteKubeconfig(data []byte) (string, error) {
-	tempDir, err := os.MkdirTemp("", "garden")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temporary gardenctl directory: %w", err)
+	tempDir := filepath.Join(os.TempDir(), "garden")
+
+	fileInfo, err := os.Stat(tempDir)
+	if err != nil || !fileInfo.IsDir() {
+		err := os.Mkdir(tempDir, 0700)
+		if err != nil {
+			return "", fmt.Errorf("failed to create temporary gardenctl directory: %w", err)
+		}
 	}
 
-	tempFile, err := os.CreateTemp(tempDir, "kubeconfig.*.yaml")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temporary kubeconfig file: %w", err)
-	}
+	filename := filepath.Join(tempDir, fmt.Sprintf("kubeconfig.%x.yaml", sha256.Sum256(data)))
 
-	filename := tempFile.Name()
-
-	err = os.WriteFile(filename, data, 0600)
-	if err != nil {
-		return "", fmt.Errorf("failed to write temporary kubeconfig file to %s: %w", filename, err)
+	fileInfo, err = os.Stat(filename)
+	if err != nil || fileInfo.IsDir() {
+		err = os.WriteFile(filename, data, 0600)
+		if err != nil {
+			return "", fmt.Errorf("failed to write temporary kubeconfig file to %s: %w", filename, err)
+		}
 	}
 
 	return filename, nil
