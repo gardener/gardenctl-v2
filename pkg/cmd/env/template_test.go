@@ -303,6 +303,10 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_SUBSCRIPTION_ID;
 		It("should fail to parse the template", func() {
 			Expect(env.ParseFile(fsys, textTemplate, "invalid")).To(MatchError(MatchRegexp("^parsing embedded template \\\"invalid\\\" failed")))
 		})
+
+		It("should fail for not existing templates", func() {
+			Expect(t.ParseFiles("invalid")).To(MatchError("embedded template \"invalid\" does not exist"))
+		})
 	})
 
 })

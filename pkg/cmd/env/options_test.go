@@ -111,6 +111,12 @@ var _ = Describe("Env Commands - Options", func() {
 				Expect(t.Delegate().Lookup("usage-hint")).NotTo(BeNil())
 				Expect(t.Delegate().Lookup("bash")).NotTo(BeNil())
 			})
+
+			It("should fail to complete options for providerType kubernetes", func() {
+				options.ProviderType = "kubernetes"
+				writeTempFile(filepath.Join("templates", "kubernetes.tmpl"), "{{define")
+				Expect(options.Complete(factory, child, nil)).To(MatchError(MatchRegexp("^parsing template \\\"kubernetes\\\" failed:")))
+			})
 		})
 
 		Describe("validating the command options", func() {
@@ -376,18 +382,6 @@ var _ = Describe("Env Commands - Options", func() {
 					factory.EXPECT().Manager().Return(manager, nil)
 					manager.EXPECT().CurrentTarget().Return(t.WithShootName(""), nil)
 					Expect(options.Run(factory)).To(BeIdenticalTo(target.ErrNoShootTargeted))
-				})
-
-				It("should fail with ErrNeitherProjectNorSeedTargeted", func() {
-					factory.EXPECT().Manager().Return(manager, nil)
-					manager.EXPECT().CurrentTarget().Return(t.WithSeedName("").WithProjectName(""), nil)
-					Expect(options.Run(factory)).To(BeIdenticalTo(target.ErrNeitherProjectNorSeedTargeted))
-				})
-
-				It("should fail with ErrProjectAndSeedTargeted", func() {
-					factory.EXPECT().Manager().Return(manager, nil)
-					manager.EXPECT().CurrentTarget().Return(t, nil)
-					Expect(options.Run(factory)).To(MatchError("project and seed must not be targeted at the same time"))
 				})
 
 				It("should fail with GardenClientError", func() {

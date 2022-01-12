@@ -7,12 +7,15 @@ package target
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/md5"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
+	"github.com/google/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
@@ -72,7 +75,7 @@ type Manager interface {
 	WriteKubeconfig(data []byte) (string, error)
 	// SeedClient controller-runtime client for accessing the configured seed cluster
 	SeedClient(ctx context.Context, t Target) (client.Client, error)
-	// ShootClusterClient controller-runtime client for accessing the configured shoot cluster
+	// ShootClient controller-runtime client for accessing the configured shoot cluster
 	ShootClient(ctx context.Context, t Target) (client.Client, error)
 
 	// Configuration returns the current gardenctl configuration
@@ -357,6 +360,10 @@ func (m *managerImpl) Kubeconfig(ctx context.Context, t Target) ([]byte, error) 
 					return nil, err
 				}
 
+				if project.Spec.Namespace == nil || *project.Spec.Namespace == "" {
+					return nil, fmt.Errorf("project %q has not yet been assigned to a namespace", t.ProjectName())
+				}
+
 				namespace = *project.Spec.Namespace
 			} else {
 				shoot, err := client.FindShoot(ctx, t.AsListOption())
@@ -385,24 +392,18 @@ func (m *managerImpl) Kubeconfig(ctx context.Context, t Target) ([]byte, error) 
 }
 
 func (m *managerImpl) WriteKubeconfig(data []byte) (string, error) {
-	tempDir := filepath.Join(os.TempDir(), "garden")
+	tempDir := filepath.Join(os.TempDir(), "garden", getSessionID())
 
-	fileInfo, err := os.Stat(tempDir)
-	if err != nil || !fileInfo.IsDir() {
-		err := os.Mkdir(tempDir, 0700)
-		if err != nil {
-			return "", fmt.Errorf("failed to create temporary gardenctl directory: %w", err)
-		}
+	err := os.MkdirAll(tempDir, os.ModePerm)
+	if err != nil {
+		return "", fmt.Errorf("failed to create temporary kubeconfig directory: %w", err)
 	}
 
-	filename := filepath.Join(tempDir, fmt.Sprintf("kubeconfig.%x.yaml", sha256.Sum256(data)))
+	filename := filepath.Join(tempDir, fmt.Sprintf("kubeconfig.%x.yaml", md5.Sum(data)))
 
-	fileInfo, err = os.Stat(filename)
-	if err != nil || fileInfo.IsDir() {
-		err = os.WriteFile(filename, data, 0600)
-		if err != nil {
-			return "", fmt.Errorf("failed to write temporary kubeconfig file to %s: %w", filename, err)
-		}
+	err = os.WriteFile(filename, data, 0600)
+	if err != nil {
+		return "", fmt.Errorf("failed to write temporary kubeconfig file to %s: %w", filename, err)
 	}
 
 	return filename, nil
@@ -438,15 +439,6 @@ func (m *managerImpl) ShootClient(ctx context.Context, t Target) (client.Client,
 
 	if t.GardenName() == "" {
 		return nil, ErrNoGardenTargeted
-	}
-
-	// Even if a user targets a shoot directly, without specifying a seed/project,
-	// during that operation a seed/project will be selected and saved in the
-	// target file; that's why this check can still demand a parent target for
-	// the shoot, which is also needed because we need to locate the kubeconfig
-	// on disk.
-	if t.SeedName() == "" && t.ProjectName() == "" {
-		return nil, ErrNeitherProjectNorSeedTargeted
 	}
 
 	if t.ShootName() == "" {
@@ -513,4 +505,26 @@ func (m *managerImpl) getTarget(t Target) (Target, error) {
 
 func (m *managerImpl) GardenClient(name string) (gardenclient.Client, error) {
 	return GardenClient(name, m.config, m.clientProvider)
+}
+
+func getSessionID() string {
+	var sid string
+
+	if val, ok := os.LookupEnv("GCTL_SESSION_ID"); ok {
+		sid = strings.ToLower(val)
+	} else if val, ok = os.LookupEnv("ITERM_SESSION_ID"); ok {
+		sid = strings.ToLower(val)
+	}
+
+	re := regexp.MustCompile(`([a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})`)
+
+	match := re.FindStringSubmatch(sid)
+	if len(match) > 1 {
+		return match[1]
+	}
+
+	sid = uuid.New().String()
+	os.Setenv("GCTL_SESSION_ID", sid)
+
+	return sid
 }

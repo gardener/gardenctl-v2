@@ -60,7 +60,7 @@ var _ = Describe("Env Commands", func() {
 
 	})
 
-	Describe("given a ProviderEnv instance", func() {
+	Describe("given a KubectlEnv instance", func() {
 		BeforeEach(func() {
 			cmd = env.NewCmdKubectlEnv(factory, streams)
 		})

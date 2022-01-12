@@ -114,6 +114,8 @@ func parseFile(fsys fs.FS, t *template.Template, filename string) error {
 				return fmt.Errorf("parsing template %q failed: %w", name, err)
 			}
 		}
+	} else if !embedExist {
+		return fmt.Errorf("embedded template %q does not exist", name)
 	}
 
 	return nil

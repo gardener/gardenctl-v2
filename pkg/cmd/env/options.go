@@ -9,7 +9,6 @@ package env
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"runtime"
@@ -49,12 +48,13 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 	o.Shell = cmd.Name()
 	o.CmdPath = cmd.Parent().CommandPath()
 	o.GardenDir = f.GardenHomeDir()
+	o.Template = newTemplate("usage-hint")
 
-	switch o.ProviderType {
-	case "kubernetes":
-		o.Template = newTemplate("usage-hint", "templates/kubernetes.tmpl")
-	default:
-		o.Template = newTemplate("usage-hint")
+	if o.ProviderType == "kubernetes" {
+		filename := filepath.Join(o.GardenDir, "templates", "kubernetes.tmpl")
+		if err := o.Template.ParseFiles(filename); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -112,10 +112,6 @@ func (o *options) Run(f util.Factory) error {
 		t := o.CurrentTarget
 		if t.ShootName() == "" {
 			return target.ErrNoShootTargeted
-		} else if t.ProjectName() == "" && t.SeedName() == "" {
-			return target.ErrNeitherProjectNorSeedTargeted
-		} else if t.ProjectName() != "" && t.SeedName() != "" {
-			return errors.New("project and seed must not be targeted at the same time")
 		}
 
 		client, err := manager.GardenClient(t.GardenName())
