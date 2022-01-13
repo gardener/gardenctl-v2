@@ -241,7 +241,7 @@ func runCmdSSH(f util.Factory, o *SSHOptions) error {
 		nodePrivateKeyFiles = append(nodePrivateKeyFiles, filename)
 	}
 
-	shootClient, err := manager.ShootClusterClient(ctx, currentTarget)
+	shootClient, err := manager.ShootClient(ctx, currentTarget)
 	if err != nil {
 		return err
 	}
@@ -421,7 +421,7 @@ func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
 	}
 
 	// create client for the shoot cluster
-	shootClient, err := manager.ShootClusterClient(f.Context(), currentTarget)
+	shootClient, err := manager.ShootClient(f.Context(), currentTarget)
 	if err != nil {
 		return nil, err
 	}

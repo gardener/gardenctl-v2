@@ -2,5 +2,5 @@ gcloud auth revoke $Env:GOOGLE_CREDENTIALS_ACCOUNT --verbosity=error;
 Remove-Item -ErrorAction SilentlyContinue Env:\GOOGLE_CREDENTIALS;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_CORE_PROJECT;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_COMPUTE_REGION;
-# Run this command to reset the configuration of the "gcloud" CLI for your shell:
-# & gardenctl cloud-env -u powershell | Invoke-Expression
+# Run this command to reset the gcloud configuration for your shell:
+# & gardenctl provider-env -u powershell | Invoke-Expression

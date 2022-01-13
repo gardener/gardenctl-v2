@@ -10,7 +10,7 @@ export GOOGLE_CREDENTIALS_ACCOUNT={{.credentials.client_email | shellEscape}};
 export CLOUDSDK_CORE_PROJECT={{.credentials.project_id | shellEscape}};
 export CLOUDSDK_COMPUTE_REGION={{.region | shellEscape}};
 gcloud auth activate-service-account $GOOGLE_CREDENTIALS_ACCOUNT --key-file <(printf "%s" "$GOOGLE_CREDENTIALS");
-{{end}}{{template "usage-hint" .__meta}}{{end}}
+{{end}}{{template "gcp-usage-hint" .__meta}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
 {{define "zsh"}}{{template "default" .}}{{end}}
@@ -27,7 +27,7 @@ set -gx GOOGLE_CREDENTIALS_ACCOUNT {{.credentials.client_email | shellEscape}};
 set -gx CLOUDSDK_CORE_PROJECT {{.credentials.project_id | shellEscape}};
 set -gx CLOUDSDK_COMPUTE_REGION {{.region | shellEscape}};
 gcloud auth activate-service-account $GOOGLE_CREDENTIALS_ACCOUNT --key-file (printf "%s" "$GOOGLE_CREDENTIALS" | psub);
-{{end}}{{template "usage-hint" .__meta}}{{end}}
+{{end}}{{template "gcp-usage-hint" .__meta}}{{end}}
 
 {{define "powershell"}}{{if .__meta.unset -}}
 gcloud auth revoke $Env:GOOGLE_CREDENTIALS_ACCOUNT --verbosity=error;
@@ -41,4 +41,10 @@ $Env:CLOUDSDK_CORE_PROJECT = {{.credentials.project_id | shellEscape}};
 $Env:CLOUDSDK_COMPUTE_REGION = {{.region | shellEscape}};
 function Invoke-WithGoogleCredentials {param([Parameter(Mandatory)] [ScriptBlock] $sb); $f = New-TemporaryFile; try {$Env:GOOGLE_CREDENTIALS | Out-File -Encoding utf8 $f; Invoke-Command -ScriptBlock $sb -ArgumentList $f} finally {Remove-Item -ErrorAction SilentlyContinue $f}};
 Invoke-WithGoogleCredentials {param($f) gcloud auth activate-service-account $Env:GOOGLE_CREDENTIALS_ACCOUNT --key-file $f};
-{{end}}{{template "usage-hint" .__meta}}{{end}}
+{{end}}{{template "gcp-usage-hint" .__meta}}{{end}}
+
+{{define "gcp-usage-hint"}}{{if not .unset}}{{template "revoke-hint" .}}{{end}}{{template "usage-hint" .}}{{end}}
+
+{{define "revoke-hint" -}}
+printf 'Run the following command to revoke access credentials:\n{{.prompt}}{{template "eval-cmd" dict "shell" .shell "cmd" (printf "%s %s -u %s" .commandPath .targetFlags .shell)}}\n';
+{{end}}

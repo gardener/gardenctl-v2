@@ -381,7 +381,7 @@ var _ = Describe("Manager", func() {
 		Expect(kubeconfigCache.Write(t, []byte(shootKubeconfig))).To(Succeed())
 		clientProvider.WithClient(shootKubeconfig, shootClient)
 
-		newClient, err := manager.ShootClusterClient(ctx, t)
+		newClient, err := manager.ShootClient(ctx, t)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(newClient).NotTo(BeNil())
 	})

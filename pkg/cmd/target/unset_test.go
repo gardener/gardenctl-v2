@@ -7,13 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package target_test
 
 import (
-	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
-	"github.com/gardener/gardenctl-v2/internal/util"
-	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
-	"github.com/gardener/gardenctl-v2/pkg/config"
-	"github.com/gardener/gardenctl-v2/pkg/target"
-
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -22,6 +15,13 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
+	"github.com/gardener/gardenctl-v2/internal/util"
+	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
+	"github.com/gardener/gardenctl-v2/pkg/config"
+	"github.com/gardener/gardenctl-v2/pkg/target"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 func init() {

@@ -4,25 +4,28 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package cloudenv
+package env
 
 import (
+	"fmt"
+	"runtime"
+
 	"github.com/spf13/cobra"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
 
-// NewCmdCloudEnv returns a new cloudenv command.
-func NewCmdCloudEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
-	o := &cmdOptions{
+// NewCmdProviderEnv returns a new provider-env command.
+func NewCmdProviderEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+	o := &options{
 		Options: base.Options{
 			IOStreams: ioStreams,
 		},
 	}
 	runE := base.WrapRunE(o, f)
 	cmd := &cobra.Command{
-		Use:   "cloud-env",
+		Use:   "provider-env",
 		Short: "generate the cloud provider CLI configuration script for the specified shell",
 		Long: `Generate the cloud provider CLI configuration script for the specified shell.
 See each sub-command's help for details on how to use the generated script.
@@ -43,13 +46,57 @@ Please refer to the installation instructions of the respective provider:
 To overwrite the default templates or add support for custom (out of tree) cloud providers place a template
 for the respective provider in the "templates" folder of the gardenctl home directory ($GCTL_HOME or $HOME/.garden).
 Please refer to the templates of the already supported cloud providers which can be found
-here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/cloudenv/templates.`,
-		Aliases: []string{"provider-env"},
+here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.`,
+		Aliases: []string{"p-env", "cloud-env"},
 	}
 	o.AddFlags(cmd.PersistentFlags())
 
 	for _, s := range validShells {
-		s.AddCommand(cmd, runE)
+		cmd.AddCommand(&cobra.Command{
+			Use:   string(s),
+			Short: fmt.Sprintf("generate the cloud provider CLI configuration script for %s", s),
+			Long: fmt.Sprintf("Generate the cloud provider CLI configuration script for %s.\n\n"+
+				"To load the cloud provider CLI configuration script in your current shell session:\n%s\n",
+				s, s.Prompt(runtime.GOOS)+s.EvalCommand(fmt.Sprintf("%s %s", cmd.CommandPath(), s)),
+			),
+			RunE: runE,
+		})
+	}
+
+	return cmd
+}
+
+// NewCmdKubectlEnv returns a new kubectl-env command.
+func NewCmdKubectlEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+	o := &options{
+		Options: base.Options{
+			IOStreams: ioStreams,
+		},
+		ProviderType: "kubernetes",
+	}
+	runE := base.WrapRunE(o, f)
+	cmd := &cobra.Command{
+		Use:   "kubectl-env",
+		Short: "generate a script that points KUBECONFIG to the targeted cluster for the specified shell",
+		Long: `Generate a script that points KUBECONFIG to the targeted cluster for the specified shell.
+See each sub-command's help for details on how to use the generated script.
+
+The generated script points the KUBECONFIG environment variable to the currently targeted shoot, seed or garden cluster.
+`,
+		Aliases: []string{"k-env", "cluster-env"},
+	}
+	o.AddFlags(cmd.PersistentFlags())
+
+	for _, s := range validShells {
+		cmd.AddCommand(&cobra.Command{
+			Use:   string(s),
+			Short: fmt.Sprintf("generate a script that points KUBECONFIG to the targeted cluster for %s", s),
+			Long: fmt.Sprintf("Generate a script that points KUBECONFIG to the targeted cluster for %s.\n\n"+
+				"To load the kubectl configuration script in your current shell session:\n%s\n",
+				s, s.Prompt(runtime.GOOS)+s.EvalCommand(fmt.Sprintf("%s %s", cmd.CommandPath(), s)),
+			),
+			RunE: runE,
+		})
 	}
 
 	return cmd

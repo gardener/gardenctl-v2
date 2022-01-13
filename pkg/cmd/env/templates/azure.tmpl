@@ -11,7 +11,7 @@ export AZURE_TENANT_ID={{.tenantID | shellEscape}};
 export AZURE_SUBSCRIPTION_ID={{.subscriptionID | shellEscape}};
 az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID";
 az account set --subscription "$AZURE_SUBSCRIPTION_ID";
-{{end}}{{template "usage-hint" .__meta}}{{end}}
+{{end}}{{template "azure-usage-hint" .__meta}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
 {{define "zsh"}}{{template "default" .}}{{end}}
@@ -29,11 +29,10 @@ set -gx AZURE_TENANT_ID {{.tenantID | shellEscape}};
 set -gx AZURE_SUBSCRIPTION_ID {{.subscriptionID | shellEscape}};
 az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID";
 az account set --subscription "$AZURE_SUBSCRIPTION_ID";
-{{end}}{{template "usage-hint" .__meta}}{{end}}
+{{end}}{{template "azure-usage-hint" .__meta}}{{end}}
 
 {{define "powershell"}}{{if .__meta.unset -}}
-az logout --username "$AZURE_CLIENT_ID";
-Remove-Item -ErrorAction SilentlyContinue Env:\HCLOUD_TOKEN;
+az logout --username "$Env:AZURE_CLIENT_ID";
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CLIENT_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CLIENT_SECRET;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_TENANT_ID;
@@ -45,4 +44,10 @@ $Env:AZURE_TENANT_ID = {{.tenantID | shellEscape}};
 $Env:AZURE_SUBSCRIPTION_ID = {{.subscriptionID | shellEscape}};
 az login --service-principal --username "$Env:AZURE_CLIENT_ID" --password "$Env:AZURE_CLIENT_SECRET" --tenant "$Env:AZURE_TENANT_ID";
 az account set --subscription "$Env:AZURE_SUBSCRIPTION_ID";
-{{end}}{{template "usage-hint" .__meta}}{{end}}
+{{end}}{{template "azure-usage-hint" .__meta}}{{end}}
+
+{{define "azure-usage-hint"}}{{if not .unset}}{{template "revoke-hint" .}}{{end}}{{template "usage-hint" .}}{{end}}
+
+{{define "revoke-hint" -}}
+printf 'Run the following command to log out and remove access to Azure subscriptions:\n{{.prompt}}{{template "eval-cmd" dict "shell" .shell "cmd" (printf "%s %s -u %s" .commandPath .targetFlags .shell)}}\n';
+{{end}}
