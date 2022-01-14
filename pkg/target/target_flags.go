@@ -45,7 +45,7 @@ func NewTargetFlags(garden, project, seed, shoot string, controlPlane bool) Targ
 		projectName:  project,
 		seedName:     seed,
 		shootName:    shoot,
-		controlPlane: &controlPlane,
+		controlPlane: controlPlane,
 	}
 }
 
@@ -54,7 +54,7 @@ type targetFlagsImpl struct {
 	projectName  string
 	seedName     string
 	shootName    string
-	controlPlane *bool
+	controlPlane bool
 }
 
 func (tf *targetFlagsImpl) GardenName() string {
@@ -74,7 +74,7 @@ func (tf *targetFlagsImpl) ShootName() string {
 }
 
 func (tf *targetFlagsImpl) ControlPlane() bool {
-	return *tf.controlPlane
+	return tf.controlPlane
 }
 
 func (tf *targetFlagsImpl) AddFlags(flags *pflag.FlagSet) {
@@ -82,15 +82,15 @@ func (tf *targetFlagsImpl) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&tf.projectName, "project", "", "target the given project")
 	flags.StringVar(&tf.seedName, "seed", "", "target the given seed cluster")
 	flags.StringVar(&tf.shootName, "shoot", "", "target the given shoot cluster")
-	flags.BoolVar(tf.controlPlane, "controlplane", *tf.controlPlane, "target control plane of shoot, use together with shoot argument")
+	flags.BoolVar(&tf.controlPlane, "controlplane", tf.controlPlane, "target control plane of shoot, use together with shoot argument")
 }
 
 func (tf *targetFlagsImpl) ToTarget() Target {
-	return NewTarget(tf.gardenName, tf.projectName, tf.seedName, tf.shootName, *tf.controlPlane)
+	return NewTarget(tf.gardenName, tf.projectName, tf.seedName, tf.shootName)
 }
 
 func (tf *targetFlagsImpl) isEmpty() bool {
-	return tf.gardenName == "" && tf.projectName == "" && tf.seedName == "" && tf.shootName == "" && !*tf.controlPlane
+	return tf.gardenName == "" && tf.projectName == "" && tf.seedName == "" && tf.shootName == ""
 }
 
 func (tf *targetFlagsImpl) OverrideTarget(current Target) (Target, error) {
@@ -121,7 +121,7 @@ func (tf *targetFlagsImpl) OverrideTarget(current Target) (Target, error) {
 			current = current.WithShootName(tf.shootName)
 		}
 
-		current = current.WithControlPlane(*tf.controlPlane)
+		current = current.WithControlPlane(tf.controlPlane)
 
 		if err := current.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid target flags: %w", err)

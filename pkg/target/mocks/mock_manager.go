@@ -197,18 +197,18 @@ func (mr *MockManagerMockRecorder) TargetShoot(ctx, name interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetShoot", reflect.TypeOf((*MockManager)(nil).TargetShoot), ctx, name)
 }
 
-// TargetShootControlPlane mocks base method.
-func (m *MockManager) TargetShootControlPlane(ctx context.Context) error {
+// TargetControlPlane mocks base method.
+func (m *MockManager) TargetControlPlane(ctx context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TargetShootControlPlane", ctx)
+	ret := m.ctrl.Call(m, "TargetControlPlane", ctx)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// TargetShootControlPlane indicates an expected call of TargetShootControlPlane.
-func (mr *MockManagerMockRecorder) TargetShootControlPlane(ctx interface{}) *gomock.Call {
+// TargetControlPlane indicates an expected call of TargetControlPlane.
+func (mr *MockManagerMockRecorder) TargetControlPlane(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetShootControlPlane", reflect.TypeOf((*MockManager)(nil).TargetShootControlPlane), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetControlPlane", reflect.TypeOf((*MockManager)(nil).TargetControlPlane), ctx)
 }
 
 // UnsetTargetGarden mocks base method.

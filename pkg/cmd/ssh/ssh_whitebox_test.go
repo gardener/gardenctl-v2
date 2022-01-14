@@ -241,7 +241,7 @@ var _ = Describe("Command", func() {
 		defer cancel()
 
 		// setup fakes
-		currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name, false)
+		currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name)
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider()
 
@@ -305,7 +305,7 @@ var _ = Describe("Command", func() {
 		ctx, cancel := context.WithCancel(ctxTimeout)
 		defer cancel()
 
-		currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name, false)
+		currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name)
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider()
 
@@ -393,7 +393,7 @@ var _ = Describe("Command", func() {
 		defer cancel()
 
 		// setup fakes
-		currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name, false)
+		currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name)
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider()
 
@@ -472,7 +472,7 @@ var _ = Describe("Command", func() {
 			ctx, cancel := context.WithCancel(ctxTimeout)
 			defer cancel()
 
-			currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name, false)
+			currentTarget := target.NewTarget(gardenName, testProject.Name, "", testShoot.Name)
 			targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 			clientProvider := internalfake.NewFakeClientProvider()
 

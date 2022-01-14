@@ -22,7 +22,7 @@ func expectEqualTargets(actual, expected target.Target) {
 	ExpectWithOffset(1, actual.ProjectName()).To(Equal(expected.ProjectName()))
 	ExpectWithOffset(1, actual.SeedName()).To(Equal(expected.SeedName()))
 	ExpectWithOffset(1, actual.ShootName()).To(Equal(expected.ShootName()))
-	ExpectWithOffset(1, actual.ShootControlPlane()).To(Equal(expected.ShootControlPlane()))
+	ExpectWithOffset(1, actual.ControlPlaneFlag()).To(Equal(expected.ControlPlaneFlag()))
 }
 
 var _ = Describe("Target Provider", func() {
@@ -64,7 +64,7 @@ var _ = Describe("Target Provider", func() {
 	})
 
 	It("should be able to write a target", func() {
-		t := target.NewTarget("garden", "project", "", "shoot", true)
+		t := target.NewTarget("garden", "project", "", "shoot").WithControlPlane(true)
 
 		// write it
 		Expect(provider.Write(t)).To(Succeed())
@@ -77,7 +77,7 @@ var _ = Describe("Target Provider", func() {
 		Expect(target.ProjectName()).To(Equal(t.ProjectName()))
 		Expect(target.SeedName()).To(Equal(t.SeedName()))
 		Expect(target.ShootName()).To(Equal(t.ShootName()))
-		Expect(target.ShootControlPlane()).To(Equal(t.ShootControlPlane()))
+		Expect(target.ControlPlaneFlag()).To(Equal(t.ControlPlaneFlag()))
 
 	})
 })
@@ -106,7 +106,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 
 	It("should just return the file content if no flags are given", func() {
 		// prepare target
-		dummy := target.NewTarget("mygarden", "myproject", "", "myshoot", false)
+		dummy := target.NewTarget("mygarden", "myproject", "", "myshoot")
 		Expect(provider.Write(dummy)).To(Succeed())
 
 		tf := target.NewTargetFlags("", "", "", "", false)
@@ -121,7 +121,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 		"should return a new target for complete flags",
 		func(tf target.TargetFlags) {
 			// prepare target that should never be read
-			dummy := target.NewTarget("mygarden", "myproject", "", "myshoot", false)
+			dummy := target.NewTarget("mygarden", "myproject", "", "myshoot")
 			Expect(provider.Write(dummy)).To(Succeed())
 
 			dtp := target.NewTargetProvider(tmpFile.Name(), tf)
@@ -140,7 +140,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 	DescribeTable(
 		"should augment existing target with CLI flags",
 		func(tf target.TargetFlags, expected target.Target) {
-			dummy := target.NewTarget("mygarden", "myproject", "", "myshoot", false)
+			dummy := target.NewTarget("mygarden", "myproject", "", "myshoot")
 			Expect(provider.Write(dummy)).To(Succeed())
 
 			dtp := target.NewTargetProvider(tmpFile.Name(), tf)
@@ -152,49 +152,49 @@ var _ = Describe("Dynamic Target Provider", func() {
 		Entry(
 			"target garden cluster",
 			target.NewTargetFlags("newgarden", "", "", "", false),
-			target.NewTarget("newgarden", "", "", "", false),
+			target.NewTarget("newgarden", "", "", ""),
 		),
 		Entry(
 			"target project",
 			target.NewTargetFlags("", "newproject", "", "", false),
-			target.NewTarget("mygarden", "newproject", "", "", false),
+			target.NewTarget("mygarden", "newproject", "", ""),
 		),
 		Entry(
 			"target seed",
 			target.NewTargetFlags("", "", "newseed", "", false),
-			target.NewTarget("mygarden", "", "newseed", "", false),
+			target.NewTarget("mygarden", "", "newseed", ""),
 		),
 		Entry(
 			"target shoot",
 			target.NewTargetFlags("", "", "", "newshoot", false),
-			target.NewTarget("mygarden", "myproject", "", "newshoot", false),
+			target.NewTarget("mygarden", "myproject", "", "newshoot"),
 		),
 		Entry(
 			"target shoot controlplane",
 			target.NewTargetFlags("", "", "", "", true),
-			target.NewTarget("mygarden", "myproject", "", "myshoot", true),
+			target.NewTarget("mygarden", "myproject", "", "myshoot").WithControlPlane(true),
 		),
 		Entry(
 			"target shoot in a different project",
 			target.NewTargetFlags("", "newproject", "", "newshoot", false),
-			target.NewTarget("mygarden", "newproject", "", "newshoot", false),
+			target.NewTarget("mygarden", "newproject", "", "newshoot"),
 		),
 		Entry(
 			"target shoot in a seed",
 			target.NewTargetFlags("", "", "newseed", "newshoot", false),
-			target.NewTarget("mygarden", "", "newseed", "newshoot", false),
+			target.NewTarget("mygarden", "", "newseed", "newshoot"),
 		),
 		Entry(
 			"complete re-target",
 			target.NewTargetFlags("newgarden", "", "newseed", "newshoot", false),
-			target.NewTarget("newgarden", "", "newseed", "newshoot", false),
+			target.NewTarget("newgarden", "", "newseed", "newshoot"),
 		),
 	)
 
 	DescribeTable(
 		"should not allow syntactically wrong targets",
 		func(tf target.TargetFlags) {
-			dummy := target.NewTarget("mygarden", "myproject", "", "myshoot", false)
+			dummy := target.NewTarget("mygarden", "myproject", "", "myshoot")
 			Expect(provider.Write(dummy)).To(Succeed())
 
 			dtp := target.NewTargetProvider(tmpFile.Name(), tf)
@@ -208,7 +208,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 
 	It("should write changes as expected", func() {
 		// prepare target
-		dummy := target.NewTarget("mygarden", "myproject", "", "myshoot", false)
+		dummy := target.NewTarget("mygarden", "myproject", "", "myshoot")
 
 		tf := target.NewTargetFlags("", "", "", "", false)
 		dtp := target.NewTargetProvider(tmpFile.Name(), tf)

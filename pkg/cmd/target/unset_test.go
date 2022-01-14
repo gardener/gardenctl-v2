@@ -48,7 +48,7 @@ var _ = Describe("Command", func() {
 				Kubeconfig: "",
 			}},
 		}
-		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget(gardenName, "", "", "", false))
+		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget(gardenName, "", "", ""))
 		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
 		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
 
@@ -74,7 +74,7 @@ var _ = Describe("Command", func() {
 		}
 
 		// user has already targeted a garden and project
-		currentTarget := target.NewTarget(gardenName, projectName, "", "", false)
+		currentTarget := target.NewTarget(gardenName, projectName, "", "")
 
 		// garden cluster contains the targeted project
 		project := &gardencorev1beta1.Project{
@@ -120,7 +120,7 @@ var _ = Describe("Command", func() {
 		}
 
 		// user has already targeted a garden and seed
-		currentTarget := target.NewTarget(gardenName, "", seedName, "", false)
+		currentTarget := target.NewTarget(gardenName, "", seedName, "")
 
 		// garden cluster contains the targeted seed
 		seed := &gardencorev1beta1.Seed{
@@ -188,7 +188,7 @@ var _ = Describe("Command", func() {
 		}
 
 		// user has already targeted a garden, project and shoot
-		currentTarget := target.NewTarget(gardenName, projectName, "", shootName, false)
+		currentTarget := target.NewTarget(gardenName, projectName, "", shootName)
 
 		fakeGardenClient := fake.NewClientBuilder().WithObjects(project, shoot).Build()
 

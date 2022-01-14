@@ -86,7 +86,7 @@ var _ = Describe("Gardenctl command", func() {
 		targetFile = filepath.Join(gardenDir, targetFilename)
 		Expect(cfg.SaveToFile(configFile)).To(Succeed())
 		fsTargetProvider := target.NewTargetProvider(targetFile, nil)
-		Expect(fsTargetProvider.Write(target.NewTarget(gardenName, projectName, "", "myshoot", false))).To(Succeed())
+		Expect(fsTargetProvider.Write(target.NewTarget(gardenName, projectName, "", "myshoot"))).To(Succeed())
 		Expect(os.Setenv(envGardenHomeDir, gardenDir)).To(Succeed())
 
 		testProject1 = &gardencorev1beta1.Project{
@@ -220,7 +220,7 @@ var _ = Describe("Gardenctl command", func() {
 		shootClient = fakeclient.NewClientBuilder().WithObjects(testNode).Build()
 
 		// setup fakes
-		currentTarget := target.NewTarget(gardenName, testProject1.Name, "", testShoot1.Name, false)
+		currentTarget := target.NewTarget(gardenName, testProject1.Name, "", testShoot1.Name)
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 		clientProvider := internalfake.NewFakeClientProvider()
 

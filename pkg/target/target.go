@@ -35,8 +35,8 @@ type Target interface {
 	SeedName() string
 	// ShootName returns the currently targeted shoot cluster name.
 	ShootName() string
-	// ShootControlPlane returns true if shot control plane is targeted.
-	ShootControlPlane() bool
+	// ControlPlaneFlag returns true if shoot control plane is targeted.
+	ControlPlaneFlag() bool
 	// WithGardenName returns a copy of the target with the garden name updated.
 	// The returned target can be invalid.
 	WithGardenName(name string) Target
@@ -73,14 +73,18 @@ var _ Target = &targetImpl{}
 
 // NewTarget returns a new target. This function does not perform any validation,
 // so the returned target can be invalid.
-func NewTarget(gardenName, projectName, seedName, shootName string, shootControlPlane bool) Target {
+func NewTarget(gardenName, projectName, seedName, shootName string) Target {
 	return &targetImpl{
 		Garden:       gardenName,
 		Project:      projectName,
 		Seed:         seedName,
 		Shoot:        shootName,
-		ControlPlane: shootControlPlane,
+		ControlPlane: false,
 	}
+}
+
+func newTargetImpl(gardenName, projectName, seedName, shootName string, controlPlane bool) *targetImpl {
+	return &targetImpl{Garden: gardenName, Project: projectName, Seed: seedName, Shoot: shootName, ControlPlane: controlPlane}
 }
 
 // Validate checks that the target is not malformed and all required
@@ -113,39 +117,39 @@ func (t *targetImpl) ShootName() string {
 	return t.Shoot
 }
 
-// ShootControlPlane returns true if shot control plane is targeted.
-func (t *targetImpl) ShootControlPlane() bool {
+// ControlPlaneFlag returns true if shoot control plane is targeted.
+func (t *targetImpl) ControlPlaneFlag() bool {
 	return t.ControlPlane
 }
 
 // WithGardenName returns a copy of the target with the garden name updated.
 // The returned target can be invalid.
 func (t *targetImpl) WithGardenName(name string) Target {
-	return NewTarget(name, t.Project, t.Seed, t.Shoot, t.ControlPlane)
+	return newTargetImpl(name, t.Project, t.Seed, t.Shoot, t.ControlPlane)
 }
 
 // WithProjectName returns a copy of the target with the project name updated.
 // The returned target can be invalid.
 func (t *targetImpl) WithProjectName(name string) Target {
-	return NewTarget(t.Garden, name, t.Seed, t.Shoot, t.ControlPlane)
+	return newTargetImpl(t.Garden, name, t.Seed, t.Shoot, t.ControlPlane)
 }
 
 // WithSeedName returns a copy of the target with the seed name updated.
 // The returned target can be invalid.
 func (t *targetImpl) WithSeedName(name string) Target {
-	return NewTarget(t.Garden, t.Project, name, t.Shoot, t.ControlPlane)
+	return newTargetImpl(t.Garden, t.Project, name, t.Shoot, t.ControlPlane)
 }
 
 // WithShootName returns a copy of the target with the shoot name updated.
 // The returned target can be invalid.
 func (t *targetImpl) WithShootName(name string) Target {
-	return NewTarget(t.Garden, t.Project, t.Seed, name, t.ControlPlane)
+	return newTargetImpl(t.Garden, t.Project, t.Seed, name, t.ControlPlane)
 }
 
 // WithControlPlane returns a copy of the target with the control plane flag updated.
 // The returned target can be invalid.
 func (t *targetImpl) WithControlPlane(controlPlane bool) Target {
-	return NewTarget(t.Garden, t.Project, t.Seed, t.Shoot, controlPlane)
+	return newTargetImpl(t.Garden, t.Project, t.Seed, t.Shoot, controlPlane)
 }
 
 // String returns a readable representation of the target.
@@ -180,7 +184,7 @@ func (t *targetImpl) String() string {
 }
 
 func (t *targetImpl) IsEmpty() bool {
-	return t.Garden == "" && t.Project == "" && t.Seed == "" && t.Shoot == "" && !t.ControlPlane
+	return t.Garden == "" && t.Project == "" && t.Seed == "" && t.Shoot == ""
 }
 
 func (t *targetImpl) AsListOption() client.ListOption {

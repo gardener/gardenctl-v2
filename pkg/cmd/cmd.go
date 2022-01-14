@@ -201,7 +201,7 @@ func completionWrapper(f *util.FactoryImpl, ioStreams util.IOStreams, completer 
 func getCurrentTarget(tf target.TargetFlags, manager target.Manager) (target.Target, error) {
 	// any --garden flag has precedence over the config file
 	if tf.GardenName() != "" {
-		return target.NewTarget(tf.GardenName(), "", "", "", false), nil
+		return target.NewTarget(tf.GardenName(), "", "", ""), nil
 	}
 
 	currentTarget, err := manager.CurrentTarget()

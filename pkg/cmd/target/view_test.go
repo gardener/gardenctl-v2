@@ -30,7 +30,7 @@ var _ = Describe("Command", func() {
 				Kubeconfig: "",
 			}},
 		}
-		currentTarget := target.NewTarget(gardenName, projectName, "", shootName, false)
+		currentTarget := target.NewTarget(gardenName, projectName, "", shootName)
 
 		// setup command
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)

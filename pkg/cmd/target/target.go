@@ -36,7 +36,7 @@ func NewCmdTarget(f util.Factory, o *TargetOptions) *cobra.Command {
 				return fmt.Errorf("failed to complete command options: %w", err)
 			}
 
-			if err := o.Validate(f); err != nil {
+			if err := o.Validate(); err != nil {
 				return err
 			}
 
@@ -76,7 +76,7 @@ func runCmdTarget(f util.Factory, o *TargetOptions) error {
 	default:
 		if o.TargetName == "" && manager.TargetFlags().ControlPlane() {
 			// Allow to target shoot control plane without specifying other arguments
-			err = manager.TargetShootControlPlane(ctx)
+			err = manager.TargetControlPlane(ctx)
 		}
 	}
 
@@ -188,6 +188,8 @@ type TargetOptions struct {
 	Kind TargetKind
 	// TargetName is the object name of the targeted kind
 	TargetName string
+	// ControlPlane indicates if ComntrolPlane flag is set via target options
+	ControlPlane bool
 }
 
 // NewTargetOptions returns initialized TargetOptions
@@ -247,19 +249,14 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 		}
 	}
 
+	o.ControlPlane = tf.ControlPlane()
+
 	return nil
 }
 
 // Validate validates the provided options
-func (o *TargetOptions) Validate(f util.Factory) error {
-	manager, err := f.Manager()
-	if err != nil {
-		return err
-	}
-
-	tf := manager.TargetFlags()
-
-	if tf.ControlPlane() {
+func (o *TargetOptions) Validate() error {
+	if o.ControlPlane {
 		// control plane flag can be used without other arguments
 		return nil
 	}

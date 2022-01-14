@@ -46,8 +46,8 @@ type Manager interface {
 	// This implicitly unsets seed target configuration
 	// It will also configure appropriate project and seed values if not already set
 	TargetShoot(ctx context.Context, name string) error
-	// TargetShootControlPlane sets the shoot control plane target flag
-	TargetShootControlPlane(ctx context.Context) error
+	// TargetControlPlane sets the control plane target flag
+	TargetControlPlane(ctx context.Context) error
 	// UnsetTargetGarden unsets the garden target configuration
 	// This implicitly unsets project, shoot and seed target configuration
 	UnsetTargetGarden() (string, error)
@@ -258,7 +258,7 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 
 	tb.Init(currentTarget)
 
-	target, err := tb.SetShoot(ctx, shootName).SetShootControlPlane(ctx, m.TargetFlags().ControlPlane()).Build()
+	target, err := tb.SetShoot(ctx, shootName).SetControlPlane(ctx, m.TargetFlags().ControlPlane()).Build()
 	if err != nil {
 		return err
 	}
@@ -266,7 +266,7 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 	return m.patchTargetWithTarget(target)
 }
 
-func (m *managerImpl) TargetShootControlPlane(ctx context.Context) error {
+func (m *managerImpl) TargetControlPlane(ctx context.Context) error {
 	tb := NewTargetBuilder(m.config, m.clientProvider)
 
 	currentTarget, err := m.CurrentTarget()
@@ -276,7 +276,7 @@ func (m *managerImpl) TargetShootControlPlane(ctx context.Context) error {
 
 	tb.Init(currentTarget)
 
-	target, err := tb.SetShootControlPlane(ctx, m.TargetFlags().ControlPlane()).Build()
+	target, err := tb.SetControlPlane(ctx, m.TargetFlags().ControlPlane()).Build()
 	if err != nil {
 		return err
 	}
@@ -343,7 +343,7 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 	}
 
 	if m.TargetFlags().ControlPlane() {
-		tb.SetShootControlPlane(ctx, m.TargetFlags().ControlPlane())
+		tb.SetControlPlane(ctx, m.TargetFlags().ControlPlane())
 	}
 
 	target, err := tb.Build()
@@ -360,7 +360,7 @@ func (m *managerImpl) patchTargetWithTarget(target Target) error {
 		t.Project = target.ProjectName()
 		t.Seed = target.SeedName()
 		t.Shoot = target.ShootName()
-		t.ControlPlane = target.ShootControlPlane()
+		t.ControlPlane = target.ControlPlaneFlag()
 
 		return nil
 	})
