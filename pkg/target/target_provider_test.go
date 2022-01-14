@@ -171,7 +171,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 		),
 		Entry(
 			"target shoot controlplane",
-			target.NewTargetFlags("", "", "", "", true),
+			target.NewTargetFlags("", "", "", "myshoot", true),
 			target.NewTarget("mygarden", "myproject", "", "myshoot").WithControlPlane(true),
 		),
 		Entry(
