@@ -9,10 +9,11 @@ package version_test
 import (
 	"encoding/json"
 
-	"github.com/gardener/gardenctl-v2/internal/util"
-	. "github.com/gardener/gardenctl-v2/pkg/cmd/version"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/gardener/gardenctl-v2/internal/util"
+	. "github.com/gardener/gardenctl-v2/pkg/cmd/version"
 )
 
 var _ = Describe("Version Command", func() {

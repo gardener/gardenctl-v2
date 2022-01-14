@@ -49,6 +49,8 @@ type Client interface {
 	GetSeed(ctx context.Context, name string) (*gardencorev1beta1.Seed, error)
 	// ListSeeds returns all Gardener seed resources
 	ListSeeds(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.SeedList, error)
+	// GetSeedKubeconfig returns the kubeconfig for a seed
+	GetSeedKubeconfig(ctx context.Context, name string) ([]byte, error)
 
 	// GetShoot returns a Gardener shoot resource in a namespace by name
 	GetShoot(ctx context.Context, namespace, name string) (*gardencorev1beta1.Shoot, error)
@@ -57,6 +59,8 @@ type Client interface {
 	FindShoot(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.Shoot, error)
 	// ListShoots returns all Gardener shoot resources, filtered by a list option
 	ListShoots(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.ShootList, error)
+	// GetShootKubeconfig returns the kubeconfig for a shoot
+	GetShootKubeconfig(ctx context.Context, namespace, name string) ([]byte, error)
 
 	// GetSecretBinding returns a Gardener secretbinding resource
 	GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error)
@@ -68,6 +72,8 @@ type Client interface {
 	GetNamespace(ctx context.Context, name string) (*corev1.Namespace, error)
 	// GetSecret returns a Kubernetes secret resource
 	GetSecret(ctx context.Context, namespace, name string) (*corev1.Secret, error)
+	// GetConfigMap returns a Kubernetes configmap resource
+	GetConfigMap(ctx context.Context, namespace, name string) (*corev1.ConfigMap, error)
 
 	// RuntimeClient returns the underlying kubernetes runtime client
 	// TODO: Remove this when we switched all APIs to the new gardenclient
@@ -97,11 +103,11 @@ func (g *clientImpl) GetProject(ctx context.Context, name string) (*gardencorev1
 }
 
 func (g *clientImpl) GetProjectByNamespace(ctx context.Context, namespace string) (*gardencorev1beta1.Project, error) {
-	projectList := gardencorev1beta1.ProjectList{}
 	fieldSelector := client.MatchingFields{gardencore.ProjectNamespace: namespace}
 	limit := client.Limit(1)
 
-	if err := g.c.List(ctx, &projectList, fieldSelector, limit); err != nil {
+	projectList, err := g.ListProjects(ctx, fieldSelector, limit)
+	if err != nil {
 		return nil, fmt.Errorf("failed to fetch project by namespace: %v", err)
 	}
 
@@ -189,17 +195,17 @@ func (g *clientImpl) resolveListOptions(ctx context.Context, opts ...client.List
 }
 
 func (g *clientImpl) ListShoots(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.ShootList, error) {
-	shootList := gardencorev1beta1.ShootList{}
+	shootList := &gardencorev1beta1.ShootList{}
 
 	if err := g.resolveListOptions(ctx, opts...); err != nil {
 		return nil, err
 	}
 
-	if err := g.c.List(ctx, &shootList, opts...); err != nil {
+	if err := g.c.List(ctx, shootList, opts...); err != nil {
 		return nil, fmt.Errorf("failed to list shoots with list options %q: %w", opts, err)
 	}
 
-	return &shootList, nil
+	return shootList, nil
 }
 
 // GetNamespace returns a Kubernetes namespace resource
@@ -216,38 +222,81 @@ func (g *clientImpl) GetNamespace(ctx context.Context, name string) (*corev1.Nam
 
 // GetSecretBinding returns a Gardener secretbinding resource
 func (g *clientImpl) GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error) {
-	secretBinding := gardencorev1beta1.SecretBinding{}
+	secretBinding := &gardencorev1beta1.SecretBinding{}
 	key := types.NamespacedName{Namespace: namespace, Name: name}
 
-	if err := g.c.Get(ctx, key, &secretBinding); err != nil {
+	if err := g.c.Get(ctx, key, secretBinding); err != nil {
 		return nil, fmt.Errorf("failed to get secretbinding %v: %w", key, err)
 	}
 
-	return &secretBinding, nil
+	return secretBinding, nil
 }
 
 // GetSecret returns a Kubernetes secret resource
 func (g *clientImpl) GetSecret(ctx context.Context, namespace, name string) (*corev1.Secret, error) {
-	secret := corev1.Secret{}
+	secret := &corev1.Secret{}
 	key := types.NamespacedName{Namespace: namespace, Name: name}
 
-	if err := g.c.Get(ctx, key, &secret); err != nil {
+	if err := g.c.Get(ctx, key, secret); err != nil {
 		return nil, fmt.Errorf("failed to get secret %v: %w", key, err)
 	}
 
-	return &secret, nil
+	return secret, nil
 }
 
-// GetCloudProfile returns a Gardener cloudprofile resource
-func (g *clientImpl) GetCloudProfile(ctx context.Context, name string) (*gardencorev1beta1.CloudProfile, error) {
-	cloudProfile := gardencorev1beta1.CloudProfile{}
+// GetConfigMap returns a Gardener configmap resource
+func (g *clientImpl) GetConfigMap(ctx context.Context, namespace, name string) (*corev1.ConfigMap, error) {
+	cm := &corev1.ConfigMap{}
+	key := types.NamespacedName{Name: name, Namespace: namespace}
+
+	if err := g.c.Get(ctx, key, cm); err != nil {
+		return nil, fmt.Errorf("failed to get configmap %v: %w", key, err)
+	}
+
+	return cm, nil
+}
+
+func (g *clientImpl) GetSeedKubeconfig(ctx context.Context, name string) ([]byte, error) {
 	key := types.NamespacedName{Name: name}
 
-	if err := g.c.Get(ctx, key, &cloudProfile); err != nil {
+	secret, err := g.GetSecret(ctx, "garden", name+".oidc")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get kubeconfig for seed %v: %w", key, err)
+	}
+
+	value, ok := secret.Data["kubeconfig"]
+	if !ok {
+		return nil, fmt.Errorf("invalid oidc-secret for seed %v: %w", key, err)
+	}
+
+	return value, nil
+}
+
+func (g *clientImpl) GetShootKubeconfig(ctx context.Context, namespace, name string) ([]byte, error) {
+	key := types.NamespacedName{Namespace: namespace, Name: name}
+
+	cm, err := g.GetConfigMap(ctx, namespace, name+".kubeconfig")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get kubeconfig for shoot %v: %w", key, err)
+	}
+
+	value, ok := cm.Data["kubeconfig"]
+	if !ok {
+		return nil, fmt.Errorf("invalid kubeconfig-configmap for shoot %v: %w", key, err)
+	}
+
+	return []byte(value), nil
+}
+
+func (g *clientImpl) GetCloudProfile(ctx context.Context, name string) (*gardencorev1beta1.CloudProfile, error) {
+	cloudProfile := &gardencorev1beta1.CloudProfile{}
+	key := types.NamespacedName{Name: name}
+
+	if err := g.c.Get(ctx, key, cloudProfile); err != nil {
 		return nil, fmt.Errorf("failed to get cloudprofile %v: %w", key, err)
 	}
 
-	return &cloudProfile, nil
+	return cloudProfile, nil
 }
 
 // RuntimeClient returns the underlying Kubernetes runtime client

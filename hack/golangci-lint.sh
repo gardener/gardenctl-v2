@@ -21,4 +21,4 @@ curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/insta
 
 cd "$SOURCE_PATH"
 
-golangci-lint run ./... -E golint,whitespace,wsl --skip-files "zz_generated.*"  --verbose --timeout 2m
+golangci-lint -v run ./...

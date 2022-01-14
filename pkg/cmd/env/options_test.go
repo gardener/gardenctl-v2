@@ -4,17 +4,19 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package cloudenv_test
+package env_test
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 	"regexp"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -24,30 +26,35 @@ import (
 
 	gardenclientmocks "github.com/gardener/gardenctl-v2/internal/gardenclient/mocks"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/cloudenv"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/env"
+	envmocks "github.com/gardener/gardenctl-v2/pkg/cmd/env/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
-var _ = Describe("CloudEnv Options", func() {
+var _ = Describe("Env Commands - Options", func() {
 	Describe("having an Options instance", func() {
 		var (
 			ctrl    *gomock.Controller
 			factory *utilmocks.MockFactory
-			options *cloudenv.TestOptions
+			options *env.TestOptions
 			cmdPath,
 			shell string
-			unset bool
+			providerType string
+			unset        bool
+			baseTemplate env.Template
 		)
 
 		BeforeEach(func() {
 			ctrl = gomock.NewController(GinkgoT())
 			factory = utilmocks.NewMockFactory(ctrl)
-			options = cloudenv.NewTestOptions()
-			cmdPath = "gardenctl cloud-env"
+			options = env.NewOptions()
+			cmdPath = "gardenctl provider-env"
+			baseTemplate = env.NewTemplate("usage-hint")
 			shell = "default"
+			providerType = "aws"
 		})
 
 		AfterEach(func() {
@@ -58,6 +65,8 @@ var _ = Describe("CloudEnv Options", func() {
 			options.Shell = shell
 			options.CmdPath = cmdPath
 			options.Unset = unset
+			options.ProviderType = providerType
+			options.Template = baseTemplate
 		})
 
 		Describe("completing the command options", func() {
@@ -69,18 +78,44 @@ var _ = Describe("CloudEnv Options", func() {
 
 			BeforeEach(func() {
 				root = &cobra.Command{Use: "root"}
-				parent = &cobra.Command{Use: "parent"}
+				parent = &cobra.Command{Use: "parent", Aliases: []string{"alias"}}
 				child = &cobra.Command{Use: "child"}
 				parent.AddCommand(child)
 				root.AddCommand(parent)
 				factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
+				root.SetArgs([]string{"alias", "child"})
+				Expect(root.Execute()).To(Succeed())
+				baseTemplate = nil
 			})
 
 			It("should complete options with default shell", func() {
+				Expect(options.Template).To(BeNil())
 				Expect(options.Complete(factory, child, nil)).To(Succeed())
 				Expect(options.Shell).To(Equal(child.Name()))
 				Expect(options.GardenDir).To(Equal(gardenHomeDir))
 				Expect(options.CmdPath).To(Equal(root.Name() + " " + parent.Name()))
+				Expect(options.Template).NotTo(BeNil())
+				t, ok := options.Template.(env.TestTemplate)
+				Expect(ok).To(BeTrue())
+				Expect(t.Delegate().Lookup("usage-hint")).NotTo(BeNil())
+				Expect(t.Delegate().Lookup("bash")).To(BeNil())
+			})
+
+			It("should complete options for providerType kubernetes", func() {
+				options.ProviderType = "kubernetes"
+				Expect(options.Template).To(BeNil())
+				Expect(options.Complete(factory, child, nil)).To(Succeed())
+				Expect(options.Template).NotTo(BeNil())
+				t, ok := options.Template.(env.TestTemplate)
+				Expect(ok).To(BeTrue())
+				Expect(t.Delegate().Lookup("usage-hint")).NotTo(BeNil())
+				Expect(t.Delegate().Lookup("bash")).NotTo(BeNil())
+			})
+
+			It("should fail to complete options for providerType kubernetes", func() {
+				options.ProviderType = "kubernetes"
+				writeTempFile(filepath.Join("templates", "kubernetes.tmpl"), "{{define")
+				Expect(options.Complete(factory, child, nil)).To(MatchError(MatchRegexp("^parsing template \\\"kubernetes\\\" failed:")))
 			})
 		})
 
@@ -97,7 +132,7 @@ var _ = Describe("CloudEnv Options", func() {
 
 			It("should return an error when the shell is invalid", func() {
 				options.Shell = "cmd"
-				Expect(options.Validate()).To(MatchError(fmt.Sprintf("invalid shell given, must be one of %v", cloudenv.ValidShells)))
+				Expect(options.Validate()).To(MatchError(fmt.Sprintf("invalid shell given, must be one of %v", env.ValidShells)))
 			})
 		})
 
@@ -109,7 +144,100 @@ var _ = Describe("CloudEnv Options", func() {
 			})
 		})
 
-		Describe("running the command with the given options", func() {
+		Describe("running the kubectl-env command with the given options", func() {
+			var (
+				ctx              context.Context
+				manager          *targetmocks.MockManager
+				mockTemplate     *envmocks.MockTemplate
+				t                target.Target
+				pathToKubeconfig string
+				kubeconfig       []byte
+			)
+
+			BeforeEach(func() {
+				ctx = context.Background()
+				manager = targetmocks.NewMockManager(ctrl)
+				mockTemplate = envmocks.NewMockTemplate(ctrl)
+				baseTemplate = mockTemplate
+				t = target.NewTarget("test", "project", "seed", "shoot")
+				providerType = "kubernetes"
+				cmdPath = "gardenctl kubectl-env"
+				shell = "bash"
+				pathToKubeconfig = "/path/to/kube/config"
+				kubeconfig = []byte("kubeconfig")
+			})
+
+			Context("when the command runs successfully", func() {
+				BeforeEach(func() {
+					factory.EXPECT().Manager().Return(manager, nil)
+					factory.EXPECT().Context().Return(ctx)
+				})
+
+				Context("and the shoot is targeted via project", func() {
+					It("does the work when the shoot is targeted via project", func() {
+						currentTarget := t.WithSeedName("")
+						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+						manager.EXPECT().Kubeconfig(ctx, currentTarget).Return(kubeconfig, nil)
+						manager.EXPECT().WriteKubeconfig(kubeconfig).Return(pathToKubeconfig, nil)
+						mockTemplate.EXPECT().ExecuteTemplate(options.IOStreams.Out, shell, gomock.Any()).
+							Do(func(_ io.Writer, _ string, data map[string]interface{}) {
+								Expect(data["filename"]).To(Equal(pathToKubeconfig))
+								metadata, ok := data["__meta"].(map[string]interface{})
+								Expect(ok).To(BeTrue())
+								Expect(metadata["cli"]).To(Equal("kubectl"))
+								Expect(metadata["commandPath"]).To(Equal(cmdPath))
+								Expect(metadata["shell"]).To(Equal(shell))
+								Expect(metadata["unset"]).To(Equal(unset))
+							}).Return(nil)
+						Expect(options.Run(factory)).To(Succeed())
+					})
+				})
+			})
+
+			Context("when an error occurs", func() {
+				var currentTarget target.Target
+
+				BeforeEach(func() {
+					factory.EXPECT().Manager().Return(manager, nil)
+				})
+
+				JustBeforeEach(func() {
+					manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+				})
+
+				Context("because no garden is targeted", func() {
+					BeforeEach(func() {
+						currentTarget = t.WithGardenName("")
+					})
+
+					It("should fail with ErrNoShootTargeted", func() {
+						Expect(options.Run(factory)).To(BeIdenticalTo(target.ErrNoGardenTargeted))
+					})
+				})
+
+				Context("because reading kubeconfig fails", func() {
+					var err = errors.New("error")
+
+					BeforeEach(func() {
+						currentTarget = t.WithGardenName("test")
+						factory.EXPECT().Context().Return(ctx)
+					})
+
+					It("should fail with a read error", func() {
+						manager.EXPECT().Kubeconfig(ctx, currentTarget).Return(nil, err)
+						Expect(options.Run(factory)).To(BeIdenticalTo(err))
+					})
+
+					It("should fail with a write error", func() {
+						manager.EXPECT().Kubeconfig(ctx, currentTarget).Return(kubeconfig, nil)
+						manager.EXPECT().WriteKubeconfig(kubeconfig).Return("", err)
+						Expect(options.Run(factory)).To(BeIdenticalTo(err))
+					})
+				})
+			})
+		})
+
+		Describe("running the provider-env command with the given options", func() {
 			var (
 				ctx               context.Context
 				manager           *targetmocks.MockManager
@@ -211,14 +339,14 @@ var _ = Describe("CloudEnv Options", func() {
 
 					It("does the work when the shoot is targeted via project", func() {
 						Expect(options.Run(factory)).To(Succeed())
-						Expect(options.Out()).To(Equal(readTestFile("gcp/export.bash")))
+						Expect(options.String()).To(Equal(readTestFile("gcp/export.bash")))
 					})
 
 					It("should print how to reset configuration for powershell", func() {
 						options.Unset = true
 						options.Shell = "powershell"
 						Expect(options.Run(factory)).To(Succeed())
-						Expect(options.Out()).To(Equal(readTestFile("gcp/unset.pwsh")))
+						Expect(options.String()).To(Equal(readTestFile("gcp/unset.pwsh")))
 					})
 				})
 
@@ -231,7 +359,7 @@ var _ = Describe("CloudEnv Options", func() {
 
 					It("does the work when the shoot is targeted via seed", func() {
 						Expect(options.Run(factory)).To(Succeed())
-						Expect(options.Out()).To(Equal(readTestFile("gcp/export.seed.bash")))
+						Expect(options.String()).To(Equal(readTestFile("gcp/export.seed.bash")))
 					})
 				})
 			})
@@ -253,19 +381,7 @@ var _ = Describe("CloudEnv Options", func() {
 				It("should fail with ErrNoShootTargeted", func() {
 					factory.EXPECT().Manager().Return(manager, nil)
 					manager.EXPECT().CurrentTarget().Return(t.WithShootName(""), nil)
-					Expect(options.Run(factory)).To(BeIdenticalTo(cloudenv.ErrNoShootTargeted))
-				})
-
-				It("should fail with ErrNeitherProjectNorSeedTargeted", func() {
-					factory.EXPECT().Manager().Return(manager, nil)
-					manager.EXPECT().CurrentTarget().Return(t.WithSeedName("").WithProjectName(""), nil)
-					Expect(options.Run(factory)).To(BeIdenticalTo(cloudenv.ErrNeitherProjectNorSeedTargeted))
-				})
-
-				It("should fail with ErrProjectAndSeedTargeted", func() {
-					factory.EXPECT().Manager().Return(manager, nil)
-					manager.EXPECT().CurrentTarget().Return(t, nil)
-					Expect(options.Run(factory)).To(BeIdenticalTo(cloudenv.ErrProjectAndSeedTargeted))
+					Expect(options.Run(factory)).To(BeIdenticalTo(target.ErrNoShootTargeted))
 				})
 
 				It("should fail with GardenClientError", func() {
@@ -403,7 +519,7 @@ var _ = Describe("CloudEnv Options", func() {
 
 				It("should render the template successfully", func() {
 					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
-					Expect(options.Out()).To(Equal(readTestFile("gcp/export.bash")))
+					Expect(options.String()).To(Equal(readTestFile("gcp/export.bash")))
 				})
 			})
 
@@ -415,7 +531,7 @@ var _ = Describe("CloudEnv Options", func() {
 
 				It("should render the template successfully", func() {
 					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
-					Expect(options.Out()).To(Equal(readTestFile("gcp/unset.pwsh")))
+					Expect(options.String()).To(Equal(readTestFile("gcp/unset.pwsh")))
 				})
 			})
 
@@ -455,7 +571,7 @@ var _ = Describe("CloudEnv Options", func() {
 
 				It("should render the template successfully", func() {
 					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
-					Expect(options.Out()).To(Equal(readTestFile("test/export.bash")))
+					Expect(options.String()).To(Equal(readTestFile("test/export.bash")))
 				})
 			})
 
@@ -465,8 +581,8 @@ var _ = Describe("CloudEnv Options", func() {
 				})
 
 				It("should fail to render the template with a not supported error", func() {
-					notSupportedFmt := "cloud provider %q is not supported"
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp(fmt.Sprintf(notSupportedFmt, providerType))))
+					message := "failed to generate the cloud provider CLI configuration script"
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp(message)))
 				})
 			})
 
@@ -484,8 +600,8 @@ var _ = Describe("CloudEnv Options", func() {
 				})
 
 				It("should fail to render the template with a not supported error", func() {
-					parseErrorFmt := "parsing template for cloud provider %q failed"
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp(fmt.Sprintf(parseErrorFmt, providerType))))
+					message := "failed to generate the cloud provider CLI configuration script"
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp(message)))
 				})
 			})
 
@@ -511,7 +627,7 @@ var _ = Describe("CloudEnv Options", func() {
 
 				It("should render the template successfully", func() {
 					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
-					Expect(options.Out()).To(Equal(readTestFile("openstack/export.bash")))
+					Expect(options.String()).To(Equal(readTestFile("openstack/export.bash")))
 				})
 
 				It("should fail with invalid provider config", func() {
@@ -523,7 +639,6 @@ var _ = Describe("CloudEnv Options", func() {
 
 		Describe("rendering the usage hint", func() {
 			var (
-				providerType,
 				targetFlags,
 				cli string
 				meta map[string]interface{}
@@ -532,16 +647,16 @@ var _ = Describe("CloudEnv Options", func() {
 
 			BeforeEach(func() {
 				providerType = "alicloud"
-				cli = cloudenv.CloudProvider(providerType).CLI()
 				shell = "bash"
 				unset = false
 				options.CurrentTarget = t.WithSeedName("")
 			})
 
 			JustBeforeEach(func() {
-				meta = options.GenerateMetadata(providerType)
-				targetFlags = fmt.Sprintf("--garden %s --project %s --shoot %s", t.GardenName(), t.ProjectName(), t.ShootName())
-				Expect(cloudenv.BaseTemplate().ExecuteTemplate(options.IOStreams.Out, "usage-hint", meta)).To(Succeed())
+				cli = env.GetProviderCLI(options.ProviderType)
+				meta = options.GenerateMetadata()
+				targetFlags = env.GetTargetFlags(t)
+				Expect(env.NewTemplate("usage-hint").ExecuteTemplate(options.IOStreams.Out, "usage-hint", meta)).To(Succeed())
 			})
 
 			Context("when configuring the shell", func() {
@@ -551,15 +666,12 @@ var _ = Describe("CloudEnv Options", func() {
 					Expect(meta["cli"]).To(Equal(cli))
 					Expect(meta["commandPath"]).To(Equal(options.CmdPath))
 					Expect(meta["targetFlags"]).To(Equal(targetFlags))
-					regex := regexp.MustCompile(`(?m)\Aprintf '(.*)\\n\\n(.*)\\n(.*)\\n';\n\n(.*)\n(.*)\n\z`)
-					match := regex.FindStringSubmatch(options.Out())
+					regex := regexp.MustCompile(`(?m)\A\n(.*)\n(.*)\n\z`)
+					match := regex.FindStringSubmatch(options.String())
 					Expect(match).NotTo(BeNil())
-					Expect(len(match)).To(Equal(6))
-					Expect(match[1]).To(Equal(fmt.Sprintf("Successfully configured the %q CLI for your current shell session.", cli)))
-					Expect(match[2]).To(Equal("# Run the following command to reset this configuration:"))
-					Expect(match[3]).To(Equal(fmt.Sprintf("# eval $(%s %s -u %s)", options.CmdPath, targetFlags, shell)))
-					Expect(match[4]).To(Equal(fmt.Sprintf("# Run this command to configure the %q CLI for your shell:", cli)))
-					Expect(match[5]).To(Equal(fmt.Sprintf("# eval $(%s %s)", options.CmdPath, shell)))
+					Expect(len(match)).To(Equal(3))
+					Expect(match[1]).To(Equal(fmt.Sprintf("# Run this command to configure %s for your shell:", cli)))
+					Expect(match[2]).To(Equal(fmt.Sprintf("# eval $(%s %s)", options.CmdPath, shell)))
 				})
 			})
 
@@ -571,35 +683,12 @@ var _ = Describe("CloudEnv Options", func() {
 				It("should generate the metadata and render the unset", func() {
 					Expect(meta["unset"]).To(BeTrue())
 					regex := regexp.MustCompile(`(?m)\A\n(.*)\n(.*)\n\z`)
-					match := regex.FindStringSubmatch(options.Out())
+					match := regex.FindStringSubmatch(options.String())
 					Expect(match).NotTo(BeNil())
 					Expect(len(match)).To(Equal(3))
-					Expect(match[1]).To(Equal(fmt.Sprintf("# Run this command to reset the configuration of the %q CLI for your shell:", cli)))
+					Expect(match[1]).To(Equal(fmt.Sprintf("# Run this command to reset the %s configuration for your shell:", cli)))
 					Expect(match[2]).To(Equal(fmt.Sprintf("# eval $(%s -u %s)", options.CmdPath, shell)))
 				})
-			})
-		})
-	})
-
-	Describe("Shell", func() {
-		Describe("validation", func() {
-			It("should succeed for all valid shells", func() {
-				Expect(cloudenv.Shell("bash").Validate()).To(Succeed())
-				Expect(cloudenv.Shell("zsh").Validate()).To(Succeed())
-				Expect(cloudenv.Shell("fish").Validate()).To(Succeed())
-				Expect(cloudenv.Shell("powershell").Validate()).To(Succeed())
-			})
-
-			It("should fail for a currently unsupported shell", func() {
-				Expect(cloudenv.Shell("cmd").Validate()).To(MatchError(fmt.Sprintf("invalid shell given, must be one of %v", cloudenv.ValidShells)))
-			})
-		})
-
-		Describe("getting the prompt", func() {
-			It("should return the typical prompt for the given shell and goos", func() {
-				Expect(cloudenv.Shell("bash").Prompt("linux")).To(Equal("$ "))
-				Expect(cloudenv.Shell("powershell").Prompt("darwin")).To(Equal("PS /> "))
-				Expect(cloudenv.Shell("powershell").Prompt("windows")).To(Equal("PS C:\\> "))
 			})
 		})
 	})
@@ -625,7 +714,7 @@ var _ = Describe("CloudEnv Options", func() {
 		})
 
 		It("should succeed for all valid shells", func() {
-			data, err := cloudenv.ParseGCPCredentials(secret, &credentials)
+			data, err := env.ParseGCPCredentials(secret, &credentials)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(data)).To(Equal("{\"client_email\":\"test@example.org\",\"project_id\":\"test\"}"))
 			Expect(credentials).To(HaveKeyWithValue("project_id", "test"))
@@ -634,13 +723,13 @@ var _ = Describe("CloudEnv Options", func() {
 
 		It("should fail with invalid secret", func() {
 			secret.Data["serviceaccount.json"] = nil
-			_, err := cloudenv.ParseGCPCredentials(secret, &credentials)
+			_, err := env.ParseGCPCredentials(secret, &credentials)
 			Expect(err).To(MatchError(fmt.Sprintf("no \"serviceaccount.json\" data in Secret %q", secretName)))
 		})
 
 		It("should fail with invalid json", func() {
 			secret.Data["serviceaccount.json"] = []byte("{")
-			_, err := cloudenv.ParseGCPCredentials(secret, &credentials)
+			_, err := env.ParseGCPCredentials(secret, &credentials)
 			Expect(err).To(MatchError("unexpected end of JSON input"))
 		})
 	})
@@ -674,27 +763,39 @@ var _ = Describe("CloudEnv Options", func() {
 
 		It("should return a global url", func() {
 			cloudProfileConfig.KeyStoneURL = "foo"
-			url, err := cloudenv.GetKeyStoneURL(cloudProfile, "")
+			url, err := env.GetKeyStoneURL(cloudProfile, "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(url).To(Equal(cloudProfileConfig.KeyStoneURL))
 		})
 
 		It("should return region specific url", func() {
-			url, err := cloudenv.GetKeyStoneURL(cloudProfile, region)
+			url, err := env.GetKeyStoneURL(cloudProfile, region)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(url).To(Equal("bar"))
 		})
 
 		It("should fail with not found", func() {
 			cloudProfile.Spec.ProviderConfig = nil
-			_, err := cloudenv.GetKeyStoneURL(cloudProfile, region)
+			_, err := env.GetKeyStoneURL(cloudProfile, region)
 			Expect(err).To(MatchError(MatchRegexp("^failed to get openstack provider config:")))
 		})
 
 		It("should fail with not found", func() {
 			region = "asia"
-			_, err := cloudenv.GetKeyStoneURL(cloudProfile, region)
+			_, err := env.GetKeyStoneURL(cloudProfile, region)
 			Expect(err).To(MatchError(fmt.Sprintf("cannot find keystone URL for region %q in cloudprofile %q", region, cloudProfileName)))
 		})
 	})
+
+	DescribeTable("getting the provider CLI",
+		func(providerType string, cli string) {
+			Expect(env.GetProviderCLI(providerType)).To(Equal(cli))
+		},
+		Entry("when provider is aws", "aws", "aws"),
+		Entry("when provider is azure", "azure", "az"),
+		Entry("when provider is alicloud", "alicloud", "aliyun"),
+		Entry("when provider is gcp", "gcp", "gcloud"),
+		Entry("when provider is kubernetes", "kubernetes", "kubectl"),
+	)
+
 })

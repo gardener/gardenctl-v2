@@ -11,10 +11,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
-
-	"github.com/spf13/cobra"
 )
 
 // NewCmdUnset returns a new (target) unset command.

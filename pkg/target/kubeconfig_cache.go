@@ -50,6 +50,11 @@ func (c *fsKubeconfigCache) Read(t Target) ([]byte, error) {
 func (c *fsKubeconfigCache) Write(t Target, kubeconfig []byte) error {
 	filename, err := c.filename(t)
 	if err != nil {
+		// do not return an error and skip writing to the cache
+		if errors.Is(err, ErrNeitherProjectNorSeedTargeted) {
+			return nil
+		}
+
 		return err
 	}
 
@@ -73,7 +78,7 @@ func (c *fsKubeconfigCache) filename(t Target) (string, error) {
 		} else if t.SeedName() != "" {
 			directory = filepath.Join(directory, "seeds", t.SeedName(), "shoots", t.ShootName())
 		} else {
-			return "", errors.New("shoot targets need either project or seed name specified")
+			return "", ErrNeitherProjectNorSeedTargeted
 		}
 	} else if t.SeedName() != "" {
 		directory = filepath.Join(directory, "seeds", t.SeedName())

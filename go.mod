@@ -9,6 +9,7 @@ require (
 	github.com/gardener/gardener-extension-provider-openstack v1.22.0
 	github.com/golang/mock v1.6.0
 	github.com/google/gofuzz v1.2.0 // indirect
+	github.com/google/uuid v1.3.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.15.0
