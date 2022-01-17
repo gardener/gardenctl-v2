@@ -483,7 +483,7 @@ var _ = Describe("Manager", func() {
 		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		Expect(manager.UnsetTargetControlPlane()).Should(Equal(prod1AmbiguousShoot.Name))
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name))
+		assertTargetProvider(targetProvider, t.WithControlPlane(true))
 	})
 
 	It("should fail if no control plane targeted", func() {
