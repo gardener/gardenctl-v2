@@ -312,7 +312,7 @@ func createSSHKeypair(tempDir string, keyName string) (string, string, error) {
 	if keyName == "" {
 		id, err := utils.GenerateRandomString(8)
 		if err != nil {
-			return "", "", fmt.Errorf("failed to create key name: %v", err)
+			return "", "", fmt.Errorf("failed to create key name: %w", err)
 		}
 
 		keyName = fmt.Sprintf("gen_id_rsa_%s", strings.ToLower(id))
@@ -476,13 +476,13 @@ func (o *SSHOptions) Run(f util.Factory) error {
 
 	sshPublicKey, err := ioutil.ReadFile(o.SSHPublicKeyFile)
 	if err != nil {
-		return fmt.Errorf("failed to read SSH public key: %v", err)
+		return fmt.Errorf("failed to read SSH public key: %w", err)
 	}
 
 	// avoid GenerateName because we want to immediately fetch and check the bastion
 	bastionName, err := bastionNameProvider()
 	if err != nil {
-		return fmt.Errorf("failed to create bastion name: %v", err)
+		return fmt.Errorf("failed to create bastion name: %w", err)
 	}
 
 	bastion := &operationsv1alpha1.Bastion{
@@ -520,7 +520,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	fmt.Fprintf(o.IOStreams.Out, "Creating bastion %s…\n", bastion.Name)
 
 	if err := gardenClient.RuntimeClient().Create(ctx, bastion); err != nil {
-		return fmt.Errorf("failed to create bastion: %v", err)
+		return fmt.Errorf("failed to create bastion: %w", err)
 	}
 
 	// continuously keep the bastion alive by renewing its annotation
