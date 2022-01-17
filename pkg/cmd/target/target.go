@@ -88,7 +88,7 @@ func runCmdTarget(f util.Factory, o *TargetOptions) error {
 
 	if o.Output == "" {
 		if o.Kind == TargetKindControlPlane {
-			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted control plane for shoot %q\n", currentTarget.ShootName())
+			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted control plane of shoot %q\n", currentTarget.ShootName())
 		} else if o.Kind != "" {
 			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
 		}
