@@ -134,7 +134,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 		Entry("garden->project", target.NewTargetFlags("newgarden", "newproject", "", "", false)),
 		Entry("garden->seed", target.NewTargetFlags("newgarden", "", "newseed", "", false)),
 		Entry("garden->project->shoot", target.NewTargetFlags("newgarden", "newproject", "", "newshoot", false)),
-		Entry("garden->project->shoot->controlplane", target.NewTargetFlags("newgarden", "newproject", "", "newshoot", true)),
+		Entry("garden->project->shoot->control-plane", target.NewTargetFlags("newgarden", "newproject", "", "newshoot", true)),
 	)
 
 	DescribeTable(
@@ -170,7 +170,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 			target.NewTarget("mygarden", "myproject", "", "newshoot"),
 		),
 		Entry(
-			"target shoot controlplane",
+			"target shoot control plane",
 			target.NewTargetFlags("", "", "", "myshoot", true),
 			target.NewTarget("mygarden", "myproject", "", "myshoot").WithControlPlane(true),
 		),

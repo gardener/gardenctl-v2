@@ -195,7 +195,7 @@ var _ = Describe("Command", func() {
 		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
 
 		// run command
-		Expect(cmd.RunE(cmd, []string{"controlplane"})).To(Succeed())
+		Expect(cmd.RunE(cmd, []string{"control-plane"})).To(Succeed())
 		Expect(out.String()).To(ContainSubstring("Successfully targeted control plane for shoot %q\n", shootName))
 
 		currentTarget, err := targetProvider.Read()

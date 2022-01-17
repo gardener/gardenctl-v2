@@ -111,7 +111,7 @@ const (
 	TargetKindSeed         TargetKind = "seed"
 	TargetKindShoot        TargetKind = "shoot"
 	TargetKindPattern      TargetKind = "pattern"
-	TargetKindControlPlane TargetKind = "controlplane"
+	TargetKindControlPlane TargetKind = "control-plane"
 )
 
 var (

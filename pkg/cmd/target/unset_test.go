@@ -205,7 +205,7 @@ var _ = Describe("Command", func() {
 		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
 
 		// run command
-		Expect(cmd.RunE(cmd, []string{"controlplane"})).To(Succeed())
+		Expect(cmd.RunE(cmd, []string{"control-plane"})).To(Succeed())
 		Expect(out.String()).To(ContainSubstring("Successfully unset targeted control plane for %q\n", shootName))
 
 		currentTarget, err := targetProvider.Read()

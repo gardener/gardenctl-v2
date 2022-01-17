@@ -82,7 +82,7 @@ func (tf *targetFlagsImpl) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&tf.projectName, "project", "", "target the given project")
 	flags.StringVar(&tf.seedName, "seed", "", "target the given seed cluster")
 	flags.StringVar(&tf.shootName, "shoot", "", "target the given shoot cluster")
-	flags.BoolVar(&tf.controlPlane, "controlplane", tf.controlPlane, "target control plane of shoot, use together with shoot argument")
+	flags.BoolVar(&tf.controlPlane, "control-plane", tf.controlPlane, "target control plane of shoot, use together with shoot argument")
 }
 
 func (tf *targetFlagsImpl) ToTarget() Target {
