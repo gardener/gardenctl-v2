@@ -352,7 +352,7 @@ var _ = Describe("Manager", func() {
 		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		Expect(manager.TargetControlPlane(ctx)).To(Succeed())
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name).WithControlPlane(true))
+		assertTargetProvider(targetProvider, t.WithControlPlane(true))
 	})
 
 	It("should fail to target control plane if shoot is not set", func() {
