@@ -181,6 +181,31 @@ var _ = Describe("Command", func() {
 		Expect(currentTarget.SeedName()).To(BeEmpty())
 		Expect(currentTarget.ShootName()).To(Equal(shootName))
 	})
+
+	It("should be able to target a control plane", func() {
+		streams, _, out, _ := util.NewTestIOStreams()
+
+		// user has already targeted a garden, project and shoot
+		currentTarget := target.NewTarget(gardenName, projectName, "", shootName)
+
+		// setup command
+		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
+
+		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
+		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+
+		// run command
+		Expect(cmd.RunE(cmd, []string{"controlplane"})).To(Succeed())
+		Expect(out.String()).To(ContainSubstring("Successfully targeted control plane for shoot %q\n", shootName))
+
+		currentTarget, err := targetProvider.Read()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(currentTarget.GardenName()).To(Equal(gardenName))
+		Expect(currentTarget.ProjectName()).To(Equal(projectName))
+		Expect(currentTarget.SeedName()).To(BeEmpty())
+		Expect(currentTarget.ShootName()).To(Equal(shootName))
+		Expect(currentTarget.ControlPlaneFlag()).To(BeTrue())
+	})
 })
 
 var _ = Describe("TargetOptions", func() {

@@ -226,6 +226,21 @@ func (mr *MockManagerMockRecorder) TargetShoot(ctx, name interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetShoot", reflect.TypeOf((*MockManager)(nil).TargetShoot), ctx, name)
 }
 
+// UnsetTargetControlPlane mocks base method.
+func (m *MockManager) UnsetTargetControlPlane() (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnsetTargetControlPlane")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UnsetTargetControlPlane indicates an expected call of UnsetTargetControlPlane.
+func (mr *MockManagerMockRecorder) UnsetTargetControlPlane() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetTargetControlPlane", reflect.TypeOf((*MockManager)(nil).UnsetTargetControlPlane))
+}
+
 // UnsetTargetGarden mocks base method.
 func (m *MockManager) UnsetTargetGarden() (string, error) {
 	m.ctrl.T.Helper()

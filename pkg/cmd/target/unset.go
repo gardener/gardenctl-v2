@@ -27,6 +27,7 @@ func NewCmdUnset(f util.Factory, o *UnsetOptions) *cobra.Command {
 			string(TargetKindProject),
 			string(TargetKindSeed),
 			string(TargetKindShoot),
+			string(TargetKindControlPlane),
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := o.Complete(f, cmd, args); err != nil {
@@ -60,6 +61,8 @@ func runCmdUnset(f util.Factory, o *UnsetOptions) error {
 		targetName, err = manager.UnsetTargetSeed()
 	case TargetKindShoot:
 		targetName, err = manager.UnsetTargetShoot()
+	case TargetKindControlPlane:
+		targetName, err = manager.UnsetTargetControlPlane()
 	default:
 		err = errors.New("invalid kind")
 	}
@@ -68,7 +71,11 @@ func runCmdUnset(f util.Factory, o *UnsetOptions) error {
 		return err
 	}
 
-	fmt.Fprintf(o.IOStreams.Out, "Successfully unset targeted %s %q\n", o.Kind, targetName)
+	if o.Kind == TargetKindControlPlane {
+		fmt.Fprintf(o.IOStreams.Out, "Successfully unset targeted control plane for %q\n", targetName)
+	} else {
+		fmt.Fprintf(o.IOStreams.Out, "Successfully unset targeted %s %q\n", o.Kind, targetName)
+	}
 
 	return nil
 }
