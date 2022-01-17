@@ -469,7 +469,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	}
 
 	// prepare Bastion resource
-	policies, err := o.bastionIngressPolicies(shoot)
+	policies, err := o.bastionIngressPolicies(shoot.Spec.Provider.Type)
 	if err != nil {
 		return fmt.Errorf("failed to get bastion ingress policies: %w", err)
 	}
@@ -565,10 +565,8 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	return err
 }
 
-func (o *SSHOptions) bastionIngressPolicies(shoot *gardencorev1beta1.Shoot) ([]operationsv1alpha1.BastionIngressPolicy, error) {
+func (o *SSHOptions) bastionIngressPolicies(providerType string) ([]operationsv1alpha1.BastionIngressPolicy, error) {
 	var policies []operationsv1alpha1.BastionIngressPolicy
-
-	providerType := shoot.Spec.Provider.Type
 
 	for _, cidr := range o.CIDRs {
 		if providerType == "gcp" {
