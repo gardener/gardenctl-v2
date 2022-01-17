@@ -25,14 +25,6 @@ import (
 	"strings"
 	"time"
 
-	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
-	corev1alpha1helper "github.com/gardener/gardener/pkg/apis/core/v1alpha1/helper"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
-	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
-	"github.com/gardener/gardener/pkg/utils"
-	gutil "github.com/gardener/gardener/pkg/utils/gardener"
-	"github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 	cryptossh "golang.org/x/crypto/ssh"
@@ -49,6 +41,14 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/gardener/gardenctl-v2/pkg/target"
+	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
+	corev1alpha1helper "github.com/gardener/gardener/pkg/apis/core/v1alpha1/helper"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
+	"github.com/gardener/gardener/pkg/utils"
+	gutil "github.com/gardener/gardener/pkg/utils/gardener"
+	"github.com/gardener/gardener/pkg/utils/secrets"
 )
 
 const (
@@ -170,6 +170,10 @@ type SSHOptions struct {
 	// auto-detect the user's IP and allow only it (i.e. use a /32 netmask).
 	CIDRs []string
 
+	// AutoDetected indicates if the public IPs of the user were automatically detected.
+	// AutoDetected is false in case the CIDRs were provided via flags.
+	AutoDetected bool
+
 	// SSHPublicKeyFile is the full path to the file containing the user's
 	// public SSH key. If not given, gardenctl will create a new temporary keypair.
 	SSHPublicKeyFile string
@@ -228,6 +232,7 @@ func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string)
 		fmt.Fprintf(o.IOStreams.Out, "Auto-detected your system's %s as %s\n", name, strings.Join(cidrs, ", "))
 
 		o.CIDRs = cidrs
+		o.AutoDetected = true
 	}
 
 	if len(o.SSHPublicKeyFile) == 0 {
@@ -464,14 +469,9 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	}
 
 	// prepare Bastion resource
-	policies := []operationsv1alpha1.BastionIngressPolicy{}
-
-	for _, cidr := range o.CIDRs {
-		policies = append(policies, operationsv1alpha1.BastionIngressPolicy{
-			IPBlock: networkingv1.IPBlock{
-				CIDR: cidr,
-			},
-		})
+	policies, err := o.bastionIngressPolicies(shoot)
+	if err != nil {
+		return fmt.Errorf("failed to get bastion ingress policies: %w", err)
 	}
 
 	sshPublicKey, err := ioutil.ReadFile(o.SSHPublicKeyFile)
@@ -563,6 +563,43 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	fmt.Fprintln(o.IOStreams.Out, "Exiting…")
 
 	return err
+}
+
+func (o *SSHOptions) bastionIngressPolicies(shoot *gardencorev1beta1.Shoot) ([]operationsv1alpha1.BastionIngressPolicy, error) {
+	var policies []operationsv1alpha1.BastionIngressPolicy
+
+	providerType := shoot.Spec.Provider.Type
+
+	for _, cidr := range o.CIDRs {
+		if providerType == "gcp" {
+			ip, _, err := net.ParseCIDR(cidr)
+			if err != nil {
+				return nil, err // this should never happen, as it is already checked within the Validate function
+			}
+
+			if ip.To4() == nil {
+				if !o.AutoDetected {
+					return nil, fmt.Errorf("GCP only supports IPv4: %s", cidr)
+				}
+
+				fmt.Fprintf(o.IOStreams.Out, "GCP only supports IPv4, skipped CIDR: %s\n", cidr)
+
+				continue // skip
+			}
+		}
+
+		policies = append(policies, operationsv1alpha1.BastionIngressPolicy{
+			IPBlock: networkingv1.IPBlock{
+				CIDR: cidr,
+			},
+		})
+	}
+
+	if len(policies) == 0 {
+		return nil, errors.New("no ingress policies left")
+	}
+
+	return policies, nil
 }
 
 func printTargetInformation(out io.Writer, t target.Target) {
