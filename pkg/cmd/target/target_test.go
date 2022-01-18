@@ -196,7 +196,7 @@ var _ = Describe("Command", func() {
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"control-plane"})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully targeted control plane for shoot %q\n", shootName))
+		Expect(out.String()).To(ContainSubstring("Successfully targeted control plane of shoot %q\n", shootName))
 
 		currentTarget, err := targetProvider.Read()
 		Expect(err).NotTo(HaveOccurred())
