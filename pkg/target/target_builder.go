@@ -34,7 +34,7 @@ type TargetBuilder interface {
 	// SetShoot updates TargetBuilder with a Shoot name
 	SetShoot(context.Context, string) TargetBuilder
 	// SetControlPlane updates TargetBuilder shoot control plane flag
-	SetControlPlane(context.Context, bool) TargetBuilder
+	SetControlPlane(context.Context) TargetBuilder
 	// Build uses the values set for TargetBuilder to create and return a new target
 	// This function validates the target values and tries to complete missing values
 	// If the provided values do not represent a valid and unique target, an error is returned
@@ -195,13 +195,13 @@ func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBui
 	return b
 }
 
-func (b *targetBuilderImpl) SetControlPlane(ctx context.Context, controlPlane bool) TargetBuilder {
+func (b *targetBuilderImpl) SetControlPlane(ctx context.Context) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
 		if t.Shoot == "" {
 			return ErrNoShootTargeted
 		}
 
-		t.ControlPlane = controlPlane
+		t.ControlPlane = true
 
 		return nil
 	})

@@ -82,7 +82,7 @@ func (tf *targetFlagsImpl) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&tf.projectName, "project", "", "target the given project")
 	flags.StringVar(&tf.seedName, "seed", "", "target the given seed cluster")
 	flags.StringVar(&tf.shootName, "shoot", "", "target the given shoot cluster")
-	flags.BoolVar(&tf.controlPlane, "controlplane", tf.controlPlane, "target control plane of shoot, use together with shoot argument")
+	flags.BoolVar(&tf.controlPlane, "control-plane", tf.controlPlane, "target control plane of shoot, use together with shoot argument")
 }
 
 func (tf *targetFlagsImpl) ToTarget() Target {
@@ -90,7 +90,7 @@ func (tf *targetFlagsImpl) ToTarget() Target {
 }
 
 func (tf *targetFlagsImpl) isEmpty() bool {
-	return tf.gardenName == "" && tf.projectName == "" && tf.seedName == "" && tf.shootName == ""
+	return tf.gardenName == "" && tf.projectName == "" && tf.seedName == "" && tf.shootName == "" && !tf.controlPlane
 }
 
 func (tf *targetFlagsImpl) OverrideTarget(current Target) (Target, error) {
@@ -121,11 +121,11 @@ func (tf *targetFlagsImpl) OverrideTarget(current Target) (Target, error) {
 			current = current.WithShootName(tf.shootName)
 		}
 
-		current = current.WithControlPlane(tf.controlPlane)
-
 		if err := current.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid target flags: %w", err)
 		}
+
+		current = current.WithControlPlane(tf.controlPlane)
 	}
 
 	return current, nil

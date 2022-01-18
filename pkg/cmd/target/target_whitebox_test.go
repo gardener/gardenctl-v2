@@ -188,6 +188,7 @@ var _ = Describe("Completion", func() {
 				string(TargetKindSeed),
 				string(TargetKindShoot),
 				string(TargetKindPattern),
+				string(TargetKindControlPlane),
 			}))
 		})
 

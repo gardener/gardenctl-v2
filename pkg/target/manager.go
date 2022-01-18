@@ -28,6 +28,7 @@ var (
 	ErrNoSeedTargeted                = errors.New("no seed cluster targeted")
 	ErrNoShootTargeted               = errors.New("no shoot targeted")
 	ErrNeitherProjectNorSeedTargeted = errors.New("neither project nor seed are targeted")
+	ErrNoControlPlaneTargeted        = errors.New("no control plane targeted")
 )
 
 //go:generate mockgen -destination=./mocks/mock_manager.go -package=mocks github.com/gardener/gardenctl-v2/pkg/target Manager
@@ -65,6 +66,8 @@ type Manager interface {
 	UnsetTargetSeed() (string, error)
 	// UnsetTargetShoot unsets the garden shoot configuration
 	UnsetTargetShoot() (string, error)
+	// UnsetTargetControlPlane unsets the control plane flag
+	UnsetTargetControlPlane() (string, error)
 	// TargetMatchPattern replaces the whole target
 	// Garden, Project and Shoot values are determined by matching the provided value
 	// against patterns defined in gardenctl configuration. Some values may only match a subset
@@ -269,25 +272,7 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 
 	tb.Init(currentTarget)
 
-	target, err := tb.SetShoot(ctx, shootName).SetControlPlane(ctx, m.TargetFlags().ControlPlane()).Build()
-	if err != nil {
-		return err
-	}
-
-	return m.updateTarget(target)
-}
-
-func (m *managerImpl) TargetControlPlane(ctx context.Context) error {
-	tb := NewTargetBuilder(m.config, m.clientProvider)
-
-	currentTarget, err := m.CurrentTarget()
-	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
-	}
-
-	tb.Init(currentTarget)
-
-	target, err := tb.SetControlPlane(ctx, m.TargetFlags().ControlPlane()).Build()
+	target, err := tb.SetShoot(ctx, shootName).Build()
 	if err != nil {
 		return err
 	}
@@ -312,6 +297,42 @@ func (m *managerImpl) UnsetTargetShoot() (string, error) {
 	}
 
 	return "", ErrNoShootTargeted
+}
+
+func (m *managerImpl) TargetControlPlane(ctx context.Context) error {
+	tb := NewTargetBuilder(m.config, m.clientProvider)
+
+	currentTarget, err := m.CurrentTarget()
+	if err != nil {
+		return fmt.Errorf("failed to get current target: %v", err)
+	}
+
+	tb.Init(currentTarget)
+
+	target, err := tb.SetControlPlane(ctx).Build()
+	if err != nil {
+		return err
+	}
+
+	return m.updateTarget(target)
+}
+
+func (m *managerImpl) UnsetTargetControlPlane() (string, error) {
+	currentTarget, err := m.CurrentTarget()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current target: %v", err)
+	}
+
+	targetedName := currentTarget.ShootName()
+	if currentTarget.ControlPlaneFlag() {
+		return targetedName, m.patchTarget(func(t *targetImpl) error {
+			t.ControlPlane = false
+
+			return nil
+		})
+	}
+
+	return "", ErrNoControlPlaneTargeted
 }
 
 func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) error {
@@ -354,7 +375,7 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 	}
 
 	if m.TargetFlags().ControlPlane() {
-		tb.SetControlPlane(ctx, m.TargetFlags().ControlPlane())
+		tb.SetControlPlane(ctx)
 	}
 
 	target, err := tb.Build()

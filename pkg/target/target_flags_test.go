@@ -44,7 +44,7 @@ var _ = Describe("Target Flags", func() {
 		flags.VisitAll(func(flag *pflag.Flag) {
 			names = append(names, flag.Name)
 		})
-		Expect(names).To(Equal([]string{"garden", "project", "seed", "shoot", "controlplane"}))
+		Expect(names).To(Equal([]string{"garden", "project", "seed", "shoot", "control-plane"}))
 	})
 
 	It("should validate target flags", func() {
