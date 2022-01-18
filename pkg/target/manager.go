@@ -66,7 +66,7 @@ type Manager interface {
 	UnsetTargetSeed() (string, error)
 	// UnsetTargetShoot unsets the garden shoot configuration
 	UnsetTargetShoot() (string, error)
-	// UnsetTargetControlPlane unsets the garden shoot configuration
+	// UnsetTargetControlPlane unsets the control plane flag
 	UnsetTargetControlPlane() (string, error)
 	// TargetMatchPattern replaces the whole target
 	// Garden, Project and Shoot values are determined by matching the provided value

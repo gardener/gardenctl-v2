@@ -251,14 +251,15 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 
 // Validate validates the provided options
 func (o *TargetOptions) Validate() error {
-	if o.Kind == TargetKindControlPlane {
-		// control plane flag can be used without other arguments
-		return nil
-	}
-
-	// reject flag/arg-less invocations
-	if o.Kind == "" || o.TargetName == "" {
-		return errors.New("no target specified")
+	switch o.Kind {
+	case "":
+		return errors.New("no target kind specified")
+	case TargetKindControlPlane:
+		// valid
+	default:
+		if o.TargetName == "" {
+			return fmt.Errorf("target kind %q requires a name argument", o.Kind)
+		}
 	}
 
 	if err := ValidateKind(o.Kind); err != nil {

@@ -187,6 +187,7 @@ func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBui
 
 		t.Seed = ""
 		t.Shoot = shoot.Name
+		t.ControlPlane = false
 
 		return nil
 	})
