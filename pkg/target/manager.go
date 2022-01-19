@@ -179,7 +179,7 @@ func (m *managerImpl) UnsetTargetGarden() (string, error) {
 			t.Project = ""
 			t.Seed = ""
 			t.Shoot = ""
-			t.ControlPlane = false
+			t.ControlPlaneFlag = false
 
 			return nil
 		})
@@ -217,7 +217,7 @@ func (m *managerImpl) UnsetTargetProject() (string, error) {
 		return targetedName, m.patchTarget(func(t *targetImpl) error {
 			t.Project = ""
 			t.Shoot = ""
-			t.ControlPlane = false
+			t.ControlPlaneFlag = false
 
 			return nil
 		})
@@ -290,7 +290,7 @@ func (m *managerImpl) UnsetTargetShoot() (string, error) {
 	if targetedName != "" {
 		return targetedName, m.patchTarget(func(t *targetImpl) error {
 			t.Shoot = ""
-			t.ControlPlane = false
+			t.ControlPlaneFlag = false
 
 			return nil
 		})
@@ -323,9 +323,9 @@ func (m *managerImpl) UnsetTargetControlPlane() error {
 		return fmt.Errorf("failed to get current target: %v", err)
 	}
 
-	if currentTarget.ControlPlaneFlag() {
+	if currentTarget.ControlPlane() {
 		return m.patchTarget(func(t *targetImpl) error {
-			t.ControlPlane = false
+			t.ControlPlaneFlag = false
 
 			return nil
 		})
@@ -391,7 +391,7 @@ func (m *managerImpl) updateTarget(target Target) error {
 		t.Project = target.ProjectName()
 		t.Seed = target.SeedName()
 		t.Shoot = target.ShootName()
-		t.ControlPlane = target.ControlPlaneFlag()
+		t.ControlPlaneFlag = target.ControlPlane()
 
 		return nil
 	})

@@ -35,8 +35,8 @@ type Target interface {
 	SeedName() string
 	// ShootName returns the currently targeted shoot cluster name.
 	ShootName() string
-	// ControlPlaneFlag returns true if shoot control plane is targeted.
-	ControlPlaneFlag() bool
+	// ControlPlane returns true if shoot control plane is targeted.
+	ControlPlane() bool
 	// WithGardenName returns a copy of the target with the garden name updated.
 	// The returned target can be invalid.
 	WithGardenName(name string) Target
@@ -62,11 +62,11 @@ type Target interface {
 }
 
 type targetImpl struct {
-	Garden       string `yaml:"garden,omitempty" json:"garden,omitempty"`
-	Project      string `yaml:"project,omitempty" json:"project,omitempty"`
-	Seed         string `yaml:"seed,omitempty" json:"seed,omitempty"`
-	Shoot        string `yaml:"shoot,omitempty" json:"shoot,omitempty"`
-	ControlPlane bool   `yaml:"controlPlane,omitempty" json:"controlPlane,omitempty"`
+	Garden           string `yaml:"garden,omitempty" json:"garden,omitempty"`
+	Project          string `yaml:"project,omitempty" json:"project,omitempty"`
+	Seed             string `yaml:"seed,omitempty" json:"seed,omitempty"`
+	Shoot            string `yaml:"shoot,omitempty" json:"shoot,omitempty"`
+	ControlPlaneFlag bool   `yaml:"controlPlane,omitempty" json:"controlPlane,omitempty"`
 }
 
 var _ Target = &targetImpl{}
@@ -75,16 +75,16 @@ var _ Target = &targetImpl{}
 // so the returned target can be invalid.
 func NewTarget(gardenName, projectName, seedName, shootName string) Target {
 	return &targetImpl{
-		Garden:       gardenName,
-		Project:      projectName,
-		Seed:         seedName,
-		Shoot:        shootName,
-		ControlPlane: false,
+		Garden:           gardenName,
+		Project:          projectName,
+		Seed:             seedName,
+		Shoot:            shootName,
+		ControlPlaneFlag: false,
 	}
 }
 
 func newTargetImpl(gardenName, projectName, seedName, shootName string, controlPlane bool) *targetImpl {
-	return &targetImpl{Garden: gardenName, Project: projectName, Seed: seedName, Shoot: shootName, ControlPlane: controlPlane}
+	return &targetImpl{Garden: gardenName, Project: projectName, Seed: seedName, Shoot: shootName, ControlPlaneFlag: controlPlane}
 }
 
 // Validate checks that the target is not malformed and all required
@@ -117,33 +117,33 @@ func (t *targetImpl) ShootName() string {
 	return t.Shoot
 }
 
-// ControlPlaneFlag returns true if shoot control plane is targeted.
-func (t *targetImpl) ControlPlaneFlag() bool {
-	return t.ControlPlane
+// ControlPlane returns true if shoot control plane is targeted.
+func (t *targetImpl) ControlPlane() bool {
+	return t.ControlPlaneFlag
 }
 
 // WithGardenName returns a copy of the target with the garden name updated.
 // The returned target can be invalid.
 func (t *targetImpl) WithGardenName(name string) Target {
-	return newTargetImpl(name, t.Project, t.Seed, t.Shoot, t.ControlPlane)
+	return newTargetImpl(name, t.Project, t.Seed, t.Shoot, t.ControlPlaneFlag)
 }
 
 // WithProjectName returns a copy of the target with the project name updated.
 // The returned target can be invalid.
 func (t *targetImpl) WithProjectName(name string) Target {
-	return newTargetImpl(t.Garden, name, t.Seed, t.Shoot, t.ControlPlane)
+	return newTargetImpl(t.Garden, name, t.Seed, t.Shoot, t.ControlPlaneFlag)
 }
 
 // WithSeedName returns a copy of the target with the seed name updated.
 // The returned target can be invalid.
 func (t *targetImpl) WithSeedName(name string) Target {
-	return newTargetImpl(t.Garden, t.Project, name, t.Shoot, t.ControlPlane)
+	return newTargetImpl(t.Garden, t.Project, name, t.Shoot, t.ControlPlaneFlag)
 }
 
 // WithShootName returns a copy of the target with the shoot name updated.
 // The returned target can be invalid.
 func (t *targetImpl) WithShootName(name string) Target {
-	return newTargetImpl(t.Garden, t.Project, t.Seed, name, t.ControlPlane)
+	return newTargetImpl(t.Garden, t.Project, t.Seed, name, t.ControlPlaneFlag)
 }
 
 // WithControlPlane returns a copy of the target with the control plane flag updated.
@@ -172,7 +172,7 @@ func (t *targetImpl) String() string {
 		steps = append(steps, fmt.Sprintf("shoot:%q", t.Shoot))
 	}
 
-	if t.ControlPlane {
+	if t.ControlPlaneFlag {
 		steps = append(steps, "control plane targeted")
 	}
 

@@ -29,7 +29,7 @@ func assertTarget(t target.Target, expected target.Target) {
 	ExpectWithOffset(1, t.ProjectName()).To(Equal(expected.ProjectName()))
 	ExpectWithOffset(1, t.SeedName()).To(Equal(expected.SeedName()))
 	ExpectWithOffset(1, t.ShootName()).To(Equal(expected.ShootName()))
-	ExpectWithOffset(1, t.ControlPlaneFlag()).To(Equal(expected.ControlPlaneFlag()))
+	ExpectWithOffset(1, t.ControlPlane()).To(Equal(expected.ControlPlane()))
 }
 
 func assertTargetProvider(tp target.TargetProvider, expected target.Target) {

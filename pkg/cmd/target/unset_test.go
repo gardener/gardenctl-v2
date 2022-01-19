@@ -214,7 +214,7 @@ var _ = Describe("Command", func() {
 		Expect(currentTarget.ProjectName()).To(Equal(projectName))
 		Expect(currentTarget.SeedName()).To(BeEmpty())
 		Expect(currentTarget.ShootName()).To(Equal(shootName))
-		Expect(currentTarget.ControlPlaneFlag()).To(BeFalse())
+		Expect(currentTarget.ControlPlane()).To(BeFalse())
 	})
 })
 

@@ -67,7 +67,7 @@ var _ = Describe("Target Flags", func() {
 		Expect(t.ProjectName()).To(Equal("project"))
 		Expect(t.SeedName()).To(BeEmpty())
 		Expect(t.ShootName()).To(Equal("shoot"))
-		Expect(t.ControlPlaneFlag()).To(BeTrue())
+		Expect(t.ControlPlane()).To(BeTrue())
 	})
 
 	It("should fail to override a target", func() {

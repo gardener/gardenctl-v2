@@ -22,7 +22,7 @@ func expectEqualTargets(actual, expected target.Target) {
 	ExpectWithOffset(1, actual.ProjectName()).To(Equal(expected.ProjectName()))
 	ExpectWithOffset(1, actual.SeedName()).To(Equal(expected.SeedName()))
 	ExpectWithOffset(1, actual.ShootName()).To(Equal(expected.ShootName()))
-	ExpectWithOffset(1, actual.ControlPlaneFlag()).To(Equal(expected.ControlPlaneFlag()))
+	ExpectWithOffset(1, actual.ControlPlane()).To(Equal(expected.ControlPlane()))
 }
 
 var _ = Describe("Target Provider", func() {
@@ -77,7 +77,7 @@ var _ = Describe("Target Provider", func() {
 		Expect(target.ProjectName()).To(Equal(t.ProjectName()))
 		Expect(target.SeedName()).To(Equal(t.SeedName()))
 		Expect(target.ShootName()).To(Equal(t.ShootName()))
-		Expect(target.ControlPlaneFlag()).To(Equal(t.ControlPlaneFlag()))
+		Expect(target.ControlPlane()).To(Equal(t.ControlPlane()))
 
 	})
 })
