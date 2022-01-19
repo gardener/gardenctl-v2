@@ -360,7 +360,7 @@ var _ = Describe("Gardenctl command", func() {
 	Describe("Wrapping completion functions", func() {
 		It("should respect the prefix", func() {
 			factory := &util.FactoryImpl{
-				ConfigFile: configFile,
+				ConfigFilePath: configFile,
 			}
 			streams, _, _, _ := util.NewTestIOStreams()
 			wrapped := completionWrapper(factory, streams, func(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
@@ -374,7 +374,7 @@ var _ = Describe("Gardenctl command", func() {
 
 		It("should fail when executing the completer", func() {
 			factory := &util.FactoryImpl{
-				ConfigFile: configFile,
+				ConfigFilePath: configFile,
 			}
 			streams, _, _, errOut := util.NewTestIOStreams()
 			wrapped := completionWrapper(factory, streams, func(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
@@ -422,7 +422,7 @@ var _ = Describe("Gardenctl command", func() {
 
 			head := strings.Split(out.String(), "\n")[0]
 			Expect(head).To(Equal("#compdef _gardenctl gardenctl"))
-			Expect(factory.ConfigFile).To(Equal(configFile))
+			Expect(factory.ConfigFilePath).To(Equal(configFile))
 			Expect(factory.TargetFile).To(Equal(targetFile))
 			Expect(factory.GardenHomeDirectory).To(Equal(gardenDir))
 

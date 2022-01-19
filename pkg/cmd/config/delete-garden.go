@@ -17,7 +17,8 @@ import (
 )
 
 // NewCmdConfigDeleteGarden returns a new (config) delete-garden command.
-func NewCmdConfigDeleteGarden(f util.Factory, o *DeleteGardenOptions) *cobra.Command {
+func NewCmdConfigDeleteGarden(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+	o := NewDeleteGardenOptions(ioStreams)
 	cmd := &cobra.Command{
 		Use:   "delete-garden",
 		Short: "delete Garden from gardenctl configuration",
@@ -49,7 +50,7 @@ func (o *DeleteGardenOptions) Run(f util.Factory) error {
 		return errors.New("could not get configuration")
 	}
 
-	err = config.DeleteGarden(o.Identity, f.GetConfigFile())
+	err = config.DeleteGarden(o.Identity, f.ConfigFile())
 	if err != nil {
 		return fmt.Errorf("failed to delete garden from configuration: %w", err)
 	}

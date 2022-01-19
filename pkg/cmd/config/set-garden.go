@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/pflag"
+
 	"k8s.io/component-base/cli/flag"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -19,7 +21,8 @@ import (
 )
 
 // NewCmdConfigSetGarden returns a new (config) set-garden command.
-func NewCmdConfigSetGarden(f util.Factory, o *SetGardenOptions) *cobra.Command {
+func NewCmdConfigSetGarden(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+	o := NewSetGardenOptions(ioStreams)
 	cmd := &cobra.Command{
 		Use:   "set-garden",
 		Short: "modify or add Garden to gardenctl configuration",
@@ -36,14 +39,7 @@ func NewCmdConfigSetGarden(f util.Factory, o *SetGardenOptions) *cobra.Command {
 		RunE: base.WrapRunE(o, f),
 	}
 
-	cmd.Flags().Var(&o.KubeconfigFile, "kubeconfig", "path to kubeconfig file for this Garden cluster")
-	cmd.Flags().Var(&o.ContextName, "context", "override the current-context of the garden cluster kubeconfig")
-	cmd.Flags().StringArrayVar(&o.Pattern, "pattern", nil, `define regex match patterns for this garden for custom input formats for targeting.
-Use named capturing groups to match target values.
-Supported capturing groups: project, namespace, shoot.
-Note that if you set this flag it will overwrite the pattern list in the config file.
-You may specify any number of extra patterns.
-Example: ^((?Pmy-garden[^/]+)/)?shoot--(?P<project>.+)--(?P<shoot>.+)$`)
+	o.AddFlags(cmd.Flags())
 
 	return cmd
 }
@@ -60,7 +56,7 @@ func (o *SetGardenOptions) Run(f util.Factory) error {
 		return errors.New("could not get configuration")
 	}
 
-	err = config.SetGarden(o.Identity, o.KubeconfigFile, o.ContextName, o.Pattern, f.GetConfigFile())
+	err = config.SetGarden(o.Identity, o.KubeconfigFile, o.ContextName, o.Pattern, f.ConfigFile())
 	if err != nil {
 		return fmt.Errorf("failed to configure garden: %w", err)
 	}
@@ -114,4 +110,15 @@ func (o *SetGardenOptions) Validate() error {
 	}
 
 	return nil
+}
+
+func (o *SetGardenOptions) AddFlags(flags *pflag.FlagSet) {
+	flags.Var(&o.KubeconfigFile, "kubeconfig", "path to kubeconfig file for this Garden cluster")
+	flags.Var(&o.ContextName, "context", "override the current-context of the garden cluster kubeconfig")
+	flags.StringArrayVar(&o.Pattern, "pattern", nil, `define regex match patterns for this garden for custom input formats for targeting.
+Use named capturing groups to match target values.
+Supported capturing groups: project, namespace, shoot.
+Note that if you set this flag it will overwrite the pattern list in the config file.
+You may specify any number of extra patterns.
+Example: ^((?Pmy-garden[^/]+)/)?shoot--(?P<project>.+)--(?P<shoot>.+)$`)
 }

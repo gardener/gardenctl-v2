@@ -6,8 +6,12 @@ SPDX-License-Identifier: Apache-2.0
 package config_test
 
 import (
-	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
+	"github.com/golang/mock/gomock"
+
+	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
+
 	"github.com/gardener/gardenctl-v2/internal/util"
+	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	cmdconfig "github.com/gardener/gardenctl-v2/pkg/cmd/config"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 
@@ -37,12 +41,14 @@ var _ = Describe("Command", func() {
 				}},
 		}
 
-		// setup command
-		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, nil)
+		ctrl := gomock.NewController(GinkgoT())
+		factory := utilmocks.NewMockFactory(ctrl)
+		manager := targetmocks.NewMockManager(ctrl)
+		manager.EXPECT().Configuration().Return(cfg)
+		factory.EXPECT().Manager().Return(manager, nil)
 
 		streams, _, out, _ := util.NewTestIOStreams()
-		o := cmdconfig.NewViewOptions(streams)
-		cmd := cmdconfig.NewCmdConfigView(factory, o)
+		cmd := cmdconfig.NewCmdConfigView(factory, streams)
 
 		Expect(cmd.RunE(cmd, nil)).To(Succeed())
 		Expect(out.String()).To(ContainSubstring("gardens"))

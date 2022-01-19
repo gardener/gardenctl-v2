@@ -6,17 +6,18 @@ SPDX-License-Identifier: Apache-2.0
 package config_test
 
 import (
-	"k8s.io/component-base/cli/flag"
+	"os"
+	"path/filepath"
 
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
-	"github.com/gardener/gardenctl-v2/pkg/config"
-	"github.com/gardener/gardenctl-v2/pkg/target"
-
 	"github.com/gardener/gardenctl-v2/internal/util"
+	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	cmdconfig "github.com/gardener/gardenctl-v2/pkg/cmd/config"
+	"github.com/gardener/gardenctl-v2/pkg/config"
+	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
 
 var _ = Describe("Command", func() {
@@ -25,8 +26,9 @@ var _ = Describe("Command", func() {
 		gardenIdentity1 string
 		gardenIdentity2 string
 		gardenContext1  string
-		targetProvider  target.TargetProvider
-		factory         util.Factory
+		factory         *utilmocks.MockFactory
+		ctrl            *gomock.Controller
+		manager         *targetmocks.MockManager
 	)
 
 	BeforeEach(func() {
@@ -40,19 +42,24 @@ var _ = Describe("Command", func() {
 			}},
 		}
 
-		// setup fakes
-		targetProvider = internalfake.NewFakeTargetProvider(target.NewTarget("", "", "", ""))
-		factory = internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
+		dir, _ := os.MkdirTemp(os.TempDir(), "gctlv2-*")
+		configFile := filepath.Join(dir, "gardenctl-testconfig"+".yaml")
+
+		ctrl = gomock.NewController(GinkgoT())
+		factory = utilmocks.NewMockFactory(ctrl)
+		manager = targetmocks.NewMockManager(ctrl)
+		manager.EXPECT().Configuration().Return(cfg)
+		factory.EXPECT().Manager().Return(manager, nil)
+		factory.EXPECT().ConfigFile().Return(configFile)
 	})
 
 	It("should add new garden to configuration", func() {
 		// setup command
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := cmdconfig.NewSetGardenOptions(streams)
 
 		Expect(len(cfg.AllGardens())).To(Equal(1))
 
-		cmd := cmdconfig.NewCmdConfigSetGarden(factory, o)
+		cmd := cmdconfig.NewCmdConfigSetGarden(factory, streams)
 		Expect(cmd.RunE(cmd, []string{gardenIdentity2})).To(Succeed())
 
 		_, err := cfg.Garden(gardenIdentity2)
@@ -63,22 +70,19 @@ var _ = Describe("Command", func() {
 	It("should modify an existing garden configuration", func() {
 		// setup command
 		streams, _, _, _ := util.NewTestIOStreams()
-		o := cmdconfig.NewSetGardenOptions(streams)
 
 		Expect(len(cfg.AllGardens())).To(Equal(1))
 
-		kubeconfig := flag.StringFlag{}
-		Expect(kubeconfig.Set("path/to/kubeconfig")).To(Succeed())
-
-		o.KubeconfigFile = kubeconfig
-		cmd := cmdconfig.NewCmdConfigSetGarden(factory, o)
+		kubeconfig := "path/to/kubeconfig"
+		cmd := cmdconfig.NewCmdConfigSetGarden(factory, streams)
+		Expect(cmd.Flags().Set("kubeconfig", kubeconfig)).To(Succeed())
 		Expect(cmd.RunE(cmd, []string{gardenIdentity1})).To(Succeed())
 
 		g, err := cfg.Garden(gardenIdentity1)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(cfg.AllGardens())).To(Equal(1))
 		Expect(g.Identity).To(Equal(gardenIdentity1))
-		Expect(g.Kubeconfig).To(Equal(kubeconfig.Value()))
+		Expect(g.Kubeconfig).To(Equal(kubeconfig))
 		// Check that existing value does not get overwritten
 		Expect(g.Context).To(Equal(gardenContext1))
 	})

@@ -16,7 +16,8 @@ import (
 )
 
 // NewCmdConfigView returns a new (config) view command.
-func NewCmdConfigView(f util.Factory, o *ViewOptions) *cobra.Command {
+func NewCmdConfigView(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+	o := NewViewOptions(ioStreams)
 	cmd := &cobra.Command{
 		Use:   "view",
 		Short: "Print the gardenctl configuration",

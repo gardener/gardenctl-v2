@@ -36,10 +36,10 @@ type Factory interface {
 	// returned slice can contain IPv6, IPv4 or both, in no particular
 	// order.
 	PublicIPs(context.Context) ([]string, error)
-	// GetConfigFile returns the location of the gardenctlv2 configuration file.
+	// ConfigFile returns the location of the gardenctlv2 configuration file.
 	// This can be overriden via a CLI flag and defaults to ~/.garden/gardenctlv2.yaml
 	// if empty.
-	GetConfigFile() string
+	ConfigFile() string
 }
 
 // FactoryImpl implements util.Factory interface
@@ -50,10 +50,10 @@ type FactoryImpl struct {
 	// the garden home.
 	GardenHomeDirectory string
 
-	// ConfigFile is the location of the gardenctlv2 configuration file.
+	// ConfigFilePath is the location of the gardenctlv2 configuration file.
 	// This can be overriden via a CLI flag and defaults to ~/.garden/gardenctlv2.yaml
 	// if empty.
-	ConfigFile string
+	ConfigFilePath string
 
 	// TargetFile is the filename where the currently active target is located.
 	TargetFile string
@@ -65,8 +65,8 @@ type FactoryImpl struct {
 
 var _ Factory = &FactoryImpl{}
 
-func (f *FactoryImpl) GetConfigFile() string {
-	return f.ConfigFile
+func (f *FactoryImpl) ConfigFile() string {
+	return f.ConfigFilePath
 }
 
 func (f *FactoryImpl) Context() context.Context {
@@ -74,7 +74,7 @@ func (f *FactoryImpl) Context() context.Context {
 }
 
 func (f *FactoryImpl) Manager() (target.Manager, error) {
-	cfg, err := config.LoadFromFile(f.ConfigFile)
+	cfg, err := config.LoadFromFile(f.ConfigFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
@@ -146,7 +146,7 @@ func callIPify(ctx context.Context, domain string) (*net.IP, error) {
 func (f *FactoryImpl) WithoutTargetFlags() Factory {
 	return &FactoryImpl{
 		GardenHomeDirectory: f.GardenHomeDirectory,
-		ConfigFile:          f.ConfigFile,
+		ConfigFilePath:      f.ConfigFilePath,
 		TargetFile:          f.TargetFile,
 		TargetFlags:         nil,
 	}

@@ -81,7 +81,7 @@ func (f *Factory) Manager() (target.Manager, error) {
 	return target.NewManager(f.Config, f.TargetProviderImpl, f.ClientProviderImpl, f.KubeconfigCacheImpl)
 }
 
-func (f *Factory) GetConfigFile() string {
+func (f *Factory) ConfigFile() string {
 	dir, _ := os.MkdirTemp(os.TempDir(), "gctlv2-*")
 	configFile := filepath.Join(dir, "gardenctl-testconfig"+".yaml")
 

@@ -89,7 +89,7 @@ func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.C
 	// Do not precalculate what $HOME is for the help text, because it prevents
 	// usage where the current user has no home directory (which might _just_ be
 	// the reason the user chose to specify an explicit config file).
-	flags.StringVar(&f.ConfigFile, "config", "", fmt.Sprintf("config file (default is %s)", filepath.Join("~", gardenHomeFolder, configName+".yaml")))
+	flags.StringVar(&f.ConfigFilePath, "config", "", fmt.Sprintf("config file (default is %s)", filepath.Join("~", gardenHomeFolder, configName+".yaml")))
 
 	// allow to temporarily re-target a different cluster
 	f.TargetFlags.AddFlags(flags)
@@ -100,7 +100,7 @@ func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.C
 	cmd.AddCommand(cmdssh.NewCmdSSH(f, cmdssh.NewSSHOptions(ioStreams)))
 	cmd.AddCommand(cmdtarget.NewCmdTarget(f, cmdtarget.NewTargetOptions(ioStreams)))
 	cmd.AddCommand(cmdversion.NewCmdVersion(f, cmdversion.NewVersionOptions(ioStreams)))
-	cmd.AddCommand(cmdConfig.NewCmdConfig(f, cmdConfig.NewConfigOptions(ioStreams)))
+	cmd.AddCommand(cmdConfig.NewCmdConfig(f, ioStreams))
 	cmd.AddCommand(cmdcloudenv.NewCmdCloudEnv(f, ioStreams))
 
 	return cmd
@@ -110,9 +110,9 @@ func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.C
 func initConfig(f *util.FactoryImpl) {
 	var err error
 
-	if f.ConfigFile != "" {
+	if f.ConfigFilePath != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(f.ConfigFile)
+		viper.SetConfigFile(f.ConfigFilePath)
 	} else {
 		// Find home directory.
 		home, err := homedir.Dir()
@@ -153,7 +153,7 @@ func initConfig(f *util.FactoryImpl) {
 		home = filepath.Join(home, gardenHomeFolder)
 	}
 
-	f.ConfigFile = viper.ConfigFileUsed()
+	f.ConfigFilePath = viper.ConfigFileUsed()
 	f.GardenHomeDirectory = home
 	targetFile := filepath.Join(home, targetFilename)
 	f.TargetFile = targetFile

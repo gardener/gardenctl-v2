@@ -886,6 +886,30 @@ func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string,
 
 		fmt.Fprintf(stdout, "Auto-detected your system's %s as %s\n", name, strings.Join(cidrs, ", "))
 
+		addrs, err := net.InterfaceAddrs()
+		if err != nil {
+			panic(err)
+		}
+		for i, addr := range addrs {
+			fmt.Printf("%d %v\n", i, addr)
+		}
+
+		list, err := net.Interfaces()
+		if err != nil {
+			panic(err)
+		}
+
+		for i, iface := range list {
+			fmt.Printf("%d name=%s %v\n", i, iface.Name, iface)
+			addrs, err := iface.Addrs()
+			if err != nil {
+				panic(err)
+			}
+			for j, addr := range addrs {
+				fmt.Printf(" %d %v\n", j, addr)
+			}
+		}
+
 		o.CIDRs = cidrs
 	}
 
