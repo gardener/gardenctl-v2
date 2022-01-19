@@ -121,11 +121,13 @@ func (tf *targetFlagsImpl) OverrideTarget(current Target) (Target, error) {
 			current = current.WithShootName(tf.shootName)
 		}
 
+		if tf.controlPlane {
+			current = current.WithControlPlane(tf.controlPlane)
+		}
+
 		if err := current.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid target flags: %w", err)
 		}
-
-		current = current.WithControlPlane(tf.controlPlane)
 	}
 
 	return current, nil

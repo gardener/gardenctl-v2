@@ -29,6 +29,7 @@ func assertTarget(t target.Target, expected target.Target) {
 	ExpectWithOffset(1, t.ProjectName()).To(Equal(expected.ProjectName()))
 	ExpectWithOffset(1, t.SeedName()).To(Equal(expected.SeedName()))
 	ExpectWithOffset(1, t.ShootName()).To(Equal(expected.ShootName()))
+	ExpectWithOffset(1, t.ControlPlaneFlag()).To(Equal(expected.ControlPlaneFlag()))
 }
 
 func assertTargetProvider(tp target.TargetProvider, expected target.Target) {
@@ -482,17 +483,16 @@ var _ = Describe("Manager", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name).WithControlPlane(true)
 		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		Expect(manager.UnsetTargetControlPlane()).Should(Equal(prod1AmbiguousShoot.Name))
-		assertTargetProvider(targetProvider, t.WithControlPlane(true))
+		Expect(manager.UnsetTargetControlPlane()).To(Succeed())
+		assertTargetProvider(targetProvider, t.WithControlPlane(false))
 	})
 
 	It("should fail if no control plane targeted", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
 		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
-		res, unsetErr := manager.UnsetTargetControlPlane()
+		unsetErr := manager.UnsetTargetControlPlane()
 		Expect(unsetErr).To(HaveOccurred())
-		Expect(res).To(BeEmpty())
 		assertTargetProvider(targetProvider, t)
 	})
 

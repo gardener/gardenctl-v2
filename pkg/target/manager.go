@@ -67,7 +67,7 @@ type Manager interface {
 	// UnsetTargetShoot unsets the garden shoot configuration
 	UnsetTargetShoot() (string, error)
 	// UnsetTargetControlPlane unsets the control plane flag
-	UnsetTargetControlPlane() (string, error)
+	UnsetTargetControlPlane() error
 	// TargetMatchPattern replaces the whole target
 	// Garden, Project and Shoot values are determined by matching the provided value
 	// against patterns defined in gardenctl configuration. Some values may only match a subset
@@ -317,22 +317,21 @@ func (m *managerImpl) TargetControlPlane(ctx context.Context) error {
 	return m.updateTarget(target)
 }
 
-func (m *managerImpl) UnsetTargetControlPlane() (string, error) {
+func (m *managerImpl) UnsetTargetControlPlane() error {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %v", err)
 	}
 
-	targetedName := currentTarget.ShootName()
 	if currentTarget.ControlPlaneFlag() {
-		return targetedName, m.patchTarget(func(t *targetImpl) error {
+		return m.patchTarget(func(t *targetImpl) error {
 			t.ControlPlane = false
 
 			return nil
 		})
 	}
 
-	return "", ErrNoControlPlaneTargeted
+	return ErrNoControlPlaneTargeted
 }
 
 func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) error {

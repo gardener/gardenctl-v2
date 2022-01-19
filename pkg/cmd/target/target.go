@@ -83,7 +83,7 @@ func runCmdTarget(f util.Factory, o *TargetOptions) error {
 
 	currentTarget, err := manager.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	if o.Output == "" {
