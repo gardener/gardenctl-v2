@@ -153,7 +153,7 @@ func (m *managerImpl) TargetGarden(ctx context.Context, gardenNameOrAlias string
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
@@ -169,7 +169,7 @@ func (m *managerImpl) TargetGarden(ctx context.Context, gardenNameOrAlias string
 func (m *managerImpl) UnsetTargetGarden() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %v", err)
+		return "", fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedName := currentTarget.GardenName()
@@ -193,7 +193,7 @@ func (m *managerImpl) TargetProject(ctx context.Context, projectName string) err
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
@@ -209,7 +209,7 @@ func (m *managerImpl) TargetProject(ctx context.Context, projectName string) err
 func (m *managerImpl) UnsetTargetProject() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %v", err)
+		return "", fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedName := currentTarget.ProjectName()
@@ -231,7 +231,7 @@ func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
@@ -247,7 +247,7 @@ func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 func (m *managerImpl) UnsetTargetSeed() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %v", err)
+		return "", fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedName := currentTarget.SeedName()
@@ -267,7 +267,7 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
@@ -283,7 +283,7 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 func (m *managerImpl) UnsetTargetShoot() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %v", err)
+		return "", fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedName := currentTarget.ShootName()
@@ -304,7 +304,7 @@ func (m *managerImpl) TargetControlPlane(ctx context.Context) error {
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
@@ -320,18 +320,18 @@ func (m *managerImpl) TargetControlPlane(ctx context.Context) error {
 func (m *managerImpl) UnsetTargetControlPlane() error {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
-	if currentTarget.ControlPlane() {
-		return m.patchTarget(func(t *targetImpl) error {
-			t.ControlPlaneFlag = false
-
-			return nil
-		})
+	if !currentTarget.ControlPlane() {
+		return ErrNoControlPlaneTargeted
 	}
 
-	return ErrNoControlPlaneTargeted
+	return m.patchTarget(func(t *targetImpl) error {
+		t.ControlPlaneFlag = false
+
+		return nil
+	})
 }
 
 func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) error {
@@ -344,7 +344,7 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
