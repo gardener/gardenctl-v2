@@ -167,7 +167,7 @@ func initConfig(f *util.FactoryImpl) {
 	cobra.CheckErr(err)
 
 	f.SessionDirectory = filepath.Join(os.TempDir(), "garden", sid)
-	err = os.MkdirAll(f.SessionDirectory, 0600)
+	err = os.MkdirAll(f.SessionDirectory, 0700)
 	cobra.CheckErr(err)
 
 	f.TargetFile = filepath.Join(f.SessionDirectory, targetFilename)
