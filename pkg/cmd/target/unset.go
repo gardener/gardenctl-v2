@@ -11,8 +11,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gardener/gardenctl-v2/pkg/target"
-
 	"github.com/spf13/cobra"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -65,11 +63,12 @@ func runCmdUnset(f util.Factory, o *UnsetOptions) error {
 		targetName, err = manager.UnsetTargetShoot()
 	case TargetKindControlPlane:
 		err = manager.UnsetTargetControlPlane()
-		if err == nil {
-			var currentTarget target.Target
-			currentTarget, err = manager.CurrentTarget()
-			targetName = currentTarget.ShootName()
+		currentTarget, targetErr := manager.CurrentTarget()
+
+		if targetErr != nil {
+			return err
 		}
+		targetName = currentTarget.ShootName()
 	default:
 		err = errors.New("invalid kind")
 	}
