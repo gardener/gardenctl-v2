@@ -23,6 +23,8 @@ type TargetFlags interface {
 	SeedName() string
 	// ShootName returns the value that is tied to the corresponding cobra flag.
 	ShootName() string
+	// ControlPlane returns the value that is tied to the corresponding cobra flag.
+	ControlPlane() bool
 	// AddFlags binds target configuration flags to a given flagset
 	AddFlags(flags *pflag.FlagSet)
 	// ToTarget converts the flags to a target
@@ -37,20 +39,22 @@ type TargetFlags interface {
 	OverrideTarget(current Target) (Target, error)
 }
 
-func NewTargetFlags(garden, project, seed, shoot string) TargetFlags {
+func NewTargetFlags(garden, project, seed, shoot string, controlPlane bool) TargetFlags {
 	return &targetFlagsImpl{
-		gardenName:  garden,
-		projectName: project,
-		seedName:    seed,
-		shootName:   shoot,
+		gardenName:   garden,
+		projectName:  project,
+		seedName:     seed,
+		shootName:    shoot,
+		controlPlane: controlPlane,
 	}
 }
 
 type targetFlagsImpl struct {
-	gardenName  string
-	projectName string
-	seedName    string
-	shootName   string
+	gardenName   string
+	projectName  string
+	seedName     string
+	shootName    string
+	controlPlane bool
 }
 
 func (tf *targetFlagsImpl) GardenName() string {
@@ -69,11 +73,16 @@ func (tf *targetFlagsImpl) ShootName() string {
 	return tf.shootName
 }
 
+func (tf *targetFlagsImpl) ControlPlane() bool {
+	return tf.controlPlane
+}
+
 func (tf *targetFlagsImpl) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&tf.gardenName, "garden", "", "target the given garden cluster")
 	flags.StringVar(&tf.projectName, "project", "", "target the given project")
 	flags.StringVar(&tf.seedName, "seed", "", "target the given seed cluster")
 	flags.StringVar(&tf.shootName, "shoot", "", "target the given shoot cluster")
+	flags.BoolVar(&tf.controlPlane, "control-plane", tf.controlPlane, "target control plane of shoot, use together with shoot argument")
 }
 
 func (tf *targetFlagsImpl) ToTarget() Target {
@@ -81,7 +90,7 @@ func (tf *targetFlagsImpl) ToTarget() Target {
 }
 
 func (tf *targetFlagsImpl) isEmpty() bool {
-	return tf.gardenName == "" && tf.projectName == "" && tf.seedName == "" && tf.shootName == ""
+	return tf.gardenName == "" && tf.projectName == "" && tf.seedName == "" && tf.shootName == "" && !tf.controlPlane
 }
 
 func (tf *targetFlagsImpl) OverrideTarget(current Target) (Target, error) {
@@ -110,6 +119,10 @@ func (tf *targetFlagsImpl) OverrideTarget(current Target) (Target, error) {
 
 		if tf.shootName != "" {
 			current = current.WithShootName(tf.shootName)
+		}
+
+		if tf.controlPlane {
+			current = current.WithControlPlane(tf.controlPlane)
 		}
 
 		if err := current.Validate(); err != nil {

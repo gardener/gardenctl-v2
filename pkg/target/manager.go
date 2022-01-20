@@ -28,6 +28,7 @@ var (
 	ErrNoSeedTargeted                = errors.New("no seed cluster targeted")
 	ErrNoShootTargeted               = errors.New("no shoot targeted")
 	ErrNeitherProjectNorSeedTargeted = errors.New("neither project nor seed are targeted")
+	ErrNoControlPlaneTargeted        = errors.New("no control plane targeted")
 )
 
 //go:generate mockgen -destination=./mocks/mock_manager.go -package=mocks github.com/gardener/gardenctl-v2/pkg/target Manager
@@ -53,6 +54,8 @@ type Manager interface {
 	// This implicitly unsets seed target configuration
 	// It will also configure appropriate project and seed values if not already set
 	TargetShoot(ctx context.Context, name string) error
+	// TargetControlPlane sets the control plane target flag
+	TargetControlPlane(ctx context.Context) error
 	// UnsetTargetGarden unsets the garden target configuration
 	// This implicitly unsets project, shoot and seed target configuration
 	UnsetTargetGarden() (string, error)
@@ -63,6 +66,8 @@ type Manager interface {
 	UnsetTargetSeed() (string, error)
 	// UnsetTargetShoot unsets the garden shoot configuration
 	UnsetTargetShoot() (string, error)
+	// UnsetTargetControlPlane unsets the control plane flag
+	UnsetTargetControlPlane() error
 	// TargetMatchPattern replaces the whole target
 	// Garden, Project and Shoot values are determined by matching the provided value
 	// against patterns defined in gardenctl configuration. Some values may only match a subset
@@ -133,7 +138,7 @@ func (m *managerImpl) TargetFlags() TargetFlags {
 	}
 
 	if tf == nil {
-		tf = NewTargetFlags("", "", "", "")
+		tf = NewTargetFlags("", "", "", "", false)
 	}
 
 	return tf
@@ -148,7 +153,7 @@ func (m *managerImpl) TargetGarden(ctx context.Context, gardenNameOrAlias string
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
@@ -164,7 +169,7 @@ func (m *managerImpl) TargetGarden(ctx context.Context, gardenNameOrAlias string
 func (m *managerImpl) UnsetTargetGarden() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %v", err)
+		return "", fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedName := currentTarget.GardenName()
@@ -174,6 +179,7 @@ func (m *managerImpl) UnsetTargetGarden() (string, error) {
 			t.Project = ""
 			t.Seed = ""
 			t.Shoot = ""
+			t.ControlPlaneFlag = false
 
 			return nil
 		})
@@ -187,7 +193,7 @@ func (m *managerImpl) TargetProject(ctx context.Context, projectName string) err
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
@@ -203,7 +209,7 @@ func (m *managerImpl) TargetProject(ctx context.Context, projectName string) err
 func (m *managerImpl) UnsetTargetProject() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %v", err)
+		return "", fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedName := currentTarget.ProjectName()
@@ -211,6 +217,7 @@ func (m *managerImpl) UnsetTargetProject() (string, error) {
 		return targetedName, m.patchTarget(func(t *targetImpl) error {
 			t.Project = ""
 			t.Shoot = ""
+			t.ControlPlaneFlag = false
 
 			return nil
 		})
@@ -224,7 +231,7 @@ func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
@@ -240,7 +247,7 @@ func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 func (m *managerImpl) UnsetTargetSeed() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %v", err)
+		return "", fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedName := currentTarget.SeedName()
@@ -260,7 +267,7 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
@@ -276,19 +283,55 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 func (m *managerImpl) UnsetTargetShoot() (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %v", err)
+		return "", fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedName := currentTarget.ShootName()
 	if targetedName != "" {
 		return targetedName, m.patchTarget(func(t *targetImpl) error {
 			t.Shoot = ""
+			t.ControlPlaneFlag = false
 
 			return nil
 		})
 	}
 
 	return "", ErrNoShootTargeted
+}
+
+func (m *managerImpl) TargetControlPlane(ctx context.Context) error {
+	tb := NewTargetBuilder(m.config, m.clientProvider)
+
+	currentTarget, err := m.CurrentTarget()
+	if err != nil {
+		return fmt.Errorf("failed to get current target: %w", err)
+	}
+
+	tb.Init(currentTarget)
+
+	target, err := tb.SetControlPlane(ctx).Build()
+	if err != nil {
+		return err
+	}
+
+	return m.updateTarget(target)
+}
+
+func (m *managerImpl) UnsetTargetControlPlane() error {
+	currentTarget, err := m.CurrentTarget()
+	if err != nil {
+		return fmt.Errorf("failed to get current target: %w", err)
+	}
+
+	if !currentTarget.ControlPlane() {
+		return ErrNoControlPlaneTargeted
+	}
+
+	return m.patchTarget(func(t *targetImpl) error {
+		t.ControlPlaneFlag = false
+
+		return nil
+	})
 }
 
 func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) error {
@@ -301,7 +344,7 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
@@ -330,6 +373,10 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		tb.SetShoot(ctx, tm.Shoot)
 	}
 
+	if m.TargetFlags().ControlPlane() {
+		tb.SetControlPlane(ctx)
+	}
+
 	target, err := tb.Build()
 	if err != nil {
 		return err
@@ -344,6 +391,7 @@ func (m *managerImpl) updateTarget(target Target) error {
 		t.Project = target.ProjectName()
 		t.Seed = target.SeedName()
 		t.Shoot = target.ShootName()
+		t.ControlPlaneFlag = target.ControlPlane()
 
 		return nil
 	})

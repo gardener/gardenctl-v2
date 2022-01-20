@@ -71,8 +71,10 @@ func runCmdTarget(f util.Factory, o *TargetOptions) error {
 		err = manager.TargetSeed(ctx, o.TargetName)
 	case TargetKindShoot:
 		err = manager.TargetShoot(ctx, o.TargetName)
-	default:
+	case TargetKindPattern:
 		err = manager.TargetMatchPattern(ctx, o.TargetName)
+	case TargetKindControlPlane:
+		err = manager.TargetControlPlane(ctx)
 	}
 
 	if err != nil {
@@ -81,11 +83,15 @@ func runCmdTarget(f util.Factory, o *TargetOptions) error {
 
 	currentTarget, err := manager.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
+		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	if o.Output == "" {
-		fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
+		if o.Kind == TargetKindControlPlane {
+			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted control plane of shoot %q\n", currentTarget.ShootName())
+		} else if o.Kind != "" {
+			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
+		}
 
 		return nil
 	}
@@ -100,15 +106,16 @@ func runCmdTarget(f util.Factory, o *TargetOptions) error {
 type TargetKind string
 
 const (
-	TargetKindGarden  TargetKind = "garden"
-	TargetKindProject TargetKind = "project"
-	TargetKindSeed    TargetKind = "seed"
-	TargetKindShoot   TargetKind = "shoot"
-	TargetKindPattern TargetKind = "pattern"
+	TargetKindGarden       TargetKind = "garden"
+	TargetKindProject      TargetKind = "project"
+	TargetKindSeed         TargetKind = "seed"
+	TargetKindShoot        TargetKind = "shoot"
+	TargetKindPattern      TargetKind = "pattern"
+	TargetKindControlPlane TargetKind = "control-plane"
 )
 
 var (
-	AllTargetKinds = []TargetKind{TargetKindGarden, TargetKindProject, TargetKindSeed, TargetKindShoot, TargetKindPattern}
+	AllTargetKinds = []TargetKind{TargetKindGarden, TargetKindProject, TargetKindSeed, TargetKindShoot, TargetKindPattern, TargetKindControlPlane}
 )
 
 func ValidateKind(kind TargetKind) error {
@@ -129,6 +136,7 @@ func validTargetArgsFunction(f util.Factory, o *TargetOptions, args []string, to
 			string(TargetKindSeed),
 			string(TargetKindShoot),
 			string(TargetKindPattern),
+			string(TargetKindControlPlane),
 		}, nil
 	}
 
@@ -212,7 +220,9 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 
 	tf := manager.TargetFlags()
 	if o.Kind == "" {
-		if tf.ShootName() != "" {
+		if tf.ControlPlane() {
+			o.Kind = TargetKindControlPlane
+		} else if tf.ShootName() != "" {
 			o.Kind = TargetKindShoot
 		} else if tf.ProjectName() != "" {
 			o.Kind = TargetKindProject
@@ -241,9 +251,15 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 
 // Validate validates the provided options
 func (o *TargetOptions) Validate() error {
-	// reject flag/arg-less invocations
-	if o.Kind == "" || o.TargetName == "" {
-		return errors.New("no target specified")
+	switch o.Kind {
+	case "":
+		return errors.New("no target kind specified")
+	case TargetKindControlPlane:
+		// valid
+	default:
+		if o.TargetName == "" {
+			return fmt.Errorf("target kind %q requires a name argument", o.Kind)
+		}
 	}
 
 	if err := ValidateKind(o.Kind); err != nil {

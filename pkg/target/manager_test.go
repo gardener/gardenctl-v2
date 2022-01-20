@@ -29,6 +29,7 @@ func assertTarget(t target.Target, expected target.Target) {
 	ExpectWithOffset(1, t.ProjectName()).To(Equal(expected.ProjectName()))
 	ExpectWithOffset(1, t.SeedName()).To(Equal(expected.SeedName()))
 	ExpectWithOffset(1, t.ShootName()).To(Equal(expected.ShootName()))
+	ExpectWithOffset(1, t.ControlPlane()).To(Equal(expected.ControlPlane()))
 }
 
 func assertTargetProvider(tp target.TargetProvider, expected target.Target) {
@@ -347,6 +348,22 @@ var _ = Describe("Manager", func() {
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
 	})
 
+	It("should be able to target control plane for a shoot", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name)
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
+
+		Expect(manager.TargetControlPlane(ctx)).To(Succeed())
+		assertTargetProvider(targetProvider, t.WithControlPlane(true))
+	})
+
+	It("should fail to target control plane if shoot is not set", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
+
+		Expect(manager.TargetControlPlane(ctx)).NotTo(Succeed())
+		assertTargetProvider(targetProvider, t)
+	})
+
 	It("should provide a garden client", func() {
 		t := target.NewTarget(gardenName, "", "", "")
 		manager, _ := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
@@ -434,7 +451,7 @@ var _ = Describe("Manager", func() {
 	})
 
 	It("should unset deeper target levels when unsetting project", func() {
-		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name)
+		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name).WithControlPlane(true)
 		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
 
 		// Unset Project
@@ -459,6 +476,23 @@ var _ = Describe("Manager", func() {
 		res, unsetErr := manager.UnsetTargetShoot()
 		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
+		assertTargetProvider(targetProvider, t)
+	})
+
+	It("should be able to unset selected control plane", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name).WithControlPlane(true)
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
+
+		Expect(manager.UnsetTargetControlPlane()).To(Succeed())
+		assertTargetProvider(targetProvider, t.WithControlPlane(false))
+	})
+
+	It("should fail if no control plane targeted", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
+		manager, targetProvider := createTestManager(t, *cfg, clientProvider, kubeconfigCache)
+
+		unsetErr := manager.UnsetTargetControlPlane()
+		Expect(unsetErr).To(HaveOccurred())
 		assertTargetProvider(targetProvider, t)
 	})
 

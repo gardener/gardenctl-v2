@@ -52,7 +52,7 @@ func Execute() {
 // NewDefaultGardenctlCommand creates the `gardenctl` command with defaults
 func NewDefaultGardenctlCommand() *cobra.Command {
 	factory := util.FactoryImpl{
-		TargetFlags: target.NewTargetFlags("", "", "", ""),
+		TargetFlags: target.NewTargetFlags("", "", "", "", false),
 	}
 	ioStreams := util.NewIOStreams()
 

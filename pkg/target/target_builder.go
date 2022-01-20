@@ -33,6 +33,8 @@ type TargetBuilder interface {
 	SetSeed(context.Context, string) TargetBuilder
 	// SetShoot updates TargetBuilder with a Shoot name
 	SetShoot(context.Context, string) TargetBuilder
+	// SetControlPlane updates TargetBuilder shoot control plane flag
+	SetControlPlane(context.Context) TargetBuilder
 	// Build uses the values set for TargetBuilder to create and return a new target
 	// This function validates the target values and tries to complete missing values
 	// If the provided values do not represent a valid and unique target, an error is returned
@@ -74,6 +76,7 @@ func (b *targetBuilderImpl) SetGarden(name string) TargetBuilder {
 		t.Project = ""
 		t.Seed = ""
 		t.Shoot = ""
+		t.ControlPlaneFlag = false
 
 		return nil
 	})
@@ -96,6 +99,7 @@ func (b *targetBuilderImpl) SetProject(ctx context.Context, name string) TargetB
 		t.Project = project.Name
 		t.Seed = ""
 		t.Shoot = ""
+		t.ControlPlaneFlag = false
 
 		return nil
 	})
@@ -123,6 +127,7 @@ func (b *targetBuilderImpl) SetNamespace(ctx context.Context, name string) Targe
 		t.Project = project.Name
 		t.Seed = ""
 		t.Shoot = ""
+		t.ControlPlaneFlag = false
 
 		return nil
 	})
@@ -145,6 +150,7 @@ func (b *targetBuilderImpl) SetSeed(ctx context.Context, name string) TargetBuil
 		t.Project = ""
 		t.Seed = seed.Name
 		t.Shoot = ""
+		t.ControlPlaneFlag = false
 
 		return nil
 	})
@@ -181,6 +187,21 @@ func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBui
 
 		t.Seed = ""
 		t.Shoot = shoot.Name
+		t.ControlPlaneFlag = false
+
+		return nil
+	})
+
+	return b
+}
+
+func (b *targetBuilderImpl) SetControlPlane(ctx context.Context) TargetBuilder {
+	b.actions = append(b.actions, func(t *targetImpl) error {
+		if t.Shoot == "" {
+			return ErrNoShootTargeted
+		}
+
+		t.ControlPlaneFlag = true
 
 		return nil
 	})
@@ -199,6 +220,7 @@ func (b *targetBuilderImpl) Build() (Target, error) {
 		target.ProjectName(),
 		target.SeedName(),
 		target.ShootName(),
+		target.ControlPlane(),
 	}
 
 	for _, a := range b.actions {

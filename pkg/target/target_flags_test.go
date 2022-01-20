@@ -16,7 +16,7 @@ import (
 
 var _ = Describe("Target Flags", func() {
 	It("should return an empty set of target flags", func() {
-		tf := target.NewTargetFlags("", "", "", "")
+		tf := target.NewTargetFlags("", "", "", "", false)
 		Expect(tf).NotTo(BeNil())
 		Expect(tf.GardenName()).To(BeEmpty())
 		Expect(tf.ProjectName()).To(BeEmpty())
@@ -26,7 +26,7 @@ var _ = Describe("Target Flags", func() {
 	})
 
 	It("should return valid set of target flags", func() {
-		tf := target.NewTargetFlags("garden", "project", "", "shoot")
+		tf := target.NewTargetFlags("garden", "project", "", "shoot", false)
 		Expect(tf).NotTo(BeNil())
 		Expect(tf.GardenName()).To(Equal("garden"))
 		Expect(tf.ProjectName()).To(Equal("project"))
@@ -37,39 +37,41 @@ var _ = Describe("Target Flags", func() {
 
 	It("should add target flags to a cobra FlagSet", func() {
 		flags := &pflag.FlagSet{}
-		tf := target.NewTargetFlags("", "", "", "")
+		tf := target.NewTargetFlags("", "", "", "", false)
 		Expect(flags.HasFlags()).To(BeFalse())
 		tf.AddFlags(flags)
 		var names []string
 		flags.VisitAll(func(flag *pflag.Flag) {
 			names = append(names, flag.Name)
 		})
-		Expect(names).To(Equal([]string{"garden", "project", "seed", "shoot"}))
+		Expect(names).To(Equal([]string{"garden", "project", "seed", "shoot", "control-plane"}))
 	})
 
 	It("should validate target flags", func() {
-		Expect(target.NewTargetFlags("", "project", "", "shoot").IsTargetValid()).To(BeFalse())
-		Expect(target.NewTargetFlags("garden", "", "", "shoot").IsTargetValid()).To(BeTrue())
-		Expect(target.NewTargetFlags("garden", "project", "seed", "shoot").IsTargetValid()).To(BeFalse())
-		Expect(target.NewTargetFlags("garden", "", "", "").IsTargetValid()).To(BeTrue())
-		Expect(target.NewTargetFlags("garden", "project", "", "").IsTargetValid()).To(BeTrue())
-		Expect(target.NewTargetFlags("garden", "", "seed", "").IsTargetValid()).To(BeTrue())
-		Expect(target.NewTargetFlags("garden", "project", "", "shoot").IsTargetValid()).To(BeTrue())
-		Expect(target.NewTargetFlags("garden", "", "seed", "shoot").IsTargetValid()).To(BeTrue())
+		Expect(target.NewTargetFlags("", "project", "", "shoot", false).IsTargetValid()).To(BeFalse())
+		Expect(target.NewTargetFlags("garden", "", "", "shoot", false).IsTargetValid()).To(BeTrue())
+		Expect(target.NewTargetFlags("garden", "project", "seed", "shoot", false).IsTargetValid()).To(BeFalse())
+		Expect(target.NewTargetFlags("garden", "", "", "", false).IsTargetValid()).To(BeTrue())
+		Expect(target.NewTargetFlags("garden", "project", "", "", false).IsTargetValid()).To(BeTrue())
+		Expect(target.NewTargetFlags("garden", "", "seed", "", false).IsTargetValid()).To(BeTrue())
+		Expect(target.NewTargetFlags("garden", "project", "", "shoot", false).IsTargetValid()).To(BeTrue())
+		Expect(target.NewTargetFlags("garden", "", "seed", "shoot", false).IsTargetValid()).To(BeTrue())
+		Expect(target.NewTargetFlags("garden", "project", "", "shoot", true).IsTargetValid()).To(BeTrue())
 	})
 
 	It("should override a target with target flags", func() {
-		tf := target.NewTargetFlags("garden", "project", "", "shoot")
+		tf := target.NewTargetFlags("garden", "project", "", "shoot", true)
 		t, err := tf.OverrideTarget(target.NewTarget("a", "b", "c", "d"))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(t.GardenName()).To(Equal("garden"))
 		Expect(t.ProjectName()).To(Equal("project"))
 		Expect(t.SeedName()).To(BeEmpty())
 		Expect(t.ShootName()).To(Equal("shoot"))
+		Expect(t.ControlPlane()).To(BeTrue())
 	})
 
 	It("should fail to override a target", func() {
-		tf := target.NewTargetFlags("", "", "", "shoot")
+		tf := target.NewTargetFlags("", "", "", "shoot", false)
 		_, err := tf.OverrideTarget(target.NewTarget("", "b", "c", "d"))
 		Expect(err).To(HaveOccurred())
 	})
