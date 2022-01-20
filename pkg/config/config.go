@@ -8,7 +8,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"regexp"
 
@@ -120,34 +119,21 @@ func (config *Config) Garden(name string) (*Garden, error) {
 	return &config.Gardens[i], nil
 }
 
-// KubeconfigPath returns the path to the kubeconfig file for a configured garden cluster
-func (config *Config) KubeconfigPath(name string) (string, error) {
-	garden, err := config.Garden(name)
-	if err != nil {
-		return "", err
-	}
-
-	return garden.Kubeconfig, nil
-}
-
-// Kubeconfig returns the kubeconfig for a configured garden cluster
-func (config *Config) Kubeconfig(name string) ([]byte, error) {
-	filename, err := config.KubeconfigPath(name)
-	if err != nil {
-		return nil, err
-	}
-
-	return ioutil.ReadFile(filename)
-}
-
 // ClientConfig returns the client config for a configured garden cluster
 func (config *Config) ClientConfig(name string) (clientcmd.ClientConfig, error) {
-	data, err := config.Kubeconfig(name)
+	garden, err := config.Garden(name)
 	if err != nil {
 		return nil, err
 	}
 
-	return clientcmd.NewClientConfigFromBytes(data)
+	loader := &clientcmd.ClientConfigLoadingRules{ExplicitPath: garden.Kubeconfig}
+
+	overrides := &clientcmd.ConfigOverrides{}
+	if garden.Context != "" {
+		overrides.CurrentContext = garden.Context
+	}
+
+	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loader, overrides), nil
 }
 
 // DeleteGarden deletes a Garden from the configuration

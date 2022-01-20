@@ -35,21 +35,6 @@ func (m *MockClientProvider) EXPECT() *MockClientProviderMockRecorder {
 	return m.recorder
 }
 
-// FromBytes mocks base method.
-func (m *MockClientProvider) FromBytes(arg0 []byte) (client.Client, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FromBytes", arg0)
-	ret0, _ := ret[0].(client.Client)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FromBytes indicates an expected call of FromBytes.
-func (mr *MockClientProviderMockRecorder) FromBytes(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FromBytes", reflect.TypeOf((*MockClientProvider)(nil).FromBytes), arg0)
-}
-
 // FromClientConfig mocks base method.
 func (m *MockClientProvider) FromClientConfig(arg0 clientcmd.ClientConfig) (client.Client, error) {
 	m.ctrl.T.Helper()
@@ -63,19 +48,4 @@ func (m *MockClientProvider) FromClientConfig(arg0 clientcmd.ClientConfig) (clie
 func (mr *MockClientProviderMockRecorder) FromClientConfig(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FromClientConfig", reflect.TypeOf((*MockClientProvider)(nil).FromClientConfig), arg0)
-}
-
-// FromFile mocks base method.
-func (m *MockClientProvider) FromFile(arg0 string) (client.Client, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FromFile", arg0)
-	ret0, _ := ret[0].(client.Client)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FromFile indicates an expected call of FromFile.
-func (mr *MockClientProviderMockRecorder) FromFile(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FromFile", reflect.TypeOf((*MockClientProvider)(nil).FromFile), arg0)
 }

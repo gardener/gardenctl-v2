@@ -89,7 +89,9 @@ var _ = Describe("Target Unset Command", func() {
 
 		clientProvider = targetmocks.NewMockClientProvider(ctrl)
 		gardenClient = internalfake.NewClientWithObjects(project, seed, shoot)
-		clientProvider.EXPECT().FromFile(gardenKubeconfig).Return(gardenClient, nil).AnyTimes()
+		clientConfig, err := cfg.ClientConfig(gardenName)
+		Expect(err).ToNot(HaveOccurred())
+		clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(gardenClient, nil).AnyTimes()
 
 		factory = internalfake.NewFakeFactory(cfg, nil, clientProvider, targetProvider)
 		ctx = context.Background()

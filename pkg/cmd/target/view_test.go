@@ -56,7 +56,6 @@ var _ = Describe("Target View Options", func() {
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
 		o := cmdtarget.NewViewOptions(streams)
-		err := o.Validate()
-		Expect(err).ToNot(HaveOccurred())
+		Expect(o.Validate()).ToNot(HaveOccurred())
 	})
 })

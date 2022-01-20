@@ -22,7 +22,6 @@ type TargetBuilder interface {
 	// Use this function to overwrite target baseline data before updating with new values
 	Init(Target) TargetBuilder
 	// SetGarden updates TargetBuilder with a Garden name
-	// gardenName can be Garden Name or Alias as defined in the config
 	SetGarden(string) TargetBuilder
 	// SetProject updates TargetBuilder with a Project name
 	SetProject(context.Context, string) TargetBuilder

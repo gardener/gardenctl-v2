@@ -95,7 +95,9 @@ var _ = Describe("Target Command", func() {
 	})
 
 	JustBeforeEach(func() {
-		clientProvider.EXPECT().FromFile(gardenKubeconfig).Return(gardenClient, nil).AnyTimes()
+		clientConfig, err := cfg.ClientConfig(gardenName)
+		Expect(err).ToNot(HaveOccurred())
+		clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(gardenClient, nil).AnyTimes()
 	})
 
 	AfterEach(func() {

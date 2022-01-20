@@ -73,7 +73,6 @@ var _ = Describe("Version Command", func() {
 	})
 
 	It("should validate the options", func() {
-		err := o.Validate()
-		Expect(err).ToNot(HaveOccurred())
+		Expect(o.Validate()).ToNot(HaveOccurred())
 	})
 })
