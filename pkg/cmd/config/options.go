@@ -156,6 +156,11 @@ func (o *options) runSetGarden() error {
 func (o *options) runDeleteGarden() error {
 	err := o.Configuration.DeleteGarden(o.Name)
 	if err != nil {
+		return err
+	}
+
+	err = o.Configuration.Save()
+	if err != nil {
 		return fmt.Errorf("failed to delete garden from configuration: %w", err)
 	}
 
