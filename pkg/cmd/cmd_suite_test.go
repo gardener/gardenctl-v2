@@ -51,6 +51,7 @@ var _ = BeforeSuite(func() {
 	Expect(os.MkdirAll(sessionDir, os.ModePerm))
 	targetFile = filepath.Join(sessionDir, cmd.TargetFilename)
 	cfg = &config.Config{
+		Filename: configFile,
 		Gardens: []config.Garden{{
 			Name:       "foo",
 			Kubeconfig: "/not/a/real/garden-foo/kubeconfig",
@@ -59,7 +60,7 @@ var _ = BeforeSuite(func() {
 			Kubeconfig: "/not/a/real/garden-bar/kubeconfig",
 		}},
 	}
-	Expect(cfg.SaveToFile(configFile)).To(Succeed())
+	Expect(cfg.Save()).To(Succeed())
 })
 
 var _ = AfterSuite(func() {

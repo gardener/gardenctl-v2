@@ -19,24 +19,26 @@ import (
 
 // Config holds the gardenctl configuration
 type Config struct {
+	// Filename is the name of the gardenctl configuration file
+	Filename string `yaml:"-"`
 	// Gardens is a list of known Garden clusters
 	Gardens []Garden `yaml:"gardens"`
-	// MatchPatterns is a list of regex patterns that can be defined to use custom input formats for targeting
-	// Use named capturing groups to match target values.
-	// Supported capturing groups: garden, project, namespace, shoot
-	MatchPatterns []string `yaml:"matchPatterns"`
 }
 
 // Garden represents one garden cluster
 type Garden struct {
-	// Name is a unique identifier of this Garden that can be used to target this Garden
-	// The value is considered when evaluating the garden matcher pattern
-	Name string `yaml:"name"`
+	// Identity is a unique identifier of this Garden that can be used to target this Garden
+	Name string `yaml:"identity"`
 	// Kubeconfig holds the path for the kubeconfig of the garden cluster
 	Kubeconfig string `yaml:"kubeconfig"`
-	// Aliases is a list of alternative names that can be used to target this Garden
-	// Each value is considered when evaluating the garden matcher pattern
-	Aliases []string `yaml:"aliases"`
+	// Context overrides the current-context of the garden cluster kubeconfig
+	// +optional
+	Context string `yaml:"context"`
+	// Patterns is a list of regex patterns that can be defined to use custom input formats for targeting
+	// Use named capturing groups to match target values.
+	// Supported capturing groups: project, namespace, shoot
+	// +optional
+	Patterns []string `yaml:"matchPatterns"`
 }
 
 // LoadFromFile parses a gardenctl config file and returns a Config struct
@@ -52,7 +54,7 @@ func LoadFromFile(filename string) (*Config, error) {
 		return nil, fmt.Errorf("failed to determine filesize: %w", err)
 	}
 
-	config := &Config{}
+	config := &Config{Filename: filename}
 
 	if stat.Size() > 0 {
 		if err := yaml.NewDecoder(f).Decode(config); err != nil {
@@ -73,9 +75,9 @@ func LoadFromFile(filename string) (*Config, error) {
 	return config, nil
 }
 
-// SaveToFile updates a gardenctl config file with the values passed via Config struct
-func (config *Config) SaveToFile(filename string) error {
-	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+// Save updates a gardenctl config file with the values passed via Config struct
+func (config *Config) Save() error {
+	f, err := os.OpenFile(config.Filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
@@ -88,37 +90,44 @@ func (config *Config) SaveToFile(filename string) error {
 	return nil
 }
 
-// PatternMatch holds (target) values extracted from a provided string
-type PatternMatch struct {
-	// Garden is the matched Garden
-	Garden string
-	// Project is the matched Project
-	Project string
-	// Namespace is the matched Namespace, can be used to find the related project
-	Namespace string
-	// Shoot is the matched Shoot
-	Shoot string
-}
-
-func contains(values []string, value string) bool {
-	for _, v := range values {
-		if v == value {
-			return true
+func (config *Config) indexOfGarden(name string) (int, bool) {
+	for i, g := range config.Gardens {
+		if g.Name == name {
+			return i, true
 		}
 	}
 
-	return false
+	return -1, false
+}
+
+// Garden returns a Garden cluster from the list of configured Gardens
+func (config *Config) GardenNames() []string {
+	names := []string{}
+	for _, g := range config.Gardens {
+		names = append(names, g.Name)
+	}
+
+	return names
+}
+
+// Garden returns a Garden cluster from the list of configured Gardens
+func (config *Config) Garden(name string) (*Garden, error) {
+	i, ok := config.indexOfGarden(name)
+	if !ok {
+		return nil, fmt.Errorf("garden %q is not defined in gardenctl configuration", name)
+	}
+
+	return &config.Gardens[i], nil
 }
 
 // KubeconfigPath returns the path to the kubeconfig file for a configured garden cluster
 func (config *Config) KubeconfigPath(name string) (string, error) {
-	for _, g := range config.Gardens {
-		if g.Name == name {
-			return g.Kubeconfig, nil
-		}
+	garden, err := config.Garden(name)
+	if err != nil {
+		return "", err
 	}
 
-	return "", fmt.Errorf("garden cluster %q is not configured", name)
+	return garden.Kubeconfig, nil
 }
 
 // Kubeconfig returns the kubeconfig for a configured garden cluster
@@ -141,28 +150,34 @@ func (config *Config) ClientConfig(name string) (clientcmd.ClientConfig, error) 
 	return clientcmd.NewClientConfigFromBytes(data)
 }
 
-// GardenName returns the unique name of a Garden cluster from the list of configured Gardens
-// The first Garden name where nameOrAlias matches either name or one of the defined aliases will be returned
-func (config *Config) GardenName(nameOrAlias string) (string, error) {
-	for _, g := range config.Gardens {
-		if g.Name == nameOrAlias {
-			return g.Name, nil
-		}
-
-		if contains(g.Aliases, nameOrAlias) {
-			return g.Name, nil
-		}
+// DeleteGarden deletes a Garden from the configuration
+func (config *Config) DeleteGarden(name string) error {
+	i, ok := config.indexOfGarden(name)
+	if !ok {
+		return fmt.Errorf("garden %q is not defined in gardenctl configuration", name)
 	}
 
-	return "", fmt.Errorf("garden with name or alias %q is not defined in gardenctl configuration", nameOrAlias)
+	config.Gardens = append(config.Gardens[:i], config.Gardens[i+1:]...)
+
+	return nil
+}
+
+// PatternMatch holds (target) values extracted from a provided string
+type PatternMatch struct {
+	// Garden is the matched Garden
+	Garden string
+	// Project is the matched Project
+	Project string
+	// Namespace is the matched Namespace, can be used to find the related project
+	Namespace string
+	// Shoot is the matched Shoot
+	Shoot string
 }
 
 // PatternKey is a key that can be used to identify a value in a pattern
 type PatternKey string
 
 const (
-	// PatternKeyGarden is used to identify a Garden by name or alias
-	PatternKeyGarden = PatternKey("garden")
 	// PatternKeyProject is used to identify a Project
 	PatternKeyProject = PatternKey("project")
 	// PatternKeyNamespace is used to identify a Project by the namespace it refers to
@@ -173,8 +188,38 @@ const (
 
 // MatchPattern matches a string against patterns defined in gardenctl config
 // If matched, the function creates and returns a PatternMatch from the provided target string
-func (config *Config) MatchPattern(value string) (*PatternMatch, error) {
-	for _, p := range config.MatchPatterns {
+func (config *Config) MatchPattern(value string, name string) (*PatternMatch, error) {
+	var patternMatch *PatternMatch
+
+	for _, g := range config.Gardens {
+		match, err := matchPattern(g.Patterns, value)
+		if err != nil {
+			return nil, err
+		}
+
+		if match != nil {
+			match.Garden = g.Name
+
+			if name == "" || g.Name == name {
+				// Directly return match of selected garden
+				return match, nil
+			}
+
+			patternMatch = match
+		}
+	}
+
+	if patternMatch != nil {
+		// Did not match pattern of current garden, but did match other pattern
+		return patternMatch, nil
+	}
+
+	return nil, errors.New("the provided value does not match any pattern")
+}
+
+// matchPattern matches pattern with provided list of patterns
+func matchPattern(patterns []string, value string) (*PatternMatch, error) {
+	for _, p := range patterns {
 		r, err := regexp.Compile(p)
 		if err != nil {
 			return nil, fmt.Errorf("failed to compile configured regular expression %q: %w", p, err)
@@ -191,8 +236,6 @@ func (config *Config) MatchPattern(value string) (*PatternMatch, error) {
 
 		for i, name := range names {
 			switch PatternKey(name) {
-			case PatternKeyGarden:
-				tm.Garden = matches[i]
 			case PatternKeyProject:
 				tm.Project = matches[i]
 			case PatternKeyNamespace:
@@ -205,5 +248,5 @@ func (config *Config) MatchPattern(value string) (*PatternMatch, error) {
 		return tm, nil
 	}
 
-	return nil, errors.New("the provided value does not match any pattern")
+	return nil, nil
 }

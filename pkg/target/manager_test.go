@@ -93,11 +93,11 @@ var _ = Describe("Target Manager", func() {
 			Gardens: []config.Garden{{
 				Name:       gardenName,
 				Kubeconfig: gardenKubeconfig,
+				Patterns: []string{
+					fmt.Sprintf("^(%s/)?shoot--(?P<project>.+)--(?P<shoot>.+)$", gardenName),
+					"^namespace:(?P<namespace>[^/]+)$",
+				},
 			}},
-			MatchPatterns: []string{
-				"^((?P<garden>[^/]+)/)?shoot--(?P<project>.+)--(?P<shoot>.+)$",
-				"^namespace:(?P<namespace>[^/]+)$",
-			},
 		}
 
 		prod1Project = &gardencorev1beta1.Project{
@@ -313,11 +313,11 @@ var _ = Describe("Target Manager", func() {
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
 	})
 
-	It("should fail to target shoot by matching a pattern if garden is not set", func() {
+	It("should be able to target shoot by matching a pattern if garden is not set", func() {
 		t := target.NewTarget("", "", "", "")
 		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
 
-		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).NotTo(Succeed())
+		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
 		assertTargetProvider(targetProvider, t)
 	})
 
