@@ -62,13 +62,13 @@ func runCmdUnset(f util.Factory, o *UnsetOptions) error {
 	case TargetKindShoot:
 		targetName, err = manager.UnsetTargetShoot()
 	case TargetKindControlPlane:
-		err = manager.UnsetTargetControlPlane()
 		currentTarget, targetErr := manager.CurrentTarget()
-
 		if targetErr != nil {
-			return err
+			return targetErr
 		}
+
 		targetName = currentTarget.ShootName()
+		err = manager.UnsetTargetControlPlane()
 	default:
 		err = errors.New("invalid kind")
 	}
