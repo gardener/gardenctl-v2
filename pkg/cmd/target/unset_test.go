@@ -7,43 +7,48 @@ SPDX-License-Identifier: Apache-2.0
 package target_test
 
 import (
+	"context"
+
+	"github.com/golang/mock/gomock"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
+	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
-func init() {
-	utilruntime.Must(gardencorev1beta1.AddToScheme(scheme.Scheme))
-}
-
-var _ = Describe("Command", func() {
+var _ = Describe("Target Unset Command", func() {
 	const (
 		gardenName       = "mygarden"
 		gardenKubeconfig = "/not/a/real/file"
 		projectName      = "myproject"
 		seedName         = "myseed"
 		shootName        = "myshoot"
-		namespace        = "garden"
+		namespace        = "garden-prod1"
 	)
 
 	var (
-		project *gardencorev1beta1.Project
-		seed    *gardencorev1beta1.Seed
-		shoot   *gardencorev1beta1.Shoot
-		cfg     *config.Config
+		ctrl           *gomock.Controller
+		cfg            *config.Config
+		clientProvider *targetmocks.MockClientProvider
+		gardenClient   client.Client
+		streams        util.IOStreams
+		out            *util.SafeBytesBuffer
+		ctx            context.Context
+		factory        *internalfake.Factory
+		targetProvider *internalfake.TargetProvider
+		currentTarget  target.Target
+		project        *gardencorev1beta1.Project
+		seed           *gardencorev1beta1.Seed
+		shoot          *gardencorev1beta1.Shoot
 	)
 
 	BeforeEach(func() {
@@ -54,7 +59,6 @@ var _ = Describe("Command", func() {
 			}},
 		}
 
-		// garden cluster contains the targeted project
 		project = &gardencorev1beta1.Project{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: projectName,
@@ -64,16 +68,9 @@ var _ = Describe("Command", func() {
 			},
 		}
 
-		// garden cluster contains the targeted seed
 		seed = &gardencorev1beta1.Seed{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: seedName,
-			},
-			Spec: gardencorev1beta1.SeedSpec{
-				SecretRef: &corev1.SecretReference{
-					Namespace: namespace,
-					Name:      seedName,
-				},
 			},
 		}
 
@@ -83,10 +80,29 @@ var _ = Describe("Command", func() {
 				Namespace: namespace,
 			},
 		}
+
+		ctrl = gomock.NewController(GinkgoT())
+
+		streams, _, out, _ = util.NewTestIOStreams()
+
+		currentTarget = target.NewTarget(gardenName, "", "", "")
+
+		clientProvider = targetmocks.NewMockClientProvider(ctrl)
+		gardenClient = internalfake.NewClientWithObjects(project, seed, shoot)
+		clientProvider.EXPECT().FromFile(gardenKubeconfig).Return(gardenClient, nil).AnyTimes()
+
+		factory = internalfake.NewFakeFactory(cfg, nil, clientProvider, targetProvider)
+		ctx = context.Background()
+	})
+
+	JustBeforeEach(func() {
+		targetProvider = internalfake.NewFakeTargetProvider(currentTarget)
+
+		factory = internalfake.NewFakeFactory(cfg, nil, clientProvider, targetProvider)
+		factory.ContextImpl = ctx
 	})
 
 	It("should reject bad options", func() {
-		streams, _, _, _ := util.NewTestIOStreams()
 		o := cmdtarget.NewUnsetOptions(streams)
 		cmd := cmdtarget.NewCmdUnset(&util.FactoryImpl{}, o)
 
@@ -94,10 +110,7 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should be able to unset a targeted garden", func() {
-		streams, _, out, _ := util.NewTestIOStreams()
-
-		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget(gardenName, "", "", ""))
-		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
+		// user has already targeted a garden
 		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
 
 		Expect(cmd.RunE(cmd, []string{"garden"})).To(Succeed())
@@ -109,19 +122,8 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should be able to unset a targeted project", func() {
-		streams, _, out, _ := util.NewTestIOStreams()
-
 		// user has already targeted a garden and project
-		currentTarget := target.NewTarget(gardenName, projectName, "", "")
-
-		fakeGardenClient := fake.NewClientBuilder().WithObjects(project).Build()
-
-		// setup command
-		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
-		clientProvider := internalfake.NewFakeClientProvider()
-		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
-
-		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
+		targetProvider.Target = currentTarget.WithProjectName(projectName)
 		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
 
 		// run command
@@ -135,19 +137,8 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should be able to unset targeted seed", func() {
-		streams, _, out, _ := util.NewTestIOStreams()
-
 		// user has already targeted a garden and seed
-		currentTarget := target.NewTarget(gardenName, "", seedName, "")
-
-		fakeGardenClient := fake.NewClientBuilder().WithObjects(seed).Build()
-
-		// setup command
-		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
-		clientProvider := internalfake.NewFakeClientProvider()
-		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
-
-		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
+		targetProvider.Target = currentTarget.WithSeedName(seedName)
 		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
 
 		// run command
@@ -161,19 +152,8 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should be able to unset targeted shoot", func() {
-		streams, _, out, _ := util.NewTestIOStreams()
-
 		// user has already targeted a garden, project and shoot
-		currentTarget := target.NewTarget(gardenName, projectName, "", shootName)
-
-		fakeGardenClient := fake.NewClientBuilder().WithObjects(project, shoot).Build()
-
-		// setup command
-		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
-		clientProvider := internalfake.NewFakeClientProvider()
-		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
-
-		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
+		targetProvider.Target = currentTarget.WithProjectName(projectName).WithShootName(shootName)
 		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
 
 		// run command
@@ -189,19 +169,8 @@ var _ = Describe("Command", func() {
 	})
 
 	It("should be able to unset targeted control plane", func() {
-		streams, _, out, _ := util.NewTestIOStreams()
-
-		// user has already targeted a garden, project, shoot and control plane
-		currentTarget := target.NewTarget(gardenName, projectName, "", shootName).WithControlPlane(true)
-
-		fakeGardenClient := fake.NewClientBuilder().WithObjects(project, shoot).Build()
-
-		// setup command
-		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
-		clientProvider := internalfake.NewFakeClientProvider()
-		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
-
-		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
+		// user has already targeted a garden, project, shoot and control-plane
+		targetProvider.Target = currentTarget.WithProjectName(projectName).WithShootName(shootName).WithControlPlane(true)
 		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
 
 		// run command
@@ -218,7 +187,7 @@ var _ = Describe("Command", func() {
 	})
 })
 
-var _ = Describe("UnsetOptions", func() {
+var _ = Describe("Target Unset Options", func() {
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
 		o := cmdtarget.NewUnsetOptions(streams)

@@ -11,6 +11,7 @@ import (
 	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	gomock "github.com/golang/mock/gomock"
 	v1 "k8s.io/api/core/v1"
+	clientcmd "k8s.io/client-go/tools/clientcmd"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -177,19 +178,19 @@ func (mr *MockClientMockRecorder) GetSeed(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeed", reflect.TypeOf((*MockClient)(nil).GetSeed), arg0, arg1)
 }
 
-// GetSeedKubeconfig mocks base method.
-func (m *MockClient) GetSeedKubeconfig(arg0 context.Context, arg1 string) ([]byte, error) {
+// GetSeedClientConfig mocks base method.
+func (m *MockClient) GetSeedClientConfig(arg0 context.Context, arg1 string) (clientcmd.ClientConfig, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSeedKubeconfig", arg0, arg1)
-	ret0, _ := ret[0].([]byte)
+	ret := m.ctrl.Call(m, "GetSeedClientConfig", arg0, arg1)
+	ret0, _ := ret[0].(clientcmd.ClientConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetSeedKubeconfig indicates an expected call of GetSeedKubeconfig.
-func (mr *MockClientMockRecorder) GetSeedKubeconfig(arg0, arg1 interface{}) *gomock.Call {
+// GetSeedClientConfig indicates an expected call of GetSeedClientConfig.
+func (mr *MockClientMockRecorder) GetSeedClientConfig(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeedKubeconfig", reflect.TypeOf((*MockClient)(nil).GetSeedKubeconfig), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeedClientConfig", reflect.TypeOf((*MockClient)(nil).GetSeedClientConfig), arg0, arg1)
 }
 
 // GetShoot mocks base method.
@@ -207,19 +208,19 @@ func (mr *MockClientMockRecorder) GetShoot(arg0, arg1, arg2 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShoot", reflect.TypeOf((*MockClient)(nil).GetShoot), arg0, arg1, arg2)
 }
 
-// GetShootKubeconfig mocks base method.
-func (m *MockClient) GetShootKubeconfig(arg0 context.Context, arg1, arg2 string) ([]byte, error) {
+// GetShootClientConfig mocks base method.
+func (m *MockClient) GetShootClientConfig(arg0 context.Context, arg1, arg2 string) (clientcmd.ClientConfig, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetShootKubeconfig", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]byte)
+	ret := m.ctrl.Call(m, "GetShootClientConfig", arg0, arg1, arg2)
+	ret0, _ := ret[0].(clientcmd.ClientConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetShootKubeconfig indicates an expected call of GetShootKubeconfig.
-func (mr *MockClientMockRecorder) GetShootKubeconfig(arg0, arg1, arg2 interface{}) *gomock.Call {
+// GetShootClientConfig indicates an expected call of GetShootClientConfig.
+func (mr *MockClientMockRecorder) GetShootClientConfig(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootKubeconfig", reflect.TypeOf((*MockClient)(nil).GetShootKubeconfig), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootClientConfig", reflect.TypeOf((*MockClient)(nil).GetShootClientConfig), arg0, arg1, arg2)
 }
 
 // ListProjects mocks base method.

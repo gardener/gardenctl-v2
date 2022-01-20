@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	cmdenv "github.com/gardener/gardenctl-v2/pkg/cmd/env"
@@ -30,13 +32,20 @@ import (
 )
 
 const (
-	envPrefix        = "GCTL"
-	envGardenHomeDir = envPrefix + "_HOME"
-	envConfigName    = envPrefix + "_CONFIG_NAME"
+	envPrefix         = "GCTL"
+	envGardenHomeDir  = envPrefix + "_HOME"
+	envConfigName     = envPrefix + "_CONFIG_NAME"
+	envSessionID      = envPrefix + "_SESSION_ID"
+	envItermSessionID = "ITERM_SESSION_ID"
 
 	gardenHomeFolder = ".garden"
 	configName       = "gardenctl-v2"
 	targetFilename   = "target.yaml"
+)
+
+var (
+	sidRegexp  = regexp.MustCompile(`^[\w-]{1,128}$`)
+	uuidRegexp = regexp.MustCompile(`([a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})`)
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -153,8 +162,15 @@ func initConfig(f *util.FactoryImpl) {
 
 	f.ConfigFile = viper.ConfigFileUsed()
 	f.GardenHomeDirectory = home
-	targetFile := filepath.Join(home, targetFilename)
-	f.TargetFile = targetFile
+
+	sid, err := getSessionID()
+	cobra.CheckErr(err)
+
+	f.SessionDirectory = filepath.Join(os.TempDir(), "garden", sid)
+	err = os.MkdirAll(f.SessionDirectory, 0700)
+	cobra.CheckErr(err)
+
+	f.TargetFile = filepath.Join(f.SessionDirectory, targetFilename)
 }
 
 func registerCompletionFuncForGlobalFlags(cmd *cobra.Command, f *util.FactoryImpl, ioStreams util.IOStreams) {
@@ -258,4 +274,23 @@ func addKlogFlags(fs *pflag.FlagSet) {
 	local.VisitAll(func(fl *flag.Flag) {
 		fs.AddGoFlag(fl)
 	})
+}
+
+func getSessionID() (string, error) {
+	if value, ok := os.LookupEnv(envSessionID); ok {
+		if sidRegexp.MatchString(value) {
+			return value, nil
+		}
+
+		return "", fmt.Errorf("Environment variable %s must only contain alphanumeric characters, underscore and dash and have a minimum length of 1 and a maximum length of 128", envSessionID)
+	}
+
+	if value, ok := os.LookupEnv(envItermSessionID); ok {
+		match := uuidRegexp.FindStringSubmatch(strings.ToLower(value))
+		if len(match) > 1 {
+			return match[1], nil
+		}
+	}
+
+	return "", fmt.Errorf("Environment variable %s is required", envSessionID)
 }

@@ -7,29 +7,23 @@ SPDX-License-Identifier: Apache-2.0
 package target_test
 
 import (
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
+	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
-func init() {
-	utilruntime.Must(gardencorev1beta1.AddToScheme(scheme.Scheme))
-}
-
-var _ = Describe("Command", func() {
+var _ = Describe("Target Command", func() {
 	const (
 		gardenName       = "mygarden"
 		gardenKubeconfig = "/not/a/real/file"
@@ -40,18 +34,26 @@ var _ = Describe("Command", func() {
 	)
 
 	var (
-		project          *gardencorev1beta1.Project
-		seed             *gardencorev1beta1.Seed
-		shoot            *gardencorev1beta1.Shoot
-		cfg              *config.Config
-		fakeGardenClient client.Client
-		clientProvider   *internalfake.ClientProvider
+		streams        util.IOStreams
+		out            *util.SafeBytesBuffer
+		ctrl           *gomock.Controller
+		cfg            *config.Config
+		clientProvider *targetmocks.MockClientProvider
+		gardenClient   client.Client
+		targetProvider *internalfake.TargetProvider
+		factory        *internalfake.Factory
+		project        *gardencorev1beta1.Project
+		seed           *gardencorev1beta1.Seed
+		shoot          *gardencorev1beta1.Shoot
 	)
 
 	BeforeEach(func() {
 		cfg = &config.Config{
 			Gardens: []config.Garden{{
 				Name:       gardenName,
+				Kubeconfig: gardenKubeconfig,
+			}, {
+				Name:       "another-garden",
 				Kubeconfig: gardenKubeconfig,
 			}},
 		}
@@ -71,12 +73,6 @@ var _ = Describe("Command", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: seedName,
 			},
-			Spec: gardencorev1beta1.SeedSpec{
-				SecretRef: &corev1.SecretReference{
-					Namespace: namespace,
-					Name:      seedName,
-				},
-			},
 		}
 
 		shoot = &gardencorev1beta1.Shoot{
@@ -84,131 +80,248 @@ var _ = Describe("Command", func() {
 				Name:      shootName,
 				Namespace: namespace,
 			},
+			Spec: gardencorev1beta1.ShootSpec{
+				SeedName: pointer.String(seed.Name),
+			},
 		}
 
-		fakeGardenClient = fake.NewClientBuilder().WithObjects(project, seed, shoot).Build()
-		clientProvider = internalfake.NewFakeClientProvider()
-		clientProvider.WithClient(gardenKubeconfig, fakeGardenClient)
+		streams, _, out, _ = util.NewTestIOStreams()
+
+		ctrl = gomock.NewController(GinkgoT())
+
+		clientProvider = targetmocks.NewMockClientProvider(ctrl)
+		targetProvider = internalfake.NewFakeTargetProvider(target.NewTarget("", "", "", ""))
+		factory = internalfake.NewFakeFactory(cfg, nil, clientProvider, targetProvider)
 	})
 
-	It("should reject bad options", func() {
-		streams, _, _, _ := util.NewTestIOStreams()
-		o := cmdtarget.NewTargetOptions(streams)
-		cmd := cmdtarget.NewCmdTarget(&util.FactoryImpl{}, o)
-
-		Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
+	JustBeforeEach(func() {
+		clientProvider.EXPECT().FromFile(gardenKubeconfig).Return(gardenClient, nil).AnyTimes()
 	})
 
-	It("should be able to target a garden", func() {
-		streams, _, out, _ := util.NewTestIOStreams()
-
-		targetProvider := internalfake.NewFakeTargetProvider(target.NewTarget("", "", "", ""))
-		factory := internalfake.NewFakeFactory(cfg, nil, nil, nil, targetProvider)
-		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
-
-		Expect(cmd.RunE(cmd, []string{"garden", gardenName})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully targeted garden %q\n", gardenName))
-
-		currentTarget, err := targetProvider.Read()
-		Expect(err).NotTo(HaveOccurred())
-		Expect(currentTarget.GardenName()).To(Equal(gardenName))
+	AfterEach(func() {
+		ctrl.Finish()
 	})
 
-	It("should be able to target a project", func() {
-		streams, _, out, _ := util.NewTestIOStreams()
+	Describe("RunE", func() {
+		BeforeEach(func() {
+			gardenClient = internalfake.NewClientWithObjects(project, seed, shoot)
+		})
 
-		// user has already targeted a garden
-		currentTarget := target.NewTarget(gardenName, "", "", "")
+		It("should reject bad options", func() {
+			cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
 
-		// setup command
-		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
+			Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
+		})
 
-		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+		It("should be able to target a garden", func() {
+			cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
 
-		// run command
-		Expect(cmd.RunE(cmd, []string{"project", projectName})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully targeted project %q\n", projectName))
+			Expect(cmd.RunE(cmd, []string{"garden", gardenName})).To(Succeed())
+			Expect(out.String()).To(ContainSubstring("Successfully targeted garden %q\n", gardenName))
 
-		currentTarget, err := targetProvider.Read()
-		Expect(err).NotTo(HaveOccurred())
-		Expect(currentTarget.GardenName()).To(Equal(gardenName))
-		Expect(currentTarget.ProjectName()).To(Equal(projectName))
+			currentTarget, err := targetProvider.Read()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(currentTarget.GardenName()).To(Equal(gardenName))
+		})
+
+		It("should be able to target a project", func() {
+			// user has already targeted a garden
+			targetProvider.Target = target.NewTarget(gardenName, "", "", "")
+			cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+
+			// run command
+			Expect(cmd.RunE(cmd, []string{"project", projectName})).To(Succeed())
+			Expect(out.String()).To(ContainSubstring("Successfully targeted project %q\n", projectName))
+
+			currentTarget, err := targetProvider.Read()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(currentTarget.GardenName()).To(Equal(gardenName))
+			Expect(currentTarget.ProjectName()).To(Equal(projectName))
+		})
+
+		It("should be able to target a seed", func() {
+			// user has already targeted a garden
+			targetProvider.Target = target.NewTarget(gardenName, "", "", "")
+			cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+
+			// run command
+			Expect(cmd.RunE(cmd, []string{"seed", seedName})).To(Succeed())
+			Expect(out.String()).To(ContainSubstring("Successfully targeted seed %q\n", seedName))
+
+			currentTarget, err := targetProvider.Read()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(currentTarget.GardenName()).To(Equal(gardenName))
+			Expect(currentTarget.SeedName()).To(Equal(seedName))
+		})
+
+		It("should be able to target a shoot", func() {
+			// user has already targeted a garden and project
+			targetProvider.Target = target.NewTarget(gardenName, projectName, "", "")
+			cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+
+			// run command
+			Expect(cmd.RunE(cmd, []string{"shoot", shootName})).To(Succeed())
+			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q\n", shootName))
+
+			currentTarget, err := targetProvider.Read()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(currentTarget.GardenName()).To(Equal(gardenName))
+			Expect(currentTarget.ProjectName()).To(Equal(projectName))
+			Expect(currentTarget.SeedName()).To(BeEmpty())
+			Expect(currentTarget.ShootName()).To(Equal(shootName))
+		})
+
+		It("should be able to target a control plane", func() {
+			// user has already targeted a garden, project and shoot
+			targetProvider.Target = target.NewTarget(gardenName, projectName, "", shootName)
+			cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+
+			// run command
+			Expect(cmd.RunE(cmd, []string{"control-plane"})).To(Succeed())
+			Expect(out.String()).To(ContainSubstring("Successfully targeted control plane of shoot %q\n", shootName))
+
+			currentTarget, err := targetProvider.Read()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(currentTarget.GardenName()).To(Equal(gardenName))
+			Expect(currentTarget.ProjectName()).To(Equal(projectName))
+			Expect(currentTarget.SeedName()).To(BeEmpty())
+			Expect(currentTarget.ShootName()).To(Equal(shootName))
+			Expect(currentTarget.ControlPlane()).To(BeTrue())
+		})
 	})
 
-	It("should be able to target a seed", func() {
-		streams, _, out, _ := util.NewTestIOStreams()
+	Describe("Completion", func() {
+		var (
+			testProject1 *gardencorev1beta1.Project
+			testProject2 *gardencorev1beta1.Project
+			testSeed1    *gardencorev1beta1.Seed
+			testSeed2    *gardencorev1beta1.Seed
+			testShoot1   *gardencorev1beta1.Shoot
+			testShoot2   *gardencorev1beta1.Shoot
+		)
 
-		// user has already targeted a garden
-		currentTarget := target.NewTarget(gardenName, "", "", "")
+		BeforeEach(func() {
+			testProject1 = &gardencorev1beta1.Project{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "prod1",
+				},
+				Spec: gardencorev1beta1.ProjectSpec{
+					Namespace: pointer.String("garden-prod1"),
+				},
+			}
 
-		// setup command
-		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
+			testProject2 = &gardencorev1beta1.Project{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "prod2",
+				},
+				Spec: gardencorev1beta1.ProjectSpec{
+					Namespace: pointer.String("garden-prod2"),
+				},
+			}
 
-		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+			testSeed1 = &gardencorev1beta1.Seed{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-seed1",
+				},
+			}
 
-		// run command
-		Expect(cmd.RunE(cmd, []string{"seed", seedName})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully targeted seed %q\n", seedName))
+			testSeed2 = &gardencorev1beta1.Seed{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "aws-seed",
+				},
+			}
 
-		currentTarget, err := targetProvider.Read()
-		Expect(err).NotTo(HaveOccurred())
-		Expect(currentTarget.GardenName()).To(Equal(gardenName))
-		Expect(currentTarget.SeedName()).To(Equal(seedName))
-	})
+			testShoot1 = &gardencorev1beta1.Shoot{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-shoot",
+					Namespace: *testProject1.Spec.Namespace,
+				},
+				Spec: gardencorev1beta1.ShootSpec{
+					SeedName: pointer.String(testSeed1.Name),
+				},
+			}
 
-	It("should be able to target a shoot", func() {
-		streams, _, out, _ := util.NewTestIOStreams()
+			testShoot2 = &gardencorev1beta1.Shoot{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-shoot",
+					Namespace: *testProject1.Spec.Namespace,
+				},
+				Spec: gardencorev1beta1.ShootSpec{
+					SeedName: pointer.String(testSeed1.Name),
+				},
+			}
 
-		// user has already targeted a garden and project
-		currentTarget := target.NewTarget(gardenName, projectName, "", "")
+			gardenClient = internalfake.NewClientWithObjects(
+				testProject1,
+				testProject2,
+				testSeed1,
+				testSeed2,
+				testShoot1,
+				testShoot2,
+			)
+		})
 
-		// setup command
-		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
+		Describe("ValidTargetArgsFunction", func() {
+			It("should return the allowed target types when no kind was given", func() {
+				values, err := cmdtarget.ValidTargetArgsFunction(factory, nil, nil, "")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal([]string{
+					string(cmdtarget.TargetKindGarden),
+					string(cmdtarget.TargetKindProject),
+					string(cmdtarget.TargetKindSeed),
+					string(cmdtarget.TargetKindShoot),
+					string(cmdtarget.TargetKindPattern),
+					string(cmdtarget.TargetKindControlPlane),
+				}))
+			})
 
-		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+			It("should reject invalid kinds", func() {
+				_, err := cmdtarget.ValidTargetArgsFunction(factory, nil, []string{"invalid"}, "")
+				Expect(err).To(HaveOccurred())
+			})
 
-		// run command
-		Expect(cmd.RunE(cmd, []string{"shoot", shootName})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q\n", shootName))
+			It("should return all garden names", func() {
+				values, err := cmdtarget.ValidTargetArgsFunction(factory, nil, []string{string(cmdtarget.TargetKindGarden)}, "")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal([]string{cfg.Gardens[1].Name, gardenName}))
+			})
 
-		currentTarget, err := targetProvider.Read()
-		Expect(err).NotTo(HaveOccurred())
-		Expect(currentTarget.GardenName()).To(Equal(gardenName))
-		Expect(currentTarget.ProjectName()).To(Equal(projectName))
-		Expect(currentTarget.SeedName()).To(BeEmpty())
-		Expect(currentTarget.ShootName()).To(Equal(shootName))
-	})
+			It("should return all project names", func() {
+				targetProvider.Target = target.NewTarget(gardenName, "", "", "")
 
-	It("should be able to target a control plane", func() {
-		streams, _, out, _ := util.NewTestIOStreams()
+				values, err := cmdtarget.ValidTargetArgsFunction(factory, nil, []string{string(cmdtarget.TargetKindProject)}, "")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal([]string{testProject1.Name, testProject2.Name}))
+			})
 
-		// user has already targeted a garden, project and shoot
-		currentTarget := target.NewTarget(gardenName, projectName, "", shootName)
+			It("should return all seed names", func() {
+				targetProvider.Target = target.NewTarget(gardenName, "", "", "")
 
-		// setup command
-		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
+				values, err := cmdtarget.ValidTargetArgsFunction(factory, nil, []string{string(cmdtarget.TargetKindSeed)}, "")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal([]string{testSeed2.Name, testSeed1.Name}))
+			})
 
-		factory := internalfake.NewFakeFactory(cfg, nil, clientProvider, nil, targetProvider)
-		cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+			It("should return all shoot names when using a project", func() {
+				targetProvider.Target = target.NewTarget(gardenName, testProject1.Name, "", "")
 
-		// run command
-		Expect(cmd.RunE(cmd, []string{"control-plane"})).To(Succeed())
-		Expect(out.String()).To(ContainSubstring("Successfully targeted control plane of shoot %q\n", shootName))
+				values, err := cmdtarget.ValidTargetArgsFunction(factory, nil, []string{string(cmdtarget.TargetKindShoot)}, "")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal([]string{testShoot2.Name, testShoot1.Name}))
+			})
 
-		currentTarget, err := targetProvider.Read()
-		Expect(err).NotTo(HaveOccurred())
-		Expect(currentTarget.GardenName()).To(Equal(gardenName))
-		Expect(currentTarget.ProjectName()).To(Equal(projectName))
-		Expect(currentTarget.SeedName()).To(BeEmpty())
-		Expect(currentTarget.ShootName()).To(Equal(shootName))
-		Expect(currentTarget.ControlPlane()).To(BeTrue())
+			It("should return all shoot names when using a seed", func() {
+				targetProvider.Target = target.NewTarget(gardenName, "", testSeed1.Name, "")
+
+				values, err := cmdtarget.ValidTargetArgsFunction(factory, nil, []string{string(cmdtarget.TargetKindShoot)}, "")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal([]string{testShoot2.Name, testShoot1.Name}))
+			})
+		})
 	})
 })
 
-var _ = Describe("TargetOptions", func() {
+var _ = Describe("Target Options", func() {
 	It("should validate", func() {
 		streams, _, _, _ := util.NewTestIOStreams()
 		o := cmdtarget.NewTargetOptions(streams)

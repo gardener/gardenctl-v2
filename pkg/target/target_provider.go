@@ -27,6 +27,8 @@ type TargetWriter interface {
 	Write(t Target) error
 }
 
+//go:generate mockgen -destination=./mocks/mock_target_trovider.go -package=mocks github.com/gardener/gardenctl-v2/pkg/target TargetProvider
+
 // TargetProvider can read and write targets.
 //nolint
 type TargetProvider interface {

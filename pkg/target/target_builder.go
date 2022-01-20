@@ -286,14 +286,9 @@ func (b *targetBuilderImpl) validateSeed(ctx context.Context, gardenName string,
 		return nil, fmt.Errorf("failed to resolve seed: %w", err)
 	}
 
-	// validate the seed
-	if seed.Spec.SecretRef == nil {
-		return nil, errors.New("spec.SecretRef is missing in this seed, seed not reachable")
-	}
-
 	return seed, nil
 }
 
 func (b *targetBuilderImpl) getGardenClient(gardenName string) (gardenclient.Client, error) {
-	return GardenClient(gardenName, b.config, b.clientProvider)
+	return newGardenClient(gardenName, b.config, b.clientProvider)
 }

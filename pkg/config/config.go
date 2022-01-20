@@ -14,6 +14,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v3"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // Config holds the gardenctl configuration
@@ -109,15 +110,35 @@ func contains(values []string, value string) bool {
 	return false
 }
 
-// Kubeconfig returns the kubeconfig for a configured garden cluster
-func (config *Config) Kubeconfig(name string) ([]byte, error) {
+// KubeconfigPath returns the path to the kubeconfig file for a configured garden cluster
+func (config *Config) KubeconfigPath(name string) (string, error) {
 	for _, g := range config.Gardens {
 		if g.Name == name {
-			return ioutil.ReadFile(g.Kubeconfig)
+			return g.Kubeconfig, nil
 		}
 	}
 
-	return nil, fmt.Errorf("garden cluster %q is not configured", name)
+	return "", fmt.Errorf("garden cluster %q is not configured", name)
+}
+
+// Kubeconfig returns the kubeconfig for a configured garden cluster
+func (config *Config) Kubeconfig(name string) ([]byte, error) {
+	filename, err := config.KubeconfigPath(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return ioutil.ReadFile(filename)
+}
+
+// ClientConfig returns the client config for a configured garden cluster
+func (config *Config) ClientConfig(name string) (clientcmd.ClientConfig, error) {
+	data, err := config.Kubeconfig(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientcmd.NewClientConfigFromBytes(data)
 }
 
 // GardenName returns the unique name of a Garden cluster from the list of configured Gardens

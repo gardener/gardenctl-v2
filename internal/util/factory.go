@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"path/filepath"
 	"strings"
 
 	"github.com/gardener/gardenctl-v2/pkg/config"
@@ -51,6 +50,9 @@ type FactoryImpl struct {
 	// if empty.
 	ConfigFile string
 
+	// SessionDirectory is the temporary directory where the target fileand the kubeconfig files are located.
+	SessionDirectory string
+
 	// TargetFile is the filename where the currently active target is located.
 	TargetFile string
 
@@ -72,10 +74,9 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 	}
 
 	targetProvider := target.NewTargetProvider(f.TargetFile, f.TargetFlags)
-	kubeconfigCache := target.NewFilesystemKubeconfigCache(filepath.Join(f.GardenHomeDirectory, "cache", "kubeconfigs"))
 	clientProvider := target.NewClientProvider()
 
-	return target.NewManager(cfg, targetProvider, clientProvider, kubeconfigCache)
+	return target.NewManager(cfg, targetProvider, clientProvider, f.SessionDirectory)
 }
 
 func (f *FactoryImpl) GardenHomeDir() string {
