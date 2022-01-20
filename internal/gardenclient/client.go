@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	openstackinstall "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/install"
@@ -49,8 +50,8 @@ type Client interface {
 	GetSeed(ctx context.Context, name string) (*gardencorev1beta1.Seed, error)
 	// ListSeeds returns all Gardener seed resources
 	ListSeeds(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.SeedList, error)
-	// GetSeedKubeconfig returns the kubeconfig for a seed
-	GetSeedKubeconfig(ctx context.Context, name string) ([]byte, error)
+	// GetSeedClientConfig returns the client config for a seed
+	GetSeedClientConfig(ctx context.Context, name string) (clientcmd.ClientConfig, error)
 
 	// GetShoot returns a Gardener shoot resource in a namespace by name
 	GetShoot(ctx context.Context, namespace, name string) (*gardencorev1beta1.Shoot, error)
@@ -59,8 +60,8 @@ type Client interface {
 	FindShoot(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.Shoot, error)
 	// ListShoots returns all Gardener shoot resources, filtered by a list option
 	ListShoots(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.ShootList, error)
-	// GetShootKubeconfig returns the kubeconfig for a shoot
-	GetShootKubeconfig(ctx context.Context, namespace, name string) ([]byte, error)
+	// GetShootClientConfig returns the client config for a shoot
+	GetShootClientConfig(ctx context.Context, namespace, name string) (clientcmd.ClientConfig, error)
 
 	// GetSecretBinding returns a Gardener secretbinding resource
 	GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error)
@@ -256,7 +257,7 @@ func (g *clientImpl) GetConfigMap(ctx context.Context, namespace, name string) (
 	return cm, nil
 }
 
-func (g *clientImpl) GetSeedKubeconfig(ctx context.Context, name string) ([]byte, error) {
+func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clientcmd.ClientConfig, error) {
 	key := types.NamespacedName{Name: name}
 
 	secret, err := g.GetSecret(ctx, "garden", name+".oidc")
@@ -266,13 +267,18 @@ func (g *clientImpl) GetSeedKubeconfig(ctx context.Context, name string) ([]byte
 
 	value, ok := secret.Data["kubeconfig"]
 	if !ok {
-		return nil, fmt.Errorf("invalid oidc-secret for seed %v: %w", key, err)
+		return nil, fmt.Errorf("invalid kubeconfig secret for seed %v", key)
 	}
 
-	return value, nil
+	config, err := clientcmd.NewClientConfigFromBytes(value)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deserialize kubeconfig for seed %v: %w", key, err)
+	}
+
+	return config, nil
 }
 
-func (g *clientImpl) GetShootKubeconfig(ctx context.Context, namespace, name string) ([]byte, error) {
+func (g *clientImpl) GetShootClientConfig(ctx context.Context, namespace, name string) (clientcmd.ClientConfig, error) {
 	key := types.NamespacedName{Namespace: namespace, Name: name}
 
 	cm, err := g.GetConfigMap(ctx, namespace, name+".kubeconfig")
@@ -282,10 +288,15 @@ func (g *clientImpl) GetShootKubeconfig(ctx context.Context, namespace, name str
 
 	value, ok := cm.Data["kubeconfig"]
 	if !ok {
-		return nil, fmt.Errorf("invalid kubeconfig-configmap for shoot %v: %w", key, err)
+		return nil, fmt.Errorf("invalid kubeconfig configmap for shoot %v", key)
 	}
 
-	return []byte(value), nil
+	config, err := clientcmd.NewClientConfigFromBytes([]byte(value))
+	if err != nil {
+		return nil, fmt.Errorf("failed to deserialize kubeconfig for shoot %v: %w", key, err)
+	}
+
+	return config, nil
 }
 
 func (g *clientImpl) GetCloudProfile(ctx context.Context, name string) (*gardencorev1beta1.CloudProfile, error) {

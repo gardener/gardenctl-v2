@@ -8,12 +8,12 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-	client "sigs.k8s.io/controller-runtime/pkg/client"
-
 	gardenclient "github.com/gardener/gardenctl-v2/internal/gardenclient"
 	config "github.com/gardener/gardenctl-v2/pkg/config"
 	target "github.com/gardener/gardenctl-v2/pkg/target"
+	gomock "github.com/golang/mock/gomock"
+	clientcmd "k8s.io/client-go/tools/clientcmd"
+	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // MockManager is a mock of Manager interface.
@@ -37,6 +37,21 @@ func NewMockManager(ctrl *gomock.Controller) *MockManager {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockManager) EXPECT() *MockManagerMockRecorder {
 	return m.recorder
+}
+
+// ClientConfig mocks base method.
+func (m *MockManager) ClientConfig(arg0 context.Context, arg1 target.Target) (clientcmd.ClientConfig, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientConfig", arg0, arg1)
+	ret0, _ := ret[0].(clientcmd.ClientConfig)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClientConfig indicates an expected call of ClientConfig.
+func (mr *MockManagerMockRecorder) ClientConfig(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientConfig", reflect.TypeOf((*MockManager)(nil).ClientConfig), arg0, arg1)
 }
 
 // Configuration mocks base method.
@@ -69,77 +84,62 @@ func (mr *MockManagerMockRecorder) CurrentTarget() *gomock.Call {
 }
 
 // GardenClient mocks base method.
-func (m *MockManager) GardenClient(name string) (gardenclient.Client, error) {
+func (m *MockManager) GardenClient(arg0 string) (gardenclient.Client, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GardenClient", name)
+	ret := m.ctrl.Call(m, "GardenClient", arg0)
 	ret0, _ := ret[0].(gardenclient.Client)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GardenClient indicates an expected call of GardenClient.
-func (mr *MockManagerMockRecorder) GardenClient(name interface{}) *gomock.Call {
+func (mr *MockManagerMockRecorder) GardenClient(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GardenClient", reflect.TypeOf((*MockManager)(nil).GardenClient), name)
-}
-
-// Kubeconfig mocks base method.
-func (m *MockManager) Kubeconfig(ctx context.Context, t target.Target) ([]byte, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Kubeconfig", ctx, t)
-	ret0, _ := ret[0].([]byte)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Kubeconfig indicates an expected call of Kubeconfig.
-func (mr *MockManagerMockRecorder) Kubeconfig(ctx, t interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Kubeconfig", reflect.TypeOf((*MockManager)(nil).Kubeconfig), ctx, t)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GardenClient", reflect.TypeOf((*MockManager)(nil).GardenClient), arg0)
 }
 
 // SeedClient mocks base method.
-func (m *MockManager) SeedClient(ctx context.Context, t target.Target) (client.Client, error) {
+func (m *MockManager) SeedClient(arg0 context.Context, arg1 target.Target) (client.Client, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SeedClient", ctx, t)
+	ret := m.ctrl.Call(m, "SeedClient", arg0, arg1)
 	ret0, _ := ret[0].(client.Client)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SeedClient indicates an expected call of SeedClient.
-func (mr *MockManagerMockRecorder) SeedClient(ctx, t interface{}) *gomock.Call {
+func (mr *MockManagerMockRecorder) SeedClient(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SeedClient", reflect.TypeOf((*MockManager)(nil).SeedClient), ctx, t)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SeedClient", reflect.TypeOf((*MockManager)(nil).SeedClient), arg0, arg1)
 }
 
 // ShootClient mocks base method.
-func (m *MockManager) ShootClient(ctx context.Context, t target.Target) (client.Client, error) {
+func (m *MockManager) ShootClient(arg0 context.Context, arg1 target.Target) (client.Client, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ShootClient", ctx, t)
+	ret := m.ctrl.Call(m, "ShootClient", arg0, arg1)
 	ret0, _ := ret[0].(client.Client)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ShootClient indicates an expected call of ShootClient.
-func (mr *MockManagerMockRecorder) ShootClient(ctx, t interface{}) *gomock.Call {
+func (mr *MockManagerMockRecorder) ShootClient(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShootClient", reflect.TypeOf((*MockManager)(nil).ShootClient), ctx, t)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShootClient", reflect.TypeOf((*MockManager)(nil).ShootClient), arg0, arg1)
 }
 
 // TargetControlPlane mocks base method.
-func (m *MockManager) TargetControlPlane(ctx context.Context) error {
+func (m *MockManager) TargetControlPlane(arg0 context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TargetControlPlane", ctx)
+	ret := m.ctrl.Call(m, "TargetControlPlane", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TargetControlPlane indicates an expected call of TargetControlPlane.
-func (mr *MockManagerMockRecorder) TargetControlPlane(ctx interface{}) *gomock.Call {
+func (mr *MockManagerMockRecorder) TargetControlPlane(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetControlPlane", reflect.TypeOf((*MockManager)(nil).TargetControlPlane), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetControlPlane", reflect.TypeOf((*MockManager)(nil).TargetControlPlane), arg0)
 }
 
 // TargetFlags mocks base method.
@@ -157,73 +157,73 @@ func (mr *MockManagerMockRecorder) TargetFlags() *gomock.Call {
 }
 
 // TargetGarden mocks base method.
-func (m *MockManager) TargetGarden(ctx context.Context, name string) error {
+func (m *MockManager) TargetGarden(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TargetGarden", ctx, name)
+	ret := m.ctrl.Call(m, "TargetGarden", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TargetGarden indicates an expected call of TargetGarden.
-func (mr *MockManagerMockRecorder) TargetGarden(ctx, name interface{}) *gomock.Call {
+func (mr *MockManagerMockRecorder) TargetGarden(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetGarden", reflect.TypeOf((*MockManager)(nil).TargetGarden), ctx, name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetGarden", reflect.TypeOf((*MockManager)(nil).TargetGarden), arg0, arg1)
 }
 
 // TargetMatchPattern mocks base method.
-func (m *MockManager) TargetMatchPattern(ctx context.Context, value string) error {
+func (m *MockManager) TargetMatchPattern(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TargetMatchPattern", ctx, value)
+	ret := m.ctrl.Call(m, "TargetMatchPattern", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TargetMatchPattern indicates an expected call of TargetMatchPattern.
-func (mr *MockManagerMockRecorder) TargetMatchPattern(ctx, value interface{}) *gomock.Call {
+func (mr *MockManagerMockRecorder) TargetMatchPattern(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetMatchPattern", reflect.TypeOf((*MockManager)(nil).TargetMatchPattern), ctx, value)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetMatchPattern", reflect.TypeOf((*MockManager)(nil).TargetMatchPattern), arg0, arg1)
 }
 
 // TargetProject mocks base method.
-func (m *MockManager) TargetProject(ctx context.Context, name string) error {
+func (m *MockManager) TargetProject(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TargetProject", ctx, name)
+	ret := m.ctrl.Call(m, "TargetProject", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TargetProject indicates an expected call of TargetProject.
-func (mr *MockManagerMockRecorder) TargetProject(ctx, name interface{}) *gomock.Call {
+func (mr *MockManagerMockRecorder) TargetProject(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetProject", reflect.TypeOf((*MockManager)(nil).TargetProject), ctx, name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetProject", reflect.TypeOf((*MockManager)(nil).TargetProject), arg0, arg1)
 }
 
 // TargetSeed mocks base method.
-func (m *MockManager) TargetSeed(ctx context.Context, name string) error {
+func (m *MockManager) TargetSeed(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TargetSeed", ctx, name)
+	ret := m.ctrl.Call(m, "TargetSeed", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TargetSeed indicates an expected call of TargetSeed.
-func (mr *MockManagerMockRecorder) TargetSeed(ctx, name interface{}) *gomock.Call {
+func (mr *MockManagerMockRecorder) TargetSeed(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetSeed", reflect.TypeOf((*MockManager)(nil).TargetSeed), ctx, name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetSeed", reflect.TypeOf((*MockManager)(nil).TargetSeed), arg0, arg1)
 }
 
 // TargetShoot mocks base method.
-func (m *MockManager) TargetShoot(ctx context.Context, name string) error {
+func (m *MockManager) TargetShoot(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TargetShoot", ctx, name)
+	ret := m.ctrl.Call(m, "TargetShoot", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TargetShoot indicates an expected call of TargetShoot.
-func (mr *MockManagerMockRecorder) TargetShoot(ctx, name interface{}) *gomock.Call {
+func (mr *MockManagerMockRecorder) TargetShoot(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetShoot", reflect.TypeOf((*MockManager)(nil).TargetShoot), ctx, name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetShoot", reflect.TypeOf((*MockManager)(nil).TargetShoot), arg0, arg1)
 }
 
 // UnsetTargetControlPlane mocks base method.
@@ -300,17 +300,17 @@ func (mr *MockManagerMockRecorder) UnsetTargetShoot() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetTargetShoot", reflect.TypeOf((*MockManager)(nil).UnsetTargetShoot))
 }
 
-// WriteKubeconfig mocks base method.
-func (m *MockManager) WriteKubeconfig(data []byte) (string, error) {
+// WriteClientConfig mocks base method.
+func (m *MockManager) WriteClientConfig(arg0 clientcmd.ClientConfig) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteKubeconfig", data)
+	ret := m.ctrl.Call(m, "WriteClientConfig", arg0)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// WriteKubeconfig indicates an expected call of WriteKubeconfig.
-func (mr *MockManagerMockRecorder) WriteKubeconfig(data interface{}) *gomock.Call {
+// WriteClientConfig indicates an expected call of WriteClientConfig.
+func (mr *MockManagerMockRecorder) WriteClientConfig(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteKubeconfig", reflect.TypeOf((*MockManager)(nil).WriteKubeconfig), data)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteClientConfig", reflect.TypeOf((*MockManager)(nil).WriteClientConfig), arg0)
 }

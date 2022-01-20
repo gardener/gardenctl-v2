@@ -12,10 +12,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 
-	"github.com/google/uuid"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
@@ -74,10 +72,10 @@ type Manager interface {
 	// of a pattern
 	TargetMatchPattern(ctx context.Context, value string) error
 
-	// Kubeconfig returns the kubeconfig for the given target cluster
-	Kubeconfig(ctx context.Context, t Target) ([]byte, error)
-	// WriteKubeconfig creates a kubeconfig file in the temporary directory of the os
-	WriteKubeconfig(data []byte) (string, error)
+	//ClientConfig returns the client config for a target
+	ClientConfig(ctx context.Context, t Target) (clientcmd.ClientConfig, error)
+	// WriteClientConfig creates a kubeconfig file in the session directory of the operating system
+	WriteClientConfig(config clientcmd.ClientConfig) (string, error)
 	// SeedClient controller-runtime client for accessing the configured seed cluster
 	SeedClient(ctx context.Context, t Target) (client.Client, error)
 	// ShootClient controller-runtime client for accessing the configured shoot cluster
@@ -91,38 +89,35 @@ type Manager interface {
 }
 
 type managerImpl struct {
-	config          *config.Config
-	targetProvider  TargetProvider
-	clientProvider  ClientProvider
-	kubeconfigCache KubeconfigCache
+	config           *config.Config
+	targetProvider   TargetProvider
+	clientProvider   ClientProvider
+	sessionDirectory string
 }
 
 var _ Manager = &managerImpl{}
 
-// GardenClient creates a new Garden client by creating a runtime client via the ClientProvider
-// it then wraps the runtime client and returns a Garden client
-func GardenClient(name string, config *config.Config, provider ClientProvider) (gardenclient.Client, error) {
-	for _, g := range config.Gardens {
-		if g.Name == name {
-			runtimeClient, err := provider.FromFile(g.Kubeconfig)
-			if err != nil {
-				return nil, err
-			}
-
-			return gardenclient.NewGardenClient(runtimeClient), nil
-		}
+func newGardenClient(name string, config *config.Config, provider ClientProvider) (gardenclient.Client, error) {
+	filename, err := config.KubeconfigPath(name)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, fmt.Errorf("targeted garden cluster %q is not configured", name)
+	client, err := provider.FromFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	return gardenclient.NewGardenClient(client), nil
 }
 
 // NewManager returns a new manager
-func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider ClientProvider, kubeconfigCache KubeconfigCache) (Manager, error) {
+func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider ClientProvider, sessionDirectory string) (Manager, error) {
 	return &managerImpl{
-		config:          config,
-		targetProvider:  targetProvider,
-		clientProvider:  clientProvider,
-		kubeconfigCache: kubeconfigCache,
+		config:           config,
+		targetProvider:   targetProvider,
+		clientProvider:   clientProvider,
+		sessionDirectory: sessionDirectory,
 	}, nil
 }
 
@@ -397,9 +392,9 @@ func (m *managerImpl) updateTarget(target Target) error {
 	})
 }
 
-func (m *managerImpl) Kubeconfig(ctx context.Context, t Target) ([]byte, error) {
+func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.ClientConfig, error) {
 	if t.ShootName() != "" {
-		return m.getKubeconfig(t, func(client gardenclient.Client) ([]byte, error) {
+		return m.getClientConfig(t, func(client gardenclient.Client) (clientcmd.ClientConfig, error) {
 			var namespace string
 
 			if t.ProjectName() != "" {
@@ -422,32 +417,30 @@ func (m *managerImpl) Kubeconfig(ctx context.Context, t Target) ([]byte, error) 
 				namespace = shoot.Namespace
 			}
 
-			return client.GetShootKubeconfig(ctx, namespace, t.ShootName())
+			return client.GetShootClientConfig(ctx, namespace, t.ShootName())
 		})
 	}
 
 	if t.SeedName() != "" {
-		return m.getKubeconfig(t, func(client gardenclient.Client) ([]byte, error) {
-			return client.GetSeedKubeconfig(ctx, t.SeedName())
+		return m.getClientConfig(t, func(client gardenclient.Client) (clientcmd.ClientConfig, error) {
+			return client.GetSeedClientConfig(ctx, t.SeedName())
 		})
 	}
 
 	if t.GardenName() != "" {
-		return m.Configuration().Kubeconfig(t.GardenName())
+		return m.Configuration().ClientConfig(t.GardenName())
 	}
 
 	return nil, ErrNoGardenTargeted
 }
 
-func (m *managerImpl) WriteKubeconfig(data []byte) (string, error) {
-	tempDir := filepath.Join(os.TempDir(), "garden", getSessionID())
-
-	err := os.MkdirAll(tempDir, os.ModePerm)
+func (m *managerImpl) WriteClientConfig(config clientcmd.ClientConfig) (string, error) {
+	data, err := writeRawConfig(config)
 	if err != nil {
-		return "", fmt.Errorf("failed to create temporary kubeconfig directory: %w", err)
+		return "", fmt.Errorf("failed to serialize temporary kubeconfig file: %w", err)
 	}
 
-	filename := filepath.Join(tempDir, fmt.Sprintf("kubeconfig.%x.yaml", md5.Sum(data)))
+	filename := filepath.Join(m.sessionDirectory, fmt.Sprintf("kubeconfig.%x.yaml", md5.Sum(data)))
 
 	err = os.WriteFile(filename, data, 0600)
 	if err != nil {
@@ -471,12 +464,12 @@ func (m *managerImpl) SeedClient(ctx context.Context, t Target) (client.Client, 
 		return nil, ErrNoSeedTargeted
 	}
 
-	kubeconfig, err := m.Kubeconfig(ctx, t)
+	config, err := m.ClientConfig(ctx, t)
 	if err != nil {
 		return nil, err
 	}
 
-	return m.clientProvider.FromBytes(kubeconfig)
+	return m.clientProvider.FromClientConfig(config)
 }
 
 func (m *managerImpl) ShootClient(ctx context.Context, t Target) (client.Client, error) {
@@ -493,34 +486,21 @@ func (m *managerImpl) ShootClient(ctx context.Context, t Target) (client.Client,
 		return nil, ErrNoShootTargeted
 	}
 
-	kubeconfig, err := m.Kubeconfig(ctx, t)
+	config, err := m.ClientConfig(ctx, t)
 	if err != nil {
 		return nil, err
 	}
 
-	return m.clientProvider.FromBytes(kubeconfig)
+	return m.clientProvider.FromClientConfig(config)
 }
 
-func (m *managerImpl) getKubeconfig(t Target, loadKubeconfig func(gardenclient.Client) ([]byte, error)) ([]byte, error) {
-	if value, err := m.kubeconfigCache.Read(t); err == nil {
-		return value, nil
-	}
-
+func (m *managerImpl) getClientConfig(t Target, loadClientConfig func(gardenclient.Client) (clientcmd.ClientConfig, error)) (clientcmd.ClientConfig, error) {
 	client, err := m.GardenClient(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	value, err := loadKubeconfig(client)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := m.kubeconfigCache.Write(t, value); err != nil {
-		return nil, fmt.Errorf("failed to update kubeconfig cache: %w", err)
-	}
-
-	return value, nil
+	return loadClientConfig(client)
 }
 
 func (m *managerImpl) patchTarget(patch func(t *targetImpl) error) error {
@@ -552,27 +532,14 @@ func (m *managerImpl) getTarget(t Target) (Target, error) {
 }
 
 func (m *managerImpl) GardenClient(name string) (gardenclient.Client, error) {
-	return GardenClient(name, m.config, m.clientProvider)
+	return newGardenClient(name, m.config, m.clientProvider)
 }
 
-func getSessionID() string {
-	var sid string
-
-	if val, ok := os.LookupEnv("GCTL_SESSION_ID"); ok {
-		sid = strings.ToLower(val)
-	} else if val, ok = os.LookupEnv("ITERM_SESSION_ID"); ok {
-		sid = strings.ToLower(val)
+func writeRawConfig(config clientcmd.ClientConfig) ([]byte, error) {
+	rawConfig, err := config.RawConfig()
+	if err != nil {
+		return nil, err
 	}
 
-	re := regexp.MustCompile(`([a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})`)
-
-	match := re.FindStringSubmatch(sid)
-	if len(match) > 1 {
-		return match[1]
-	}
-
-	sid = uuid.New().String()
-	os.Setenv("GCTL_SESSION_ID", sid)
-
-	return sid
+	return clientcmd.Write(rawConfig)
 }

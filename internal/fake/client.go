@@ -13,9 +13,14 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 )
+
+func NewClientWithObjects(objs ...client.Object) client.Client {
+	return Wrap(fakeclient.NewClientBuilder().WithObjects(objs...).Build())
+}
 
 func Wrap(client client.Client) client.Client {
 	return &clientWrapper{delegate: client}

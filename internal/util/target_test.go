@@ -15,8 +15,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
-	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 	. "github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -62,12 +62,6 @@ var _ = Describe("Target Utilities", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-seed",
 			},
-			Spec: gardencorev1beta1.SeedSpec{
-				SecretRef: &corev1.SecretReference{
-					Name:      testSeedKubeconfig.Name,
-					Namespace: testSeedKubeconfig.Namespace,
-				},
-			},
 		}
 
 		testShoot = &gardencorev1beta1.Shoot{
@@ -90,14 +84,14 @@ var _ = Describe("Target Utilities", func() {
 			},
 		}
 
-		gardenClient = gardenclient.NewGardenClient(fakeclient.NewClientBuilder().WithObjects(
+		gardenClient = gardenclient.NewGardenClient(fake.NewClientWithObjects(
 			testReadyProject,
 			testUnreadyProject,
 			testSeedKubeconfig,
 			testSeed,
 			testShootKubeconfig,
 			testShoot,
-		).Build())
+		))
 	})
 
 	Describe("SeedForTarget", func() {

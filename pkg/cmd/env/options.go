@@ -129,12 +129,12 @@ func (o *options) runKubernetes(ctx context.Context, manager target.Manager) err
 	}
 
 	if !o.Unset {
-		kubeconfig, err := manager.Kubeconfig(ctx, o.CurrentTarget)
+		config, err := manager.ClientConfig(ctx, o.CurrentTarget)
 		if err != nil {
 			return err
 		}
 
-		filename, err := manager.WriteKubeconfig(kubeconfig)
+		filename, err := manager.WriteClientConfig(config)
 		if err != nil {
 			return err
 		}

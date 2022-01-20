@@ -8,6 +8,7 @@ package fake
 
 import (
 	"context"
+	"os"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/config"
@@ -24,10 +25,9 @@ type Factory struct {
 	ManagerImpl target.Manager
 
 	// Override these to customize the created manager.
-	Config              *config.Config
-	ClientProviderImpl  target.ClientProvider
-	KubeconfigCacheImpl target.KubeconfigCache
-	TargetProviderImpl  target.TargetProvider
+	Config             *config.Config
+	ClientProviderImpl target.ClientProvider
+	TargetProviderImpl target.TargetProvider
 
 	// Override the clock implementation. Will use a real clock if not set.
 	ClockImpl util.Clock
@@ -41,17 +41,9 @@ type Factory struct {
 
 var _ util.Factory = &Factory{}
 
-func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider target.ClientProvider, kubeconfigCache target.KubeconfigCache, targetProvider target.TargetProvider) *Factory {
+func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider target.ClientProvider, targetProvider target.TargetProvider) *Factory {
 	if cfg == nil {
 		cfg = &config.Config{}
-	}
-
-	if clientProvider == nil {
-		clientProvider = NewFakeClientProvider()
-	}
-
-	if kubeconfigCache == nil {
-		kubeconfigCache = NewFakeKubeconfigCache()
 	}
 
 	if targetProvider == nil {
@@ -63,11 +55,10 @@ func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider target.
 	}
 
 	return &Factory{
-		Config:              cfg,
-		ClockImpl:           clock,
-		ClientProviderImpl:  clientProvider,
-		KubeconfigCacheImpl: kubeconfigCache,
-		TargetProviderImpl:  targetProvider,
+		Config:             cfg,
+		ClockImpl:          clock,
+		ClientProviderImpl: clientProvider,
+		TargetProviderImpl: targetProvider,
 	}
 }
 
@@ -76,7 +67,9 @@ func (f *Factory) Manager() (target.Manager, error) {
 		return f.ManagerImpl, nil
 	}
 
-	return target.NewManager(f.Config, f.TargetProviderImpl, f.ClientProviderImpl, f.KubeconfigCacheImpl)
+	sessionDir := os.TempDir()
+
+	return target.NewManager(f.Config, f.TargetProviderImpl, f.ClientProviderImpl, sessionDir)
 }
 
 func (f *Factory) Context() context.Context {

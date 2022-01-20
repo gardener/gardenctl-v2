@@ -18,7 +18,7 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/base/mocks"
+	basemocks "github.com/gardener/gardenctl-v2/pkg/cmd/base/mocks"
 )
 
 var _ = Describe("Base Options", func() {
@@ -104,7 +104,7 @@ var _ = Describe("Base Options", func() {
 		var (
 			ctrl        *gomock.Controller
 			mockFactory *utilmocks.MockFactory
-			mockOptions *mocks.MockCommandOptions
+			mockOptions *basemocks.MockCommandOptions
 			runE        func(cmd *cobra.Command, args []string) error
 			cmd         *cobra.Command
 			args        []string
@@ -113,7 +113,7 @@ var _ = Describe("Base Options", func() {
 
 		BeforeEach(func() {
 			ctrl = gomock.NewController(GinkgoT())
-			mockOptions = mocks.NewMockCommandOptions(ctrl)
+			mockOptions = basemocks.NewMockCommandOptions(ctrl)
 			mockFactory = utilmocks.NewMockFactory(ctrl)
 			cmd = &cobra.Command{}
 			args = []string{"foo", "bar"}

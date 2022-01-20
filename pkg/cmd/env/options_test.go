@@ -23,6 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/clientcmd"
 
 	gardenclientmocks "github.com/gardener/gardenctl-v2/internal/gardenclient/mocks"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
@@ -151,7 +152,7 @@ var _ = Describe("Env Commands - Options", func() {
 				mockTemplate     *envmocks.MockTemplate
 				t                target.Target
 				pathToKubeconfig string
-				kubeconfig       []byte
+				config           clientcmd.ClientConfig
 			)
 
 			BeforeEach(func() {
@@ -164,7 +165,7 @@ var _ = Describe("Env Commands - Options", func() {
 				cmdPath = "gardenctl kubectl-env"
 				shell = "bash"
 				pathToKubeconfig = "/path/to/kube/config"
-				kubeconfig = []byte("kubeconfig")
+				config = &clientcmd.DirectClientConfig{}
 			})
 
 			Context("when the command runs successfully", func() {
@@ -177,8 +178,8 @@ var _ = Describe("Env Commands - Options", func() {
 					It("does the work when the shoot is targeted via project", func() {
 						currentTarget := t.WithSeedName("")
 						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
-						manager.EXPECT().Kubeconfig(ctx, currentTarget).Return(kubeconfig, nil)
-						manager.EXPECT().WriteKubeconfig(kubeconfig).Return(pathToKubeconfig, nil)
+						manager.EXPECT().ClientConfig(ctx, currentTarget).Return(config, nil)
+						manager.EXPECT().WriteClientConfig(config).Return(pathToKubeconfig, nil)
 						mockTemplate.EXPECT().ExecuteTemplate(options.IOStreams.Out, shell, gomock.Any()).
 							Do(func(_ io.Writer, _ string, data map[string]interface{}) {
 								Expect(data["filename"]).To(Equal(pathToKubeconfig))
@@ -224,13 +225,13 @@ var _ = Describe("Env Commands - Options", func() {
 					})
 
 					It("should fail with a read error", func() {
-						manager.EXPECT().Kubeconfig(ctx, currentTarget).Return(nil, err)
+						manager.EXPECT().ClientConfig(ctx, currentTarget).Return(nil, err)
 						Expect(options.Run(factory)).To(BeIdenticalTo(err))
 					})
 
 					It("should fail with a write error", func() {
-						manager.EXPECT().Kubeconfig(ctx, currentTarget).Return(kubeconfig, nil)
-						manager.EXPECT().WriteKubeconfig(kubeconfig).Return("", err)
+						manager.EXPECT().ClientConfig(ctx, currentTarget).Return(config, nil)
+						manager.EXPECT().WriteClientConfig(config).Return("", err)
 						Expect(options.Run(factory)).To(BeIdenticalTo(err))
 					})
 				})

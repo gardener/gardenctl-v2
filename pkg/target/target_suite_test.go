@@ -14,6 +14,8 @@ import (
 	. "github.com/onsi/gomega"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
@@ -40,3 +42,12 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	cancel()
 }, 5)
+
+func createTestKubeconfig(name string) []byte {
+	config := clientcmdapi.NewConfig()
+	config.CurrentContext = name
+	data, err := clientcmd.Write(*config)
+	Expect(err).NotTo(HaveOccurred())
+
+	return data
+}
