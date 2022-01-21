@@ -174,7 +174,7 @@ const (
 
 // MatchPattern matches a string against patterns defined in gardenctl config
 // If matched, the function creates and returns a PatternMatch from the provided target string
-func (config *Config) MatchPattern(value string, name string) (*PatternMatch, error) {
+func (config *Config) MatchPattern(value string, gardenName string) (*PatternMatch, error) {
 	var patternMatch *PatternMatch
 
 	for _, g := range config.Gardens {
@@ -186,7 +186,7 @@ func (config *Config) MatchPattern(value string, name string) (*PatternMatch, er
 		if match != nil {
 			match.Garden = g.Name
 
-			if name == "" || g.Name == name {
+			if gardenName == "" || g.Name == gardenName {
 				// Directly return match of selected garden
 				return match, nil
 			}
@@ -204,6 +204,7 @@ func (config *Config) MatchPattern(value string, name string) (*PatternMatch, er
 }
 
 // matchPattern matches pattern with provided list of patterns
+// If none of the provided patterns matches the given value no error is returned
 func matchPattern(patterns []string, value string) (*PatternMatch, error) {
 	for _, p := range patterns {
 		r, err := regexp.Compile(p)

@@ -146,7 +146,7 @@ func (m *managerImpl) Configuration() *config.Config {
 func (m *managerImpl) TargetGarden(ctx context.Context, identity string) error {
 	tb, err := NewTargetBuilder(m.config, m.clientProvider)
 	if err != nil {
-		return fmt.Errorf("failed to target garden: %w", err)
+		return fmt.Errorf("failed to create new target builder: %w", err)
 	}
 
 	currentTarget, err := m.CurrentTarget()
@@ -158,7 +158,7 @@ func (m *managerImpl) TargetGarden(ctx context.Context, identity string) error {
 
 	target, err := tb.SetGarden(identity).Build()
 	if err != nil {
-		return fmt.Errorf("failed to target garden: %w", err)
+		return fmt.Errorf("failed to build target: %w", err)
 	}
 
 	return m.updateTarget(target)
@@ -180,6 +180,7 @@ func (m *managerImpl) UnsetTargetGarden() (string, error) {
 		t.Project = ""
 		t.Seed = ""
 		t.Shoot = ""
+		t.ControlPlaneFlag = false
 
 		return nil
 	})
@@ -188,7 +189,7 @@ func (m *managerImpl) UnsetTargetGarden() (string, error) {
 func (m *managerImpl) TargetProject(ctx context.Context, projectName string) error {
 	tb, err := NewTargetBuilder(m.config, m.clientProvider)
 	if err != nil {
-		return fmt.Errorf("failed to target project: %w", err)
+		return fmt.Errorf("failed to create new target builder: %w", err)
 	}
 
 	currentTarget, err := m.CurrentTarget()
@@ -229,7 +230,7 @@ func (m *managerImpl) UnsetTargetProject() (string, error) {
 func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 	tb, err := NewTargetBuilder(m.config, m.clientProvider)
 	if err != nil {
-		return fmt.Errorf("failed to target seed: %w", err)
+		return fmt.Errorf("failed to create new target builder: %w", err)
 	}
 
 	currentTarget, err := m.CurrentTarget()
@@ -268,7 +269,7 @@ func (m *managerImpl) UnsetTargetSeed() (string, error) {
 func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 	tb, err := NewTargetBuilder(m.config, m.clientProvider)
 	if err != nil {
-		return fmt.Errorf("failed to target shoot: %w", err)
+		return fmt.Errorf("failed to create new target builder: %w", err)
 	}
 
 	currentTarget, err := m.CurrentTarget()
@@ -308,7 +309,7 @@ func (m *managerImpl) UnsetTargetShoot() (string, error) {
 func (m *managerImpl) TargetControlPlane(ctx context.Context) error {
 	tb, err := NewTargetBuilder(m.config, m.clientProvider)
 	if err != nil {
-		return fmt.Errorf("failed to target shoot control plane: %w", err)
+		return fmt.Errorf("failed to create new target builder: %w", err)
 	}
 
 	currentTarget, err := m.CurrentTarget()
@@ -362,7 +363,7 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 
 	tb, err := NewTargetBuilder(m.config, m.clientProvider)
 	if err != nil {
-		return fmt.Errorf("failed to target with match pattern: %w", err)
+		return fmt.Errorf("failed to create new target builder: %w", err)
 	}
 
 	tb.Init(currentTarget)
