@@ -10,15 +10,38 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
 
-type TestOptions struct {
-	options
+type ViewOptions struct {
+	viewOptions
 }
 
-func NewOptions(cmd string) *TestOptions {
-	return &TestOptions{
-		options: options{
+func NewViewOptions() *ViewOptions {
+	return &ViewOptions{
+		viewOptions: viewOptions{
 			Options: base.Options{},
-			Command: cmd,
+		},
+	}
+}
+
+type SetGardenOptions struct {
+	setGardenOptions
+}
+
+func NewSetGardenOptions() *SetGardenOptions {
+	return &SetGardenOptions{
+		setGardenOptions: setGardenOptions{
+			Options: base.Options{},
+		},
+	}
+}
+
+type DeleteGardenOptions struct {
+	deleteGardenOptions
+}
+
+func NewDeleteGardenOptions() *DeleteGardenOptions {
+	return &DeleteGardenOptions{
+		deleteGardenOptions: deleteGardenOptions{
+			Options: base.Options{},
 		},
 	}
 }

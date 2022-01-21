@@ -15,31 +15,30 @@ import (
 	cmdconfig "github.com/gardener/gardenctl-v2/pkg/cmd/config"
 )
 
-var _ = Describe("Config Command - View Options", func() {
-	Describe("Validating options", func() {
-		It("should succeed", func() {
-			o := cmdconfig.NewOptions("view")
-			Expect(o.Validate()).To(Succeed())
-		})
+var _ = Describe("Config Command - DeleteGarden", func() {
+	BeforeEach(func() {
+		manager.EXPECT().Configuration().Return(cfg)
+		factory.EXPECT().Manager().Return(manager, nil)
 	})
-})
 
-var _ = Describe("Config Command - SetGarden Options", func() {
-	DescribeTable("Validating options",
-		func(name string, matcher types.GomegaMatcher) {
-			o := cmdconfig.NewOptions("set-garden")
-			o.Name = name
-			Expect(o.Validate()).To(matcher)
-		},
-		Entry("when garden is foo", "foo", Succeed()),
-		Entry("when garden empty", "", Not(Succeed())),
-	)
+	It("should delete garden from configuration", func() {
+		_, err := cfg.Garden(gardenIdentity1)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(len(cfg.Gardens)).To(Equal(2))
+
+		cmd := cmdconfig.NewCmdConfigDeleteGarden(factory, streams)
+		Expect(cmd.RunE(cmd, []string{gardenIdentity1})).To(Succeed())
+
+		_, err = cfg.Garden(gardenIdentity1)
+		Expect(err).To(HaveOccurred())
+		Expect(len(cfg.Gardens)).To(Equal(1))
+	})
 })
 
 var _ = Describe("Config Command - DeleteGarden Options", func() {
 	DescribeTable("Validating options",
 		func(name string, matcher types.GomegaMatcher) {
-			o := cmdconfig.NewOptions("delete-garden")
+			o := cmdconfig.NewDeleteGardenOptions()
 			o.Name = name
 			Expect(o.Validate()).To(matcher)
 		},

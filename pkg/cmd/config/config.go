@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
@@ -62,82 +61,4 @@ func getConfiguration(f util.Factory) (*config.Config, error) {
 	}
 
 	return config, nil
-}
-
-// NewCmdConfigView returns a new (config) view command.
-func NewCmdConfigView(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
-	use := "view"
-	o := &options{
-		Options: base.Options{
-			IOStreams: ioStreams,
-		},
-		Command: use,
-	}
-	cmd := &cobra.Command{
-		Use:   use,
-		Short: "Print the gardenctl configuration",
-		RunE:  base.WrapRunE(o, f),
-	}
-
-	o.AddFlags(cmd.Flags())
-
-	return cmd
-}
-
-// NewCmdConfigSetGarden returns a new (config) set-garden command.
-func NewCmdConfigSetGarden(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
-	use := "set-garden"
-	o := &options{
-		Options: base.Options{
-			IOStreams: ioStreams,
-		},
-		Command: use,
-	}
-	cmd := &cobra.Command{
-		Use:   use,
-		Short: "modify or add Garden to gardenctl configuration",
-		Long:  "Modify or add Garden to gardenctl configuration. E.g. \"gardenctl config set-garden my-garden --kubeconfig ~/.kube/kubeconfig.yaml\" to configure or add a garden with identity 'my-garden'",
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			suggestions, err := validGardenArgsFunction(f, args)
-			if err != nil {
-				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
-
-			return util.FilterStringsByPrefix(toComplete, suggestions), cobra.ShellCompDirectiveNoFileComp
-		},
-		RunE: base.WrapRunE(o, f),
-	}
-
-	o.AddFlags(cmd.Flags())
-
-	return cmd
-}
-
-// NewCmdConfigDeleteGarden returns a new (config) delete-garden command.
-func NewCmdConfigDeleteGarden(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
-	use := "delete-garden"
-	o := &options{
-		Options: base.Options{
-			IOStreams: ioStreams,
-		},
-		Command: use,
-	}
-	cmd := &cobra.Command{
-		Use:   use,
-		Short: "delete Garden from gardenctl configuration",
-		Long:  "Delete Garden from gardenctl configuration. E.g. \"gardenctl config delete-garden my-garden\" to delete my-garden",
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			suggestions, err := validGardenArgsFunction(f, args)
-			if err != nil {
-				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
-
-			return util.FilterStringsByPrefix(toComplete, suggestions), cobra.ShellCompDirectiveNoFileComp
-		},
-		RunE: base.WrapRunE(o, f),
-	}
-
-	return cmd
 }

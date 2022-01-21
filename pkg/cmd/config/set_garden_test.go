@@ -8,48 +8,12 @@ package config_test
 
 import (
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 
 	cmdconfig "github.com/gardener/gardenctl-v2/pkg/cmd/config"
 )
-
-var _ = Describe("Config Command - View", func() {
-	BeforeEach(func() {
-		manager.EXPECT().Configuration().Return(cfg)
-		factory.EXPECT().Manager().Return(manager, nil)
-	})
-
-	It("should print configuration", func() {
-		cmd := cmdconfig.NewCmdConfigView(factory, streams)
-		Expect(cmd.RunE(cmd, nil)).To(Succeed())
-
-		Expect(out.String()).To(ContainSubstring("gardens"))
-		Expect(out.String()).To(ContainSubstring(gardenIdentity1))
-		Expect(out.String()).To(ContainSubstring(gardenIdentity2))
-		Expect(out.String()).To(ContainSubstring("matchPatterns"))
-		Expect(out.String()).To(ContainSubstring(patterns[1]))
-	})
-})
-
-var _ = Describe("Config Command - DeleteGarden", func() {
-	BeforeEach(func() {
-		manager.EXPECT().Configuration().Return(cfg)
-		factory.EXPECT().Manager().Return(manager, nil)
-	})
-
-	It("should delete garden from configuration", func() {
-		_, err := cfg.Garden(gardenIdentity1)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(len(cfg.Gardens)).To(Equal(2))
-
-		cmd := cmdconfig.NewCmdConfigDeleteGarden(factory, streams)
-		Expect(cmd.RunE(cmd, []string{gardenIdentity1})).To(Succeed())
-
-		_, err = cfg.Garden(gardenIdentity1)
-		Expect(err).To(HaveOccurred())
-		Expect(len(cfg.Gardens)).To(Equal(1))
-	})
-})
 
 var _ = Describe("Config Command - SetGarden", func() {
 	BeforeEach(func() {
@@ -84,4 +48,16 @@ var _ = Describe("Config Command - SetGarden", func() {
 		// Check that existing value does not get overwritten
 		Expect(g.Context).To(Equal(gardenContext1))
 	})
+})
+
+var _ = Describe("Config Command - SetGarden Options", func() {
+	DescribeTable("Validating options",
+		func(name string, matcher types.GomegaMatcher) {
+			o := cmdconfig.NewSetGardenOptions()
+			o.Name = name
+			Expect(o.Validate()).To(matcher)
+		},
+		Entry("when garden is foo", "foo", Succeed()),
+		Entry("when garden empty", "", Not(Succeed())),
+	)
 })
