@@ -164,32 +164,7 @@ func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBui
 			return ErrNoGardenTargeted
 		}
 
-		gardenClient, err := b.getGardenClient(t.GardenName())
-		if err != nil {
-			return err
-		}
-
-		shoot, err := gardenClient.FindShoot(ctx, t.WithShootName(name).AsListOption())
-		if err != nil {
-			return fmt.Errorf("failed to fetch shoot: %w", err)
-		}
-
-		if t.ProjectName() == "" {
-			// we need to resolve the project name as it is not already set
-			// This is important to ensure that the target stays unambiguous and the shoot can be found faster in subsequent operations
-			project, err := gardenClient.GetProjectByNamespace(ctx, shoot.Namespace)
-			if err != nil {
-				return fmt.Errorf("failed to fetch parent project for shoot: %w", err)
-			}
-
-			t.Project = project.Name
-		}
-
-		t.Seed = ""
-		t.Shoot = shoot.Name
-		t.ControlPlaneFlag = false
-
-		return nil
+		return b.completeTargetForShoot(ctx, t, name)
 	})
 
 	return b
@@ -197,8 +172,13 @@ func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBui
 
 func (b *targetBuilderImpl) SetControlPlane(ctx context.Context) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
-		if t.Shoot == "" {
-			return ErrNoShootTargeted
+		if t.GardenName() == "" {
+			return ErrNoGardenTargeted
+		}
+
+		err := b.completeTargetForShoot(ctx, t, t.ShootName())
+		if err != nil {
+			return err
 		}
 
 		t.ControlPlaneFlag = true
@@ -207,6 +187,35 @@ func (b *targetBuilderImpl) SetControlPlane(ctx context.Context) TargetBuilder {
 	})
 
 	return b
+}
+
+func (b *targetBuilderImpl) completeTargetForShoot(ctx context.Context, t *targetImpl, name string) error {
+	gardenClient, err := b.getGardenClient(t.GardenName())
+	if err != nil {
+		return err
+	}
+
+	shoot, err := gardenClient.FindShoot(ctx, t.WithShootName(name).AsListOption())
+	if err != nil {
+		return fmt.Errorf("failed to fetch shoot: %w", err)
+	}
+
+	if t.ProjectName() == "" {
+		// we need to resolve the project name as it is not already set
+		// This is important to ensure that the target stays unambiguous and the shoot can be found faster in subsequent operations
+		project, err := gardenClient.GetProjectByNamespace(ctx, shoot.Namespace)
+		if err != nil {
+			return fmt.Errorf("failed to fetch parent project for shoot: %w", err)
+		}
+
+		t.Project = project.Name
+	}
+
+	t.Seed = ""
+	t.Shoot = shoot.Name
+	t.ControlPlaneFlag = false
+
+	return nil
 }
 
 func (b *targetBuilderImpl) Build() (Target, error) {
