@@ -1,5 +1,6 @@
 /*
 SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener contributors
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -9,11 +10,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/spf13/cobra"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
-
-	"github.com/spf13/cobra"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
 // NewCmdConfig returns a new config command.
@@ -41,6 +42,15 @@ func validGardenArgsFunction(f util.Factory, args []string) ([]string, error) {
 		return nil, nil
 	}
 
+	config, err := getConfiguration(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return config.GardenNames(), nil
+}
+
+func getConfiguration(f util.Factory) (*config.Config, error) {
 	manager, err := f.Manager()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get target manager: %w", err)
@@ -51,7 +61,7 @@ func validGardenArgsFunction(f util.Factory, args []string) ([]string, error) {
 		return nil, errors.New("failed to get configuration")
 	}
 
-	return config.GardenNames(), nil
+	return config, nil
 }
 
 // NewCmdConfigView returns a new (config) view command.
