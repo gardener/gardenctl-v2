@@ -86,7 +86,7 @@ func (b *targetBuilderImpl) SetGarden(name string) TargetBuilder {
 
 func (b *targetBuilderImpl) SetProject(ctx context.Context, name string) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
-		if t.GardenName() == "" {
+		if t.Garden == "" {
 			return ErrNoGardenTargeted
 		}
 
@@ -109,7 +109,7 @@ func (b *targetBuilderImpl) SetProject(ctx context.Context, name string) TargetB
 
 func (b *targetBuilderImpl) SetNamespace(ctx context.Context, name string) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
-		if t.GardenName() == "" {
+		if t.Garden == "" {
 			return ErrNoGardenTargeted
 		}
 
@@ -137,7 +137,7 @@ func (b *targetBuilderImpl) SetNamespace(ctx context.Context, name string) Targe
 
 func (b *targetBuilderImpl) SetSeed(ctx context.Context, name string) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
-		if t.GardenName() == "" {
+		if t.Garden == "" {
 			return ErrNoGardenTargeted
 		}
 
@@ -160,7 +160,7 @@ func (b *targetBuilderImpl) SetSeed(ctx context.Context, name string) TargetBuil
 
 func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
-		if t.GardenName() == "" {
+		if t.Garden == "" {
 			return ErrNoGardenTargeted
 		}
 
@@ -172,11 +172,11 @@ func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBui
 
 func (b *targetBuilderImpl) SetControlPlane(ctx context.Context) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
-		if t.GardenName() == "" {
+		if t.Garden == "" {
 			return ErrNoGardenTargeted
 		}
 
-		err := b.completeTargetForShoot(ctx, t, t.ShootName())
+		err := b.completeTargetForShoot(ctx, t, t.Shoot)
 		if err != nil {
 			return err
 		}
@@ -200,7 +200,7 @@ func (b *targetBuilderImpl) completeTargetForShoot(ctx context.Context, t *targe
 		return fmt.Errorf("failed to fetch shoot: %w", err)
 	}
 
-	if t.ProjectName() == "" {
+	if t.Project == "" {
 		// we need to resolve the project name as it is not already set
 		// This is important to ensure that the target stays unambiguous and the shoot can be found faster in subsequent operations
 		project, err := gardenClient.GetProjectByNamespace(ctx, shoot.Namespace)
