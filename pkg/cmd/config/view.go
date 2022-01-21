@@ -7,9 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package config
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -43,14 +40,9 @@ type viewOptions struct {
 
 // Complete adapts from the command line args to the data required.
 func (o *viewOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	manager, err := f.Manager()
+	config, err := getConfiguration(f)
 	if err != nil {
-		return fmt.Errorf("failed to get target manager: %w", err)
-	}
-
-	config := manager.Configuration()
-	if config == nil {
-		return errors.New("failed to get configuration")
+		return err
 	}
 
 	o.Configuration = config

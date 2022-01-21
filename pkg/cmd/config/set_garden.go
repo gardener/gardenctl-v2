@@ -68,14 +68,9 @@ type setGardenOptions struct {
 
 // Complete adapts from the command line args to the data required.
 func (o *setGardenOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	manager, err := f.Manager()
+	config, err := getConfiguration(f)
 	if err != nil {
-		return fmt.Errorf("failed to get target manager: %w", err)
-	}
-
-	config := manager.Configuration()
-	if config == nil {
-		return errors.New("failed to get configuration")
+		return err
 	}
 
 	o.Configuration = config
