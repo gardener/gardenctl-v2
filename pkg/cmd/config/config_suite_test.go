@@ -7,13 +7,37 @@ package config_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/gardener/gardenctl-v2/internal/util"
+	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
+	"github.com/gardener/gardenctl-v2/pkg/config"
+	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
 
-var gardenHomeDir string
+const (
+	gardenIdentity1 = "fooGarden"
+	gardenIdentity2 = "barGarden"
+	gardenIdentity3 = "bazGarden"
+	gardenContext1  = "my-context"
+	kubeconfig      = "not/a/file"
+)
+
+var (
+	gardenHomeDir string
+	cfg           *config.Config
+	ctrl          *gomock.Controller
+	factory       *utilmocks.MockFactory
+	manager       *targetmocks.MockManager
+	streams       util.IOStreams
+	out           *util.SafeBytesBuffer
+	patterns      []string
+)
 
 func TestCommand(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -29,4 +53,34 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	Expect(os.RemoveAll(gardenHomeDir)).To(Succeed())
+})
+
+var _ = BeforeEach(func() {
+	patterns = []string{
+		"^shoot--(?P<project>.+)--(?P<shoot>.+)$",
+		"^namespace:(?P<namespace>[^/]+)$",
+	}
+	cfg = &config.Config{
+		Filename: filepath.Join(gardenHomeDir, "gardenctl-testconfig.yaml"),
+		Gardens: []config.Garden{
+			{
+				Name:       gardenIdentity1,
+				Kubeconfig: kubeconfig,
+				Context:    gardenContext1,
+			},
+			{
+				Name:       gardenIdentity2,
+				Kubeconfig: kubeconfig,
+				Patterns:   patterns,
+			}},
+	}
+
+	streams, _, out, _ = util.NewTestIOStreams()
+	ctrl = gomock.NewController(GinkgoT())
+	factory = utilmocks.NewMockFactory(ctrl)
+	manager = targetmocks.NewMockManager(ctrl)
+})
+
+var _ = AfterEach(func() {
+	ctrl.Finish()
 })

@@ -1,73 +1,22 @@
 /*
 SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener contributors
+
 SPDX-License-Identifier: Apache-2.0
 */
 
 package config_test
 
 import (
-	"path/filepath"
-
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/gardener/gardenctl-v2/internal/util"
-	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	cmdconfig "github.com/gardener/gardenctl-v2/pkg/cmd/config"
-	"github.com/gardener/gardenctl-v2/pkg/config"
-	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
 
-var _ = Describe("Config Commands", func() {
-	const (
-		gardenIdentity1 = "fooGarden"
-		gardenIdentity2 = "barGarden"
-		gardenIdentity3 = "bazGarden"
-		gardenContext1  = "my-context"
-		kubeconfig      = "not/a/file"
-	)
-
-	var (
-		cfg      *config.Config
-		ctrl     *gomock.Controller
-		factory  *utilmocks.MockFactory
-		manager  *targetmocks.MockManager
-		streams  util.IOStreams
-		out      *util.SafeBytesBuffer
-		patterns []string
-	)
-
+var _ = Describe("Config Command - View", func() {
 	BeforeEach(func() {
-		patterns = []string{
-			"^shoot--(?P<project>.+)--(?P<shoot>.+)$",
-			"^namespace:(?P<namespace>[^/]+)$",
-		}
-		cfg = &config.Config{
-			Filename: filepath.Join(gardenHomeDir, "gardenctl-testconfig.yaml"),
-			Gardens: []config.Garden{
-				{
-					Name:       gardenIdentity1,
-					Kubeconfig: kubeconfig,
-					Context:    gardenContext1,
-				},
-				{
-					Name:       gardenIdentity2,
-					Kubeconfig: kubeconfig,
-					Patterns:   patterns,
-				}},
-		}
-
-		streams, _, out, _ = util.NewTestIOStreams()
-		ctrl = gomock.NewController(GinkgoT())
-		factory = utilmocks.NewMockFactory(ctrl)
-		manager = targetmocks.NewMockManager(ctrl)
 		manager.EXPECT().Configuration().Return(cfg)
 		factory.EXPECT().Manager().Return(manager, nil)
-	})
-
-	AfterEach(func() {
-		ctrl.Finish()
 	})
 
 	It("should print configuration", func() {
@@ -79,6 +28,13 @@ var _ = Describe("Config Commands", func() {
 		Expect(out.String()).To(ContainSubstring(gardenIdentity2))
 		Expect(out.String()).To(ContainSubstring("matchPatterns"))
 		Expect(out.String()).To(ContainSubstring(patterns[1]))
+	})
+})
+
+var _ = Describe("Config Command - DeleteGarden", func() {
+	BeforeEach(func() {
+		manager.EXPECT().Configuration().Return(cfg)
+		factory.EXPECT().Manager().Return(manager, nil)
 	})
 
 	It("should delete garden from configuration", func() {
@@ -92,6 +48,13 @@ var _ = Describe("Config Commands", func() {
 		_, err = cfg.Garden(gardenIdentity1)
 		Expect(err).To(HaveOccurred())
 		Expect(len(cfg.Gardens)).To(Equal(1))
+	})
+})
+
+var _ = Describe("Config Command - SetGarden", func() {
+	BeforeEach(func() {
+		manager.EXPECT().Configuration().Return(cfg)
+		factory.EXPECT().Manager().Return(manager, nil)
 	})
 
 	It("should add new garden to configuration", func() {

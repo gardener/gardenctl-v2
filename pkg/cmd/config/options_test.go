@@ -15,18 +15,35 @@ import (
 	cmdconfig "github.com/gardener/gardenctl-v2/pkg/cmd/config"
 )
 
-var _ = Describe("Config Commands - Options", func() {
-	DescribeTable("Validation of config subcommand",
-		func(cmd string, name string, matcher types.GomegaMatcher) {
-			o := cmdconfig.NewOptions(cmd)
+var _ = Describe("Config Command - View Options", func() {
+	Describe("Validating options", func() {
+		It("should succeed", func() {
+			o := cmdconfig.NewOptions("view")
+			Expect(o.Validate()).To(Succeed())
+		})
+	})
+})
+
+var _ = Describe("Config Command - SetGarden Options", func() {
+	DescribeTable("Validating options",
+		func(name string, matcher types.GomegaMatcher) {
+			o := cmdconfig.NewOptions("set-garden")
 			o.Name = name
 			Expect(o.Validate()).To(matcher)
 		},
-		Entry("for command view and garden foo", "view", "foo", Succeed()),
-		Entry("for command view and no garden", "view", "", Succeed()),
-		Entry("for command set-garden and garden foo", "set-garden", "foo", Succeed()),
-		Entry("for command set-garden and no garden", "set-garden", "", Not(Succeed())),
-		Entry("for command delete-garden and garden foo", "delete-garden", "foo", Succeed()),
-		Entry("for command delete-garden and no garden", "delete-garden", "", Not(Succeed())),
+		Entry("when garden is foo", "foo", Succeed()),
+		Entry("when garden empty", "", Not(Succeed())),
+	)
+})
+
+var _ = Describe("Config Command - DeleteGarden Options", func() {
+	DescribeTable("Validating options",
+		func(name string, matcher types.GomegaMatcher) {
+			o := cmdconfig.NewOptions("delete-garden")
+			o.Name = name
+			Expect(o.Validate()).To(matcher)
+		},
+		Entry("when garden is foo", "foo", Succeed()),
+		Entry("when garden empty", "", Not(Succeed())),
 	)
 })
