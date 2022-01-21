@@ -89,7 +89,9 @@ func (config *Config) Save() error {
 	return nil
 }
 
-func (config *Config) indexOfGarden(name string) (int, bool) {
+// IndexOfGarden returns the index of the Garden with the given name in the configured Gardens slice
+// If no Garden with this name is found it returns -1
+func (config *Config) IndexOfGarden(name string) (int, bool) {
 	for i, g := range config.Gardens {
 		if g.Name == name {
 			return i, true
@@ -111,7 +113,7 @@ func (config *Config) GardenNames() []string {
 
 // Garden returns a Garden cluster from the list of configured Gardens
 func (config *Config) Garden(name string) (*Garden, error) {
-	i, ok := config.indexOfGarden(name)
+	i, ok := config.IndexOfGarden(name)
 	if !ok {
 		return nil, fmt.Errorf("garden %q is not defined in gardenctl configuration", name)
 	}
@@ -138,7 +140,7 @@ func (config *Config) ClientConfig(name string) (clientcmd.ClientConfig, error) 
 
 // DeleteGarden deletes a Garden from the configuration
 func (config *Config) DeleteGarden(name string) error {
-	i, ok := config.indexOfGarden(name)
+	i, ok := config.IndexOfGarden(name)
 	if !ok {
 		return fmt.Errorf("garden %q is not defined in gardenctl configuration", name)
 	}
