@@ -79,12 +79,14 @@ func (o *deleteGardenOptions) Validate() error {
 
 // Run executes the command
 func (o *deleteGardenOptions) Run(_ util.Factory) error {
-	err := o.Configuration.DeleteGarden(o.Name)
-	if err != nil {
-		return err
+	i, ok := o.Configuration.IndexOfGarden(o.Name)
+	if !ok {
+		return fmt.Errorf("garden %q is not defined in gardenctl configuration", o.Name)
 	}
 
-	err = o.Configuration.Save()
+	o.Configuration.Gardens = append(o.Configuration.Gardens[:i], o.Configuration.Gardens[i+1:]...)
+
+	err := o.Configuration.Save()
 	if err != nil {
 		return fmt.Errorf("failed to delete garden from configuration: %w", err)
 	}

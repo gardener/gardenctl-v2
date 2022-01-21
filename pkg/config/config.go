@@ -138,18 +138,6 @@ func (config *Config) ClientConfig(name string) (clientcmd.ClientConfig, error) 
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loader, overrides), nil
 }
 
-// DeleteGarden deletes a Garden from the configuration
-func (config *Config) DeleteGarden(name string) error {
-	i, ok := config.IndexOfGarden(name)
-	if !ok {
-		return fmt.Errorf("garden %q is not defined in gardenctl configuration", name)
-	}
-
-	config.Gardens = append(config.Gardens[:i], config.Gardens[i+1:]...)
-
-	return nil
-}
-
 // PatternMatch holds (target) values extracted from a provided string
 type PatternMatch struct {
 	// Garden is the matched Garden
