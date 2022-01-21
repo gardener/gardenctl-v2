@@ -55,8 +55,12 @@ func createTestShoot(name string, namespace string, seedName *string) *gardencor
 	return shoot
 }
 
+func cloneTarget(t target.Target) target.Target {
+	return target.NewTarget(t.GardenName(), t.ProjectName(), t.SeedName(), t.ShootName()).WithControlPlane(t.ControlPlane())
+}
+
 func createTestManager(t target.Target, cfg *config.Config, clientProvider target.ClientProvider) (target.Manager, target.TargetProvider) {
-	targetProvider := fake.NewFakeTargetProvider(t)
+	targetProvider := fake.NewFakeTargetProvider(cloneTarget(t))
 
 	sessionDir := os.TempDir()
 	manager, err := target.NewManager(cfg, targetProvider, clientProvider, sessionDir)
@@ -322,7 +326,7 @@ var _ = Describe("Target Manager", func() {
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
-		assertTargetProvider(targetProvider, t)
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
 	})
 
 	It("should not target anything if target is not completely valid", func() {
@@ -330,7 +334,7 @@ var _ = Describe("Target Manager", func() {
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, "invalid shoot"))).NotTo(Succeed())
-		assertTargetProvider(targetProvider, t)
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
 	})
 
 	It("should be able to target valid project by matching a pattern containing a namespace", func() {
