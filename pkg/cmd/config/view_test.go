@@ -20,33 +20,6 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
-var _ = Describe("Config Command - View", func() {
-	BeforeEach(func() {
-		manager.EXPECT().Configuration().Return(cfg)
-		factory.EXPECT().Manager().Return(manager, nil)
-	})
-
-	It("should print configuration", func() {
-		cmd := cmdconfig.NewCmdConfigView(factory, streams)
-		Expect(cmd.RunE(cmd, nil)).To(Succeed())
-
-		Expect(out.String()).To(ContainSubstring("gardens"))
-		Expect(out.String()).To(ContainSubstring(gardenIdentity1))
-		Expect(out.String()).To(ContainSubstring(gardenIdentity2))
-		Expect(out.String()).To(ContainSubstring("matchPatterns"))
-		Expect(out.String()).To(ContainSubstring(patterns[1]))
-	})
-})
-
-var _ = Describe("Config Command - View Options", func() {
-	Describe("Validating options", func() {
-		It("should succeed", func() {
-			o := cmdconfig.NewViewOptions()
-			Expect(o.Validate()).To(Succeed())
-		})
-	})
-})
-
 var _ = Describe("Config Subcommand View", func() {
 	Describe("Instance", func() {
 		var cmd *cobra.Command
@@ -55,7 +28,7 @@ var _ = Describe("Config Subcommand View", func() {
 			cmd = cmdconfig.NewCmdConfigView(factory, streams)
 		})
 
-		It("should have ", func() {
+		It("should have Use and Flags", func() {
 			Expect(cmd.Use).To(Equal("view"))
 			Expect(cmd.Flag("output")).NotTo(BeNil())
 		})
