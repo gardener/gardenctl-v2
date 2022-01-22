@@ -36,17 +36,22 @@ The loading order follows these rules:
 	return cmd
 }
 
-func validGardenArgsFunction(f util.Factory, args []string) ([]string, error) {
-	if len(args) > 0 {
-		return nil, nil
-	}
+type cobraValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
 
-	config, err := getConfiguration(f)
-	if err != nil {
-		return nil, err
-	}
+func validGardenArgsFunctionWrapper(f util.Factory, ioStreams util.IOStreams) cobraValidArgsFunction {
+	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) > 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
 
-	return config.GardenNames(), nil
+		config, err := getConfiguration(f)
+		if err != nil {
+			fmt.Fprintln(ioStreams.ErrOut, err.Error())
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		return util.FilterStringsByPrefix(toComplete, config.GardenNames()), cobra.ShellCompDirectiveNoFileComp
+	}
 }
 
 func getConfiguration(f util.Factory) (*config.Config, error) {

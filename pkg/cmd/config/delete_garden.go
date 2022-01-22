@@ -26,19 +26,11 @@ func NewCmdConfigDeleteGarden(f util.Factory, ioStreams util.IOStreams) *cobra.C
 		},
 	}
 	cmd := &cobra.Command{
-		Use:   "delete-garden",
-		Short: "delete Garden from gardenctl configuration",
-		Long:  "Delete Garden from gardenctl configuration. E.g. \"gardenctl config delete-garden my-garden\" to delete my-garden",
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			suggestions, err := validGardenArgsFunction(f, args)
-			if err != nil {
-				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
-
-			return util.FilterStringsByPrefix(toComplete, suggestions), cobra.ShellCompDirectiveNoFileComp
-		},
-		RunE: base.WrapRunE(o, f),
+		Use:               "delete-garden",
+		Short:             "delete Garden from gardenctl configuration",
+		Long:              "Delete Garden from gardenctl configuration. E.g. \"gardenctl config delete-garden my-garden\" to delete my-garden",
+		ValidArgsFunction: validGardenArgsFunctionWrapper(f, ioStreams),
+		RunE:              base.WrapRunE(o, f),
 	}
 
 	return cmd

@@ -28,19 +28,11 @@ func NewCmdConfigSetGarden(f util.Factory, ioStreams util.IOStreams) *cobra.Comm
 		},
 	}
 	cmd := &cobra.Command{
-		Use:   "set-garden",
-		Short: "modify or add Garden to gardenctl configuration",
-		Long:  "Modify or add Garden to gardenctl configuration. E.g. \"gardenctl config set-garden my-garden --kubeconfig ~/.kube/kubeconfig.yaml\" to configure or add a garden with identity 'my-garden'",
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			suggestions, err := validGardenArgsFunction(f, args)
-			if err != nil {
-				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
-
-			return util.FilterStringsByPrefix(toComplete, suggestions), cobra.ShellCompDirectiveNoFileComp
-		},
-		RunE: base.WrapRunE(o, f),
+		Use:               "set-garden",
+		Short:             "modify or add Garden to gardenctl configuration",
+		Long:              "Modify or add Garden to gardenctl configuration. E.g. \"gardenctl config set-garden my-garden --kubeconfig ~/.kube/kubeconfig.yaml\" to configure or add a garden with identity 'my-garden'",
+		ValidArgsFunction: validGardenArgsFunctionWrapper(f, ioStreams),
+		RunE:              base.WrapRunE(o, f),
 	}
 
 	o.AddFlags(cmd.Flags())
