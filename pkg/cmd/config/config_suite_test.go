@@ -37,6 +37,7 @@ var (
 	manager       *targetmocks.MockManager
 	streams       util.IOStreams
 	out           *util.SafeBytesBuffer
+	errOut        *util.SafeBytesBuffer
 	patterns      []string
 )
 
@@ -76,7 +77,7 @@ var _ = BeforeEach(func() {
 			}},
 	}
 
-	streams, _, out, _ = util.NewTestIOStreams()
+	streams, _, out, errOut = util.NewTestIOStreams()
 	ctrl = gomock.NewController(GinkgoT())
 	factory = utilmocks.NewMockFactory(ctrl)
 	manager = targetmocks.NewMockManager(ctrl)
