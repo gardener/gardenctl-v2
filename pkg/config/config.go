@@ -32,12 +32,12 @@ type Garden struct {
 	Kubeconfig string `yaml:"kubeconfig"`
 	// Context overrides the current-context of the garden cluster kubeconfig
 	// +optional
-	Context string `yaml:"context"`
+	Context string `yaml:"context,omitempty"`
 	// Patterns is a list of regex patterns that can be defined to use custom input formats for targeting
 	// Use named capturing groups to match target values.
 	// Supported capturing groups: project, namespace, shoot
 	// +optional
-	Patterns []string `yaml:"matchPatterns"`
+	Patterns []string `yaml:"matchPatterns,omitempty"`
 }
 
 // LoadFromFile parses a gardenctl config file and returns a Config struct
