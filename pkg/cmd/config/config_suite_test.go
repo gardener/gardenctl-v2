@@ -14,6 +14,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/pflag"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
@@ -86,3 +87,36 @@ var _ = BeforeEach(func() {
 var _ = AfterEach(func() {
 	ctrl.Finish()
 })
+
+func assertAllFlagNames(flags *pflag.FlagSet, expNames ...string) {
+	actNames := []string{}
+
+	flags.VisitAll(func(flag *pflag.Flag) {
+		actNames = append(actNames, flag.Name)
+	})
+
+	ExpectWithOffset(1, actNames).To(Equal(expNames))
+}
+
+func assertGardenNames(cfg *config.Config, names ...string) {
+	ExpectWithOffset(1, cfg.GardenNames()).To(Equal(names))
+}
+
+func assertGarden(cfg *config.Config, garden *config.Garden) {
+	g, err := cfg.Garden(garden.Name)
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+	ExpectWithOffset(1, g).To(BeEquivalentTo(garden))
+}
+
+func assertConfigHasBeenSaved(cfg *config.Config) {
+	c, err := config.LoadFromFile(cfg.Filename)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	for i, g := range cfg.Gardens {
+		if len(g.Patterns) == 0 {
+			cfg.Gardens[i].Patterns = nil
+		}
+	}
+
+	ExpectWithOffset(1, c).To(BeEquivalentTo(cfg))
+}
