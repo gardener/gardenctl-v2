@@ -18,53 +18,6 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
-var _ = Describe("Config Command - SetGarden", func() {
-	BeforeEach(func() {
-		manager.EXPECT().Configuration().Return(cfg)
-		factory.EXPECT().Manager().Return(manager, nil)
-	})
-
-	It("should add new garden to configuration", func() {
-		Expect(len(cfg.Gardens)).To(Equal(2))
-
-		cmd := cmdconfig.NewCmdConfigSetGarden(factory, streams)
-		Expect(cmd.RunE(cmd, []string{gardenIdentity3})).To(Succeed())
-
-		_, err := cfg.Garden(gardenIdentity3)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(len(cfg.Gardens)).To(Equal(3))
-	})
-
-	It("should modify an existing garden configuration", func() {
-		Expect(len(cfg.Gardens)).To(Equal(2))
-
-		cmd := cmdconfig.NewCmdConfigSetGarden(factory, streams)
-		pathToKubeconfig := "path/to/kubeconfig"
-		Expect(cmd.Flags().Set("kubeconfig", pathToKubeconfig)).To(Succeed())
-		Expect(cmd.RunE(cmd, []string{gardenIdentity1})).To(Succeed())
-
-		g, err := cfg.Garden(gardenIdentity1)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(len(cfg.Gardens)).To(Equal(2))
-		Expect(g.Name).To(Equal(gardenIdentity1))
-		Expect(g.Kubeconfig).To(Equal(pathToKubeconfig))
-		// Check that existing value does not get overwritten
-		Expect(g.Context).To(Equal(gardenContext1))
-	})
-})
-
-var _ = Describe("Config Command - SetGarden Options", func() {
-	DescribeTable("Validating options",
-		func(name string, matcher types.GomegaMatcher) {
-			o := cmdconfig.NewSetGardenOptions()
-			o.Name = name
-			Expect(o.Validate()).To(matcher)
-		},
-		Entry("when garden is foo", "foo", Succeed()),
-		Entry("when garden empty", "", Not(Succeed())),
-	)
-})
-
 var _ = Describe("Config Subcommand SetGarden", func() {
 	Describe("Instance", func() {
 		var cmd *cobra.Command
