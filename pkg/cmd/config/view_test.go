@@ -30,7 +30,7 @@ var _ = Describe("Config Subcommand View", func() {
 
 		It("should have Use and Flags", func() {
 			Expect(cmd.Use).To(Equal("view"))
-			Expect(cmd.Flag("output")).NotTo(BeNil())
+			assertAllFlagNames(cmd.Flags(), "output")
 		})
 	})
 

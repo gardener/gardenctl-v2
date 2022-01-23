@@ -12,10 +12,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 
 	cmdconfig "github.com/gardener/gardenctl-v2/pkg/cmd/config"
-	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
 var _ = Describe("Config Subcommand DeleteGarden", func() {
@@ -30,9 +28,7 @@ var _ = Describe("Config Subcommand DeleteGarden", func() {
 			Expect(cmd.Use).To(Equal("delete-garden"))
 			Expect(cmd.ValidArgsFunction).NotTo(BeNil())
 			Expect(cmd.ValidArgs).To(BeNil())
-			hasFlags := false
-			cmd.Flags().VisitAll(func(flag *pflag.Flag) { hasFlags = true })
-			Expect(hasFlags).To(BeFalse())
+			assertAllFlagNames(cmd.Flags())
 		})
 	})
 
@@ -85,12 +81,8 @@ var _ = Describe("Config Subcommand DeleteGarden", func() {
 			It("should delete garden from configuration", func() {
 				Expect(options.Run(nil)).To(Succeed())
 
-				Expect(cfg.GardenNames()).To(Equal([]string{
-					gardenIdentity2,
-				}))
-				c, err := config.LoadFromFile(cfg.Filename)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(c).To(BeEquivalentTo(cfg))
+				assertGardenNames(cfg, gardenIdentity2)
+				assertConfigHasBeenSaved(cfg)
 				Expect(out.String()).To(MatchRegexp("^Successfully deleted garden"))
 			})
 
