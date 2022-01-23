@@ -89,7 +89,7 @@ var _ = AfterEach(func() {
 })
 
 func assertAllFlagNames(flags *pflag.FlagSet, expNames ...string) {
-	actNames := []string{}
+	var actNames []string
 
 	flags.VisitAll(func(flag *pflag.Flag) {
 		actNames = append(actNames, flag.Name)
