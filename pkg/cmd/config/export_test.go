@@ -10,7 +10,10 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
 
-var ValidGardenArgsFunctionWrapper = validGardenArgsFunctionWrapper
+var (
+	ValidGardenArgsFunctionWrapper = validGardenArgsFunctionWrapper
+	ValidatePatterns               = validatePatterns
+)
 
 type CobraValidArgsFunction cobraValidArgsFunction
 

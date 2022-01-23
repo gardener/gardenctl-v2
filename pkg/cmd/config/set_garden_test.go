@@ -71,6 +71,21 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 				Entry("when garden is foo", "foo", Succeed()),
 				Entry("when garden empty", "", MatchError("garden identity is required")),
 			)
+
+			DescribeTable("Validating Pattern Flag",
+				func(patterns []string, matcher types.GomegaMatcher) {
+					o := cmdconfig.NewSetGardenOptions()
+					o.Name = "foo"
+					o.Patterns = patterns
+					Expect(o.Validate()).To(matcher)
+				},
+				Entry("when patterns is nil", nil, Succeed()),
+				Entry("when 1st pattern is empty", []string{""}, Succeed()),
+				Entry("when 1st pattern is empty and 2nd pattern is not empty", []string{"", "foo"}, MatchError("pattern[0] must not be empty")),
+				Entry("when all patterns are valid", []string{"^shoot--(?P<project>.+)--(?P<shoot>.+)$`"}, Succeed()),
+				Entry("when a pattern is not a valid regular expression", []string{"("}, MatchError(MatchRegexp(`^pattern\[0\] is not a valid regular expression`))),
+				Entry("when a pattern has an invalid subexpression name", []string{"^shoot--(?P<cluster>.+)$`"}, MatchError("pattern[0] contains an invalid subexpression \"cluster\"")),
+			)
 		})
 
 		Describe("Run", func() {

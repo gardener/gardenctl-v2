@@ -9,6 +9,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -80,6 +81,10 @@ func (o *setGardenOptions) Validate() error {
 		return errors.New("garden identity is required")
 	}
 
+	if err := validatePatterns(o.Patterns); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -130,6 +135,32 @@ func (o *setGardenOptions) Run(_ util.Factory) error {
 	}
 
 	fmt.Fprintf(o.IOStreams.Out, "Successfully configured garden %q\n", o.Name)
+
+	return nil
+}
+
+func validatePatterns(patterns []string) error {
+	if patterns == nil || patterns[0] == "" && len(patterns) == 1 {
+		return nil
+	}
+
+	for i, p := range patterns {
+		if p == "" {
+			return fmt.Errorf("pattern[%d] must not be empty", i)
+		}
+
+		re, err := regexp.Compile(p)
+		if err != nil {
+			return fmt.Errorf("pattern[%d] is not a valid regular expression: %w", i, err)
+		}
+
+		names := re.SubexpNames()
+		for _, name := range names[1:] {
+			if name != "project" && name != "namespace" && name != "shoot" {
+				return fmt.Errorf("pattern[%d] contains an invalid subexpression %q", i, name)
+			}
+		}
+	}
 
 	return nil
 }
