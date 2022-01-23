@@ -75,10 +75,10 @@ var _ = Describe("Config Subcommand DeleteGarden", func() {
 		Describe("Run", func() {
 			BeforeEach(func() {
 				options.Configuration = cfg
-				options.Name = gardenIdentity1
 			})
 
 			It("should delete garden from configuration", func() {
+				options.Name = gardenIdentity1
 				Expect(options.Run(nil)).To(Succeed())
 
 				assertGardenNames(cfg, gardenIdentity2)
@@ -92,6 +92,7 @@ var _ = Describe("Config Subcommand DeleteGarden", func() {
 			})
 
 			It("should fail when the filename is invalid", func() {
+				options.Name = gardenIdentity1
 				options.Configuration.Filename = string([]byte{0})
 				Expect(options.Run(nil)).To(MatchError(MatchRegexp("^failed to delete garden")))
 			})
