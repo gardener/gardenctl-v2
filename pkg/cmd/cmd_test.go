@@ -172,8 +172,12 @@ var _ = Describe("Gardenctl command", func() {
 			clientProvider := targetmocks.NewMockClientProvider(ctrl)
 
 			// ensure the clientprovider provides the proper clients to the manager
-			clientProvider.EXPECT().FromFile(cfg.Gardens[0].Kubeconfig).Return(gardenClient1, nil).AnyTimes()
-			clientProvider.EXPECT().FromFile(cfg.Gardens[1].Kubeconfig).Return(gardenClient2, nil).AnyTimes()
+			clientConfig1, err := cfg.ClientConfig(gardenName1)
+			Expect(err).ToNot(HaveOccurred())
+			clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig1)).Return(gardenClient1, nil).AnyTimes()
+			clientConfig2, err := cfg.ClientConfig(gardenName2)
+			Expect(err).ToNot(HaveOccurred())
+			clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig2)).Return(gardenClient2, nil).AnyTimes()
 
 			currentTarget := target.NewTarget(gardenName1, testProject1.Name, "", testShoot1.Name)
 			targetProvider := fake.NewFakeTargetProvider(currentTarget)

@@ -14,7 +14,7 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
 
-// NewCmdView returns a new version command.
+// NewCmdView returns a new target view command.
 func NewCmdView(f util.Factory, o *ViewOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "view",
@@ -52,7 +52,7 @@ func runViewCommand(f util.Factory, opt *ViewOptions) error {
 	return opt.PrintObject(currentTarget)
 }
 
-// ViewOptions is a struct to support version command
+// ViewOptions is a struct to support view command
 type ViewOptions struct {
 	base.Options
 }

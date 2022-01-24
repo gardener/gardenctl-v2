@@ -224,7 +224,9 @@ var _ = Describe("SSH Command", func() {
 		ctrl = gomock.NewController(GinkgoT())
 
 		clientProvider = targetmocks.NewMockClientProvider(ctrl)
-		clientProvider.EXPECT().FromFile(gardenKubeconfigFile).Return(gardenClient, nil).AnyTimes()
+		clientConfig, err := cfg.ClientConfig(gardenName)
+		Expect(err).ToNot(HaveOccurred())
+		clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(gardenClient, nil).AnyTimes()
 
 		currentTarget = target.NewTarget(gardenName, testProject.Name, "", testShoot.Name)
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)

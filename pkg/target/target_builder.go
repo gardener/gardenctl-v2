@@ -22,7 +22,6 @@ type TargetBuilder interface {
 	// Use this function to overwrite target baseline data before updating with new values
 	Init(Target) TargetBuilder
 	// SetGarden updates TargetBuilder with a Garden name
-	// gardenName can be Garden Name or Alias as defined in the config
 	SetGarden(string) TargetBuilder
 	// SetProject updates TargetBuilder with a Project name
 	SetProject(context.Context, string) TargetBuilder
@@ -53,11 +52,15 @@ type targetBuilderImpl struct {
 var _ TargetBuilder = &targetBuilderImpl{}
 
 // NewTargetBuilder returns a new target builder
-func NewTargetBuilder(config *config.Config, clientProvider ClientProvider) TargetBuilder {
+func NewTargetBuilder(config *config.Config, clientProvider ClientProvider) (TargetBuilder, error) {
+	if config == nil {
+		return nil, errors.New("config must not be nil")
+	}
+
 	return &targetBuilderImpl{
 		config:         config,
 		clientProvider: clientProvider,
-	}
+	}, nil
 }
 
 func (b *targetBuilderImpl) Init(t Target) TargetBuilder {
@@ -67,12 +70,12 @@ func (b *targetBuilderImpl) Init(t Target) TargetBuilder {
 
 func (b *targetBuilderImpl) SetGarden(name string) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
-		gardenName, err := b.config.GardenName(name)
+		garden, err := b.config.Garden(name)
 		if err != nil {
 			return fmt.Errorf("failed to set target garden: %w", err)
 		}
 
-		t.Garden = gardenName
+		t.Garden = garden.Name
 		t.Project = ""
 		t.Seed = ""
 		t.Shoot = ""

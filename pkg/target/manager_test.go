@@ -55,11 +55,15 @@ func createTestShoot(name string, namespace string, seedName *string) *gardencor
 	return shoot
 }
 
-func createTestManager(t target.Target, cfg config.Config, clientProvider target.ClientProvider) (target.Manager, target.TargetProvider) {
-	targetProvider := fake.NewFakeTargetProvider(t)
+func cloneTarget(t target.Target) target.Target {
+	return target.NewTarget(t.GardenName(), t.ProjectName(), t.SeedName(), t.ShootName()).WithControlPlane(t.ControlPlane())
+}
+
+func createTestManager(t target.Target, cfg *config.Config, clientProvider target.ClientProvider) (target.Manager, target.TargetProvider) {
+	targetProvider := fake.NewFakeTargetProvider(cloneTarget(t))
 
 	sessionDir := os.TempDir()
-	manager, err := target.NewManager(&cfg, targetProvider, clientProvider, sessionDir)
+	manager, err := target.NewManager(cfg, targetProvider, clientProvider, sessionDir)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(manager).NotTo(BeNil())
 
@@ -73,19 +77,21 @@ var _ = Describe("Target Manager", func() {
 	)
 
 	var (
-		ctrl                *gomock.Controller
-		prod1Project        *gardencorev1beta1.Project
-		prod2Project        *gardencorev1beta1.Project
-		unreadyProject      *gardencorev1beta1.Project
-		seed                *gardencorev1beta1.Seed
-		prod1GoldenShoot    *gardencorev1beta1.Shoot
-		prod1AmbiguousShoot *gardencorev1beta1.Shoot
-		prod2AmbiguousShoot *gardencorev1beta1.Shoot
-		prod1PendingShoot   *gardencorev1beta1.Shoot
-		cfg                 *config.Config
-		gardenClient        client.Client
-		clientProvider      *targetmocks.MockClientProvider
-		namespace           *corev1.Namespace
+		ctrl                                *gomock.Controller
+		prod1Project                        *gardencorev1beta1.Project
+		prod2Project                        *gardencorev1beta1.Project
+		unreadyProject                      *gardencorev1beta1.Project
+		seed                                *gardencorev1beta1.Seed
+		seedKubeconfigSecret                *corev1.Secret
+		prod1GoldenShoot                    *gardencorev1beta1.Shoot
+		prod1GoldenShootKubeconfigConfigMap *corev1.ConfigMap
+		prod1AmbiguousShoot                 *gardencorev1beta1.Shoot
+		prod2AmbiguousShoot                 *gardencorev1beta1.Shoot
+		prod1PendingShoot                   *gardencorev1beta1.Shoot
+		cfg                                 *config.Config
+		gardenClient                        client.Client
+		clientProvider                      *targetmocks.MockClientProvider
+		namespace                           *corev1.Namespace
 	)
 
 	BeforeEach(func() {
@@ -93,11 +99,11 @@ var _ = Describe("Target Manager", func() {
 			Gardens: []config.Garden{{
 				Name:       gardenName,
 				Kubeconfig: gardenKubeconfig,
+				Patterns: []string{
+					fmt.Sprintf("^(%s/)?shoot--(?P<project>.+)--(?P<shoot>.+)$", gardenName),
+					"^namespace:(?P<namespace>[^/]+)$",
+				},
 			}},
-			MatchPatterns: []string{
-				"^((?P<garden>[^/]+)/)?shoot--(?P<project>.+)--(?P<shoot>.+)$",
-				"^namespace:(?P<namespace>[^/]+)$",
-			},
 		}
 
 		prod1Project = &gardencorev1beta1.Project{
@@ -124,7 +130,7 @@ var _ = Describe("Target Manager", func() {
 			},
 		}
 
-		seedKubeconfigSecret := &corev1.Secret{
+		seedKubeconfigSecret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-seed.oidc",
 				Namespace: "garden",
@@ -150,7 +156,7 @@ var _ = Describe("Target Manager", func() {
 		}
 
 		prod1GoldenShoot = createTestShoot("golden-shoot", *prod1Project.Spec.Namespace, pointer.String(seed.Name))
-		prod1GoldenShootKubeconfigConfigMap := &corev1.ConfigMap{
+		prod1GoldenShootKubeconfigConfigMap = &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      prod1GoldenShoot.Name + ".kubeconfig",
 				Namespace: prod1GoldenShoot.Namespace,
@@ -179,7 +185,9 @@ var _ = Describe("Target Manager", func() {
 
 		ctrl = gomock.NewController(GinkgoT())
 		clientProvider = targetmocks.NewMockClientProvider(ctrl)
-		clientProvider.EXPECT().FromFile(gardenKubeconfig).Return(gardenClient, nil).AnyTimes()
+		clientConfig, err := cfg.ClientConfig(gardenName)
+		Expect(err).NotTo(HaveOccurred())
+		clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(gardenClient, nil).AnyTimes()
 	})
 
 	AfterEach(func() {
@@ -188,7 +196,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should be able to target valid gardens", func() {
 		t := target.NewTarget("", "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetGarden(ctx, gardenName)).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
@@ -196,7 +204,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should fail with invalid garden name", func() {
 		t := target.NewTarget("", "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetGarden(ctx, "does-not-exist")).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
@@ -204,7 +212,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should be able to target valid projects", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetProject(ctx, prod1Project.Name)).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
@@ -212,7 +220,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should fail with invalid project name", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetProject(ctx, "does-not-exist")).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
@@ -220,7 +228,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should fail with unready project", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetProject(ctx, unreadyProject.Name)).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
@@ -228,7 +236,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should unset deeper target levels when 'going back'", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		// go deep
 		Expect(manager.TargetProject(ctx, prod1Project.Name)).To(Succeed())
@@ -241,7 +249,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should be able to target valid seeds and drop project and shoot target", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name)
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetSeed(ctx, seed.Name)).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", seed.Name, ""))
@@ -249,7 +257,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should fail with invalid seed name", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetSeed(ctx, "does-not-exist")).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
@@ -257,7 +265,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should be able to target valid shoots with a project already targeted", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetShoot(ctx, prod1AmbiguousShoot.Name)).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name))
@@ -265,7 +273,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should be able to target valid shoots with a seed already targeted. Should drop seed and set shoot project instead", func() {
 		t := target.NewTarget(gardenName, "", seed.Name, "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetShoot(ctx, prod1GoldenShoot.Name)).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
@@ -273,7 +281,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should not be able to target valid shoots with another seed already targeted", func() {
 		t := target.NewTarget(gardenName, "", seed.Name, "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		// another seed is already targeted, so even though this shoot exists, it does not match
 		Expect(manager.TargetShoot(ctx, prod1PendingShoot.Name)).NotTo(Succeed())
@@ -282,7 +290,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should be able to target valid shoots with only garden targeted", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetShoot(ctx, prod1GoldenShoot.Name)).To(Succeed())
 		// project should be inserted into the path, as it is preferred over a seed step
@@ -291,7 +299,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should error when multiple shoots match", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetShoot(ctx, prod1AmbiguousShoot.Name)).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
@@ -299,7 +307,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should be able to target valid garden, project and shoot by matching a pattern", func() {
 		t := target.NewTarget("", "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("%s/shoot--%s--%s", gardenName, prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
@@ -307,31 +315,31 @@ var _ = Describe("Target Manager", func() {
 
 	It("should be able to target valid project shoot by matching a pattern if garden is set", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
 	})
 
-	It("should fail to target shoot by matching a pattern if garden is not set", func() {
+	It("should be able to target shoot by matching a pattern if garden is not set", func() {
 		t := target.NewTarget("", "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).NotTo(Succeed())
-		assertTargetProvider(targetProvider, t)
+		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
 	})
 
 	It("should not target anything if target is not completely valid", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, "invalid shoot"))).NotTo(Succeed())
-		assertTargetProvider(targetProvider, t)
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
 	})
 
 	It("should be able to target valid project by matching a pattern containing a namespace", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("namespace:%s", *prod1Project.Spec.Namespace))).To(Succeed())
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
@@ -339,7 +347,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should be able to target control plane for a shoot", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name)
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetControlPlane(ctx)).To(Succeed())
 		assertTargetProvider(targetProvider, t.WithControlPlane(true))
@@ -347,7 +355,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should fail to target control plane if shoot is not set", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetControlPlane(ctx)).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
@@ -355,7 +363,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should fail to target control plane if garden is not set", func() {
 		t := target.NewTarget("", prod1Project.Name, "", prod1GoldenShoot.Name)
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetControlPlane(ctx)).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
@@ -363,7 +371,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should provide a garden client", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		manager, _ := createTestManager(t, *cfg, clientProvider)
+		manager, _ := createTestManager(t, cfg, clientProvider)
 
 		newClient, err := manager.GardenClient(t.GardenName())
 		Expect(err).NotTo(HaveOccurred())
@@ -372,15 +380,12 @@ var _ = Describe("Target Manager", func() {
 
 	It("should provide a seed client", func() {
 		t := target.NewTarget(gardenName, "", seed.Name, "")
-		manager, _ := createTestManager(t, *cfg, clientProvider)
+		manager, _ := createTestManager(t, cfg, clientProvider)
 
 		seedClient := fake.NewClientWithObjects()
-		clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(seedClient, nil).
-			Do(func(clientConfig clientcmd.ClientConfig) {
-				config, err := clientConfig.RawConfig()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(config.CurrentContext).To(Equal(seed.Name))
-			})
+		clientConfig, err := clientcmd.NewClientConfigFromBytes(seedKubeconfigSecret.Data["kubeconfig"])
+		Expect(err).NotTo(HaveOccurred())
+		clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(seedClient, nil)
 
 		newClient, err := manager.SeedClient(ctx, t)
 		Expect(err).NotTo(HaveOccurred())
@@ -389,15 +394,12 @@ var _ = Describe("Target Manager", func() {
 
 	It("should provide a shoot client", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name)
-		manager, _ := createTestManager(t, *cfg, clientProvider)
+		manager, _ := createTestManager(t, cfg, clientProvider)
 
 		shootClient := fake.NewClientWithObjects()
-		clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(shootClient, nil).
-			Do(func(clientConfig clientcmd.ClientConfig) {
-				config, err := clientConfig.RawConfig()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(config.CurrentContext).To(Equal(prod1GoldenShoot.Name))
-			})
+		clientConfig, err := clientcmd.NewClientConfigFromBytes([]byte(prod1GoldenShootKubeconfigConfigMap.Data["kubeconfig"]))
+		Expect(err).NotTo(HaveOccurred())
+		clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(shootClient, nil)
 
 		newClient, err := manager.ShootClient(ctx, t)
 		Expect(err).NotTo(HaveOccurred())
@@ -406,7 +408,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should be able to unset selected garden", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.UnsetTargetGarden()).Should(Equal(gardenName))
 		assertTargetProvider(targetProvider, target.NewTarget("", "", "", ""))
@@ -414,7 +416,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should fail if no garden selected", func() {
 		t := target.NewTarget("", "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		res, unsetErr := manager.UnsetTargetGarden()
 		Expect(unsetErr).To(HaveOccurred())
@@ -424,7 +426,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should unset deeper target levels when unsetting garden", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1AmbiguousShoot.Name)
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		// Unset Garden
 		Expect(manager.UnsetTargetGarden()).Should(Equal(gardenName))
@@ -435,7 +437,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should be able to unset selected project", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.UnsetTargetProject()).Should(Equal(prod1Project.Name))
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
@@ -443,7 +445,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should fail if no project selected", func() {
 		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		res, unsetErr := manager.UnsetTargetProject()
 		Expect(unsetErr).To(HaveOccurred())
@@ -453,7 +455,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should unset deeper target levels when unsetting project", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name).WithControlPlane(true)
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		// Unset Project
 		Expect(manager.UnsetTargetProject()).Should(Equal(prod1Project.Name))
@@ -464,7 +466,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should be able to unset selected shoot", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name)
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.UnsetTargetShoot()).Should(Equal(prod1AmbiguousShoot.Name))
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
@@ -472,7 +474,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should fail if no shoot selected", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		res, unsetErr := manager.UnsetTargetShoot()
 		Expect(unsetErr).To(HaveOccurred())
@@ -482,7 +484,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should be able to unset selected control plane", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name).WithControlPlane(true)
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.UnsetTargetControlPlane()).To(Succeed())
 		assertTargetProvider(targetProvider, t.WithControlPlane(false))
@@ -490,7 +492,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should fail if no control plane targeted", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		unsetErr := manager.UnsetTargetControlPlane()
 		Expect(unsetErr).To(HaveOccurred())
@@ -499,7 +501,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should be able to unset selected seed", func() {
 		t := target.NewTarget(gardenName, "", seed.Name, "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.UnsetTargetSeed()).Should(Equal(seed.Name))
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
@@ -507,7 +509,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should fail if no seed selected", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		res, unsetErr := manager.UnsetTargetSeed()
 		Expect(unsetErr).To(HaveOccurred())
