@@ -26,19 +26,15 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
-func assertTarget(t target.Target, expected target.Target) {
+func assertTargetProvider(tp target.TargetProvider, expected target.Target) {
+	t, err := tp.Read()
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, t).NotTo(BeNil())
 	ExpectWithOffset(1, t.GardenName()).To(Equal(expected.GardenName()))
 	ExpectWithOffset(1, t.ProjectName()).To(Equal(expected.ProjectName()))
 	ExpectWithOffset(1, t.SeedName()).To(Equal(expected.SeedName()))
 	ExpectWithOffset(1, t.ShootName()).To(Equal(expected.ShootName()))
 	ExpectWithOffset(1, t.ControlPlane()).To(Equal(expected.ControlPlane()))
-}
-
-func assertTargetProvider(tp target.TargetProvider, expected target.Target) {
-	t, err := tp.Read()
-	Expect(err).NotTo(HaveOccurred())
-	Expect(t).NotTo(BeNil())
-	assertTarget(t, expected)
 }
 
 func createTestShoot(name string, namespace string, seedName *string) *gardencorev1beta1.Shoot {
@@ -64,8 +60,8 @@ func createTestManager(t target.Target, cfg *config.Config, clientProvider targe
 
 	sessionDir := os.TempDir()
 	manager, err := target.NewManager(cfg, targetProvider, clientProvider, sessionDir)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(manager).NotTo(BeNil())
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, manager).NotTo(BeNil())
 
 	return manager, targetProvider
 }
