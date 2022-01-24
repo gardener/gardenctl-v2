@@ -437,16 +437,7 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 				return nil, err
 			}
 
-			rawConfig, err := clientConfig.RawConfig()
-			if err != nil {
-				return nil, fmt.Errorf("failed to get raw client config: %w", err)
-			}
-
-			contextName := rawConfig.CurrentContext
-			rawConfig.Contexts[contextName].Namespace = shoot.Status.TechnicalID
-			overrides := &clientcmd.ConfigOverrides{}
-
-			return clientcmd.NewDefaultClientConfig(rawConfig, overrides), nil
+			return clientConfigWithNamespace(clientConfig, shoot.Status.TechnicalID)
 		})
 	}
 
@@ -455,16 +446,12 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 			var namespace string
 
 			if t.ProjectName() != "" {
-				project, err := client.GetProject(ctx, t.ProjectName())
+				projectNamespace, err := getProjectNamespace(ctx, client, t.ProjectName())
 				if err != nil {
 					return nil, err
 				}
 
-				if project.Spec.Namespace == nil || *project.Spec.Namespace == "" {
-					return nil, fmt.Errorf("project %q has not yet been assigned to a namespace", t.ProjectName())
-				}
-
-				namespace = *project.Spec.Namespace
+				namespace = *projectNamespace
 			} else {
 				shoot, err := client.FindShoot(ctx, t.AsListOption())
 				if err != nil {
@@ -481,6 +468,22 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 	if t.SeedName() != "" {
 		return m.getClientConfig(t, func(client gardenclient.Client) (clientcmd.ClientConfig, error) {
 			return client.GetSeedClientConfig(ctx, t.SeedName())
+		})
+	}
+
+	if t.ProjectName() != "" {
+		return m.getClientConfig(t, func(client gardenclient.Client) (clientcmd.ClientConfig, error) {
+			clientConfig, err := m.Configuration().ClientConfig(t.GardenName())
+			if err != nil {
+				return nil, err
+			}
+
+			projectNamespace, err := getProjectNamespace(ctx, client, t.ProjectName())
+			if err != nil {
+				return nil, err
+			}
+
+			return clientConfigWithNamespace(clientConfig, *projectNamespace)
 		})
 	}
 
@@ -599,4 +602,30 @@ func writeRawConfig(config clientcmd.ClientConfig) ([]byte, error) {
 	}
 
 	return clientcmd.Write(rawConfig)
+}
+
+func getProjectNamespace(ctx context.Context, client gardenclient.Client, name string) (*string, error) {
+	project, err := client.GetProject(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	if project.Spec.Namespace == nil || *project.Spec.Namespace == "" {
+		return nil, fmt.Errorf("project %q has not yet been assigned to a namespace", name)
+	}
+
+	return project.Spec.Namespace, nil
+}
+
+func clientConfigWithNamespace(clientConfig clientcmd.ClientConfig, namespace string) (clientcmd.ClientConfig, error) {
+	rawConfig, err := clientConfig.RawConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get raw client config: %w", err)
+	}
+
+	contextName := rawConfig.CurrentContext
+	rawConfig.Contexts[contextName].Namespace = namespace
+	overrides := &clientcmd.ConfigOverrides{}
+
+	return clientcmd.NewDefaultClientConfig(rawConfig, overrides), nil
 }
