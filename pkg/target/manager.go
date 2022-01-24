@@ -356,7 +356,7 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		return errors.New("config must not be nil")
 	}
 
-	tm, err := m.config.MatchPattern(value, gardenName)
+	tm, err := m.config.MatchPattern(gardenName, value)
 	if err != nil {
 		return fmt.Errorf("error occurred while trying to match value: %w", err)
 	}

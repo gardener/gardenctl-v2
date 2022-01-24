@@ -164,8 +164,25 @@ const (
 
 // MatchPattern matches a string against patterns defined in gardenctl config
 // If matched, the function creates and returns a PatternMatch from the provided target string
-func (config *Config) MatchPattern(value string, gardenName string) (*PatternMatch, error) {
-	var patternMatch *PatternMatch
+func (config *Config) MatchPattern(gardenName string, value string) (*PatternMatch, error) {
+	if gardenName != "" {
+		g, err := config.Garden(gardenName)
+		if err != nil {
+			return nil, err
+		}
+
+		match, err := matchPattern(g.Patterns, value)
+		if err != nil {
+			return nil, err
+		}
+
+		if match != nil {
+			match.Garden = g.Name
+			return match, nil
+		}
+	}
+
+	var matches []*PatternMatch
 
 	for _, g := range config.Gardens {
 		match, err := matchPattern(g.Patterns, value)
@@ -175,19 +192,16 @@ func (config *Config) MatchPattern(value string, gardenName string) (*PatternMat
 
 		if match != nil {
 			match.Garden = g.Name
-
-			if gardenName == "" || g.Name == gardenName {
-				// Directly return match of selected garden
-				return match, nil
-			}
-
-			patternMatch = match
+			matches = append(matches, match)
 		}
 	}
 
-	if patternMatch != nil {
-		// Did not match pattern of current garden, but did match other pattern
-		return patternMatch, nil
+	if len(matches) == 1 {
+		return matches[0], nil
+	}
+
+	if len(matches) > 1 {
+		return nil, errors.New("the provided value resulted in an ambiguous match")
 	}
 
 	return nil, errors.New("the provided value does not match any pattern")
