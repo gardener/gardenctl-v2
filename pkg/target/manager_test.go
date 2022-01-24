@@ -9,6 +9,7 @@ package target_test
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -46,6 +47,11 @@ func createTestShoot(name string, namespace string, seedName *string) *gardencor
 		Spec: gardencorev1beta1.ShootSpec{
 			SeedName: seedName,
 		},
+	}
+
+	if strings.HasPrefix(namespace, "garden-") {
+		project := strings.TrimPrefix(namespace, "garden-")
+		shoot.Status.TechnicalID = fmt.Sprintf("shoot--%s--%s", project, name)
 	}
 
 	return shoot
@@ -511,5 +517,46 @@ var _ = Describe("Target Manager", func() {
 		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
 		assertTargetProvider(targetProvider, t)
+	})
+
+	Describe("Getting Client Configurations", func() {
+		var (
+			manager target.Manager
+			t       target.Target
+		)
+
+		JustBeforeEach(func() {
+			manager, _ = createTestManager(t, cfg, clientProvider)
+		})
+
+		Context("when shoot control-plane is targeted", func() {
+			BeforeEach(func() {
+				t = target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name).WithControlPlane(true)
+			})
+
+			It("should return the client configuration", func() {
+				clientConfig, err := manager.ClientConfig(ctx, t)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(clientConfig.Namespace()).To(Equal(prod1GoldenShoot.Status.TechnicalID))
+				rawConfig, err := clientConfig.RawConfig()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(rawConfig.CurrentContext).To(Equal(*prod1GoldenShoot.Spec.SeedName))
+			})
+		})
+
+		Context("when shoot is targeted", func() {
+			BeforeEach(func() {
+				t = target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name)
+			})
+
+			It("should return the client configuration", func() {
+				clientConfig, err := manager.ClientConfig(ctx, t)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(clientConfig.Namespace()).To(Equal("default"))
+				rawConfig, err := clientConfig.RawConfig()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(rawConfig.CurrentContext).To(Equal(prod1GoldenShoot.Name))
+			})
+		})
 	})
 })
