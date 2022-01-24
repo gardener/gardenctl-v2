@@ -111,12 +111,5 @@ func assertGarden(cfg *config.Config, garden *config.Garden) {
 func assertConfigHasBeenSaved(cfg *config.Config) {
 	c, err := config.LoadFromFile(cfg.Filename)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-	for i, g := range cfg.Gardens {
-		if len(g.Patterns) == 0 {
-			cfg.Gardens[i].Patterns = nil
-		}
-	}
-
 	ExpectWithOffset(1, c).To(BeEquivalentTo(cfg))
 }

@@ -117,7 +117,7 @@ func (o *setGardenOptions) Run(_ util.Factory) error {
 			if len(firstPattern) > 0 {
 				garden.Patterns = o.Patterns
 			} else {
-				garden.Patterns = []string{}
+				garden.Patterns = nil
 			}
 		}
 	} else {

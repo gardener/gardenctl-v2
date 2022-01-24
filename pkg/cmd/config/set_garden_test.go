@@ -138,7 +138,6 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 				assertGarden(cfg, &config.Garden{
 					Name:       gardenIdentity2,
 					Kubeconfig: pathToKubeconfig,
-					Patterns:   []string{},
 				})
 				assertConfigHasBeenSaved(cfg)
 				Expect(out.String()).To(MatchRegexp("^Successfully configured garden"))
