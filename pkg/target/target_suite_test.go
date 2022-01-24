@@ -45,6 +45,18 @@ var _ = AfterSuite(func() {
 
 func createTestKubeconfig(name string) []byte {
 	config := clientcmdapi.NewConfig()
+	config.Clusters["cluster"] = &clientcmdapi.Cluster{
+		Server:                "https://kubernetes:6443/",
+		InsecureSkipTLSVerify: true,
+	}
+	config.AuthInfos["user"] = &clientcmdapi.AuthInfo{
+		Token: "token",
+	}
+	config.Contexts[name] = &clientcmdapi.Context{
+		Namespace: "default",
+		AuthInfo:  "user",
+		Cluster:   "cluster",
+	}
 	config.CurrentContext = name
 	data, err := clientcmd.Write(*config)
 	Expect(err).NotTo(HaveOccurred())
