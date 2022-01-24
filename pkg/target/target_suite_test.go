@@ -8,6 +8,8 @@ package target_test
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -29,18 +31,29 @@ func TestTarget(t *testing.T) {
 	RunSpecs(t, "Target Package Test Suite")
 }
 
+const gardenName = "testgarden"
+
 var (
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx              context.Context
+	cancel           context.CancelFunc
+	gardenHomeDir    string
+	gardenKubeconfig string
 )
 
 var _ = BeforeSuite(func() {
 	ctx, cancel = context.WithCancel(context.TODO())
 
+	dir, err := os.MkdirTemp("", "garden-*")
+	Expect(err).NotTo(HaveOccurred())
+	gardenHomeDir = dir
+	gardenKubeconfig = filepath.Join(gardenHomeDir, "kubeconfig.yaml")
+	data := createTestKubeconfig(gardenName)
+	Expect(os.WriteFile(gardenKubeconfig, data, 0600)).To(Succeed())
 }, 60)
 
 var _ = AfterSuite(func() {
 	cancel()
+	Expect(os.RemoveAll(gardenHomeDir)).To(Succeed())
 }, 5)
 
 func createTestKubeconfig(name string) []byte {

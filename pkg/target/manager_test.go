@@ -73,11 +73,6 @@ func createTestManager(t target.Target, cfg *config.Config, clientProvider targe
 }
 
 var _ = Describe("Target Manager", func() {
-	const (
-		gardenName       = "testgarden"
-		gardenKubeconfig = "/not/a/real/file"
-	)
-
 	var (
 		ctrl                                *gomock.Controller
 		prod1Project                        *gardencorev1beta1.Project
