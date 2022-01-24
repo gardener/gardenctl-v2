@@ -553,5 +553,50 @@ var _ = Describe("Target Manager", func() {
 				Expect(rawConfig.CurrentContext).To(Equal(prod1GoldenShoot.Name))
 			})
 		})
+
+		Context("when seed is targeted", func() {
+			BeforeEach(func() {
+				t = target.NewTarget(gardenName, prod1Project.Name, seed.Name, "")
+			})
+
+			It("should return the client configuration", func() {
+				clientConfig, err := manager.ClientConfig(ctx, t)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(clientConfig.Namespace()).To(Equal("default"))
+				rawConfig, err := clientConfig.RawConfig()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(rawConfig.CurrentContext).To(Equal(seed.Name))
+			})
+		})
+
+		Context("when project is targeted", func() {
+			BeforeEach(func() {
+				t = target.NewTarget(gardenName, prod1Project.Name, "", "")
+			})
+
+			It("should return the client configuration", func() {
+				clientConfig, err := manager.ClientConfig(ctx, t)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(clientConfig.Namespace()).To(Equal(*prod1Project.Spec.Namespace))
+				rawConfig, err := clientConfig.RawConfig()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(rawConfig.CurrentContext).To(Equal(gardenName))
+			})
+		})
+
+		Context("when garden is targeted", func() {
+			BeforeEach(func() {
+				t = target.NewTarget(gardenName, "", "", "")
+			})
+
+			It("should return the client configuration", func() {
+				clientConfig, err := manager.ClientConfig(ctx, t)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(clientConfig.Namespace()).To(Equal("default"))
+				rawConfig, err := clientConfig.RawConfig()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(rawConfig.CurrentContext).To(Equal(gardenName))
+			})
+		})
 	})
 })
