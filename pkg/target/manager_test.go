@@ -38,6 +38,20 @@ func assertTargetProvider(tp target.TargetProvider, expected target.Target) {
 	ExpectWithOffset(1, t.ControlPlane()).To(Equal(expected.ControlPlane()))
 }
 
+func assertClientConfig(clientConfig clientcmd.ClientConfig, name, ns string) {
+	namespace, overridden, err := clientConfig.Namespace()
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, overridden).To(BeFalse())
+	ExpectWithOffset(1, namespace).To(Equal(ns))
+
+	rawConfig, err := clientConfig.RawConfig()
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	currentContext := rawConfig.CurrentContext
+	ExpectWithOffset(1, currentContext).To(Equal(name))
+	ExpectWithOffset(1, rawConfig.Contexts[currentContext].Namespace).To(Equal(namespace))
+}
+
 func createTestShoot(name string, namespace string, seedName *string) *gardencorev1beta1.Shoot {
 	shoot := &gardencorev1beta1.Shoot{
 		ObjectMeta: metav1.ObjectMeta{
@@ -532,10 +546,7 @@ var _ = Describe("Target Manager", func() {
 			It("should return the client configuration", func() {
 				clientConfig, err := manager.ClientConfig(ctx, t)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(clientConfig.Namespace()).To(Equal(prod1GoldenShoot.Status.TechnicalID))
-				rawConfig, err := clientConfig.RawConfig()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(rawConfig.CurrentContext).To(Equal(*prod1GoldenShoot.Spec.SeedName))
+				assertClientConfig(clientConfig, *prod1GoldenShoot.Spec.SeedName, prod1GoldenShoot.Status.TechnicalID)
 			})
 		})
 
@@ -547,10 +558,7 @@ var _ = Describe("Target Manager", func() {
 			It("should return the client configuration", func() {
 				clientConfig, err := manager.ClientConfig(ctx, t)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(clientConfig.Namespace()).To(Equal("default"))
-				rawConfig, err := clientConfig.RawConfig()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(rawConfig.CurrentContext).To(Equal(prod1GoldenShoot.Name))
+				assertClientConfig(clientConfig, prod1GoldenShoot.Name, "default")
 			})
 		})
 
@@ -562,10 +570,7 @@ var _ = Describe("Target Manager", func() {
 			It("should return the client configuration", func() {
 				clientConfig, err := manager.ClientConfig(ctx, t)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(clientConfig.Namespace()).To(Equal("default"))
-				rawConfig, err := clientConfig.RawConfig()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(rawConfig.CurrentContext).To(Equal(seed.Name))
+				assertClientConfig(clientConfig, seed.Name, "default")
 			})
 		})
 
@@ -577,10 +582,7 @@ var _ = Describe("Target Manager", func() {
 			It("should return the client configuration", func() {
 				clientConfig, err := manager.ClientConfig(ctx, t)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(clientConfig.Namespace()).To(Equal(*prod1Project.Spec.Namespace))
-				rawConfig, err := clientConfig.RawConfig()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(rawConfig.CurrentContext).To(Equal(gardenName))
+				assertClientConfig(clientConfig, gardenName, *prod1Project.Spec.Namespace)
 			})
 		})
 
@@ -592,10 +594,7 @@ var _ = Describe("Target Manager", func() {
 			It("should return the client configuration", func() {
 				clientConfig, err := manager.ClientConfig(ctx, t)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(clientConfig.Namespace()).To(Equal("default"))
-				rawConfig, err := clientConfig.RawConfig()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(rawConfig.CurrentContext).To(Equal(gardenName))
+				assertClientConfig(clientConfig, gardenName, "default")
 			})
 		})
 	})
