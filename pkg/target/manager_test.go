@@ -363,7 +363,7 @@ var _ = Describe("Target Manager", func() {
 
 	It("should fail to target control plane if garden is not set", func() {
 		t := target.NewTarget("", prod1Project.Name, "", prod1GoldenShoot.Name)
-		manager, targetProvider := createTestManager(t, *cfg, clientProvider)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetControlPlane(ctx)).NotTo(Succeed())
 		assertTargetProvider(targetProvider, t)
