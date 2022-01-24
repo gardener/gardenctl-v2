@@ -30,12 +30,7 @@ import (
 func assertTargetProvider(tp target.TargetProvider, expected target.Target) {
 	t, err := tp.Read()
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-	ExpectWithOffset(1, t).NotTo(BeNil())
-	ExpectWithOffset(1, t.GardenName()).To(Equal(expected.GardenName()))
-	ExpectWithOffset(1, t.ProjectName()).To(Equal(expected.ProjectName()))
-	ExpectWithOffset(1, t.SeedName()).To(Equal(expected.SeedName()))
-	ExpectWithOffset(1, t.ShootName()).To(Equal(expected.ShootName()))
-	ExpectWithOffset(1, t.ControlPlane()).To(Equal(expected.ControlPlane()))
+	ExpectWithOffset(1, t).To(Equal(expected))
 }
 
 func assertClientConfig(clientConfig clientcmd.ClientConfig, name, ns string) {
