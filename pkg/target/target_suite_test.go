@@ -72,7 +72,7 @@ func createTestKubeconfig(name string) []byte {
 	}
 	config.CurrentContext = name
 	data, err := clientcmd.Write(*config)
-	Expect(err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 	return data
 }
