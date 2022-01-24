@@ -417,6 +417,39 @@ func (m *managerImpl) updateTarget(target Target) error {
 }
 
 func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.ClientConfig, error) {
+	if t.ControlPlane() && t.ShootName() != "" {
+		return m.getClientConfig(t, func(client gardenclient.Client) (clientcmd.ClientConfig, error) {
+			shoot, err := client.FindShoot(ctx, t.WithControlPlane(false).AsListOption())
+			if err != nil {
+				return nil, err
+			}
+
+			if shoot.Spec.SeedName == nil || *shoot.Spec.SeedName == "" {
+				return nil, fmt.Errorf("shoot %q has not yet been assigned to a seed", t.ShootName())
+			}
+
+			if shoot.Status.TechnicalID == "" {
+				return nil, fmt.Errorf("no technicalID has been assigned to the shoot %q yet", t.ShootName())
+			}
+
+			clientConfig, err := client.GetSeedClientConfig(ctx, *shoot.Spec.SeedName)
+			if err != nil {
+				return nil, err
+			}
+
+			rawConfig, err := clientConfig.RawConfig()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get raw client config: %w", err)
+			}
+
+			contextName := rawConfig.CurrentContext
+			rawConfig.Contexts[contextName].Namespace = shoot.Status.TechnicalID
+			overrides := &clientcmd.ConfigOverrides{}
+
+			return clientcmd.NewDefaultClientConfig(rawConfig, overrides), nil
+		})
+	}
+
 	if t.ShootName() != "" {
 		return m.getClientConfig(t, func(client gardenclient.Client) (clientcmd.ClientConfig, error) {
 			var namespace string
