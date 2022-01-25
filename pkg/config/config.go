@@ -101,7 +101,7 @@ func (config *Config) IndexOfGarden(name string) (int, bool) {
 	return -1, false
 }
 
-// Garden returns a Garden cluster from the list of configured Gardens
+// GardenNames returns a slice containing the names of the configured Gardens
 func (config *Config) GardenNames() []string {
 	names := []string{}
 	for _, g := range config.Gardens {
@@ -182,7 +182,7 @@ func (config *Config) MatchPattern(gardenName string, value string) (*PatternMat
 		}
 	}
 
-	var matches []*PatternMatch
+	var patternMatch *PatternMatch
 
 	for _, g := range config.Gardens {
 		match, err := matchPattern(g.Patterns, value)
@@ -192,19 +192,20 @@ func (config *Config) MatchPattern(gardenName string, value string) (*PatternMat
 
 		if match != nil {
 			match.Garden = g.Name
-			matches = append(matches, match)
+
+			if patternMatch != nil {
+				return nil, errors.New("the provided value resulted in an ambiguous match")
+			}
+
+			patternMatch = match
 		}
 	}
 
-	if len(matches) == 1 {
-		return matches[0], nil
+	if patternMatch == nil {
+		return nil, errors.New("the provided value does not match any pattern")
 	}
 
-	if len(matches) > 1 {
-		return nil, errors.New("the provided value resulted in an ambiguous match")
-	}
-
-	return nil, errors.New("the provided value does not match any pattern")
+	return patternMatch, nil
 }
 
 // matchPattern matches pattern with provided list of patterns
