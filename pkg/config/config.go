@@ -164,9 +164,9 @@ const (
 
 // MatchPattern matches a string against patterns defined in gardenctl config
 // If matched, the function creates and returns a PatternMatch from the provided target string
-func (config *Config) MatchPattern(gardenName string, value string) (*PatternMatch, error) {
-	if gardenName != "" {
-		g, err := config.Garden(gardenName)
+func (config *Config) MatchPattern(preferredGardenName string, value string) (*PatternMatch, error) {
+	if preferredGardenName != "" {
+		g, err := config.Garden(preferredGardenName)
 		if err != nil {
 			return nil, err
 		}

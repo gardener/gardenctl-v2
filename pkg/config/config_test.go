@@ -18,10 +18,11 @@ import (
 
 var _ = Describe("Config", func() {
 	var (
-		clusterIdentity1 = "testgarden"
-		clusterIdentity2 = "foogarden"
-		project          = "fooproject"
-		shoot            = "fooshoot"
+		clusterIdentity1 = "garden1"
+		clusterIdentity2 = "garden2"
+		fooIdentity      = "fooGarden"
+		project          = "fooProject"
+		shoot            = "fooShoot"
 		cfg              *config.Config
 	)
 
@@ -53,7 +54,7 @@ var _ = Describe("Config", func() {
 		return value
 	}
 
-	DescribeTable("Validation of valid target values",
+	DescribeTable("MatchPattern returns a match",
 		func(currentGardenName string, patternPrefix string, expectedGarden string) {
 			value := patternValue(patternPrefix)
 			expectedPM := &config.PatternMatch{Garden: expectedGarden, Project: project, Shoot: shoot}
@@ -62,33 +63,33 @@ var _ = Describe("Config", func() {
 			Expect(match).To(Equal(expectedPM))
 		},
 		Entry(
-			"should succeed if pattern for value is (potential) non unique pattern and garden is set in current target (unique case / keep garden)",
+			"when the targetValue contains a garden prefix and preferred gardenName is equal (keep garden)",
 			clusterIdentity1,
 			clusterIdentity1,
 			clusterIdentity1),
 		Entry(
-			"should succeed if pattern for value is (potential) non unique pattern and garden is not set in current target (unique case / set garden)",
+			"when the targetValue contains a garden prefix and no preferred gardenName is set (set garden)",
 			"",
 			clusterIdentity1,
 			clusterIdentity1),
 		Entry(
-			"should succeed if pattern for value is (potential) non unique pattern and other garden is set in current target (unique case / switch garden)",
+			"when the targetValue contains a garden prefix and preferred gardenName is set to other garden (switch garden)",
 			clusterIdentity2,
 			clusterIdentity1,
 			clusterIdentity1),
 		Entry(
-			"should succeed if pattern for value is (potential) non unique pattern and clusterIdentity1 is set in current target (non unique case / keep garden)",
+			"when the targetValue does not contain a garden prefix the preferred gardenName is unchanged (keep garden)",
 			clusterIdentity1,
 			"",
 			clusterIdentity1),
 		Entry(
-			"should succeed if pattern for value is (potential) non unique pattern and clusterIdentity2 is set in current target (non unique case / keep garden)",
+			"when the targetValue does not contain a garden prefix the preferred gardenName is unchanged (keep garden)",
 			clusterIdentity2,
 			"",
 			clusterIdentity2),
 	)
 
-	DescribeTable("Validation of invalid target values",
+	DescribeTable("MatchPattern returns an error",
 		func(currentGardenName string, patternPrefix string, expectedErrorString string) {
 			value := patternValue(patternPrefix)
 			_, err := cfg.MatchPattern(currentGardenName, value)
@@ -96,20 +97,25 @@ var _ = Describe("Config", func() {
 			Expect(err).To(MatchError(ContainSubstring(expectedErrorString)))
 		},
 		Entry(
-			"should fail if pattern for value is (potential) non unique pattern and garden is not set in current target (non unique case / ambiguous match / fail to determine garden)",
+			"when no garden is preferred and the value matches multiple gardens (no prefix)",
 			"",
 			"",
 			"the provided value resulted in an ambiguous match"),
 		Entry(
-			"should fail if pattern for value is not found and garden is set",
+			"when value does not match any pattern and preferred garden is given",
 			clusterIdentity1,
 			"invalidPrefix",
 			"the provided value does not match any pattern"),
 		Entry(
-			"should fail if pattern for value is not found and garden is not set",
+			"when value does not match any pattern and no preferred garden is given",
 			"",
 			"invalidPrefix",
 			"the provided value does not match any pattern"),
+		Entry(
+			"when preferred garden cannot be fetched from configuration (does not exist)",
+			fooIdentity,
+			"",
+			fmt.Sprintf("garden %q is not defined in gardenctl configuration", fooIdentity)),
 	)
 
 	It("should find garden by identity", func() {
