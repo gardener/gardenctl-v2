@@ -63,27 +63,27 @@ var _ = Describe("Config", func() {
 			Expect(match).To(Equal(expectedPM))
 		},
 		Entry(
-			"when the targetValue contains a garden prefix and preferred gardenName is equal (keep garden)",
+			"when the targetValue contains a garden prefix and preferred gardenName is equal (keep garden) - return extracted garden",
 			clusterIdentity1,
 			clusterIdentity1,
 			clusterIdentity1),
 		Entry(
-			"when the targetValue contains a garden prefix and no preferred gardenName is set (set garden)",
+			"when the targetValue contains a garden prefix and no preferred gardenName is set (set garden) - return extracted garden",
 			"",
 			clusterIdentity1,
 			clusterIdentity1),
 		Entry(
-			"when the targetValue contains a garden prefix and preferred gardenName is set to other garden (switch garden)",
+			"when the targetValue contains a garden prefix and preferred gardenName is set to other garden (switch garden) - return extracted garden",
 			clusterIdentity2,
 			clusterIdentity1,
 			clusterIdentity1),
 		Entry(
-			"when the targetValue does not contain a garden prefix the preferred gardenName is unchanged (keep garden)",
+			"when the targetValue does not contain a garden prefix the preferred gardenName is unchanged (keep garden) - return preferred garden",
 			clusterIdentity1,
 			"",
 			clusterIdentity1),
 		Entry(
-			"when the targetValue does not contain a garden prefix the preferred gardenName is unchanged (keep garden)",
+			"when the targetValue does not contain a garden prefix the preferred gardenName is unchanged (keep garden) - return preferred garden",
 			clusterIdentity2,
 			"",
 			clusterIdentity2),
