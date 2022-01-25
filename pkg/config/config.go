@@ -14,6 +14,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 // Config holds the gardenctl configuration
@@ -121,7 +122,7 @@ func (config *Config) Garden(name string) (*Garden, error) {
 	return &config.Gardens[i], nil
 }
 
-// ClientConfig returns the client config for a configured garden cluster
+// ClientConfig returns a deferred loading client config for a configured garden cluster
 func (config *Config) ClientConfig(name string) (clientcmd.ClientConfig, error) {
 	garden, err := config.Garden(name)
 	if err != nil {
@@ -136,6 +137,46 @@ func (config *Config) ClientConfig(name string) (clientcmd.ClientConfig, error) 
 	}
 
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loader, overrides), nil
+}
+
+// DirectClientConfig returns a directly loaded client config for a configured garden cluster
+func (config *Config) DirectClientConfig(name string) (clientcmd.ClientConfig, error) {
+	garden, err := config.Garden(name)
+	if err != nil {
+		return nil, err
+	}
+
+	rawConfig, err := garden.LoadRawConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	return clientcmd.NewDefaultClientConfig(*rawConfig, nil), nil
+}
+
+//LoadRawConfig directly loads the raw config from file, validates the content and removes all the irrelevant pieces
+func (g *Garden) LoadRawConfig() (*clientcmdapi.Config, error) {
+	rawConfig, err := clientcmd.LoadFromFile(g.Kubeconfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load client configuration: %w", err)
+	}
+
+	err = clientcmd.Validate(*rawConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate client configuration: %w", err)
+	}
+
+	if g.Context != "" {
+		rawConfig.CurrentContext = g.Context
+	}
+
+	// this function returns an error if the currentContext does not exist
+	err = clientcmdapi.MinifyConfig(rawConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to mimify client configuration: %w", err)
+	}
+
+	return rawConfig, nil
 }
 
 // PatternMatch holds (target) values extracted from a provided string

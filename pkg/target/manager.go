@@ -473,7 +473,7 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 
 	if t.ProjectName() != "" {
 		return m.getClientConfig(t, func(client gardenclient.Client) (clientcmd.ClientConfig, error) {
-			clientConfig, err := m.Configuration().ClientConfig(t.GardenName())
+			clientConfig, err := m.Configuration().DirectClientConfig(t.GardenName())
 			if err != nil {
 				return nil, err
 			}
@@ -488,7 +488,7 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 	}
 
 	if t.GardenName() != "" {
-		return m.Configuration().ClientConfig(t.GardenName())
+		return m.Configuration().DirectClientConfig(t.GardenName())
 	}
 
 	return nil, ErrNoGardenTargeted
@@ -628,12 +628,7 @@ func clientConfigWithNamespace(clientConfig clientcmd.ClientConfig, namespace st
 		return nil, fmt.Errorf("validation of client configuration failed: %w", err)
 	}
 
-	contextName := rawConfig.CurrentContext
-	if contextName == "" {
-		return nil, fmt.Errorf("client configuration has no current context defined")
-	}
-
-	if context, ok := rawConfig.Contexts[contextName]; ok {
+	for _, context := range rawConfig.Contexts {
 		context.Namespace = namespace
 	}
 
