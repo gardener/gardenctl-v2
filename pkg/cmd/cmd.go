@@ -33,11 +33,11 @@ import (
 )
 
 const (
-	envPrefix         = "GCTL"
-	envGardenHomeDir  = envPrefix + "_HOME"
-	envConfigName     = envPrefix + "_CONFIG_NAME"
-	envSessionID      = envPrefix + "_SESSION_ID"
-	envItermSessionID = "ITERM_SESSION_ID"
+	envPrefix        = "GCTL"
+	envGardenHomeDir = envPrefix + "_HOME"
+	envConfigName    = envPrefix + "_CONFIG_NAME"
+	envSessionID     = envPrefix + "_SESSION_ID"
+	envTermSessionID = "TERM_SESSION_ID"
 
 	gardenHomeFolder = ".garden"
 	configName       = "gardenctl-v2"
@@ -287,7 +287,7 @@ func getSessionID() (string, error) {
 		return "", fmt.Errorf("Environment variable %s must only contain alphanumeric characters, underscore and dash and have a minimum length of 1 and a maximum length of 128", envSessionID)
 	}
 
-	if value, ok := os.LookupEnv(envItermSessionID); ok {
+	if value, ok := os.LookupEnv(envTermSessionID); ok {
 		match := uuidRegexp.FindStringSubmatch(strings.ToLower(value))
 		if len(match) > 1 {
 			return match[1], nil
