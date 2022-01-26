@@ -173,7 +173,7 @@ func (g *Garden) LoadRawConfig() (*clientcmdapi.Config, error) {
 	// this function returns an error if the currentContext does not exist
 	err = clientcmdapi.MinifyConfig(rawConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to mimify client configuration: %w", err)
+		return nil, fmt.Errorf("failed to minify client configuration: %w", err)
 	}
 
 	return rawConfig, nil
