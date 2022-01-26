@@ -93,7 +93,6 @@ var _ = Describe("Config", func() {
 		func(currentGardenName string, patternPrefix string, expectedErrorString string) {
 			value := patternValue(patternPrefix)
 			_, err := cfg.MatchPattern(currentGardenName, value)
-			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(ContainSubstring(expectedErrorString)))
 		},
 		Entry(
