@@ -78,7 +78,7 @@ func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.C
 
 The state of gardenctl is bound to a shell session and is not shared across windows, tabs or panes.
 A shell session is defined by the environment variable GCTL_SESSION_ID. If this is not defined,
-the value of the TERM_SESSION_ID environment variable is used instead.If both are not defined,
+the value of the TERM_SESSION_ID environment variable is used instead. If both are not defined,
 this leads to an error and gardenctl cannot be executed. The target.yaml and temporary
 kubeconfig.*.yaml files are store in the following directory ${TMPDIR}/garden/${GCTL_SESSION_ID}.
 
