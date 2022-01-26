@@ -82,7 +82,7 @@ the value of the TERM_SESSION_ID environment variable is used instead. If both a
 this leads to an error and gardenctl cannot be executed. The target.yaml and temporary
 kubeconfig.*.yaml files are store in the following directory ${TMPDIR}/garden/${GCTL_SESSION_ID}.
 
-You can make sure that whether GCTL_SESSION_ID or TERM_SESSION_ID is always present by adding
+You can make sure that GCTL_SESSION_ID or TERM_SESSION_ID is always present by adding
 the following code to your terminal profile ~/.profile, ~/.bashrc or comparable file.
   bash and zsh: [ -n "$TERM_SESSION_ID" ] || export TERM_SESSION_ID="$(uuidgen)"
   fish:         [ -n "$TERM_SESSION_ID" ] || set -gx TERM_SESSION_ID "$(uuidgen)"
