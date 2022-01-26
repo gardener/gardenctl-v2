@@ -9,6 +9,7 @@ package target_test
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -26,19 +27,24 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
-func assertTarget(t target.Target, expected target.Target) {
-	ExpectWithOffset(1, t.GardenName()).To(Equal(expected.GardenName()))
-	ExpectWithOffset(1, t.ProjectName()).To(Equal(expected.ProjectName()))
-	ExpectWithOffset(1, t.SeedName()).To(Equal(expected.SeedName()))
-	ExpectWithOffset(1, t.ShootName()).To(Equal(expected.ShootName()))
-	ExpectWithOffset(1, t.ControlPlane()).To(Equal(expected.ControlPlane()))
-}
-
 func assertTargetProvider(tp target.TargetProvider, expected target.Target) {
 	t, err := tp.Read()
-	Expect(err).NotTo(HaveOccurred())
-	Expect(t).NotTo(BeNil())
-	assertTarget(t, expected)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, t).To(Equal(expected))
+}
+
+func assertClientConfig(clientConfig clientcmd.ClientConfig, name, ns string) {
+	namespace, overridden, err := clientConfig.Namespace()
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, overridden).To(BeFalse())
+	ExpectWithOffset(1, namespace).To(Equal(ns))
+
+	rawConfig, err := clientConfig.RawConfig()
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	currentContext := rawConfig.CurrentContext
+	ExpectWithOffset(1, currentContext).To(Equal(name))
+	ExpectWithOffset(1, rawConfig.Contexts[currentContext].Namespace).To(Equal(namespace))
 }
 
 func createTestShoot(name string, namespace string, seedName *string) *gardencorev1beta1.Shoot {
@@ -50,6 +56,11 @@ func createTestShoot(name string, namespace string, seedName *string) *gardencor
 		Spec: gardencorev1beta1.ShootSpec{
 			SeedName: seedName,
 		},
+	}
+
+	if strings.HasPrefix(namespace, "garden-") {
+		project := strings.TrimPrefix(namespace, "garden-")
+		shoot.Status.TechnicalID = fmt.Sprintf("shoot--%s--%s", project, name)
 	}
 
 	return shoot
@@ -64,18 +75,13 @@ func createTestManager(t target.Target, cfg *config.Config, clientProvider targe
 
 	sessionDir := os.TempDir()
 	manager, err := target.NewManager(cfg, targetProvider, clientProvider, sessionDir)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(manager).NotTo(BeNil())
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, manager).NotTo(BeNil())
 
 	return manager, targetProvider
 }
 
 var _ = Describe("Target Manager", func() {
-	const (
-		gardenName       = "testgarden"
-		gardenKubeconfig = "/not/a/real/file"
-	)
-
 	var (
 		ctrl                                *gomock.Controller
 		prod1Project                        *gardencorev1beta1.Project
@@ -515,5 +521,76 @@ var _ = Describe("Target Manager", func() {
 		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
 		assertTargetProvider(targetProvider, t)
+	})
+
+	Describe("Getting Client Configurations", func() {
+		var (
+			manager target.Manager
+			t       target.Target
+		)
+
+		JustBeforeEach(func() {
+			manager, _ = createTestManager(t, cfg, clientProvider)
+		})
+
+		Context("when shoot control-plane is targeted", func() {
+			BeforeEach(func() {
+				t = target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name).WithControlPlane(true)
+			})
+
+			It("should return the client configuration", func() {
+				clientConfig, err := manager.ClientConfig(ctx, t)
+				Expect(err).NotTo(HaveOccurred())
+				assertClientConfig(clientConfig, *prod1GoldenShoot.Spec.SeedName, prod1GoldenShoot.Status.TechnicalID)
+			})
+		})
+
+		Context("when shoot is targeted", func() {
+			BeforeEach(func() {
+				t = target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name)
+			})
+
+			It("should return the client configuration", func() {
+				clientConfig, err := manager.ClientConfig(ctx, t)
+				Expect(err).NotTo(HaveOccurred())
+				assertClientConfig(clientConfig, prod1GoldenShoot.Name, "default")
+			})
+		})
+
+		Context("when seed is targeted", func() {
+			BeforeEach(func() {
+				t = target.NewTarget(gardenName, prod1Project.Name, seed.Name, "")
+			})
+
+			It("should return the client configuration", func() {
+				clientConfig, err := manager.ClientConfig(ctx, t)
+				Expect(err).NotTo(HaveOccurred())
+				assertClientConfig(clientConfig, seed.Name, "default")
+			})
+		})
+
+		Context("when project is targeted", func() {
+			BeforeEach(func() {
+				t = target.NewTarget(gardenName, prod1Project.Name, "", "")
+			})
+
+			It("should return the client configuration", func() {
+				clientConfig, err := manager.ClientConfig(ctx, t)
+				Expect(err).NotTo(HaveOccurred())
+				assertClientConfig(clientConfig, gardenName, *prod1Project.Spec.Namespace)
+			})
+		})
+
+		Context("when garden is targeted", func() {
+			BeforeEach(func() {
+				t = target.NewTarget(gardenName, "", "", "")
+			})
+
+			It("should return the client configuration", func() {
+				clientConfig, err := manager.ClientConfig(ctx, t)
+				Expect(err).NotTo(HaveOccurred())
+				assertClientConfig(clientConfig, gardenName, "default")
+			})
+		})
 	})
 })
