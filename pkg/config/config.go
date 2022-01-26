@@ -101,7 +101,7 @@ func (config *Config) IndexOfGarden(name string) (int, bool) {
 	return -1, false
 }
 
-// Garden returns a Garden cluster from the list of configured Gardens
+// GardenNames returns a slice containing the names of the configured Gardens
 func (config *Config) GardenNames() []string {
 	names := []string{}
 	for _, g := range config.Gardens {
@@ -164,7 +164,24 @@ const (
 
 // MatchPattern matches a string against patterns defined in gardenctl config
 // If matched, the function creates and returns a PatternMatch from the provided target string
-func (config *Config) MatchPattern(value string, gardenName string) (*PatternMatch, error) {
+func (config *Config) MatchPattern(preferredGardenName string, value string) (*PatternMatch, error) {
+	if preferredGardenName != "" {
+		g, err := config.Garden(preferredGardenName)
+		if err != nil {
+			return nil, err
+		}
+
+		match, err := matchPattern(g.Patterns, value)
+		if err != nil {
+			return nil, err
+		}
+
+		if match != nil {
+			match.Garden = g.Name
+			return match, nil
+		}
+	}
+
 	var patternMatch *PatternMatch
 
 	for _, g := range config.Gardens {
@@ -176,21 +193,19 @@ func (config *Config) MatchPattern(value string, gardenName string) (*PatternMat
 		if match != nil {
 			match.Garden = g.Name
 
-			if gardenName == "" || g.Name == gardenName {
-				// Directly return match of selected garden
-				return match, nil
+			if patternMatch != nil {
+				return nil, errors.New("the provided value resulted in an ambiguous match")
 			}
 
 			patternMatch = match
 		}
 	}
 
-	if patternMatch != nil {
-		// Did not match pattern of current garden, but did match other pattern
-		return patternMatch, nil
+	if patternMatch == nil {
+		return nil, errors.New("the provided value does not match any pattern")
 	}
 
-	return nil, errors.New("the provided value does not match any pattern")
+	return patternMatch, nil
 }
 
 // matchPattern matches pattern with provided list of patterns
