@@ -37,9 +37,12 @@ import (
 
 var _ = Describe("Env Commands - Options", func() {
 	Describe("having an Options instance", func() {
+		const sessionDir = "session-dir"
+
 		var (
 			ctrl    *gomock.Controller
 			factory *utilmocks.MockFactory
+			manager *targetmocks.MockManager
 			options *env.TestOptions
 			cmdPath,
 			shell string
@@ -51,6 +54,7 @@ var _ = Describe("Env Commands - Options", func() {
 		BeforeEach(func() {
 			ctrl = gomock.NewController(GinkgoT())
 			factory = utilmocks.NewMockFactory(ctrl)
+			manager = targetmocks.NewMockManager(ctrl)
 			options = env.NewOptions()
 			cmdPath = "gardenctl provider-env"
 			baseTemplate = env.NewTemplate("usage-hint")
@@ -84,6 +88,8 @@ var _ = Describe("Env Commands - Options", func() {
 				parent.AddCommand(child)
 				root.AddCommand(parent)
 				factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
+				factory.EXPECT().Manager().Return(manager, nil)
+				manager.EXPECT().SessionDir().Return(sessionDir)
 				root.SetArgs([]string{"alias", "child"})
 				Expect(root.Execute()).To(Succeed())
 				baseTemplate = nil
@@ -94,6 +100,7 @@ var _ = Describe("Env Commands - Options", func() {
 				Expect(options.Complete(factory, child, nil)).To(Succeed())
 				Expect(options.Shell).To(Equal(child.Name()))
 				Expect(options.GardenDir).To(Equal(gardenHomeDir))
+				Expect(options.SessionDir).To(Equal(sessionDir))
 				Expect(options.CmdPath).To(Equal(root.Name() + " " + parent.Name()))
 				Expect(options.Template).NotTo(BeNil())
 				t, ok := options.Template.(env.TestTemplate)
@@ -148,7 +155,6 @@ var _ = Describe("Env Commands - Options", func() {
 		Describe("running the kubectl-env command with the given options", func() {
 			var (
 				ctx              context.Context
-				manager          *targetmocks.MockManager
 				mockTemplate     *envmocks.MockTemplate
 				t                target.Target
 				pathToKubeconfig string
@@ -157,7 +163,6 @@ var _ = Describe("Env Commands - Options", func() {
 
 			BeforeEach(func() {
 				ctx = context.Background()
-				manager = targetmocks.NewMockManager(ctrl)
 				mockTemplate = envmocks.NewMockTemplate(ctrl)
 				baseTemplate = mockTemplate
 				t = target.NewTarget("test", "project", "seed", "shoot")
@@ -273,6 +278,7 @@ var _ = Describe("Env Commands - Options", func() {
 					Name:      "secret",
 				}
 				shell = "bash"
+				options.SessionDir = sessionDir
 			})
 
 			JustBeforeEach(func() {
@@ -511,6 +517,7 @@ var _ = Describe("Env Commands - Options", func() {
 					},
 				}
 				options.GardenDir = gardenHomeDir
+				options.SessionDir = sessionDir
 			})
 
 			Context("when configuring the shell", func() {
