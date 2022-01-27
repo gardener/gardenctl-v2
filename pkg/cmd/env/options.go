@@ -53,18 +53,19 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 	o.GardenDir = f.GardenHomeDir()
 	o.Template = newTemplate("usage-hint")
 
-	manager, err := f.Manager()
-	if err != nil {
-		return err
-	}
-
-	o.SessionDir = manager.SessionDir()
-
-	if o.ProviderType == "kubernetes" {
+	switch o.ProviderType {
+	case "kubernetes":
 		filename := filepath.Join(o.GardenDir, "templates", "kubernetes.tmpl")
 		if err := o.Template.ParseFiles(filename); err != nil {
 			return err
 		}
+	case "azure", "gcp":
+		manager, err := f.Manager()
+		if err != nil {
+			return err
+		}
+
+		o.SessionDir = manager.SessionDir()
 	}
 
 	return nil
