@@ -81,6 +81,9 @@ type Manager interface {
 	// ShootClient controller-runtime client for accessing the configured shoot cluster
 	ShootClient(ctx context.Context, t Target) (client.Client, error)
 
+	// SessionDir is the path of the session directory. All state related to
+	// the current gardenctl shell session will be stored under this directory.
+	SessionDir() string
 	// Configuration returns the current gardenctl configuration
 	Configuration() *config.Config
 
@@ -508,6 +511,10 @@ func (m *managerImpl) WriteClientConfig(config clientcmd.ClientConfig) (string, 
 	}
 
 	return filename, nil
+}
+
+func (m *managerImpl) SessionDir() string {
+	return m.sessionDirectory
 }
 
 func (m *managerImpl) SeedClient(ctx context.Context, t Target) (client.Client, error) {
