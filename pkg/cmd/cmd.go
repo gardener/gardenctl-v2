@@ -84,9 +84,9 @@ kubeconfig.*.yaml files are store in the following directory ${TMPDIR}/garden/${
 
 You can make sure that GCTL_SESSION_ID or TERM_SESSION_ID is always present by adding
 the following code to your terminal profile ~/.profile, ~/.bashrc or comparable file.
-  bash and zsh: [ -n "$TERM_SESSION_ID" ] || export TERM_SESSION_ID="$(uuidgen)"
-  fish:         [ -n "$TERM_SESSION_ID" ] || set -gx TERM_SESSION_ID "$(uuidgen)"
-  powershell:   $Env:TERM_SESSION_ID ??= [guid]::NewGuid().ToString()
+  bash and zsh: [ -n "$GCTL_SESSION_ID" ] || [ -n "$TERM_SESSION_ID" ] || export GCTL_SESSION_ID=$(uuidgen)
+  fish:         [ -n "$GCTL_SESSION_ID" ] || [ -n "$TERM_SESSION_ID" ] || set -gx GCTL_SESSION_ID (uuidgen)
+  powershell:   if ( !(Test-Path Env:GCTL_SESSION_ID) -and !(Test-Path Env:TERM_SESSION_ID) ) { $Env:GCTL_SESSION_ID = [guid]::NewGuid().ToString() }
 
 Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/README.md
 `,
