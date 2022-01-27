@@ -88,8 +88,6 @@ var _ = Describe("Env Commands - Options", func() {
 				parent.AddCommand(child)
 				root.AddCommand(parent)
 				factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
-				factory.EXPECT().Manager().Return(manager, nil)
-				manager.EXPECT().SessionDir().Return(sessionDir)
 				root.SetArgs([]string{"alias", "child"})
 				Expect(root.Execute()).To(Succeed())
 				baseTemplate = nil
@@ -100,7 +98,7 @@ var _ = Describe("Env Commands - Options", func() {
 				Expect(options.Complete(factory, child, nil)).To(Succeed())
 				Expect(options.Shell).To(Equal(child.Name()))
 				Expect(options.GardenDir).To(Equal(gardenHomeDir))
-				Expect(options.SessionDir).To(Equal(sessionDir))
+				Expect(options.SessionDir).To(BeEmpty())
 				Expect(options.CmdPath).To(Equal(root.Name() + " " + parent.Name()))
 				Expect(options.Template).NotTo(BeNil())
 				t, ok := options.Template.(env.TestTemplate)
@@ -109,22 +107,44 @@ var _ = Describe("Env Commands - Options", func() {
 				Expect(t.Delegate().Lookup("bash")).To(BeNil())
 			})
 
-			It("should complete options for providerType kubernetes", func() {
-				options.ProviderType = "kubernetes"
-				Expect(options.Template).To(BeNil())
-				Expect(options.Complete(factory, child, nil)).To(Succeed())
-				Expect(options.Template).NotTo(BeNil())
-				t, ok := options.Template.(env.TestTemplate)
-				Expect(ok).To(BeTrue())
-				Expect(t.Delegate().Lookup("usage-hint")).NotTo(BeNil())
-				Expect(t.Delegate().Lookup("bash")).NotTo(BeNil())
+			Context("when the providerType is kubernetes", func() {
+				BeforeEach(func() {
+					providerType = "kubernetes"
+				})
+
+				It("should complete options for providerType kubernetes", func() {
+					Expect(options.Template).To(BeNil())
+					Expect(options.Complete(factory, child, nil)).To(Succeed())
+					Expect(options.Template).NotTo(BeNil())
+					t, ok := options.Template.(env.TestTemplate)
+					Expect(ok).To(BeTrue())
+					Expect(t.Delegate().Lookup("usage-hint")).NotTo(BeNil())
+					Expect(t.Delegate().Lookup("bash")).NotTo(BeNil())
+				})
+
+				It("should fail to complete options for providerType kubernetes", func() {
+					writeTempFile(filepath.Join("templates", "kubernetes.tmpl"), "{{define")
+					Expect(options.Complete(factory, child, nil)).To(MatchError(MatchRegexp("^parsing template \\\"kubernetes\\\" failed:")))
+				})
 			})
 
-			It("should fail to complete options for providerType kubernetes", func() {
-				options.ProviderType = "kubernetes"
-				writeTempFile(filepath.Join("templates", "kubernetes.tmpl"), "{{define")
-				Expect(options.Complete(factory, child, nil)).To(MatchError(MatchRegexp("^parsing template \\\"kubernetes\\\" failed:")))
+			Context("when the providerType is azure or gcp", func() {
+				It("should complete options for providerType gcp", func() {
+					factory.EXPECT().Manager().Return(manager, nil)
+					manager.EXPECT().SessionDir().Return(sessionDir)
+					options.ProviderType = "gcp"
+					Expect(options.Complete(factory, child, nil)).To(Succeed())
+					Expect(options.SessionDir).To(Equal(sessionDir))
+				})
+
+				It("should fail to complete options for providerType azure", func() {
+					err := errors.New("error")
+					factory.EXPECT().Manager().Return(nil, err)
+					options.ProviderType = "gcp"
+					Expect(options.Complete(factory, child, nil)).To(MatchError(err))
+				})
 			})
+
 		})
 
 		Describe("validating the command options", func() {
@@ -613,6 +633,13 @@ var _ = Describe("Env Commands - Options", func() {
 				})
 			})
 
+			Context("when the configuration directory could not be created", func() {
+				It("should fail a mkdir error", func() {
+					options.SessionDir = string([]byte{0})
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to create gcloud configuration directory:")))
+				})
+			})
+
 			Context("when the cloudprovider is openstack", func() {
 				const (
 					username   = "user"
@@ -641,6 +668,37 @@ var _ = Describe("Env Commands - Options", func() {
 				It("should fail with invalid provider config", func() {
 					cloudProfile.Spec.ProviderConfig = nil
 					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to get openstack provider config:")))
+				})
+			})
+
+			Context("when the cloudprovider is azure", func() {
+				const (
+					clientID       = "client-id"
+					clientSecret   = "client-secret"
+					tenantID       = "tenant-id"
+					subscriptionID = "subscription-id"
+				)
+
+				BeforeEach(func() {
+					shell = "fish"
+					providerType = "azure"
+				})
+
+				JustBeforeEach(func() {
+					secret.Data["clientID"] = []byte(clientID)
+					secret.Data["clientSecret"] = []byte(clientSecret)
+					secret.Data["tenantID"] = []byte(tenantID)
+					secret.Data["subscriptionID"] = []byte(subscriptionID)
+				})
+
+				It("should render the template successfully", func() {
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
+					Expect(options.String()).To(Equal(readTestFile("azure/export.fish")))
+				})
+
+				It("should fail with mkdir error", func() {
+					options.SessionDir = string([]byte{0})
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to create az configuration directory:")))
 				})
 			})
 		})
