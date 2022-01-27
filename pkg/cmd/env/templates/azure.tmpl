@@ -4,6 +4,7 @@ unset AZURE_CLIENT_ID;
 unset AZURE_CLIENT_SECRET;
 unset AZURE_TENANT_ID;
 unset AZURE_SUBSCRIPTION_ID;
+unset AZURE_CONFIG_DIR;
 {{else -}}
 export AZURE_CLIENT_ID={{.clientID | shellEscape}};
 export AZURE_CLIENT_SECRET={{.clientSecret | shellEscape}};
@@ -23,6 +24,7 @@ set -e AZURE_CLIENT_ID;
 set -e AZURE_CLIENT_SECRET;
 set -e AZURE_TENANT_ID;
 set -e AZURE_SUBSCRIPTION_ID;
+set -e AZURE_CONFIG_DIR;
 {{else -}}
 set -gx AZURE_CLIENT_ID {{.clientID | shellEscape}};
 set -gx AZURE_CLIENT_SECRET {{.clientSecret | shellEscape}};
@@ -39,6 +41,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CLIENT_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CLIENT_SECRET;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_TENANT_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_SUBSCRIPTION_ID;
+Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 {{else -}}
 $Env:AZURE_CLIENT_ID = {{.clientID | shellEscape}};
 $Env:AZURE_CLIENT_SECRET = {{.clientSecret | shellEscape}};
