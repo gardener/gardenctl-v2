@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 
@@ -33,6 +34,8 @@ type options struct {
 	Shell string
 	// GardenDir is the configuration directory of gardenctl.
 	GardenDir string
+	// SessionDir is the session directory of gardenctl.
+	SessionDir string
 	// CmdPath is the path of the called command.
 	CmdPath string
 	// CurrentTarget is the current target
@@ -56,6 +59,13 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 			return err
 		}
 	}
+
+	manager, err := f.Manager()
+	if err != nil {
+		return err
+	}
+
+	o.SessionDir = manager.SessionDir()
 
 	return nil
 }
@@ -182,6 +192,13 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 	}
 
 	switch o.ProviderType {
+	case "azure":
+		configDir, err := createProviderConfigDir(o.SessionDir, o.ProviderType)
+		if err != nil {
+			return err
+		}
+
+		data["configDir"] = configDir
 	case "gcp":
 		credentials := make(map[string]interface{})
 
@@ -190,6 +207,12 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 			return err
 		}
 
+		configDir, err := createProviderConfigDir(o.SessionDir, o.ProviderType)
+		if err != nil {
+			return err
+		}
+
+		data["configDir"] = configDir
 		data["credentials"] = credentials
 		data["serviceaccount.json"] = string(serviceaccountJSON)
 	case "openstack":
@@ -274,4 +297,16 @@ func parseGCPCredentials(secret *corev1.Secret, credentials interface{}) ([]byte
 	}
 
 	return json.Marshal(credentials)
+}
+
+func createProviderConfigDir(sessionDir string, providerType string) (string, error) {
+	cli := getProviderCLI(providerType)
+	configDir := filepath.Join(sessionDir, ".config", cli)
+
+	err := os.MkdirAll(configDir, 0700)
+	if err != nil {
+		return "", fmt.Errorf("failed to create %s configuration directory: %w", cli, err)
+	}
+
+	return configDir, nil
 }
