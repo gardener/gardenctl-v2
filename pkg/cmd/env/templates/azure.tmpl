@@ -9,6 +9,7 @@ export AZURE_CLIENT_ID={{.clientID | shellEscape}};
 export AZURE_CLIENT_SECRET={{.clientSecret | shellEscape}};
 export AZURE_TENANT_ID={{.tenantID | shellEscape}};
 export AZURE_SUBSCRIPTION_ID={{.subscriptionID | shellEscape}};
+export AZURE_CONFIG_DIR={{.configDir | shellEscape}};
 az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID";
 az account set --subscription "$AZURE_SUBSCRIPTION_ID";
 {{end}}{{template "azure-usage-hint" .__meta}}{{end}}
@@ -27,6 +28,7 @@ set -gx AZURE_CLIENT_ID {{.clientID | shellEscape}};
 set -gx AZURE_CLIENT_SECRET {{.clientSecret | shellEscape}};
 set -gx AZURE_TENANT_ID {{.tenantID | shellEscape}};
 set -gx AZURE_SUBSCRIPTION_ID {{.subscriptionID | shellEscape}};
+set -gx AZURE_CONFIG_DIR {{.configDir | shellEscape}};
 az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID";
 az account set --subscription "$AZURE_SUBSCRIPTION_ID";
 {{end}}{{template "azure-usage-hint" .__meta}}{{end}}
@@ -42,6 +44,7 @@ $Env:AZURE_CLIENT_ID = {{.clientID | shellEscape}};
 $Env:AZURE_CLIENT_SECRET = {{.clientSecret | shellEscape}};
 $Env:AZURE_TENANT_ID = {{.tenantID | shellEscape}};
 $Env:AZURE_SUBSCRIPTION_ID = {{.subscriptionID | shellEscape}};
+$Env:AZURE_CONFIG_DIR = {{.configDir | shellEscape}};
 az login --service-principal --username "$Env:AZURE_CLIENT_ID" --password "$Env:AZURE_CLIENT_SECRET" --tenant "$Env:AZURE_TENANT_ID";
 az account set --subscription "$Env:AZURE_SUBSCRIPTION_ID";
 {{end}}{{template "azure-usage-hint" .__meta}}{{end}}
