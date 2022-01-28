@@ -26,12 +26,14 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           release-tag: ${{ steps.build_binary_files.outputs.latest_release_filtered_tag }}
       - name: Get token for gardener-github-pkg-mngr app
+        if: github.event.release.prerelease == false
         id: gardener-github-workflows
         uses: getsentry/action-github-app-token@38a3ce582e170ddfe8789f509597c6944f2292a9 # pin@v1.0.6
         with:
           app_id: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_ID }}
           private_key: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_PRIVATE_KEY }}
       - name: Send update with latest versions to gardener/homebrew-tap
+        if: github.event.release.prerelease == false
         run: |
           darwin_sha256sum_amd64=$(sha256sum bin/darwin-amd64/gardenctl_v2_darwin_amd64 | awk '{print $1}')
           darwin_sha256sum_arm64=$(sha256sum bin/darwin-arm64/gardenctl_v2_darwin_arm64 | awk '{print $1}')
@@ -43,6 +45,7 @@ jobs:
           -H "Authorization: Token ${{ steps.gardener-github-workflows.outputs.token }}" \
           --data "${data}"
       - name: Send update with latest versions to gardener/chocolatey-packages
+        if: github.event.release.prerelease == false
         run: |
           windows_sha256sum=$(sha256sum bin/windows-amd64/gardenctl_v2_windows_amd64.exe | awk '{print $1}')
           data='{"event_type": "update", "client_payload": { "component": "gardenctl-v2", "tag": "'"${{ steps.build_binary_files.outputs.latest_release_filtered_tag }}"'", "windows_sha": "'"$windows_sha256sum"'"}}'
