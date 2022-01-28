@@ -91,20 +91,31 @@ var _ = Describe("Env Commands - Options", func() {
 				root.SetArgs([]string{"alias", "child"})
 				Expect(root.Execute()).To(Succeed())
 				baseTemplate = nil
+				providerType = ""
 			})
 
-			It("should complete options with default shell", func() {
-				Expect(options.Template).To(BeNil())
-				Expect(options.Complete(factory, child, nil)).To(Succeed())
-				Expect(options.Shell).To(Equal(child.Name()))
-				Expect(options.GardenDir).To(Equal(gardenHomeDir))
-				Expect(options.SessionDir).To(BeEmpty())
-				Expect(options.CmdPath).To(Equal(root.Name() + " " + parent.Name()))
-				Expect(options.Template).NotTo(BeNil())
-				t, ok := options.Template.(env.TestTemplate)
-				Expect(ok).To(BeTrue())
-				Expect(t.Delegate().Lookup("usage-hint")).NotTo(BeNil())
-				Expect(t.Delegate().Lookup("bash")).To(BeNil())
+			Context("when the providerType is empty", func() {
+				It("should complete options with default shell", func() {
+					factory.EXPECT().Manager().Return(manager, nil)
+					manager.EXPECT().SessionDir().Return(sessionDir)
+					Expect(options.Template).To(BeNil())
+					Expect(options.Complete(factory, child, nil)).To(Succeed())
+					Expect(options.Shell).To(Equal(child.Name()))
+					Expect(options.GardenDir).To(Equal(gardenHomeDir))
+					Expect(options.SessionDir).To(Equal(sessionDir))
+					Expect(options.CmdPath).To(Equal(root.Name() + " " + parent.Name()))
+					Expect(options.Template).NotTo(BeNil())
+					t, ok := options.Template.(env.TestTemplate)
+					Expect(ok).To(BeTrue())
+					Expect(t.Delegate().Lookup("usage-hint")).NotTo(BeNil())
+					Expect(t.Delegate().Lookup("bash")).To(BeNil())
+				})
+
+				It("should fail to complete options", func() {
+					err := errors.New("error")
+					factory.EXPECT().Manager().Return(nil, err)
+					Expect(options.Complete(factory, child, nil)).To(MatchError(err))
+				})
 			})
 
 			Context("when the providerType is kubernetes", func() {
@@ -127,24 +138,6 @@ var _ = Describe("Env Commands - Options", func() {
 					Expect(options.Complete(factory, child, nil)).To(MatchError(MatchRegexp("^parsing template \\\"kubernetes\\\" failed:")))
 				})
 			})
-
-			Context("when the providerType is azure or gcp", func() {
-				It("should complete options for providerType gcp", func() {
-					factory.EXPECT().Manager().Return(manager, nil)
-					manager.EXPECT().SessionDir().Return(sessionDir)
-					options.ProviderType = "gcp"
-					Expect(options.Complete(factory, child, nil)).To(Succeed())
-					Expect(options.SessionDir).To(Equal(sessionDir))
-				})
-
-				It("should fail to complete options for providerType azure", func() {
-					err := errors.New("error")
-					factory.EXPECT().Manager().Return(nil, err)
-					options.ProviderType = "gcp"
-					Expect(options.Complete(factory, child, nil)).To(MatchError(err))
-				})
-			})
-
 		})
 
 		Describe("validating the command options", func() {
