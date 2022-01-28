@@ -22,7 +22,7 @@ gardenctl target shoot my-shoot
 
 ## Flags
 
-You can also use target flags to modify the target. Using flags, you can set the target with one command
+You can also use target flags to modify the target. Using flags, you can set the target with one command.
 ```
 # target shoot
 gardenctl target --garden landscape-dev --project my-project --shoot my-shoot
@@ -37,7 +37,7 @@ the command execution.
 
 ## Patterns
 
-You can define patterns for each garden in the gardenctl configuration. Each pattern is a regex which allows to
+You can define patterns for each garden in the `gardenctl` configuration. Each pattern is a regex which allows to
 target clusters with custom patterns. This allows you define individual patterns, e.g. to target clusters via
 domains.
 
@@ -45,8 +45,7 @@ For example,the following pattern allows you to target clusters using a dashboar
 ```
 https://dashboard\.gardener\.cloud/namespace/(?P<namespace>[^/]+)/shoots/(?P<shoot>[^/]+)
 ```
-The following command would then target the shoot my-cluster in the project with namespace garden-my-project for the garden where
-this pattern is defined in the configuration:
+The following command would then target the shoot `my-cluster` in the project with namespace `garden-my-project` for the garden where this pattern is defined in the configuration:
 ```
 gardenctl target https://dashboard.gardener.cloud/namespace/garden-my-project/shoots/my-cluster
 ```
@@ -60,13 +59,13 @@ by using a target pattern with a prefix that is unique for a garden.
 Using the target command, you can unset target values. Please notice that unsetting a deeper target level will also unset
 its leafs. Example:
 
-```
+```bash
 # target control plane
 gardenctl target --garden landscape-dev --project my-project --shoot my-shoot --control-plane
 
 # unset control plane, shoot will still be targeted
 gardenctl target unset control-plane
 
-# unset project, will unset shot as well, garden will still be targeted
+# unset project, will unset shoot as well, garden will still be targeted
 gardenctl target unset project
 ```

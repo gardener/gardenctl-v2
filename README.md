@@ -10,7 +10,7 @@
 
 This repository contains the work-in-progress code for the upcoming revision of [gardenctl](https://github.com/gardener/gardenctl), [Gardener](https://gardener.cloud/)'s command-line client.
 
-##What is gardenctl?
+##What is `gardenctl`?
 
 gardenctl is a command-line client for the Gardener. It facilitates the administration of one or many garden, seed and shoot clusters. Use this tool to configure access to clusters and configure cloud provider CLI tools. It also provides support for accessing cluster nodes via ssh.
 
@@ -28,7 +28,7 @@ brew install gardener/tap/gardenctl-v2
 choco install gardenlogin
 ```
 
-Attention brew users: Gardenctl-v2 uses the same binary name as the old Gardenctl CLI. If you have an existing installation you should remove it with `brew uninstall gardenctl` before attempting to install Gardenctl-v2. Alternatively, you can choose to link the binary using a different name. If you try to install without removing or relinking the old installation, brew will run into an error and provide instructions how to resolve it.
+Attention `brew` users: `gardenctl-v2` uses the same binary name as the legcy `gardenctl` (`gardener/gardenctl`) CLI. If you have an existing installation you should remove it with `brew uninstall gardenctl` before attempting to install `gardenctl-v2`. Alternatively, you can choose to link the binary using a different name. If you try to install without removing or relinking the old installation, brew will run into an error and provide instructions how to resolve it.
 
 ### Install from Github Release
 
@@ -44,14 +44,14 @@ arch=amd64 # choose between amd64, arm64
 # Get latest version. Alternatively set your desired version
 version=$(curl -s https://raw.githubusercontent.com/gardener/gardenctl-v2/master/LATEST)
 
-# Download gardectl
+# Download gardenctl
 curl -LO https://github.com/gardener/gardenctl-v2/releases/download/$(curl -s https://raw.githubusercontent.com/gardener/gardenctl-v2/master/LATEST)/"gardenctl_v2_${os}_${arch}"
 
-# Make the gardectl binary executable
+# Make the gardenctl binary executable
 chmod +x "./gardenctl_v2_${os}_${arch}"
 
 # Move the binary in to your PATH
-sudo mv "./gardenctl_v2_${os}_${arch}" /usr/local/bin/gardectl
+sudo mv "./gardenctl_v2_${os}_${arch}" /usr/local/bin/gardenctl
 ```
 
 ## Configure Gardenctl
@@ -61,8 +61,15 @@ sudo mv "./gardenctl_v2_${os}_${arch}" /usr/local/bin/gardectl
 You can modify this file directly using the `gardenctl config` command. It allows adding, modifying and deleting gardens.
 
 Example `config` command:
-```
-gardenctl config set-garden landscape-dev --context garden-context --kubeconfig ~/path/to/garden-cluster/kubeconfig.yaml --pattern "^(?:landscape-dev/)?shoot--(?P<project>.+)--(?P<shoot>.+)$" --pattern "https://dashboard\.gardener\.cloud/namespace/(?P<namespace>[^/]+)/shoots/(?P<shoot>[^/]+)"
+``` bash
+# Adapt the path to your kubeconfig file for the garden cluster
+export KUBECONFIG=~/path/to/garden-cluster/kubeconfig.yaml
+
+# Fetch cluster-identity of garden cluster
+CLUSTER_IDENTITY=$(kubectl -n kube-system get configmap cluster-identity -ojsonpath={.data.cluster-identity})
+
+# Configure garden cluster
+gardenctl config set-garden $CLUSTER_IDENTITY --kubeconfig $KUBECONFIG
 ```
 This command will create or update a garden with the identity `landscape-dev`, with context and kubeconfig configured. The command above also sets two patterns. See pattern targeting for further information.
 
@@ -73,11 +80,10 @@ gardens:
 - identity: landscape-dev # Unique identity of the garden cluster. See cluster-identity ConfigMap in kube-system namespace of the garden cluster
   kubeconfig: ~/path/to/garden-cluster/kubeconfig.yaml
 # context: different-context # Overrides the current-context of the garden cluster kubeconfig  
-# patterns: list of regex patterns for pattern targeting
+# patterns: ~ # List of regex patterns for pattern targeting
 ```
 
-Note: You need to have [gardenlogin](https://github.com/gardener/gardenlogin) installed as kubectl plugin and configured properly in order
-to use the kubeconfig files provided by gardenctl.
+Note: You need to have [gardenlogin](https://github.com/gardener/gardenlogin) installed as `kubectl` plugin in order to use the `kubeconfig`s for `Shoot` clusters provided by `gardenctl`.
 
 ### Config Path Overwrite
 
@@ -108,7 +114,7 @@ It will also help you find clusters by providing suggestions for gardener resour
 Code completion is supported for `bash`, `zsh`, `fish` and `powershell`.
 You will find more information on how to configure your shell for gardenctl code completion by executing the help for
 your shell completion command. Example:
-```
+```bash
 gardenctl completion bash --help
 ```
 
@@ -117,7 +123,7 @@ gardenctl completion bash --help
 ### Targeting
 
 In order to use the other commands, you need to first set a target. Example:
-```
+```bash
 # target control plane
 gardenctl target --garden landscape-dev --project my-project --shoot my-shoot --control-plane
 ```
@@ -126,7 +132,7 @@ Find more information in the [documentation](docs/usage/targeting.md).
 ### Configure KUBECONFIG
 
 Generate a script that points KUBECONFIG to the targeted cluster for the specified shell. Example:
-```
+```bash
 gardenctl kubectl-env bash
 ```
 Find more information in the [documentation](docs/usage/kubectl-env.md).
@@ -134,15 +140,15 @@ Find more information in the [documentation](docs/usage/kubectl-env.md).
 ### Configure Cloud Provider CLIs
 
 Generate the cloud provider CLI configuration script for the specified shell. Example:
-```
+```bash
 gardenctl provider-env bash
 ```
 Find more information in the [documentation](docs/usage/provider-env.md).
 
 ### SSH
 
-Establish an SSH connection to a Shoot cluster's node
-```
+Establish an SSH connection to a Shoot cluster's node.
+```bash
 gardenctl ssh my-node
 ```
 Find more information in the [documentation](docs/usage/ssh.md).
