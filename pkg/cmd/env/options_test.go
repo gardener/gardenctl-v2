@@ -357,7 +357,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 					It("does the work when the shoot is targeted via project", func() {
 						Expect(options.Run(factory)).To(Succeed())
-						Expect(options.String()).To(Equal(readTestFile("gcp/export.bash")))
+						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.bash"), sessionDir)))
 					})
 
 					It("should print how to reset configuration for powershell", func() {
@@ -377,7 +377,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 					It("does the work when the shoot is targeted via seed", func() {
 						Expect(options.Run(factory)).To(Succeed())
-						Expect(options.String()).To(Equal(readTestFile("gcp/export.seed.bash")))
+						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.seed.bash"), sessionDir)))
 					})
 				})
 			})
@@ -538,7 +538,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 				It("should render the template successfully", func() {
 					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
-					Expect(options.String()).To(Equal(readTestFile("gcp/export.bash")))
+					Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.bash"), sessionDir)))
 				})
 			})
 
@@ -684,7 +684,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 				It("should render the template successfully", func() {
 					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
-					Expect(options.String()).To(Equal(readTestFile("azure/export.fish")))
+					Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("azure/export.fish"), sessionDir)))
 				})
 
 				It("should fail with mkdir error", func() {
