@@ -37,8 +37,6 @@ import (
 
 var _ = Describe("Env Commands - Options", func() {
 	Describe("having an Options instance", func() {
-		const sessionDir = "session-dir"
-
 		var (
 			ctrl    *gomock.Controller
 			factory *utilmocks.MockFactory
