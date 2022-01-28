@@ -59,7 +59,7 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 		if err := o.Template.ParseFiles(filename); err != nil {
 			return err
 		}
-	case "azure", "gcp":
+	default:
 		manager, err := f.Manager()
 		if err != nil {
 			return err
