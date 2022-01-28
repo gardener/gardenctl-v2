@@ -40,6 +40,7 @@ var _ = Describe("Env Commands - Options", func() {
 		var (
 			ctrl    *gomock.Controller
 			factory *utilmocks.MockFactory
+			manager *targetmocks.MockManager
 			options *env.TestOptions
 			cmdPath,
 			shell string
@@ -51,6 +52,7 @@ var _ = Describe("Env Commands - Options", func() {
 		BeforeEach(func() {
 			ctrl = gomock.NewController(GinkgoT())
 			factory = utilmocks.NewMockFactory(ctrl)
+			manager = targetmocks.NewMockManager(ctrl)
 			options = env.NewOptions()
 			cmdPath = "gardenctl provider-env"
 			baseTemplate = env.NewTemplate("usage-hint")
@@ -87,36 +89,52 @@ var _ = Describe("Env Commands - Options", func() {
 				root.SetArgs([]string{"alias", "child"})
 				Expect(root.Execute()).To(Succeed())
 				baseTemplate = nil
+				providerType = ""
 			})
 
-			It("should complete options with default shell", func() {
-				Expect(options.Template).To(BeNil())
-				Expect(options.Complete(factory, child, nil)).To(Succeed())
-				Expect(options.Shell).To(Equal(child.Name()))
-				Expect(options.GardenDir).To(Equal(gardenHomeDir))
-				Expect(options.CmdPath).To(Equal(root.Name() + " " + parent.Name()))
-				Expect(options.Template).NotTo(BeNil())
-				t, ok := options.Template.(env.TestTemplate)
-				Expect(ok).To(BeTrue())
-				Expect(t.Delegate().Lookup("usage-hint")).NotTo(BeNil())
-				Expect(t.Delegate().Lookup("bash")).To(BeNil())
+			Context("when the providerType is empty", func() {
+				It("should complete options with default shell", func() {
+					factory.EXPECT().Manager().Return(manager, nil)
+					manager.EXPECT().SessionDir().Return(sessionDir)
+					Expect(options.Template).To(BeNil())
+					Expect(options.Complete(factory, child, nil)).To(Succeed())
+					Expect(options.Shell).To(Equal(child.Name()))
+					Expect(options.GardenDir).To(Equal(gardenHomeDir))
+					Expect(options.SessionDir).To(Equal(sessionDir))
+					Expect(options.CmdPath).To(Equal(root.Name() + " " + parent.Name()))
+					Expect(options.Template).NotTo(BeNil())
+					t, ok := options.Template.(env.TestTemplate)
+					Expect(ok).To(BeTrue())
+					Expect(t.Delegate().Lookup("usage-hint")).NotTo(BeNil())
+					Expect(t.Delegate().Lookup("bash")).To(BeNil())
+				})
+
+				It("should fail to complete options", func() {
+					err := errors.New("error")
+					factory.EXPECT().Manager().Return(nil, err)
+					Expect(options.Complete(factory, child, nil)).To(MatchError(err))
+				})
 			})
 
-			It("should complete options for providerType kubernetes", func() {
-				options.ProviderType = "kubernetes"
-				Expect(options.Template).To(BeNil())
-				Expect(options.Complete(factory, child, nil)).To(Succeed())
-				Expect(options.Template).NotTo(BeNil())
-				t, ok := options.Template.(env.TestTemplate)
-				Expect(ok).To(BeTrue())
-				Expect(t.Delegate().Lookup("usage-hint")).NotTo(BeNil())
-				Expect(t.Delegate().Lookup("bash")).NotTo(BeNil())
-			})
+			Context("when the providerType is kubernetes", func() {
+				BeforeEach(func() {
+					providerType = "kubernetes"
+				})
 
-			It("should fail to complete options for providerType kubernetes", func() {
-				options.ProviderType = "kubernetes"
-				writeTempFile(filepath.Join("templates", "kubernetes.tmpl"), "{{define")
-				Expect(options.Complete(factory, child, nil)).To(MatchError(MatchRegexp("^parsing template \\\"kubernetes\\\" failed:")))
+				It("should complete options for providerType kubernetes", func() {
+					Expect(options.Template).To(BeNil())
+					Expect(options.Complete(factory, child, nil)).To(Succeed())
+					Expect(options.Template).NotTo(BeNil())
+					t, ok := options.Template.(env.TestTemplate)
+					Expect(ok).To(BeTrue())
+					Expect(t.Delegate().Lookup("usage-hint")).NotTo(BeNil())
+					Expect(t.Delegate().Lookup("bash")).NotTo(BeNil())
+				})
+
+				It("should fail to complete options for providerType kubernetes", func() {
+					writeTempFile(filepath.Join("templates", "kubernetes.tmpl"), "{{define")
+					Expect(options.Complete(factory, child, nil)).To(MatchError(MatchRegexp("^parsing template \\\"kubernetes\\\" failed:")))
+				})
 			})
 		})
 
@@ -148,7 +166,6 @@ var _ = Describe("Env Commands - Options", func() {
 		Describe("running the kubectl-env command with the given options", func() {
 			var (
 				ctx              context.Context
-				manager          *targetmocks.MockManager
 				mockTemplate     *envmocks.MockTemplate
 				t                target.Target
 				pathToKubeconfig string
@@ -157,7 +174,6 @@ var _ = Describe("Env Commands - Options", func() {
 
 			BeforeEach(func() {
 				ctx = context.Background()
-				manager = targetmocks.NewMockManager(ctrl)
 				mockTemplate = envmocks.NewMockTemplate(ctrl)
 				baseTemplate = mockTemplate
 				t = target.NewTarget("test", "project", "seed", "shoot")
@@ -273,6 +289,7 @@ var _ = Describe("Env Commands - Options", func() {
 					Name:      "secret",
 				}
 				shell = "bash"
+				options.SessionDir = sessionDir
 			})
 
 			JustBeforeEach(func() {
@@ -340,7 +357,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 					It("does the work when the shoot is targeted via project", func() {
 						Expect(options.Run(factory)).To(Succeed())
-						Expect(options.String()).To(Equal(readTestFile("gcp/export.bash")))
+						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.bash"), sessionDir)))
 					})
 
 					It("should print how to reset configuration for powershell", func() {
@@ -360,7 +377,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 					It("does the work when the shoot is targeted via seed", func() {
 						Expect(options.Run(factory)).To(Succeed())
-						Expect(options.String()).To(Equal(readTestFile("gcp/export.seed.bash")))
+						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.seed.bash"), sessionDir)))
 					})
 				})
 			})
@@ -511,6 +528,7 @@ var _ = Describe("Env Commands - Options", func() {
 					},
 				}
 				options.GardenDir = gardenHomeDir
+				options.SessionDir = sessionDir
 			})
 
 			Context("when configuring the shell", func() {
@@ -520,7 +538,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 				It("should render the template successfully", func() {
 					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
-					Expect(options.String()).To(Equal(readTestFile("gcp/export.bash")))
+					Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.bash"), sessionDir)))
 				})
 			})
 
@@ -606,6 +624,13 @@ var _ = Describe("Env Commands - Options", func() {
 				})
 			})
 
+			Context("when the configuration directory could not be created", func() {
+				It("should fail a mkdir error", func() {
+					options.SessionDir = string([]byte{0})
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to create gcloud configuration directory:")))
+				})
+			})
+
 			Context("when the cloudprovider is openstack", func() {
 				const (
 					username   = "user"
@@ -634,6 +659,37 @@ var _ = Describe("Env Commands - Options", func() {
 				It("should fail with invalid provider config", func() {
 					cloudProfile.Spec.ProviderConfig = nil
 					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to get openstack provider config:")))
+				})
+			})
+
+			Context("when the cloudprovider is azure", func() {
+				const (
+					clientID       = "client-id"
+					clientSecret   = "client-secret"
+					tenantID       = "tenant-id"
+					subscriptionID = "subscription-id"
+				)
+
+				BeforeEach(func() {
+					shell = "fish"
+					providerType = "azure"
+				})
+
+				JustBeforeEach(func() {
+					secret.Data["clientID"] = []byte(clientID)
+					secret.Data["clientSecret"] = []byte(clientSecret)
+					secret.Data["tenantID"] = []byte(tenantID)
+					secret.Data["subscriptionID"] = []byte(subscriptionID)
+				})
+
+				It("should render the template successfully", func() {
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
+					Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("azure/export.fish"), sessionDir)))
+				})
+
+				It("should fail with mkdir error", func() {
+					options.SessionDir = string([]byte{0})
+					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to create az configuration directory:")))
 				})
 			})
 		})

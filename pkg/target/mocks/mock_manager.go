@@ -113,6 +113,20 @@ func (mr *MockManagerMockRecorder) SeedClient(arg0, arg1 interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SeedClient", reflect.TypeOf((*MockManager)(nil).SeedClient), arg0, arg1)
 }
 
+// SessionDir mocks base method.
+func (m *MockManager) SessionDir() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SessionDir")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// SessionDir indicates an expected call of SessionDir.
+func (mr *MockManagerMockRecorder) SessionDir() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SessionDir", reflect.TypeOf((*MockManager)(nil).SessionDir))
+}
+
 // ShootClient mocks base method.
 func (m *MockManager) ShootClient(arg0 context.Context, arg1 target.Target) (client.Client, error) {
 	m.ctrl.T.Helper()
