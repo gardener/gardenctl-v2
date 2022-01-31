@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 )
 
 /*

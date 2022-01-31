@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package target_test
 
 import (
-	"github.com/gardener/gardenctl-v2/pkg/target"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/pflag"
+
+	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 var _ = Describe("Target Flags", func() {
