@@ -72,7 +72,6 @@ CLUSTER_IDENTITY=$(kubectl -n kube-system get configmap cluster-identity -ojsonp
 gardenctl config set-garden $CLUSTER_IDENTITY --kubeconfig $KUBECONFIG
 ```
 This command will create or update a garden with the provided identity and kubeconfig path of your garden cluster.
-Find more information in the [documentation](docs/usage/config.md).
 
 ### Example Config
 
@@ -145,7 +144,6 @@ Generate a script that points KUBECONFIG to the targeted cluster for the specifi
 ```bash
 eval $(gardenctl kubectl-env bash)
 ```
-Find more information in the [documentation](docs/usage/kubectl-env.md).
 
 ### Configure Cloud Provider CLIs
 
@@ -153,7 +151,6 @@ Generate the cloud provider CLI configuration script for the specified shell. Us
 ```bash
 eval $(gardenctl provider-env bash)
 ```
-Find more information in the [documentation](docs/usage/provider-env.md).
 
 ### SSH
 
@@ -161,4 +158,3 @@ Establish an SSH connection to a Shoot cluster's node.
 ```bash
 gardenctl ssh my-node
 ```
-Find more information in the [documentation](docs/usage/ssh.md).
