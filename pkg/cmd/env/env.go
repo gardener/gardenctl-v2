@@ -32,7 +32,9 @@ See each sub-command's help for details on how to use the generated script.
 
 The generated script sets the environment variables for the cloud provider CLI of the targeted shoot.
 In addition, the Azure CLI requires to sign in with a service principal and the gcloud CLI requires to activate a service-account.
-Since these actions are persistent, they should be undone when closing the shell or changing the target using the --unset flag.
+Thereby the configuration location of the corresponding cloud provider CLI is pointed to temporary folder in the
+session directory, so that the standard configuration files in the user's home folder are not affected.
+By using the --unset flag you can force a logout or revoke the service-account.
 
 The CLI of a corresponding cloud provider must be installed.
 Please refer to the installation instructions of the respective provider:
