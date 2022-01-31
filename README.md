@@ -141,7 +141,7 @@ Find more information in the [documentation](docs/usage/targeting.md).
 
 ### Configure KUBECONFIG for Shoot Clusters
 
-Generate a script that points KUBECONFIG to the targeted cluster for the specified shell. Use together with `eval` to configure your shell. Example:
+Generate a script that points KUBECONFIG to the targeted cluster for the specified shell. Use together with `eval` to configure your shell. Example for `bash`:
 ```bash
 eval $(gardenctl kubectl-env bash)
 ```
@@ -149,9 +149,9 @@ Find more information in the [documentation](docs/usage/kubectl-env.md).
 
 ### Configure Cloud Provider CLIs
 
-Generate the cloud provider CLI configuration script for the specified shell. Use together with `eval` to configure your shell. Example:
+Generate the cloud provider CLI configuration script for the specified shell. Use together with `eval` to configure your shell. Example for `bash`:
 ```bash
-eval $(ggardenctl provider-env bash)
+eval $(gardenctl provider-env bash)
 ```
 Find more information in the [documentation](docs/usage/provider-env.md).
 
