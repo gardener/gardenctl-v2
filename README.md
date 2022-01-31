@@ -25,10 +25,10 @@ Install the latest release from [Homebrew](https://brew.sh/), [Chocolatey](https
 brew install gardener/tap/gardenctl-v2
 
 # Chocolatey (Windows)
-choco install gardenlogin
+choco install gardenctl-v2
 ```
 
-Attention `brew` users: `gardenctl-v2` uses the same binary name as the legcy `gardenctl` (`gardener/gardenctl`) CLI. If you have an existing installation you should remove it with `brew uninstall gardenctl` before attempting to install `gardenctl-v2`. Alternatively, you can choose to link the binary using a different name. If you try to install without removing or relinking the old installation, brew will run into an error and provide instructions how to resolve it.
+Attention `brew` users: `gardenctl-v2` uses the same binary name as the legacy `gardenctl` (`gardener/gardenctl`) CLI. If you have an existing installation you should remove it with `brew uninstall gardenctl` before attempting to install `gardenctl-v2`. Alternatively, you can choose to link the binary using a different name. If you try to install without removing or relinking the old installation, brew will run into an error and provide instructions how to resolve it.
 
 ### Install from Github Release
 
@@ -71,7 +71,8 @@ CLUSTER_IDENTITY=$(kubectl -n kube-system get configmap cluster-identity -ojsonp
 # Configure garden cluster
 gardenctl config set-garden $CLUSTER_IDENTITY --kubeconfig $KUBECONFIG
 ```
-This command will create or update a garden with the identity `landscape-dev`, with context and kubeconfig configured. The command above also sets two patterns. See pattern targeting for further information.
+This command will create or update a garden with the provided identity and kubeconfig path of your garden cluster.
+Find more information in the [documentation](docs/usage/config.md).
 
 ### Example Config
 
@@ -90,6 +91,12 @@ Note: You need to have [gardenlogin](https://github.com/gardener/gardenlogin) in
 - The `gardenctl` config path can be overwritten with the environment variable `GCTL_HOME`.
 - The `gardenctl` config name can be overwritten with the environment variable `GCTL_CONFIG_NAME`.
 
+```bash
+export GCTL_HOME=/alternate/garden/config/dir
+export GCTL_CONFIG_NAME=myconfig # without extension!
+# config is expected to be under /alternate/garden/config/dir/myconfig.yaml
+```
+
 ### GCTL_SESSION_ID
 
 The state of gardenctl is bound to a shell session and is not shared across windows, tabs or panes.
@@ -100,11 +107,10 @@ kubeconfig.*.yaml files are store in the following directory ${TMPDIR}/garden/${
 
 You can make sure that GCTL_SESSION_ID or TERM_SESSION_ID is always present by adding
 the following code to your terminal profile ~/.profile, ~/.bashrc or comparable file.
-
 ```
-bash and zsh: [ -n "$TERM_SESSION_ID" ] || export TERM_SESSION_ID="$(uuidgen)"
-fish:         [ -n "$TERM_SESSION_ID" ] || set -gx TERM_SESSION_ID "$(uuidgen)"
-powershell:   $Env:TERM_SESSION_ID ??= [guid]::NewGuid().ToString()
+bash and zsh: [ -n "$GCTL_SESSION_ID" ] || [ -n "$TERM_SESSION_ID" ] || export GCTL_SESSION_ID=$(uuidgen)
+fish:         [ -n "$GCTL_SESSION_ID" ] || [ -n "$TERM_SESSION_ID" ] || set -gx GCTL_SESSION_ID (uuidgen)
+powershell:   if ( !(Test-Path Env:GCTL_SESSION_ID) -and !(Test-Path Env:TERM_SESSION_ID) ) { $Env:GCTL_SESSION_ID = [guid]::NewGuid().ToString() }
 ```
 
 ### Code Completion
@@ -122,26 +128,30 @@ gardenctl completion bash --help
 
 ### Targeting
 
-In order to use the other commands, you need to first set a target. Example:
+You can set a target to use it in subsequent commands. You can also overwrite the target for each command individually.
+
+Note that this will not affect your KUBECONFIG env variable. To update the KUBECONFIG env for your current target see [Configure KUBECONFIG](#configure-kubeconfig-for-shoot-clusters) section
+
+Example:
 ```bash
 # target control plane
 gardenctl target --garden landscape-dev --project my-project --shoot my-shoot --control-plane
 ```
 Find more information in the [documentation](docs/usage/targeting.md).
 
-### Configure KUBECONFIG
+### Configure KUBECONFIG for Shoot Clusters
 
-Generate a script that points KUBECONFIG to the targeted cluster for the specified shell. Example:
+Generate a script that points KUBECONFIG to the targeted cluster for the specified shell. Use together with `eval` to configure your shell. Example:
 ```bash
-gardenctl kubectl-env bash
+eval $(gardenctl kubectl-env bash)
 ```
 Find more information in the [documentation](docs/usage/kubectl-env.md).
 
 ### Configure Cloud Provider CLIs
 
-Generate the cloud provider CLI configuration script for the specified shell. Example:
+Generate the cloud provider CLI configuration script for the specified shell. Use together with `eval` to configure your shell. Example:
 ```bash
-gardenctl provider-env bash
+eval $(ggardenctl provider-env bash)
 ```
 Find more information in the [documentation](docs/usage/provider-env.md).
 

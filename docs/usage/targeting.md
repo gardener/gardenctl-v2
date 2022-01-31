@@ -1,7 +1,17 @@
 # Targeting
-In order to use the other commands, you need to first set a target. By default, targets are not shared across windows,
+You can set a target to use it in subsequent commands. By default, targets are not shared across windows,
 tabs or panes. If you want to share the target, you need to manually set the `GCTL_SESSION_ID` variable to a static
 value in your terminal profile.
+
+The target has a hierarchical structure that looks like this:
+```
+garden
+├── project 
+│   └── shoot
+│       └── control-plane
+└── seed
+```
+You can show the current target with `gardenctl target view`.
 
 ## Arguments
 
@@ -31,7 +41,7 @@ gardenctl target --garden landscape-dev --project my-project --shoot my-shoot
 gardenctl target --garden landscape-dev --project my-project --shoot my-shoot --control-plane
 ```
 
-The target flags are global and can be used with other commands as well. If used with other commands than target, they will
+The target flags can be used with other commands as well. If used with other commands than target, they will
 not modify the current target though. In these cases the current target will be overwritten with the provided target values for
 the command execution.
 
