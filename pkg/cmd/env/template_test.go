@@ -131,6 +131,7 @@ var _ = Describe("Env Commands - Template", func() {
 export GOOGLE_CREDENTIALS_ACCOUNT='%[3]s';
 export CLOUDSDK_CORE_PROJECT='%[4]s';
 export CLOUDSDK_COMPUTE_REGION='%[2]s';
+export CLOUDSDK_CONFIG='%[5]s';
 gcloud auth activate-service-account $GOOGLE_CREDENTIALS_ACCOUNT --key-file <(printf "%%s" "$GOOGLE_CREDENTIALS");
 printf 'Run the following command to revoke access credentials:\n$ eval $(gardenctl provider-env --garden garden --project project --shoot shoot -u %[1]s)\n';
 
@@ -143,6 +144,7 @@ unset GOOGLE_CREDENTIALS;
 unset GOOGLE_CREDENTIALS_ACCOUNT;
 unset CLOUDSDK_CORE_PROJECT;
 unset CLOUDSDK_COMPUTE_REGION;
+unset CLOUDSDK_CONFIG;
 
 # Run this command to reset the gcloud configuration for your shell:
 # eval $(gardenctl provider-env -u %[1]s)
@@ -150,6 +152,7 @@ unset CLOUDSDK_COMPUTE_REGION;
 		var (
 			clientEmail = "john.doe@example.org"
 			projectID   = "test"
+			configDir   = "config-dir"
 		)
 
 		BeforeEach(func() {
@@ -163,6 +166,7 @@ unset CLOUDSDK_COMPUTE_REGION;
 				"client_email": clientEmail,
 				"project_id":   projectID,
 			}
+			data["configDir"] = configDir
 		})
 
 		DescribeTable("executing the bash template",
@@ -170,7 +174,7 @@ unset CLOUDSDK_COMPUTE_REGION;
 				metadata["shell"] = shell
 				metadata["unset"] = unset
 				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
-				Expect(out.String()).To(Equal(fmt.Sprintf(format, shell, region, clientEmail, projectID)))
+				Expect(out.String()).To(Equal(fmt.Sprintf(format, shell, region, clientEmail, projectID, configDir)))
 			},
 			Entry("export environment variables", false, exportFormat),
 			Entry("unset environment variables", true, unsetFormat),
@@ -182,6 +186,7 @@ unset CLOUDSDK_COMPUTE_REGION;
 $Env:AZURE_CLIENT_SECRET = '%[3]s';
 $Env:AZURE_TENANT_ID = '%[4]s';
 $Env:AZURE_SUBSCRIPTION_ID = '%[5]s';
+$Env:AZURE_CONFIG_DIR = '%[6]s';
 az login --service-principal --username "$Env:AZURE_CLIENT_ID" --password "$Env:AZURE_CLIENT_SECRET" --tenant "$Env:AZURE_TENANT_ID";
 az account set --subscription "$Env:AZURE_SUBSCRIPTION_ID";
 printf 'Run the following command to log out and remove access to Azure subscriptions:\n$ & gardenctl provider-env --garden garden --project project --shoot shoot -u %[1]s | Invoke-Expression\n';
@@ -194,6 +199,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CLIENT_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CLIENT_SECRET;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_TENANT_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_SUBSCRIPTION_ID;
+Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 # Run this command to reset the az configuration for your shell:
 # & gardenctl provider-env -u %[1]s | Invoke-Expression
 `
@@ -202,6 +208,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_SUBSCRIPTION_ID;
 			clientSecret   = "secret"
 			tenantID       = "tenant"
 			subscriptionID = "subscription"
+			configDir      = "config-dir"
 		)
 
 		BeforeEach(func() {
@@ -216,6 +223,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_SUBSCRIPTION_ID;
 			data["clientSecret"] = clientSecret
 			data["tenantID"] = tenantID
 			data["subscriptionID"] = subscriptionID
+			data["configDir"] = configDir
 		})
 
 		DescribeTable("executing the bash template",
@@ -223,7 +231,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_SUBSCRIPTION_ID;
 				metadata["shell"] = shell
 				metadata["unset"] = unset
 				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
-				Expect(out.String()).To(Equal(fmt.Sprintf(format, shell, clientID, clientSecret, tenantID, subscriptionID)))
+				Expect(out.String()).To(Equal(fmt.Sprintf(format, shell, clientID, clientSecret, tenantID, subscriptionID, configDir)))
 			},
 			Entry("export environment variables", false, exportFormat),
 			Entry("unset environment variables", true, unsetFormat),

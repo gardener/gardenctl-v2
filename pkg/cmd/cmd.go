@@ -33,11 +33,11 @@ import (
 )
 
 const (
-	envPrefix         = "GCTL"
-	envGardenHomeDir  = envPrefix + "_HOME"
-	envConfigName     = envPrefix + "_CONFIG_NAME"
-	envSessionID      = envPrefix + "_SESSION_ID"
-	envItermSessionID = "ITERM_SESSION_ID"
+	envPrefix        = "GCTL"
+	envGardenHomeDir = envPrefix + "_HOME"
+	envConfigName    = envPrefix + "_CONFIG_NAME"
+	envSessionID     = envPrefix + "_SESSION_ID"
+	envTermSessionID = "TERM_SESSION_ID"
 
 	gardenHomeFolder = ".garden"
 	configName       = "gardenctl-v2"
@@ -72,8 +72,24 @@ func NewDefaultGardenctlCommand() *cobra.Command {
 // NewGardenctlCommand creates the `gardenctl` command
 func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "gardenctl",
-		Short:        "gardenctl is a utility to interact with Gardener installations",
+		Use:   "gardenctl",
+		Short: "gardenctl is a utility to interact with Gardener installations",
+		Long: `Gardenctl is a utility to interact with Gardener installations.
+
+The state of gardenctl is bound to a shell session and is not shared across windows, tabs or panes.
+A shell session is defined by the environment variable GCTL_SESSION_ID. If this is not defined,
+the value of the TERM_SESSION_ID environment variable is used instead. If both are not defined,
+this leads to an error and gardenctl cannot be executed. The target.yaml and temporary
+kubeconfig.*.yaml files are store in the following directory ${TMPDIR}/garden/${GCTL_SESSION_ID}.
+
+You can make sure that GCTL_SESSION_ID or TERM_SESSION_ID is always present by adding
+the following code to your terminal profile ~/.profile, ~/.bashrc or comparable file.
+  bash and zsh: [ -n "$GCTL_SESSION_ID" ] || [ -n "$TERM_SESSION_ID" ] || export GCTL_SESSION_ID=$(uuidgen)
+  fish:         [ -n "$GCTL_SESSION_ID" ] || [ -n "$TERM_SESSION_ID" ] || set -gx GCTL_SESSION_ID (uuidgen)
+  powershell:   if ( !(Test-Path Env:GCTL_SESSION_ID) -and !(Test-Path Env:TERM_SESSION_ID) ) { $Env:GCTL_SESSION_ID = [guid]::NewGuid().ToString() }
+
+Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/README.md
+`,
 		SilenceUsage: true,
 	}
 
@@ -287,12 +303,12 @@ func getSessionID() (string, error) {
 		return "", fmt.Errorf("Environment variable %s must only contain alphanumeric characters, underscore and dash and have a minimum length of 1 and a maximum length of 128", envSessionID)
 	}
 
-	if value, ok := os.LookupEnv(envItermSessionID); ok {
+	if value, ok := os.LookupEnv(envTermSessionID); ok {
 		match := uuidRegexp.FindStringSubmatch(strings.ToLower(value))
 		if len(match) > 1 {
 			return match[1], nil
 		}
 	}
 
-	return "", fmt.Errorf("Environment variable %s is required", envSessionID)
+	return "", fmt.Errorf("Environment variable %s is required. Use \"gardenctl help\" for more information about the requirements of gardenctl", envSessionID)
 }

@@ -38,7 +38,7 @@ type Garden struct {
 	// Use named capturing groups to match target values.
 	// Supported capturing groups: project, namespace, shoot
 	// +optional
-	Patterns []string `yaml:"matchPatterns,omitempty"`
+	Patterns []string `yaml:"patterns,omitempty"`
 }
 
 // LoadFromFile parses a gardenctl config file and returns a Config struct

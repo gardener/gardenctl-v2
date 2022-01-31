@@ -20,7 +20,10 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
-var gardenHomeDir string
+var (
+	gardenHomeDir string
+	sessionDir    string
+)
 
 func init() {
 	utilruntime.Must(gardencorev1beta1.AddToScheme(scheme.Scheme))
@@ -33,6 +36,7 @@ func TestCloudEnvCommand(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	gardenHomeDir = makeTempGardenHomeDir()
+	sessionDir = filepath.Join(gardenHomeDir, "sessions")
 })
 
 var _ = AfterSuite(func() {
@@ -40,7 +44,7 @@ var _ = AfterSuite(func() {
 })
 
 func makeTempGardenHomeDir() string {
-	dir, err := os.MkdirTemp(os.TempDir(), "garden-*")
+	dir, err := os.MkdirTemp("", "garden-*")
 	Expect(err).NotTo(HaveOccurred())
 	Expect(os.Mkdir(filepath.Join(dir, "templates"), 0777)).NotTo(HaveOccurred())
 
