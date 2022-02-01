@@ -10,7 +10,7 @@
 
 This repository contains the work-in-progress code for the upcoming revision of [gardenctl](https://github.com/gardener/gardenctl), [Gardener](https://gardener.cloud/)'s command-line client.
 
-##What is `gardenctl`?
+## What is `gardenctl`?
 
 gardenctl is a command-line client for the Gardener. It facilitates the administration of one or many garden, seed and shoot clusters. Use this tool to configure access to clusters and configure cloud provider CLI tools. It also provides support for accessing cluster nodes via ssh.
 
@@ -96,20 +96,20 @@ export GCTL_CONFIG_NAME=myconfig # without extension!
 # config is expected to be under /alternate/garden/config/dir/myconfig.yaml
 ```
 
-### GCTL_SESSION_ID
+### Shell Session
 
 The state of gardenctl is bound to a shell session and is not shared across windows, tabs or panes.
-A shell session is defined by the environment variable GCTL_SESSION_ID. If this is not defined,
-the value of the TERM_SESSION_ID environment variable is used instead. If both are not defined,
-this leads to an error and gardenctl cannot be executed. The target.yaml and temporary
-kubeconfig.*.yaml files are store in the following directory ${TMPDIR}/garden/${GCTL_SESSION_ID}.
+A shell session is defined by the environment variable `GCTL_SESSION_ID`. If this is not defined,
+the value of the `TERM_SESSION_ID` environment variable is used instead. If both are not defined,
+this leads to an error and gardenctl cannot be executed. The `target.yaml` and temporary
+`kubeconfig.*.yaml` files are store in the following directory `${TMPDIR}/garden/${GCTL_SESSION_ID}`.
 
-You can make sure that GCTL_SESSION_ID or TERM_SESSION_ID is always present by adding
-the following code to your terminal profile ~/.profile, ~/.bashrc or comparable file.
+You can make sure that `GCTL_SESSION_ID` or `TERM_SESSION_ID` is always present by adding
+the following code to your terminal profile `~/.profile`, `~/.bashrc` or comparable file.
 ```
-bash and zsh: [ -n "$GCTL_SESSION_ID" ] || [ -n "$TERM_SESSION_ID" ] || export GCTL_SESSION_ID=$(uuidgen)
-fish:         [ -n "$GCTL_SESSION_ID" ] || [ -n "$TERM_SESSION_ID" ] || set -gx GCTL_SESSION_ID (uuidgen)
-powershell:   if ( !(Test-Path Env:GCTL_SESSION_ID) -and !(Test-Path Env:TERM_SESSION_ID) ) { $Env:GCTL_SESSION_ID = [guid]::NewGuid().ToString() }
+#### bash and zsh:
+```sh
+[ -n "$GCTL_SESSION_ID" ] || [ -n "$TERM_SESSION_ID" ] || export GCTL_SESSION_ID=$(uuidgen)
 ```
 
 ### Code Completion
