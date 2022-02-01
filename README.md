@@ -117,7 +117,7 @@ powershell:   if ( !(Test-Path Env:GCTL_SESSION_ID) -and !(Test-Path Env:TERM_SE
 Gardenctl supports completion that will help you working with the CLI and save you typing effort.
 It will also help you find clusters by providing suggestions for gardener resources such as shoots or projects. 
 Completion is supported for `bash`, `zsh`, `fish` and `powershell`.
-You will find more information on how to configure your shell for gardenctl code completion by executing the help for
+You will find more information on how to configure your shell completion for gardenctl by executing the help for
 your shell completion command. Example:
 ```bash
 gardenctl completion bash --help
