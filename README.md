@@ -50,7 +50,7 @@ chmod +x "./gardenctl_v2_${os}_${arch}"
 sudo mv "./gardenctl_v2_${os}_${arch}" /usr/local/bin/gardenctl
 ```
 
-## Configure Gardenctl
+## Configuration
 
 `gardenctl` requires a configuration file. The default location is in `~/.garden/gardenctl-v2.yaml`.
 
@@ -59,7 +59,7 @@ You can modify this file directly using the `gardenctl config` command. It allow
 Example `config` command:
 ``` bash
 # Adapt the path to your kubeconfig file for the garden cluster
-export KUBECONFIG=~/path/to/garden-cluster/kubeconfig.yaml
+export KUBECONFIG=~/relative/path/to/kubeconfig.yaml
 
 # Fetch cluster-identity of garden cluster
 CLUSTER_IDENTITY=$(kubectl -n kube-system get configmap cluster-identity -ojsonpath={.data.cluster-identity})
@@ -74,7 +74,7 @@ This command will create or update a garden with the provided identity and kubec
 ```yaml
 gardens:
 - identity: landscape-dev # Unique identity of the garden cluster. See cluster-identity ConfigMap in kube-system namespace of the garden cluster
-  kubeconfig: ~/path/to/garden-cluster/kubeconfig.yaml
+  kubeconfig: ~/relative/path/to/kubeconfig.yaml
 # context: different-context # Overrides the current-context of the garden cluster kubeconfig  
 # patterns: ~ # List of regex patterns for pattern targeting
 ```
@@ -102,17 +102,21 @@ this leads to an error and gardenctl cannot be executed. The `target.yaml` and t
 
 You can make sure that `GCTL_SESSION_ID` or `TERM_SESSION_ID` is always present by adding
 the following code to your terminal profile `~/.profile`, `~/.bashrc` or comparable file.
-```
-#### bash and zsh:
 ```sh
-[ -n "$GCTL_SESSION_ID" ] || [ -n "$TERM_SESSION_ID" ] || export GCTL_SESSION_ID=$(uuidgen)
+bash and zsh: [ -n "$GCTL_SESSION_ID" ] || [ -n "$TERM_SESSION_ID" ] || export GCTL_SESSION_ID=$(uuidgen)
+```
+```sh
+fish:         [ -n "$GCTL_SESSION_ID" ] || [ -n "$TERM_SESSION_ID" ] || set -gx GCTL_SESSION_ID (uuidgen)
+```
+```ps
+powershell:   if ( !(Test-Path Env:GCTL_SESSION_ID) -and !(Test-Path Env:TERM_SESSION_ID) ) { $Env:GCTL_SESSION_ID = [guid]::NewGuid().ToString() }
 ```
 
-### Code Completion
+### Completion
 
-Gardenctl supports code completion that will help you working with the CLI and save you typing effort.
+Gardenctl supports completion that will help you working with the CLI and save you typing effort.
 It will also help you find clusters by providing suggestions for gardener resources such as shoots or projects. 
-Code completion is supported for `bash`, `zsh`, `fish` and `powershell`.
+Completion is supported for `bash`, `zsh`, `fish` and `powershell`.
 You will find more information on how to configure your shell for gardenctl code completion by executing the help for
 your shell completion command. Example:
 ```bash
