@@ -6,10 +6,6 @@
 [![release](https://badge.fury.io/gh/gardener%2Fgardenctl-v2.svg)](https://badge.fury.io/gh/gardener%2Fgardenctl-v2)
 [![reuse compliant](https://reuse.software/badge/reuse-compliant.svg)](https://reuse.software/)
 
-## UNDER CONSTRUCTION
-
-This repository contains the work-in-progress code for the upcoming revision of [gardenctl](https://github.com/gardener/gardenctl), [Gardener](https://gardener.cloud/)'s command-line client.
-
 ## What is `gardenctl`?
 
 gardenctl is a command-line client for the Gardener. It facilitates the administration of one or many garden, seed and shoot clusters. Use this tool to configure access to clusters and configure cloud provider CLI tools. It also provides support for accessing cluster nodes via ssh.

@@ -1,7 +1,5 @@
 # Targeting
-You can set a target to use it in subsequent commands. By default, targets are not shared across windows,
-tabs or panes. If you want to share the target, you need to manually set the `GCTL_SESSION_ID` variable to a static
-value in your terminal profile.
+You can set a target to use it in subsequent commands.
 
 The target has a hierarchical structure that looks like this:
 ```
