@@ -11,11 +11,11 @@ import (
 	"errors"
 	"fmt"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 	"github.com/gardener/gardenctl-v2/pkg/target"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 // ShootForTarget returns the targeted shoot, if a shoot cluster is targeted and exists otherwise an error.
