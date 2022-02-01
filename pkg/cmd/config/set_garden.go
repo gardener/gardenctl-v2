@@ -30,7 +30,7 @@ func NewCmdConfigSetGarden(f util.Factory, ioStreams util.IOStreams) *cobra.Comm
 	}
 	cmd := &cobra.Command{
 		Use:               "set-garden",
-		Short:             "modify or add Garden to gardenctl configuration",
+		Short:             "Modify or add Garden to gardenctl configuration",
 		Long:              "Modify or add Garden to gardenctl configuration. E.g. \"gardenctl config set-garden my-garden --kubeconfig ~/.kube/kubeconfig.yaml\" to configure or add a garden with identity 'my-garden'",
 		ValidArgsFunction: validGardenArgsFunctionWrapper(f, ioStreams),
 		RunE:              base.WrapRunE(o, f),

@@ -27,7 +27,7 @@ func NewCmdConfigDeleteGarden(f util.Factory, ioStreams util.IOStreams) *cobra.C
 	}
 	cmd := &cobra.Command{
 		Use:               "delete-garden",
-		Short:             "delete Garden from gardenctl configuration",
+		Short:             "Delete Garden from gardenctl configuration",
 		Long:              "Delete Garden from gardenctl configuration. E.g. \"gardenctl config delete-garden my-garden\" to delete my-garden",
 		ValidArgsFunction: validGardenArgsFunctionWrapper(f, ioStreams),
 		RunE:              base.WrapRunE(o, f),

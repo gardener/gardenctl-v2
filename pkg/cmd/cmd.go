@@ -73,7 +73,7 @@ func NewDefaultGardenctlCommand() *cobra.Command {
 func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gardenctl",
-		Short: "gardenctl is a utility to interact with Gardener installations",
+		Short: "Gardenctl is a utility to interact with Gardener installations",
 		Long: `Gardenctl is a utility to interact with Gardener installations.
 
 The state of gardenctl is bound to a shell session and is not shared across windows, tabs or panes.
