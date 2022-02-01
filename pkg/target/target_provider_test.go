@@ -10,11 +10,11 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/gardener/gardenctl-v2/pkg/target"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+
+	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 func expectEqualTargets(actual, expected target.Target) {

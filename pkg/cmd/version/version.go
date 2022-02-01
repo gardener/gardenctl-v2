@@ -9,13 +9,12 @@ package version
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"k8s.io/component-base/version"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
-
-	"github.com/spf13/cobra"
-	"k8s.io/component-base/version"
 )
 
 // NewCmdVersion returns a new version command.

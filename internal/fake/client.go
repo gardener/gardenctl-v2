@@ -9,13 +9,12 @@ import (
 	"context"
 	"reflect"
 
+	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	gardencore "github.com/gardener/gardener/pkg/apis/core"
 )
 
 func NewClientWithObjects(objs ...client.Object) client.Client {
