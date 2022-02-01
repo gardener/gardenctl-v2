@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 
@@ -44,6 +45,8 @@ type options struct {
 	ProviderType string
 	// Template is the script template
 	Template Template
+	// Symlink indicates if KUBECONFIG environment variable should point to the session stable symlink
+	Symlink bool
 }
 
 // Complete adapts from the command line args to the data required.
@@ -59,14 +62,14 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 		if err := o.Template.ParseFiles(filename); err != nil {
 			return err
 		}
-	default:
-		manager, err := f.Manager()
-		if err != nil {
-			return err
-		}
-
-		o.SessionDir = manager.SessionDir()
 	}
+
+	manager, err := f.Manager()
+	if err != nil {
+		return err
+	}
+
+	o.SessionDir = manager.SessionDir()
 
 	return nil
 }
@@ -92,6 +95,8 @@ func (o *options) AddFlags(flags *pflag.FlagSet) {
 	switch o.ProviderType {
 	case "kubernetes":
 		text = "the KUBECONFIG environment variable"
+
+		flags.BoolVarP(&o.Symlink, "link", "l", o.Symlink, "Point KUBECONFIG to the symlink of the targeted cluster")
 	default:
 		text = "the cloud provider CLI environment variables and logout"
 	}
@@ -140,14 +145,20 @@ func (o *options) runKubernetes(ctx context.Context, manager target.Manager) err
 	}
 
 	if !o.Unset {
-		config, err := manager.ClientConfig(ctx, o.CurrentTarget)
-		if err != nil {
-			return err
-		}
+		var filename string
 
-		filename, err := manager.WriteClientConfig(config)
-		if err != nil {
-			return err
+		if o.Symlink {
+			filename = path.Join(o.SessionDir, "kubeconfig.yaml")
+		} else {
+			config, err := manager.ClientConfig(ctx, o.CurrentTarget)
+			if err != nil {
+				return err
+			}
+
+			filename, err = manager.WriteClientConfig(config)
+			if err != nil {
+				return err
+			}
 		}
 
 		data["filename"] = filename

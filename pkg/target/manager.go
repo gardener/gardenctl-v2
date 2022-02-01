@@ -613,7 +613,6 @@ func (m *managerImpl) patchTarget(ctx context.Context, patch func(t *targetImpl)
 	}
 
 	return m.targetProvider.Write(impl)
-
 }
 
 func (m *managerImpl) getTarget(t Target) (Target, error) {
