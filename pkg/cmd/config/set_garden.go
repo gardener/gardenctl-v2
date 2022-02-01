@@ -29,9 +29,21 @@ func NewCmdConfigSetGarden(f util.Factory, ioStreams util.IOStreams) *cobra.Comm
 		},
 	}
 	cmd := &cobra.Command{
-		Use:               "set-garden",
-		Short:             "modify or add Garden to gardenctl configuration",
-		Long:              "Modify or add Garden to gardenctl configuration. E.g. \"gardenctl config set-garden my-garden --kubeconfig ~/.kube/kubeconfig.yaml\" to configure or add a garden with identity 'my-garden'",
+		Use:   "set-garden",
+		Short: "modify or add a Garden to the gardenctl configuration",
+		Long: `Modify or add a Garden to the gardenctl configuration.
+A valid Garden configuration consists of a name (required), kubeconfig path (required), an optional context as well as any number of patterns.
+In order to share the configuration with gardenlogin, you need to set the name to the cluster identity.`,
+		Example: `#add new Garden my-garden with no additional values
+gardenctl config set-garden my-garden
+
+# add new Garden with name set to cluster identity and path to kubeconfig file configured
+export KUBECONFIG=~/path/to/garden-cluster/kubeconfig.yaml
+CLUSTER_IDENTITY=$(kubectl -n kube-system get configmap cluster-identity -ojsonpath={.data.cluster-identity})
+gardenctl config set-garden $CLUSTER_IDENTITY --kubeconfig $KUBECONFIG
+
+# configure my-garden with a context and patterns
+gardenctl config set-garden my-garden --context garden-context --pattern "^(?:landscape-dev/)?shoot--(?P<project>.+)--(?P<shoot>.+)$" --pattern "https://dashboard\.gardener\.cloud/namespace/(?P<namespace>[^/]+)/shoots/(?P<shoot>[^/]+)`,
 		ValidArgsFunction: validGardenArgsFunctionWrapper(f, ioStreams),
 		RunE:              base.WrapRunE(o, f),
 	}
@@ -96,8 +108,7 @@ func (o *setGardenOptions) AddFlags(flags *pflag.FlagSet) {
 Use named capturing groups to match target values.
 Supported capturing groups: project, namespace, shoot.
 Note that if you set this flag it will overwrite the pattern list in the config file.
-You may specify any number of extra patterns.
-Example: ^(?:my-garden/)?shoot--(?P<project>.+)--(?P<shoot>.+)$`)
+You may specify any number of extra patterns.`)
 }
 
 // Run executes the command

@@ -6,6 +6,13 @@ Print the gardenctl configuration
 gardenctl config view [flags]
 ```
 
+### Examples
+
+```
+#view current configuration
+gardenctl config view
+```
+
 ### Options
 
 ```

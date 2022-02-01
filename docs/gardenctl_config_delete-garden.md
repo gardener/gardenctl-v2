@@ -1,13 +1,16 @@
 ## gardenctl config delete-garden
 
-delete Garden from gardenctl configuration
-
-### Synopsis
-
-Delete Garden from gardenctl configuration. E.g. "gardenctl config delete-garden my-garden" to delete my-garden
+delete the specified Garden from the gardenctl configuration
 
 ```
 gardenctl config delete-garden [flags]
+```
+
+### Examples
+
+```
+#delete my-garden
+gardenctl config delete-garden my-garden
 ```
 
 ### Options
