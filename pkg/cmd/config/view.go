@@ -24,7 +24,7 @@ func NewCmdConfigView(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "view",
 		Short: "Print the gardenctl configuration",
-		Example: `#view current configuration
+		Example: `# view current configuration
 gardenctl config view`,
 		RunE: base.WrapRunE(o, f),
 	}
