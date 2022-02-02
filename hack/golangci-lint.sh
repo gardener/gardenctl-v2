@@ -21,4 +21,6 @@ curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/insta
 
 cd "$SOURCE_PATH"
 
+echo '> Run golangci-lint'
+
 golangci-lint -v run ./...
