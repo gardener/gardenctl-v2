@@ -42,6 +42,10 @@ fmt: ## Run go fmt against code.
 lint: ## Run golangci-lint against code.
 	@./hack/golangci-lint.sh
 
+.PHONY: gen-markdown
+gen-markdown: ## Check that the generated markdown is up-to-date
+	go run ./internal/gen/markdown.go
+
 ##@ Build
 
 .PHONY: build
