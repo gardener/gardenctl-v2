@@ -16,6 +16,8 @@ import (
 
 func main() {
 	gardenctl := cmd.NewDefaultGardenctlCommand()
+	gardenctl.DisableAutoGenTag = true
+
 	err := doc.GenMarkdownTree(gardenctl, "./docs/help")
 
 	if err != nil {
