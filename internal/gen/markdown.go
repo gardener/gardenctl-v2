@@ -16,7 +16,7 @@ import (
 
 func main() {
 	gardenctl := cmd.NewDefaultGardenctlCommand()
-	err := doc.GenMarkdownTree(gardenctl, "./docs")
+	err := doc.GenMarkdownTree(gardenctl, "./docs/help")
 
 	if err != nil {
 		log.Fatal(err)
