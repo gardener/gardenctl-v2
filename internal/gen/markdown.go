@@ -8,6 +8,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/spf13/cobra/doc"
 
@@ -18,8 +19,12 @@ func main() {
 	gardenctl := cmd.NewDefaultGardenctlCommand()
 	gardenctl.DisableAutoGenTag = true
 
-	err := doc.GenMarkdownTree(gardenctl, "./docs/help")
+	outDir := os.Getenv("OUT_DIR")
+	if outDir == "" {
+		outDir = "./docs/help"
+	}
 
+	err := doc.GenMarkdownTree(gardenctl, outDir)
 	if err != nil {
 		log.Fatal(err)
 	}

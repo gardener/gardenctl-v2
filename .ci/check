@@ -17,3 +17,5 @@ else
 fi
 
 "${MAIN_REPO_DIR}"/hack/golangci-lint.sh
+
+"${MAIN_REPO_DIR}"/hack/check-markdown.sh
