@@ -39,9 +39,9 @@ gardenctl target value/that/matches/pattern --control-plane`,
 
 	cmd.AddCommand(NewCmdTargetGarden(f, ioStreams))
 	cmd.AddCommand(NewCmdTargetProject(f, ioStreams))
-	cmd.AddCommand(NewTargetKindShoot(f, ioStreams))
-	cmd.AddCommand(NewTargetKindSeed(f, ioStreams))
-	cmd.AddCommand(NewTargetKindControlPlane(f, ioStreams))
+	cmd.AddCommand(NewCmdTargetShoot(f, ioStreams))
+	cmd.AddCommand(NewCmdTargetSeed(f, ioStreams))
+	cmd.AddCommand(NewCmdTargetControlPlane(f, ioStreams))
 
 	cmd.AddCommand(NewCmdUnset(f, NewUnsetOptions(ioStreams)))
 	cmd.AddCommand(NewCmdView(f, NewViewOptions(ioStreams)))

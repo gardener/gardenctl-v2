@@ -13,8 +13,8 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
 
-// NewTargetKindShoot returns a new target shoot command.
-func NewTargetKindShoot(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+// NewCmdTargetShoot returns a new target shoot command.
+func NewCmdTargetShoot(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	o := &TargetOptions{
 		Kind: TargetKindShoot,
 		Options: base.Options{

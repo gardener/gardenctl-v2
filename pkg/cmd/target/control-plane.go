@@ -13,8 +13,8 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
 
-// NewTargetKindControlPlane returns a new target control plane command.
-func NewTargetKindControlPlane(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+// NewCmdTargetControlPlane returns a new target control plane command.
+func NewCmdTargetControlPlane(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	o := &TargetOptions{
 		Kind: TargetKindControlPlane,
 		Options: base.Options{

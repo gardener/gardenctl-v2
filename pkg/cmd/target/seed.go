@@ -13,8 +13,8 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
 
-// NewTargetKindSeed returns a new target seed command.
-func NewTargetKindSeed(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+// NewCmdTargetSeed returns a new target seed command.
+func NewCmdTargetSeed(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	o := &TargetOptions{
 		Kind: TargetKindSeed,
 		Options: base.Options{
