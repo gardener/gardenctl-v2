@@ -1,0 +1,57 @@
+{{define "bash" -}}
+if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
+  export GCTL_SESSION_ID=$(uuidgen)
+fi
+source <(gardenctl completion bash)
+alias {{.prefix}}=gardenctl
+complete -o default -F __start_gardenctl {{.prefix}}
+alias {{.prefix}}tv='gardenctl target view -o yaml'
+alias {{.prefix}}k='eval $(gardenctl kubectl-env bash)'
+alias {{.prefix}}p='eval $(gardenctl provider-env bash)'
+{{end}}
+
+{{define "zsh" -}}
+if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
+  export GCTL_SESSION_ID=$(uuidgen)
+fi
+source <(gardenctl completion zsh)
+alias {{.prefix}}=gardenctl
+compdef _gardenctl {{.prefix}}
+alias {{.prefix}}tv='gardenctl target view -o yaml'
+alias {{.prefix}}k='eval $(gardenctl kubectl-env bash)'
+alias {{.prefix}}p='eval $(gardenctl provider-env bash)'
+{{end}}
+
+{{define "fish" -}}
+if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ];
+  set -gx GCTL_SESSION_ID (uuidgen)
+end
+kubectl completion fish | source
+alias {{.prefix}}=gardenctl
+complete -c {{.prefix}} -w gardenctl
+alias {{.prefix}}tv='gardenctl target view -o yaml'
+alias {{.prefix}}k='eval (gardenctl kubectl-env bash)'
+alias {{.prefix}}p='eval (gardenctl provider-env bash)'
+{{end}}
+
+{{define "powershell" -}}
+if ( !(Test-Path Env:GCTL_SESSION_ID) -and !(Test-Path Env:TERM_SESSION_ID) ) {
+  $Env:GCTL_SESSION_ID = [guid]::NewGuid().ToString()
+}
+Set-Alias -Name {{.prefix}} -Value (get-command gardenctl).Path -Option AllScope -Force
+function Gardenctl-Completion-Powershell {
+  $s = (gardenctl completion powershell)
+  @(
+    ($s -replace "(?ms)^Register-ArgumentCompleter -CommandName 'gardenctl' -ScriptBlock", "`$scriptBlock =")
+    "Register-ArgumentCompleter -CommandName 'gardenctl' -ScriptBlock `$scriptBlock"
+    "Register-ArgumentCompleter -CommandName '{{.prefix}}' -ScriptBlock `$scriptBlock"
+  )
+}
+Gardenctl-Completion-Powershell | Out-String | Invoke-Expression
+function Gardenctl-Target-View { gardenctl target view -o yaml }
+Set-Alias -Name {{.prefix}}tv -Value Gardenctl-Target-View -Option AllScope -Force
+function Gardenctl-KubectlEnv { gardenctl kubectl-env powershell | Out-String | Invoke-Expression }
+Set-Alias -Name {{.prefix}}k -Value Gardenctl-KubectlEnv -Option AllScope -Force
+function Gardenctl-ProviderEnv { gardenctl provider-env powershell | Out-String | Invoke-Expression }
+Set-Alias -Name {{.prefix}}p -Value Gardenctl-ProviderEnv -Option AllScope -Force
+{{end}}
