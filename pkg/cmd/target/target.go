@@ -127,20 +127,6 @@ const (
 	TargetKindControlPlane TargetKind = "control-plane"
 )
 
-var (
-	AllTargetKinds = []TargetKind{TargetKindGarden, TargetKindProject, TargetKindSeed, TargetKindShoot, TargetKindPattern, TargetKindControlPlane}
-)
-
-func ValidateKind(kind TargetKind) error {
-	for _, k := range AllTargetKinds {
-		if k == kind {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("invalid target kind given, must be one of %v", AllTargetKinds)
-}
-
 type cobraValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
 
 func validTargetFunctionWrapper(f util.Factory, ioStreams util.IOStreams, kind TargetKind) cobraValidArgsFunction {

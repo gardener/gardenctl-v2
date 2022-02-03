@@ -117,6 +117,20 @@ func (o *UnsetOptions) Complete(_ util.Factory, cmd *cobra.Command, args []strin
 	return nil
 }
 
+var (
+	AllTargetKinds = []TargetKind{TargetKindGarden, TargetKindProject, TargetKindSeed, TargetKindShoot, TargetKindPattern, TargetKindControlPlane}
+)
+
+func ValidateKind(kind TargetKind) error {
+	for _, k := range AllTargetKinds {
+		if k == kind {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("invalid target kind given, must be one of %v", AllTargetKinds)
+}
+
 // Validate validates the provided options
 func (o *UnsetOptions) Validate() error {
 	if err := ValidateKind(o.Kind); err != nil {
