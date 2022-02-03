@@ -21,7 +21,12 @@ import (
 func NewCmdUnset(f util.Factory, o *UnsetOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "unset",
-		Short: "Unset target, e.g. \"gardenctl target unset shoot\" to unset currently targeted shoot",
+		Short: "Unset target",
+		Example: `# unset selected shoot
+gardenctl target unset shoot
+
+# unset garden and everything targeted inside it
+gardenctl target unset garden`,
 		ValidArgs: []string{
 			string(TargetKindGarden),
 			string(TargetKindProject),

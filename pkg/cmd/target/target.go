@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package target
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -18,33 +17,31 @@ import (
 )
 
 // NewCmdTarget returns a new target command.
-func NewCmdTarget(f util.Factory, o *TargetOptions) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "target",
-		Short: "Set scope for next operations, e.g. \"gardenctl target garden garden_name\" to target garden with name of garden_name",
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			suggestions, err := validTargetArgsFunction(f, o, args, toComplete)
-			if err != nil {
-				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
-
-			return util.FilterStringsByPrefix(toComplete, suggestions), cobra.ShellCompDirectiveNoFileComp
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := o.Complete(f, cmd, args); err != nil {
-				return fmt.Errorf("failed to complete command options: %w", err)
-			}
-
-			if err := o.Validate(); err != nil {
-				return err
-			}
-
-			return runCmdTarget(f, o)
+func NewCmdTarget(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+	o := &TargetOptions{
+		Options: base.Options{
+			IOStreams: ioStreams,
 		},
 	}
+	cmd := &cobra.Command{
+		Use:   "target",
+		Short: "Set scope for next operations, using subcommands or pattern",
+		Example: `# target project "my-project" in landscape "my-garden"
+gardenctl target --garden my-garden --project my-project
 
-	ioStreams := util.NewIOStreams()
+# target shoot "my-shoot" in already selected project
+gardenctl target shoot my-shoot
+
+# Target shoot control-plane using values that match a pattern defined for a specific landscape
+gardenctl target value/that/matches/pattern --control-plane`,
+		RunE: runCmdTargetWrapper(f, o),
+	}
+
+	cmd.AddCommand(NewCmdTargetGarden(f, ioStreams))
+	cmd.AddCommand(NewCmdTargetProject(f, ioStreams))
+	cmd.AddCommand(NewTargetKindShoot(f, ioStreams))
+	cmd.AddCommand(NewTargetKindSeed(f, ioStreams))
+	cmd.AddCommand(NewTargetKindControlPlane(f, ioStreams))
 
 	cmd.AddCommand(NewCmdUnset(f, NewUnsetOptions(ioStreams)))
 	cmd.AddCommand(NewCmdView(f, NewViewOptions(ioStreams)))
@@ -52,6 +49,22 @@ func NewCmdTarget(f util.Factory, o *TargetOptions) *cobra.Command {
 	o.AddFlags(cmd.Flags())
 
 	return cmd
+}
+
+type cobraRunFunction = func(cmd *cobra.Command, args []string) error
+
+func runCmdTargetWrapper(f util.Factory, o *TargetOptions) cobraRunFunction {
+	return func(cmd *cobra.Command, args []string) error {
+		if err := o.Complete(f, cmd, args); err != nil {
+			return fmt.Errorf("failed to complete command options: %w", err)
+		}
+
+		if err := o.Validate(); err != nil {
+			return err
+		}
+
+		return runCmdTarget(f, o)
+	}
 }
 
 func runCmdTarget(f util.Factory, o *TargetOptions) error {
@@ -128,23 +141,21 @@ func ValidateKind(kind TargetKind) error {
 	return fmt.Errorf("invalid target kind given, must be one of %v", AllTargetKinds)
 }
 
-func validTargetArgsFunction(f util.Factory, o *TargetOptions, args []string, toComplete string) ([]string, error) {
-	if len(args) == 0 {
-		return []string{
-			string(TargetKindGarden),
-			string(TargetKindProject),
-			string(TargetKindSeed),
-			string(TargetKindShoot),
-			string(TargetKindPattern),
-			string(TargetKindControlPlane),
-		}, nil
-	}
+type cobraValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
 
-	kind := TargetKind(strings.TrimSpace(args[0]))
-	if err := ValidateKind(kind); err != nil {
-		return nil, err
-	}
+func validTargetFunctionWrapper(f util.Factory, ioStreams util.IOStreams, kind TargetKind) cobraValidArgsFunction {
+	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		suggestions, err := validTargetArgsFunction(f, kind)
+		if err != nil {
+			fmt.Fprintln(ioStreams.ErrOut, err.Error())
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
 
+		return util.FilterStringsByPrefix(toComplete, suggestions), cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+func validTargetArgsFunction(f util.Factory, kind TargetKind) ([]string, error) {
 	manager, err := f.Manager()
 	if err != nil {
 		return nil, err
@@ -199,18 +210,11 @@ func NewTargetOptions(ioStreams util.IOStreams) *TargetOptions {
 // Complete adapts from the command line args to the data required.
 func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
-		o.Kind = TargetKind(strings.TrimSpace(args[0]))
-	}
-
-	kindValidationErr := ValidateKind(o.Kind)
-	if len(args) == 1 && kindValidationErr != nil {
-		// no target kind provided - try to match target with match patterns
-		o.TargetName = strings.TrimSpace(args[0])
-		o.Kind = TargetKindPattern
-	} else {
-		if len(args) > 1 {
-			o.TargetName = strings.TrimSpace(args[1])
+		if o.Kind == "" {
+			o.Kind = TargetKindPattern
 		}
+
+		o.TargetName = strings.TrimSpace(args[0])
 	}
 
 	manager, err := f.Manager()
@@ -252,18 +256,12 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 // Validate validates the provided options
 func (o *TargetOptions) Validate() error {
 	switch o.Kind {
-	case "":
-		return errors.New("no target kind specified")
 	case TargetKindControlPlane:
 		// valid
 	default:
 		if o.TargetName == "" {
 			return fmt.Errorf("target kind %q requires a name argument", o.Kind)
 		}
-	}
-
-	if err := ValidateKind(o.Kind); err != nil {
-		return err
 	}
 
 	return nil
