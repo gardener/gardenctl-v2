@@ -49,10 +49,16 @@ function Gardenctl-Completion-Powershell {
   )
 }
 Gardenctl-Completion-Powershell | Out-String | Invoke-Expression
-function Gardenctl-Target-View { gardenctl target view -o yaml }
+function Gardenctl-Target-View {
+  gardenctl target view -o yaml
+}
 Set-Alias -Name {{.prefix}}tv -Value Gardenctl-Target-View -Option AllScope -Force
-function Gardenctl-KubectlEnv { gardenctl kubectl-env powershell | Out-String | Invoke-Expression }
+function Gardenctl-KubectlEnv {
+  gardenctl kubectl-env powershell | Out-String | Invoke-Expression
+}
 Set-Alias -Name {{.prefix}}k -Value Gardenctl-KubectlEnv -Option AllScope -Force
-function Gardenctl-ProviderEnv { gardenctl provider-env powershell | Out-String | Invoke-Expression }
+function Gardenctl-ProviderEnv {
+  gardenctl provider-env powershell | Out-String | Invoke-Expression
+}
 Set-Alias -Name {{.prefix}}p -Value Gardenctl-ProviderEnv -Option AllScope -Force
 {{end}}
