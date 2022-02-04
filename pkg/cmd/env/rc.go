@@ -11,8 +11,8 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
 
-// NewCmdRunCommands returns a new rc command.
-func NewCmdRunCommands(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+// NewCmdRC returns a new rc command.
+func NewCmdRC(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	o := &rcOptions{
 		Options: base.Options{
 			IOStreams: ioStreams,
