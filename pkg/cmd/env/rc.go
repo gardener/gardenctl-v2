@@ -3,6 +3,7 @@ package env
 import (
 	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -136,6 +137,8 @@ To load gardenctl startup script for each %[1]s session, execute once:
 	}
 }
 
+var prefixRegexp = regexp.MustCompile(`^[[:alpha:]][\w-]*$`)
+
 type rcOptions struct {
 	base.Options
 	// Shell to configure.
@@ -166,6 +169,10 @@ func (o *rcOptions) Validate() error {
 	s := Shell(o.Shell)
 	if err := s.Validate(); err != nil {
 		return err
+	}
+
+	if !prefixRegexp.MatchString(o.Prefix) {
+		return fmt.Errorf("prefix must start with an alphabetic character may followed by alphanumeric characters, underscore or dash")
 	}
 
 	return nil
