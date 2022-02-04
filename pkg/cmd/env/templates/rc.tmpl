@@ -6,6 +6,8 @@ source <(gardenctl completion bash)
 alias {{.prefix}}=gardenctl
 complete -o default -F __start_gardenctl {{.prefix}}
 alias {{.prefix}}tv='gardenctl target view -o yaml'
+alias {{.prefix}}tc='gardenctl target control-plane'
+alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval $(gardenctl kubectl-env bash)'
 alias {{.prefix}}p='eval $(gardenctl provider-env bash)'
 {{end}}
@@ -19,6 +21,8 @@ compdef _gardenctl gardenctl
 alias {{.prefix}}=gardenctl
 compdef _gardenctl {{.prefix}}
 alias {{.prefix}}tv='gardenctl target view -o yaml'
+alias {{.prefix}}tc='gardenctl target control-plane'
+alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval $(gardenctl kubectl-env bash)'
 alias {{.prefix}}p='eval $(gardenctl provider-env bash)'
 {{end}}
@@ -31,6 +35,8 @@ gardenctl completion fish | source
 alias {{.prefix}}=gardenctl
 complete -c {{.prefix}} -w gardenctl
 alias {{.prefix}}tv='gardenctl target view -o yaml'
+alias {{.prefix}}tc='gardenctl target control-plane'
+alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval (gardenctl kubectl-env bash)'
 alias {{.prefix}}p='eval (gardenctl provider-env bash)'
 {{end}}
@@ -53,6 +59,14 @@ function Gardenctl-Target-View {
   gardenctl target view -o yaml
 }
 Set-Alias -Name {{.prefix}}tv -Value Gardenctl-Target-View -Option AllScope -Force
+function Gardenctl-Target-ControlPlane {
+  gardenctl target control-plane
+}
+Set-Alias -Name {{.prefix}}tc -Value Gardenctl-Target-ControlPlane -Option AllScope -Force
+function Gardenctl-Target-Unset-ControlPlane {
+  gardenctl target unset control-plane
+}
+Set-Alias -Name {{.prefix}}tc- -Value Gardenctl-Target-Unset-ControlPlane -Option AllScope -Force
 function Gardenctl-KubectlEnv {
   gardenctl kubectl-env powershell | Out-String | Invoke-Expression
 }
