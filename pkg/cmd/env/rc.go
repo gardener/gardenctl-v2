@@ -92,6 +92,11 @@ func createZshCommand(cmdPath string) *cobra.Command {
 		Long: fmt.Sprintf(`Generate a gardenctl startup script for %[1]s that contains various tweaks,
 such as setting environment variables, loading completions and adding some helpful aliases or functions.
 
+If shell completion is not already enabled in your environment you will need
+to enable it. You can execute the following once:
+
+    echo "autoload -U compinit; compinit" >> ~/.zshrc
+
 To load gardenctl startup script for each %[1]s session, execute once:
 
     echo 'source <(%[2]s %[1]s)' >> ~/.zshrc
