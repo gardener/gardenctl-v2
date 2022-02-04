@@ -56,7 +56,7 @@ See each sub-command's help for details on how to use the generated shell startu
 	o.AddFlags(subCmd.Flags())
 	cmd.AddCommand(subCmd)
 
-	subCmd = createPwshCommand(cmdPath)
+	subCmd = createPowershellCommand(cmdPath)
 	subCmd.RunE = runE
 	o.AddFlags(subCmd.Flags())
 	cmd.AddCommand(subCmd)
@@ -118,7 +118,7 @@ To load gardenctl startup script for each %[1]s session, execute once:
 	}
 }
 
-func createPwshCommand(cmdPath string) *cobra.Command {
+func createPowershellCommand(cmdPath string) *cobra.Command {
 	shell := Shell("powershell")
 
 	return &cobra.Command{
