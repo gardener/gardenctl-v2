@@ -21,8 +21,8 @@ func NewCmdRC(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "rc",
 		Short: "Generate a gardenctl startup script for the specified shell",
-		Long: `Generate a gardenctl startup script for the specified shell, that contains various tweaks,
-such as setting environment variables, loadings completions and adding some helpful aliases or functions.
+		Long: `Generate a gardenctl startup script for the specified shell that contains various tweaks,
+such as setting environment variables, loading completions and adding some helpful aliases or functions.
 
 See each sub-command's help for details on how to use the generated shell startup script.
 `,
@@ -70,8 +70,8 @@ func createBashCommand(cmdPath string) *cobra.Command {
 	return &cobra.Command{
 		Use:   string(shell),
 		Short: fmt.Sprintf("Generate a gardenctl startup script for %s", shell),
-		Long: fmt.Sprintf(`Generate a gardenctl startup script for %[1]s, that contains various tweaks,
-such as setting environment variables, loadings completions and adding some helpful aliases or functions.
+		Long: fmt.Sprintf(`Generate a gardenctl startup script for %[1]s that contains various tweaks,
+such as setting environment variables, loading completions and adding some helpful aliases or functions.
 
 To load gardenctl startup script for each %[1]s session, execute once:
 
@@ -88,8 +88,8 @@ func createZshCommand(cmdPath string) *cobra.Command {
 	return &cobra.Command{
 		Use:   string(shell),
 		Short: fmt.Sprintf("Generate a gardenctl startup script for %s", shell),
-		Long: fmt.Sprintf(`Generate a gardenctl startup script for %[1]s, that contains various tweaks,
-such as setting environment variables, loadings completions and adding some helpful aliases or functions.
+		Long: fmt.Sprintf(`Generate a gardenctl startup script for %[1]s that contains various tweaks,
+such as setting environment variables, loading completions and adding some helpful aliases or functions.
 
 To load gardenctl startup script for each %[1]s session, execute once:
 
@@ -106,8 +106,8 @@ func createFishCommand(cmdPath string) *cobra.Command {
 	return &cobra.Command{
 		Use:   string(shell),
 		Short: fmt.Sprintf("Generate a gardenctl startup script for %s", shell),
-		Long: fmt.Sprintf(`Generate a gardenctl startup script for %[1]s, that contains various tweaks,
-such as setting environment variables, loadings completions and adding some helpful aliases or functions.
+		Long: fmt.Sprintf(`Generate a gardenctl startup script for %[1]s that contains various tweaks,
+such as setting environment variables, loading completions and adding some helpful aliases or functions.
 
 To load gardenctl startup script for each %[1]s session, execute once:
 
