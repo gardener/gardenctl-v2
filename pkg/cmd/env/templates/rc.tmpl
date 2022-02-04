@@ -15,6 +15,7 @@ if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
 source <(gardenctl completion zsh)
+compdef _gardenctl gardenctl
 alias {{.prefix}}=gardenctl
 compdef _gardenctl {{.prefix}}
 alias {{.prefix}}tv='gardenctl target view -o yaml'
@@ -26,7 +27,7 @@ alias {{.prefix}}p='eval $(gardenctl provider-env bash)'
 if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ];
   set -gx GCTL_SESSION_ID (uuidgen)
 end
-kubectl completion fish | source
+gardenctl completion fish | source
 alias {{.prefix}}=gardenctl
 complete -c {{.prefix}} -w gardenctl
 alias {{.prefix}}tv='gardenctl target view -o yaml'
