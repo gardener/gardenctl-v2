@@ -86,14 +86,6 @@ func validTargetArgsFunction(f util.Factory, kind TargetKind) ([]string, error) 
 		return nil, err
 	}
 
-	// NB: this uses the DynamicTargetProvider from the root cmd and
-	// is therefore aware of flags like --garden; the goal here is to
-	// allow the user to type "gardenctl target --garden [tab][select] --project [tab][select] shoot [tab][select]"
-	currentTarget, err := manager.CurrentTarget()
-	if err != nil {
-		return nil, err
-	}
-
 	ctx := f.Context()
 
 	var result []string
@@ -102,11 +94,11 @@ func validTargetArgsFunction(f util.Factory, kind TargetKind) ([]string, error) 
 	case TargetKindGarden:
 		result, err = util.GardenNames(manager)
 	case TargetKindProject:
-		result, err = util.ProjectNamesForTarget(ctx, manager, currentTarget)
+		result, err = util.ProjectNamesForTarget(ctx, manager)
 	case TargetKindSeed:
-		result, err = util.SeedNamesForTarget(ctx, manager, currentTarget)
+		result, err = util.SeedNamesForTarget(ctx, manager)
 	case TargetKindShoot:
-		result, err = util.ShootNamesForTarget(ctx, manager, currentTarget)
+		result, err = util.ShootNamesForTarget(ctx, manager)
 	}
 
 	return result, err
