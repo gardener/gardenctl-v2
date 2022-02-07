@@ -183,7 +183,7 @@ func (o *rcOptions) Validate() error {
 	}
 
 	if !prefixRegexp.MatchString(o.Prefix) {
-		return fmt.Errorf("prefix must start with an alphabetic character may followed by alphanumeric characters, underscore or dash")
+		return fmt.Errorf("prefix must start with an alphabetic character may be followed by alphanumeric characters, underscore or dash")
 	}
 
 	return nil
