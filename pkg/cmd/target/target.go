@@ -26,10 +26,10 @@ func NewCmdTarget(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "target",
 		Short: "Set scope for next operations, using subcommands or pattern",
-		Example: `# target project "my-project" in landscape "my-garden"
+		Example: `# target project "my-project" of garden "my-garden"
 gardenctl target --garden my-garden --project my-project
 
-# target shoot "my-shoot" in already selected project
+# target shoot "my-shoot" ofWrapRunE currently selected project
 gardenctl target shoot my-shoot
 
 # Target shoot control-plane using values that match a pattern defined for a specific landscape

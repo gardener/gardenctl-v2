@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Projecter contributors
+SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and Projecter contributors
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -23,9 +23,13 @@ func NewCmdTargetProject(f util.Factory, ioStreams util.IOStreams) *cobra.Comman
 	}
 	cmd := &cobra.Command{
 		Use:   "project",
-		Short: "Set project for next operations",
-		Example: `# target project with name project_name
-gardenctl target project project_name`,
+		Short: "Target a shoot",
+		Long:  "Target a shoot to set the scope for the next operations",
+		Example: `# target project with name my-project of currently selected garden
+gardenctl target project my-project
+
+# target project with name my-project of garden my-garden
+gardenctl target project my-project --garden my-garden`,
 		ValidArgsFunction: validTargetFunctionWrapper(f, ioStreams, TargetKindProject),
 		RunE:              runCmdTargetWrapper(f, o),
 	}

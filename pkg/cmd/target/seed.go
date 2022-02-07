@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Projecter contributors
+SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and Projecter contributors
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -23,9 +23,13 @@ func NewCmdTargetSeed(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "seed",
-		Short: "Set seed for next operations",
-		Example: `# target seed with name seed_name
-gardenctl target seed seed_name`,
+		Short: "Target a seed",
+		Long:  "Target a seed to set the scope for the next operations",
+		Example: `# target seed with name my-seed of currently selected garden
+gardenctl target seed my-seed
+
+# target seed with name my-seed of garden my-garden
+gardenctl target seed my-seed --garden my-garden`,
 		ValidArgsFunction: validTargetFunctionWrapper(f, ioStreams, TargetKindSeed),
 		RunE:              runCmdTargetWrapper(f, o),
 	}

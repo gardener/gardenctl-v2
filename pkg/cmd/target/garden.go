@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener contributors
+SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and Gardener contributors
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -23,9 +23,10 @@ func NewCmdTargetGarden(f util.Factory, ioStreams util.IOStreams) *cobra.Command
 	}
 	cmd := &cobra.Command{
 		Use:   "garden",
-		Short: "Set garden for next operations",
-		Example: `# target garden with name garden_name
-gardenctl target garden garden_name`,
+		Short: "Target a garden",
+		Long:  "Target a garden to set the scope for the next operations",
+		Example: `# target garden with name my-garden
+gardenctl target garden my-garden`,
 		ValidArgsFunction: validTargetFunctionWrapper(f, ioStreams, TargetKindGarden),
 		RunE:              runCmdTargetWrapper(f, o),
 	}
