@@ -30,7 +30,7 @@ func NewCmdConfigSetGarden(f util.Factory, ioStreams util.IOStreams) *cobra.Comm
 	}
 	cmd := &cobra.Command{
 		Use:   "set-garden",
-		Short: "modify or add a Garden to the gardenctl configuration",
+		Short: "Modify or add a Garden to the gardenctl configuration",
 		Long: `Modify or add a Garden to the gardenctl configuration.
 A valid Garden configuration consists of a name (required), kubeconfig path (required), a context as well as any number of patterns.
 In order to share the configuration with gardenlogin, you need to set the name to the cluster identity.`,

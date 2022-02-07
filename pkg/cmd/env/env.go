@@ -26,7 +26,7 @@ func NewCmdProviderEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command 
 	runE := base.WrapRunE(o, f)
 	cmd := &cobra.Command{
 		Use:   "provider-env",
-		Short: "generate the cloud provider CLI configuration script for the specified shell",
+		Short: "Generate the cloud provider CLI configuration script for the specified shell",
 		Long: `Generate the cloud provider CLI configuration script for the specified shell.
 See each sub-command's help for details on how to use the generated script.
 
@@ -56,7 +56,7 @@ here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
 	for _, s := range validShells {
 		cmd.AddCommand(&cobra.Command{
 			Use:   string(s),
-			Short: fmt.Sprintf("generate the cloud provider CLI configuration script for %s", s),
+			Short: fmt.Sprintf("Generate the cloud provider CLI configuration script for %s", s),
 			Long: fmt.Sprintf("Generate the cloud provider CLI configuration script for %s.\n\n"+
 				"To load the cloud provider CLI configuration script in your current shell session:\n%s\n",
 				s, s.Prompt(runtime.GOOS)+s.EvalCommand(fmt.Sprintf("%s %s", cmd.CommandPath(), s)),
@@ -79,7 +79,7 @@ func NewCmdKubectlEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	runE := base.WrapRunE(o, f)
 	cmd := &cobra.Command{
 		Use:   "kubectl-env",
-		Short: "generate a script that points KUBECONFIG to the targeted cluster for the specified shell",
+		Short: "Generate a script that points KUBECONFIG to the targeted cluster for the specified shell",
 		Long: `Generate a script that points KUBECONFIG to the targeted cluster for the specified shell.
 See each sub-command's help for details on how to use the generated script.
 
@@ -92,7 +92,7 @@ The generated script points the KUBECONFIG environment variable to the currently
 	for _, s := range validShells {
 		cmd.AddCommand(&cobra.Command{
 			Use:   string(s),
-			Short: fmt.Sprintf("generate a script that points KUBECONFIG to the targeted cluster for %s", s),
+			Short: fmt.Sprintf("Generate a script that points KUBECONFIG to the targeted cluster for %s", s),
 			Long: fmt.Sprintf("Generate a script that points KUBECONFIG to the targeted cluster for %s.\n\n"+
 				"To load the kubectl configuration script in your current shell session:\n%s\n",
 				s, s.Prompt(runtime.GOOS)+s.EvalCommand(fmt.Sprintf("%s %s", cmd.CommandPath(), s)),

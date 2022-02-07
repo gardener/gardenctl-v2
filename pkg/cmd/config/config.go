@@ -20,7 +20,7 @@ import (
 func NewCmdConfig(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
-		Short: "modify gardenctl configuration file using subcommands",
+		Short: "Modify gardenctl configuration file using subcommands",
 		Long: `Modify gardenctl files using subcommands like "gardenctl config set-garden my-garden"
 
 The loading order follows these rules:
