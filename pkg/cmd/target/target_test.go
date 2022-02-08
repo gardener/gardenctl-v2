@@ -7,13 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package target_test
 
 import (
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	"fmt"
+
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -52,6 +55,9 @@ var _ = Describe("Target Command", func() {
 			Gardens: []config.Garden{{
 				Name:       gardenName,
 				Kubeconfig: gardenKubeconfig,
+				Patterns: []string{
+					"^shoot--(?P<project>.+)--(?P<shoot>.+)$",
+				},
 			}, {
 				Name:       "another-garden",
 				Kubeconfig: gardenKubeconfig,
@@ -110,15 +116,15 @@ var _ = Describe("Target Command", func() {
 		})
 
 		It("should reject bad options", func() {
-			cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+			cmd := cmdtarget.NewCmdTarget(factory, streams)
 
 			Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
 		})
 
 		It("should be able to target a garden", func() {
-			cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+			cmd := cmdtarget.NewCmdTargetGarden(factory, streams)
 
-			Expect(cmd.RunE(cmd, []string{"garden", gardenName})).To(Succeed())
+			Expect(cmd.RunE(cmd, []string{gardenName})).To(Succeed())
 			Expect(out.String()).To(ContainSubstring("Successfully targeted garden %q\n", gardenName))
 
 			currentTarget, err := targetProvider.Read()
@@ -129,10 +135,10 @@ var _ = Describe("Target Command", func() {
 		It("should be able to target a project", func() {
 			// user has already targeted a garden
 			targetProvider.Target = target.NewTarget(gardenName, "", "", "")
-			cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+			cmd := cmdtarget.NewCmdTargetProject(factory, streams)
 
 			// run command
-			Expect(cmd.RunE(cmd, []string{"project", projectName})).To(Succeed())
+			Expect(cmd.RunE(cmd, []string{projectName})).To(Succeed())
 			Expect(out.String()).To(ContainSubstring("Successfully targeted project %q\n", projectName))
 
 			currentTarget, err := targetProvider.Read()
@@ -144,10 +150,10 @@ var _ = Describe("Target Command", func() {
 		It("should be able to target a seed", func() {
 			// user has already targeted a garden
 			targetProvider.Target = target.NewTarget(gardenName, "", "", "")
-			cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+			cmd := cmdtarget.NewCmdTargetSeed(factory, streams)
 
 			// run command
-			Expect(cmd.RunE(cmd, []string{"seed", seedName})).To(Succeed())
+			Expect(cmd.RunE(cmd, []string{seedName})).To(Succeed())
 			Expect(out.String()).To(ContainSubstring("Successfully targeted seed %q\n", seedName))
 
 			currentTarget, err := targetProvider.Read()
@@ -159,10 +165,10 @@ var _ = Describe("Target Command", func() {
 		It("should be able to target a shoot", func() {
 			// user has already targeted a garden and project
 			targetProvider.Target = target.NewTarget(gardenName, projectName, "", "")
-			cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+			cmd := cmdtarget.NewCmdTargetShoot(factory, streams)
 
 			// run command
-			Expect(cmd.RunE(cmd, []string{"shoot", shootName})).To(Succeed())
+			Expect(cmd.RunE(cmd, []string{shootName})).To(Succeed())
 			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q\n", shootName))
 
 			currentTarget, err := targetProvider.Read()
@@ -176,10 +182,10 @@ var _ = Describe("Target Command", func() {
 		It("should be able to target a control plane", func() {
 			// user has already targeted a garden, project and shoot
 			targetProvider.Target = target.NewTarget(gardenName, projectName, "", shootName)
-			cmd := cmdtarget.NewCmdTarget(factory, cmdtarget.NewTargetOptions(streams))
+			cmd := cmdtarget.NewCmdTargetControlPlane(factory, streams)
 
 			// run command
-			Expect(cmd.RunE(cmd, []string{"control-plane"})).To(Succeed())
+			Expect(cmd.RunE(cmd, []string{})).To(Succeed())
 			Expect(out.String()).To(ContainSubstring("Successfully targeted control plane of shoot %q\n", shootName))
 
 			currentTarget, err := targetProvider.Read()
@@ -189,6 +195,21 @@ var _ = Describe("Target Command", func() {
 			Expect(currentTarget.SeedName()).To(BeEmpty())
 			Expect(currentTarget.ShootName()).To(Equal(shootName))
 			Expect(currentTarget.ControlPlane()).To(BeTrue())
+		})
+
+		It("should be able to target via pattern matching", func() {
+			cmd := cmdtarget.NewCmdTarget(factory, streams)
+
+			// run command
+			Expect(cmd.RunE(cmd, []string{fmt.Sprintf("shoot--%s--%s", projectName, shootName)})).To(Succeed())
+			Expect(out.String()).To(ContainSubstring("Successfully targeted pattern \"shoot--%s--%s\"\n", projectName, shootName))
+
+			currentTarget, err := targetProvider.Read()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(currentTarget.GardenName()).To(Equal(gardenName))
+			Expect(currentTarget.ProjectName()).To(Equal(projectName))
+			Expect(currentTarget.SeedName()).To(BeEmpty())
+			Expect(currentTarget.ShootName()).To(Equal(shootName))
 		})
 	})
 
@@ -264,26 +285,8 @@ var _ = Describe("Target Command", func() {
 		})
 
 		Describe("ValidTargetArgsFunction", func() {
-			It("should return the allowed target types when no kind was given", func() {
-				values, err := cmdtarget.ValidTargetArgsFunction(factory, nil, nil, "")
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal([]string{
-					string(cmdtarget.TargetKindGarden),
-					string(cmdtarget.TargetKindProject),
-					string(cmdtarget.TargetKindSeed),
-					string(cmdtarget.TargetKindShoot),
-					string(cmdtarget.TargetKindPattern),
-					string(cmdtarget.TargetKindControlPlane),
-				}))
-			})
-
-			It("should reject invalid kinds", func() {
-				_, err := cmdtarget.ValidTargetArgsFunction(factory, nil, []string{"invalid"}, "")
-				Expect(err).To(HaveOccurred())
-			})
-
 			It("should return all garden names", func() {
-				values, err := cmdtarget.ValidTargetArgsFunction(factory, nil, []string{string(cmdtarget.TargetKindGarden)}, "")
+				values, err := cmdtarget.ValidTargetArgsFunction(factory, cmdtarget.TargetKindGarden)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal([]string{cfg.Gardens[1].Name, gardenName}))
 			})
@@ -291,7 +294,7 @@ var _ = Describe("Target Command", func() {
 			It("should return all project names", func() {
 				targetProvider.Target = target.NewTarget(gardenName, "", "", "")
 
-				values, err := cmdtarget.ValidTargetArgsFunction(factory, nil, []string{string(cmdtarget.TargetKindProject)}, "")
+				values, err := cmdtarget.ValidTargetArgsFunction(factory, cmdtarget.TargetKindProject)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal([]string{testProject1.Name, testProject2.Name}))
 			})
@@ -299,7 +302,7 @@ var _ = Describe("Target Command", func() {
 			It("should return all seed names", func() {
 				targetProvider.Target = target.NewTarget(gardenName, "", "", "")
 
-				values, err := cmdtarget.ValidTargetArgsFunction(factory, nil, []string{string(cmdtarget.TargetKindSeed)}, "")
+				values, err := cmdtarget.ValidTargetArgsFunction(factory, cmdtarget.TargetKindSeed)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal([]string{testSeed2.Name, testSeed1.Name}))
 			})
@@ -307,7 +310,7 @@ var _ = Describe("Target Command", func() {
 			It("should return all shoot names when using a project", func() {
 				targetProvider.Target = target.NewTarget(gardenName, testProject1.Name, "", "")
 
-				values, err := cmdtarget.ValidTargetArgsFunction(factory, nil, []string{string(cmdtarget.TargetKindShoot)}, "")
+				values, err := cmdtarget.ValidTargetArgsFunction(factory, cmdtarget.TargetKindShoot)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal([]string{testShoot2.Name, testShoot1.Name}))
 			})
@@ -315,7 +318,7 @@ var _ = Describe("Target Command", func() {
 			It("should return all shoot names when using a seed", func() {
 				targetProvider.Target = target.NewTarget(gardenName, "", testSeed1.Name, "")
 
-				values, err := cmdtarget.ValidTargetArgsFunction(factory, nil, []string{string(cmdtarget.TargetKindShoot)}, "")
+				values, err := cmdtarget.ValidTargetArgsFunction(factory, cmdtarget.TargetKindShoot)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal([]string{testShoot2.Name, testShoot1.Name}))
 			})
@@ -331,14 +334,5 @@ var _ = Describe("Target Options", func() {
 		o.TargetName = "foo"
 
 		Expect(o.Validate()).To(Succeed())
-	})
-
-	It("should reject invalid kinds", func() {
-		streams, _, _, _ := util.NewTestIOStreams()
-		o := cmdtarget.NewTargetOptions(streams)
-		o.Kind = cmdtarget.TargetKind("not a kind")
-		o.TargetName = "foo"
-
-		Expect(o.Validate()).NotTo(Succeed())
 	})
 })
