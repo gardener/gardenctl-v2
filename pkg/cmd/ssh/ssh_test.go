@@ -151,16 +151,6 @@ var _ = Describe("SSH Command", func() {
 			},
 		}
 
-		testSeedKubeconfig := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-seed.oidc",
-				Namespace: "garden",
-			},
-			Data: map[string][]byte{
-				"kubeconfig": createTestKubeconfig("test-seed"),
-			},
-		}
-
 		testSeed = &gardencorev1beta1.Seed{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-seed",
@@ -200,7 +190,6 @@ var _ = Describe("SSH Command", func() {
 		gardenClient = internalfake.NewClientWithObjects(
 			testProject,
 			testSeed,
-			testSeedKubeconfig,
 			testShoot,
 			testShootKubeconfig,
 			testShootKeypair,
