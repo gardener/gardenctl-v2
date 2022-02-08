@@ -36,5 +36,9 @@ gardenctl target project my-project --garden my-garden`,
 
 	o.AddOutputFlags(cmd.Flags())
 
+	f.TF().AddTargetGardenFlag(cmd.Flags())
+
+	o.RegisterTargetFlagCompletions(f, cmd, ioStreams)
+
 	return cmd
 }

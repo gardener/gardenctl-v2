@@ -48,6 +48,14 @@ gardenctl target value/that/matches/pattern --control-plane`,
 
 	o.AddOutputFlags(cmd.Flags())
 
+	f.TF().AddTargetGardenFlag(cmd.Flags())
+	f.TF().AddTargetProjectFlag(cmd.Flags())
+	f.TF().AddTargetSeedFlag(cmd.Flags())
+	f.TF().AddTargetShootFlag(cmd.Flags())
+	f.TF().AddTargetControlPlaneFlag(cmd.Flags())
+
+	o.RegisterTargetFlagCompletions(f, cmd, ioStreams)
+
 	return cmd
 }
 

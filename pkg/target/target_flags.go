@@ -25,8 +25,18 @@ type TargetFlags interface {
 	ShootName() string
 	// ControlPlane returns the value that is tied to the corresponding cobra flag.
 	ControlPlane() bool
-	// AddFlags binds target configuration flags to a given flagset
-	AddFlags(flags *pflag.FlagSet)
+	// AddOverrideFlags binds target override flags to a given flagset
+	AddOverrideFlags(flags *pflag.FlagSet)
+	// AddTargetGardenFlag binds target garden flag to a given flagset
+	AddTargetGardenFlag(flags *pflag.FlagSet)
+	// AddTargetProjectFlag binds target project flag to a given flagset
+	AddTargetProjectFlag(flags *pflag.FlagSet)
+	// AddTargetSeedFlag binds target seed flag to a given flagset
+	AddTargetSeedFlag(flags *pflag.FlagSet)
+	// AddTargetShootFlag binds target shoot to a given flagset
+	AddTargetShootFlag(flags *pflag.FlagSet)
+	// AddTargetControlPlaneFlag binds target control plane flag to a given flagset
+	AddTargetControlPlaneFlag(flags *pflag.FlagSet)
 	// ToTarget converts the flags to a target
 	ToTarget() Target
 	// IsTargetValid returns true if the set of given CLI flags is enough
@@ -77,12 +87,32 @@ func (tf *targetFlagsImpl) ControlPlane() bool {
 	return tf.controlPlane
 }
 
-func (tf *targetFlagsImpl) AddFlags(flags *pflag.FlagSet) {
+func (tf *targetFlagsImpl) AddOverrideFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&tf.gardenName, "garden", "", "override current target with the given garden cluster")
 	flags.StringVar(&tf.projectName, "project", "", "override current target with the given project")
 	flags.StringVar(&tf.seedName, "seed", "", "override current target with the given seed cluster")
 	flags.StringVar(&tf.shootName, "shoot", "", "override current target with the given shoot cluster")
 	flags.BoolVar(&tf.controlPlane, "control-plane", tf.controlPlane, "override current target with shoot control plane")
+}
+
+func (tf *targetFlagsImpl) AddTargetGardenFlag(flags *pflag.FlagSet) {
+	flags.StringVar(&tf.gardenName, "garden", "", "target a garden to set the scope for the next operation")
+}
+
+func (tf *targetFlagsImpl) AddTargetProjectFlag(flags *pflag.FlagSet) {
+	flags.StringVar(&tf.projectName, "project", "", "target a project to set the scope for the next operations")
+}
+
+func (tf *targetFlagsImpl) AddTargetSeedFlag(flags *pflag.FlagSet) {
+	flags.StringVar(&tf.seedName, "seed", "", "target a seed to set the scope for the next operations")
+}
+
+func (tf *targetFlagsImpl) AddTargetShootFlag(flags *pflag.FlagSet) {
+	flags.StringVar(&tf.shootName, "shoot", "", "target a shoot to set the scope for the next operations")
+}
+
+func (tf *targetFlagsImpl) AddTargetControlPlaneFlag(flags *pflag.FlagSet) {
+	flags.BoolVar(&tf.controlPlane, "control-plane", tf.controlPlane, "target the control plane of the shoot cluster to set the scope for the next operations")
 }
 
 func (tf *targetFlagsImpl) ToTarget() Target {

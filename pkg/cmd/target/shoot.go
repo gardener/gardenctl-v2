@@ -36,5 +36,11 @@ gardenctl target shoot my-shoot --garden my-garden --project my-project`,
 
 	o.AddOutputFlags(cmd.Flags())
 
+	f.TF().AddTargetGardenFlag(cmd.Flags())
+	f.TF().AddTargetSeedFlag(cmd.Flags())
+	f.TF().AddTargetProjectFlag(cmd.Flags())
+
+	o.RegisterTargetFlagCompletions(f, cmd, ioStreams)
+
 	return cmd
 }
