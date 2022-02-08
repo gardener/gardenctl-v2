@@ -17,7 +17,7 @@ gardenctl target shoot [flags]
 gardenctl target shoot my-shoot
 
 # target shoot with name my-shoot of project my-project
-gardenctl target shoot my-shoot --project my-project --garden my-garden
+gardenctl target shoot my-shoot --garden my-garden --project my-project
 ```
 
 ### Options

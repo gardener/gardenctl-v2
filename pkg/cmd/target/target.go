@@ -32,7 +32,7 @@ gardenctl target --garden my-garden --project my-project
 # target shoot "my-shoot" of currently selected project
 gardenctl target shoot my-shoot
 
-# Target shoot control-plane using values that match a pattern defined for a specific landscape
+# Target shoot control-plane using values that match a pattern defined for a specific garden
 gardenctl target value/that/matches/pattern --control-plane`,
 		RunE: base.WrapRunE(o, f),
 	}

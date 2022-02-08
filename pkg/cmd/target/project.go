@@ -23,8 +23,8 @@ func NewCmdTargetProject(f util.Factory, ioStreams util.IOStreams) *cobra.Comman
 	}
 	cmd := &cobra.Command{
 		Use:   "project",
-		Short: "Target a shoot",
-		Long:  "Target a shoot to set the scope for the next operations",
+		Short: "Target a project",
+		Long:  "Target a project to set the scope for the next operations",
 		Example: `# target project with name my-project of currently selected garden
 gardenctl target project my-project
 

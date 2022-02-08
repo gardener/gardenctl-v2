@@ -15,7 +15,7 @@ gardenctl target --garden my-garden --project my-project
 # target shoot "my-shoot" of currently selected project
 gardenctl target shoot my-shoot
 
-# Target shoot control-plane using values that match a pattern defined for a specific landscape
+# Target shoot control-plane using values that match a pattern defined for a specific garden
 gardenctl target value/that/matches/pattern --control-plane
 ```
 
@@ -55,7 +55,7 @@ gardenctl target value/that/matches/pattern --control-plane
 * [gardenctl](gardenctl.md)	 - Gardenctl is a utility to interact with Gardener installations
 * [gardenctl target control-plane](gardenctl_target_control-plane.md)	 - Target the control plane of the shoot
 * [gardenctl target garden](gardenctl_target_garden.md)	 - Target a garden
-* [gardenctl target project](gardenctl_target_project.md)	 - Target a shoot
+* [gardenctl target project](gardenctl_target_project.md)	 - Target a project
 * [gardenctl target seed](gardenctl_target_seed.md)	 - Target a seed
 * [gardenctl target shoot](gardenctl_target_shoot.md)	 - Target a shoot
 * [gardenctl target unset](gardenctl_target_unset.md)	 - Unset target

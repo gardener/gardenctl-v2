@@ -1,10 +1,10 @@
 ## gardenctl target project
 
-Target a shoot
+Target a project
 
 ### Synopsis
 
-Target a shoot to set the scope for the next operations
+Target a project to set the scope for the next operations
 
 ```
 gardenctl target project [flags]

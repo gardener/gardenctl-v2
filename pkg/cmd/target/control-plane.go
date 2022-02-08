@@ -29,7 +29,7 @@ func NewCmdTargetControlPlane(f util.Factory, ioStreams util.IOStreams) *cobra.C
 gardenctl target control-plane
 
 # target control-plane of shoot my-shoot
-gardenctl target control-plane --shoot my-shoot --project my-project --garden my-garden`,
+gardenctl target control-plane --garden my-garden --project my-project --shoot my-shoot`,
 		ValidArgsFunction: validTargetFunctionWrapper(f, ioStreams, TargetKindControlPlane),
 		RunE:              base.WrapRunE(o, f),
 	}

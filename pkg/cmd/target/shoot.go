@@ -29,7 +29,7 @@ func NewCmdTargetShoot(f util.Factory, ioStreams util.IOStreams) *cobra.Command 
 gardenctl target shoot my-shoot
 
 # target shoot with name my-shoot of project my-project
-gardenctl target shoot my-shoot --project my-project --garden my-garden`,
+gardenctl target shoot my-shoot --garden my-garden --project my-project`,
 		ValidArgsFunction: validTargetFunctionWrapper(f, ioStreams, TargetKindShoot),
 		RunE:              base.WrapRunE(o, f),
 	}
