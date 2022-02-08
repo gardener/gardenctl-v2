@@ -16,7 +16,8 @@ import (
 )
 
 // NewCmdSSH returns a new ssh command.
-func NewCmdSSH(f util.Factory, o *SSHOptions) *cobra.Command {
+func NewCmdSSH(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+	o := NewSSHOptions(ioStreams)
 	cmd := &cobra.Command{
 		Use:   "ssh [NODE_NAME]",
 		Short: "Establish an SSH connection to a Shoot cluster's node",

@@ -124,7 +124,7 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 	flags.StringVar(&f.ConfigFile, "config", "", fmt.Sprintf("config file (default is %s)", filepath.Join("~", gardenHomeFolder, configName+".yaml")))
 
 	// add subcommands
-	cmd.AddCommand(cmdssh.NewCmdSSH(f, cmdssh.NewSSHOptions(ioStreams)))
+	cmd.AddCommand(cmdssh.NewCmdSSH(f, ioStreams))
 	cmd.AddCommand(cmdtarget.NewCmdTarget(f, ioStreams))
 	cmd.AddCommand(cmdversion.NewCmdVersion(f, cmdversion.NewVersionOptions(ioStreams)))
 	cmd.AddCommand(cmdconfig.NewCmdConfig(f, ioStreams))
