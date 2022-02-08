@@ -28,7 +28,7 @@ func NewCmdView(f util.Factory, o *ViewOptions) *cobra.Command {
 		},
 	}
 
-	o.AddFlags(cmd.Flags())
+	o.AddOutputFlags(cmd.Flags())
 
 	return cmd
 }

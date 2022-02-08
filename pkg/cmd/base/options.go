@@ -28,8 +28,8 @@ type CommandOptions interface {
 	Validate() error
 	// Run does the actual work of the command.
 	Run(util.Factory) error
-	// AddFlags adds flags to adjust the output to a cobra command.
-	AddFlags(*pflag.FlagSet)
+	// AddOutputFlags adds flags to adjust the output to a cobra command.
+	AddOutputFlags(*pflag.FlagSet)
 }
 
 // Options contains all settings that are used across all commands in gardenctl.
@@ -65,8 +65,8 @@ func NewOptions(ioStreams util.IOStreams) *Options {
 	}
 }
 
-// AddFlags adds flags to adjust the output to a cobra command
-func (o *Options) AddFlags(flags *pflag.FlagSet) {
+// AddOutputFlags adds flags to adjust the output to a cobra command
+func (o *Options) AddOutputFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&o.Output, "output", "o", o.Output, "One of 'yaml' or 'json'.")
 }
 
