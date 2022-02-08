@@ -36,7 +36,9 @@ type CommandOptions interface {
 	// AddOutputFlags adds flags to adjust the output to a cobra command.
 	AddOutputFlags(*pflag.FlagSet)
 	// AddTargetOverrideFlags adds flags to adjust the output to a cobra command.
-	AddTargetOverrideFlags(f util.Factory, cmd *cobra.Command, ioStreams util.IOStreams)
+	AddTargetOverrideFlags(f util.Factory, flags *pflag.FlagSet)
+	// RegisterTargetFlagCompletions registers completions for all target flags added to this command.
+	RegisterTargetFlagCompletions(f util.Factory, cmd *cobra.Command, ioStreams util.IOStreams)
 }
 
 // Options contains all settings that are used across all commands in gardenctl.
@@ -101,14 +103,24 @@ func (o *Options) AddOutputFlags(flags *pflag.FlagSet) {
 }
 
 // AddTargetOverrideFlags adds flags to override the current target to a cobra command
-func (o *Options) AddTargetOverrideFlags(f util.Factory, cmd *cobra.Command, ioStreams util.IOStreams) {
-	flags := cmd.Flags()
-	f.TF().AddFlags(flags)
+func (o *Options) AddTargetOverrideFlags(f util.Factory, flags *pflag.FlagSet) {
+	f.TF().AddOverrideFlags(flags)
+}
 
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", WrapCompletionFunction(f, ioStreams, gardenFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", WrapCompletionFunction(f, ioStreams, projectFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", WrapCompletionFunction(f, ioStreams, seedFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", WrapCompletionFunction(f, ioStreams, shootFlagCompletionFunc)))
+// RegisterTargetFlagCompletions registers completions for all target flags added to this command.
+func (o *Options) RegisterTargetFlagCompletions(f util.Factory, cmd *cobra.Command, ioStreams util.IOStreams) {
+	if cmd.Flag("garden") != nil {
+		utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", WrapCompletionFunction(f, ioStreams, gardenFlagCompletionFunc)))
+	}
+	if cmd.Flag("project") != nil {
+		utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", WrapCompletionFunction(f, ioStreams, projectFlagCompletionFunc)))
+	}
+	if cmd.Flag("seed") != nil {
+		utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", WrapCompletionFunction(f, ioStreams, seedFlagCompletionFunc)))
+	}
+	if cmd.Flag("shoot") != nil {
+		utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", WrapCompletionFunction(f, ioStreams, shootFlagCompletionFunc)))
+	}
 }
 
 func gardenFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
