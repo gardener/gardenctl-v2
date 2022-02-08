@@ -138,7 +138,7 @@ var _ = Describe("Target Manager", func() {
 
 		seedKubeconfigSecret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-seed.oidc",
+				Name:      "test-seed.login",
 				Namespace: "garden",
 			},
 			Data: map[string][]byte{
