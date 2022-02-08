@@ -107,3 +107,17 @@ func (mr *MockFactoryMockRecorder) PublicIPs(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublicIPs", reflect.TypeOf((*MockFactory)(nil).PublicIPs), arg0)
 }
+
+// TF mocks base method.
+func (m *MockFactory) TF() target.TargetFlags {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TF")
+	ret0, _ := ret[0].(target.TargetFlags)
+	return ret0
+}
+
+// TF indicates an expected call of TF.
+func (mr *MockFactoryMockRecorder) TF() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TF", reflect.TypeOf((*MockFactory)(nil).TF))
+}

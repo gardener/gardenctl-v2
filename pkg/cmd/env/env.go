@@ -65,6 +65,8 @@ here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
 		})
 	}
 
+	f.TF().AddFlags(cmd.Flags())
+
 	return cmd
 }
 
@@ -100,6 +102,8 @@ The generated script points the KUBECONFIG environment variable to the currently
 			RunE: runE,
 		})
 	}
+
+	f.TF().AddFlags(cmd.Flags())
 
 	return cmd
 }

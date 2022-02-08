@@ -35,6 +35,8 @@ type Factory interface {
 	// returned slice can contain IPv6, IPv4 or both, in no particular
 	// order.
 	PublicIPs(context.Context) ([]string, error)
+	// TF returns the target flags used to override the target
+	TF() target.TargetFlags
 }
 
 // FactoryImpl implements util.Factory interface
@@ -133,4 +135,8 @@ func callIPify(ctx context.Context, domain string) (*net.IP, error) {
 	}
 
 	return &netIP, nil
+}
+
+func (f *FactoryImpl) TF() target.TargetFlags {
+	return f.TargetFlags
 }
