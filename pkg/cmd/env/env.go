@@ -65,7 +65,7 @@ here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
 		})
 	}
 
-	f.TF().AddFlags(cmd.Flags())
+	o.AddTargetOverrideFlags(f, cmd, ioStreams)
 
 	return cmd
 }
@@ -103,7 +103,7 @@ The generated script points the KUBECONFIG environment variable to the currently
 		})
 	}
 
-	f.TF().AddFlags(cmd.Flags())
+	o.AddTargetOverrideFlags(f, cmd, ioStreams)
 
 	return cmd
 }

@@ -7,9 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package base
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+
+	"github.com/gardener/gardenctl-v2/pkg/target"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -30,6 +35,8 @@ type CommandOptions interface {
 	Run(util.Factory) error
 	// AddOutputFlags adds flags to adjust the output to a cobra command.
 	AddOutputFlags(*pflag.FlagSet)
+	// AddTargetOverrideFlags adds flags to adjust the output to a cobra command.
+	AddTargetOverrideFlags(f util.Factory, cmd *cobra.Command, ioStreams util.IOStreams)
 }
 
 // Options contains all settings that are used across all commands in gardenctl.
@@ -68,6 +75,55 @@ func NewOptions(ioStreams util.IOStreams) *Options {
 // AddOutputFlags adds flags to adjust the output to a cobra command
 func (o *Options) AddOutputFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&o.Output, "output", "o", o.Output, "One of 'yaml' or 'json'.")
+}
+
+// AddTargetOverrideFlags adds flags to override the current target to a cobra command
+func (o *Options) AddTargetOverrideFlags(f util.Factory, cmd *cobra.Command, ioStreams util.IOStreams) {
+	flags := cmd.Flags()
+	f.TF().AddFlags(flags)
+
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(f, ioStreams, gardenFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(f, ioStreams, projectFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(f, ioStreams, seedFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(f, ioStreams, shootFlagCompletionFunc)))
+}
+
+type cobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
+type cobraCompletionFuncWithError func(ctx context.Context, manager target.Manager) ([]string, error)
+
+func completionWrapper(f util.Factory, ioStreams util.IOStreams, completer cobraCompletionFuncWithError) cobraCompletionFunc {
+	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		manager, err := f.Manager()
+
+		if err != nil {
+			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		result, err := completer(f.Context(), manager)
+		if err != nil {
+			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		return util.FilterStringsByPrefix(toComplete, result), cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+func gardenFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
+	return util.GardenNames(manager)
+}
+
+func projectFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
+	return util.ProjectNamesForTarget(ctx, manager)
+}
+
+func seedFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
+	return util.SeedNamesForTarget(ctx, manager)
+}
+
+func shootFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
+	return util.ShootNamesForTarget(ctx, manager)
 }
 
 // PrintObject prints an object to IOStreams.out, using o.Output to print in the selected output format
