@@ -8,7 +8,6 @@ package env
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 
 	"github.com/spf13/cobra"
@@ -36,37 +35,20 @@ See each sub-command's help for details on how to use the generated shell startu
 		Aliases: []string{"profile"},
 	}
 
-	var (
-		subCmd   *cobra.Command
-		selfPath = "gardenctl"
-	)
-
-	if p, err := os.Executable(); err != nil {
-		selfPath = p
+	runE := base.WrapRunE(o, f)
+	cmdPath := "gardenctl rc"
+	subCmds := []*cobra.Command{
+		createBashCommand(cmdPath),
+		createZshCommand(cmdPath),
+		createFishCommand(cmdPath),
+		createPowershellCommand(cmdPath),
 	}
 
-	cmdPath := selfPath + " rc"
-	runE := base.WrapRunE(o, f)
-
-	subCmd = createBashCommand(cmdPath)
-	subCmd.RunE = runE
-	o.AddFlags(subCmd.Flags())
-	cmd.AddCommand(subCmd)
-
-	subCmd = createZshCommand(cmdPath)
-	subCmd.RunE = runE
-	o.AddFlags(subCmd.Flags())
-	cmd.AddCommand(subCmd)
-
-	subCmd = createFishCommand(cmdPath)
-	subCmd.RunE = runE
-	o.AddFlags(subCmd.Flags())
-	cmd.AddCommand(subCmd)
-
-	subCmd = createPowershellCommand(cmdPath)
-	subCmd.RunE = runE
-	o.AddFlags(subCmd.Flags())
-	cmd.AddCommand(subCmd)
+	for _, subCmd := range subCmds {
+		subCmd.RunE = runE
+		o.AddFlags(subCmd.Flags())
+		cmd.AddCommand(subCmd)
+	}
 
 	return cmd
 }
