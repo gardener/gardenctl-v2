@@ -78,11 +78,11 @@ func (tf *targetFlagsImpl) ControlPlane() bool {
 }
 
 func (tf *targetFlagsImpl) AddFlags(flags *pflag.FlagSet) {
-	flags.StringVar(&tf.gardenName, "garden", "", "target the given garden cluster")
-	flags.StringVar(&tf.projectName, "project", "", "target the given project")
-	flags.StringVar(&tf.seedName, "seed", "", "target the given seed cluster")
-	flags.StringVar(&tf.shootName, "shoot", "", "target the given shoot cluster")
-	flags.BoolVar(&tf.controlPlane, "control-plane", tf.controlPlane, "target control plane of shoot, use together with shoot argument")
+	flags.StringVar(&tf.gardenName, "garden", "", "override current target with the given garden cluster")
+	flags.StringVar(&tf.projectName, "project", "", "override current target with the given project")
+	flags.StringVar(&tf.seedName, "seed", "", "override current target with the given seed cluster")
+	flags.StringVar(&tf.shootName, "shoot", "", "override current target with the given shoot cluster")
+	flags.BoolVar(&tf.controlPlane, "control-plane", tf.controlPlane, "override current target with shoot control plane")
 }
 
 func (tf *targetFlagsImpl) ToTarget() Target {
