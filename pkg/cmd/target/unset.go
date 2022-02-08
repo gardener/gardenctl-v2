@@ -25,7 +25,7 @@ func NewCmdUnset(f util.Factory, o *UnsetOptions) *cobra.Command {
 		Example: `# unset selected shoot
 gardenctl target unset shoot
 
-# unset garden and everything targeted inside it
+# Unset garden. This will also unset a targeted project, shoot, seed and control plane
 gardenctl target unset garden`,
 		ValidArgs: []string{
 			string(TargetKindGarden),
