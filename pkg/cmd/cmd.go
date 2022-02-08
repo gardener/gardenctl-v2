@@ -123,11 +123,6 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 	// the reason the user chose to specify an explicit config file).
 	flags.StringVar(&f.ConfigFile, "config", "", fmt.Sprintf("config file (default is %s)", filepath.Join("~", gardenHomeFolder, configName+".yaml")))
 
-	// allow to temporarily re-target a different cluster
-	f.TargetFlags.AddFlags(flags)
-
-	registerCompletionFuncForGlobalFlags(cmd, f, ioStreams)
-
 	// add subcommands
 	cmd.AddCommand(cmdssh.NewCmdSSH(f, cmdssh.NewSSHOptions(ioStreams)))
 	cmd.AddCommand(cmdtarget.NewCmdTarget(f, ioStreams))
