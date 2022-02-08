@@ -16,6 +16,7 @@ import (
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -259,9 +260,14 @@ func (g *clientImpl) GetConfigMap(ctx context.Context, namespace, name string) (
 func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clientcmd.ClientConfig, error) {
 	key := types.NamespacedName{Name: name}
 
-	secret, err := g.GetSecret(ctx, "garden", name+".oidc")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get kubeconfig for seed %v: %w", key, err)
+	secret, err := g.GetSecret(ctx, "garden", name+".login")
+	if apierrors.IsNotFound(err) { // fallback to deprecated .oidc secret
+		var oidcErr error
+
+		secret, oidcErr = g.GetSecret(ctx, "garden", name+".oidc")
+		if oidcErr != nil {
+			return nil, fmt.Errorf("failed to get kubeconfig for seed %v: %w", key, err) // use original not-found error as cause and ignore error of fallback
+		}
 	}
 
 	value, ok := secret.Data["kubeconfig"]
