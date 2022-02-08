@@ -34,61 +34,10 @@ gardenctl target unset garden`,
 			string(TargetKindShoot),
 			string(TargetKindControlPlane),
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := o.Complete(f, cmd, args); err != nil {
-				return fmt.Errorf("failed to complete command options: %w", err)
-			}
-			if err := o.Validate(); err != nil {
-				return err
-			}
-
-			return runCmdUnset(f, o)
-		},
+		RunE: base.WrapRunE(o, f),
 	}
 
 	return cmd
-}
-
-func runCmdUnset(f util.Factory, o *UnsetOptions) error {
-	manager, err := f.Manager()
-	if err != nil {
-		return err
-	}
-
-	var targetName string
-
-	switch o.Kind {
-	case TargetKindGarden:
-		targetName, err = manager.UnsetTargetGarden()
-	case TargetKindProject:
-		targetName, err = manager.UnsetTargetProject()
-	case TargetKindSeed:
-		targetName, err = manager.UnsetTargetSeed()
-	case TargetKindShoot:
-		targetName, err = manager.UnsetTargetShoot()
-	case TargetKindControlPlane:
-		currentTarget, targetErr := manager.CurrentTarget()
-		if targetErr != nil {
-			return targetErr
-		}
-
-		targetName = currentTarget.ShootName()
-		err = manager.UnsetTargetControlPlane()
-	default:
-		err = errors.New("invalid kind")
-	}
-
-	if err != nil {
-		return err
-	}
-
-	if o.Kind == TargetKindControlPlane {
-		fmt.Fprintf(o.IOStreams.Out, "Successfully unset targeted control plane for %q\n", targetName)
-	} else {
-		fmt.Fprintf(o.IOStreams.Out, "Successfully unset targeted %s %q\n", o.Kind, targetName)
-	}
-
-	return nil
 }
 
 // UnsetOptions is a struct to support unset command
@@ -135,6 +84,49 @@ func ValidateKind(kind TargetKind) error {
 func (o *UnsetOptions) Validate() error {
 	if err := ValidateKind(o.Kind); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// Run executes the command
+func (o *UnsetOptions) Run(f util.Factory) error {
+	manager, err := f.Manager()
+	if err != nil {
+		return err
+	}
+
+	var targetName string
+
+	switch o.Kind {
+	case TargetKindGarden:
+		targetName, err = manager.UnsetTargetGarden()
+	case TargetKindProject:
+		targetName, err = manager.UnsetTargetProject()
+	case TargetKindSeed:
+		targetName, err = manager.UnsetTargetSeed()
+	case TargetKindShoot:
+		targetName, err = manager.UnsetTargetShoot()
+	case TargetKindControlPlane:
+		currentTarget, targetErr := manager.CurrentTarget()
+		if targetErr != nil {
+			return targetErr
+		}
+
+		targetName = currentTarget.ShootName()
+		err = manager.UnsetTargetControlPlane()
+	default:
+		err = errors.New("invalid kind")
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if o.Kind == TargetKindControlPlane {
+		fmt.Fprintf(o.IOStreams.Out, "Successfully unset targeted control plane for %q\n", targetName)
+	} else {
+		fmt.Fprintf(o.IOStreams.Out, "Successfully unset targeted %s %q\n", o.Kind, targetName)
 	}
 
 	return nil

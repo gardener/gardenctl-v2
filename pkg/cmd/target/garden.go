@@ -28,7 +28,7 @@ func NewCmdTargetGarden(f util.Factory, ioStreams util.IOStreams) *cobra.Command
 		Example: `# target garden with name my-garden
 gardenctl target garden my-garden`,
 		ValidArgsFunction: validTargetFunctionWrapper(f, ioStreams, TargetKindGarden),
-		RunE:              runCmdTargetWrapper(f, o),
+		RunE:              base.WrapRunE(o, f),
 	}
 
 	o.AddFlags(cmd.Flags())

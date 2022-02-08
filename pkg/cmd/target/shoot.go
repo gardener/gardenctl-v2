@@ -31,7 +31,7 @@ gardenctl target shoot my-shoot
 # target shoot with name my-shoot of project my-project
 gardenctl target shoot my-shoot --project my-project --garden my-garden`,
 		ValidArgsFunction: validTargetFunctionWrapper(f, ioStreams, TargetKindShoot),
-		RunE:              runCmdTargetWrapper(f, o),
+		RunE:              base.WrapRunE(o, f),
 	}
 
 	o.AddFlags(cmd.Flags())

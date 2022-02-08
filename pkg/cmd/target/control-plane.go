@@ -31,7 +31,7 @@ gardenctl target control-plane
 # target control-plane of shoot my-shoot
 gardenctl target control-plane --shoot my-shoot --project my-project --garden my-garden`,
 		ValidArgsFunction: validTargetFunctionWrapper(f, ioStreams, TargetKindControlPlane),
-		RunE:              runCmdTargetWrapper(f, o),
+		RunE:              base.WrapRunE(o, f),
 	}
 
 	o.AddFlags(cmd.Flags())

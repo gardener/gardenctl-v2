@@ -29,12 +29,12 @@ func NewCmdTarget(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 		Example: `# target project "my-project" of garden "my-garden"
 gardenctl target --garden my-garden --project my-project
 
-# target shoot "my-shoot" ofWrapRunE currently selected project
+# target shoot "my-shoot" of currently selected project
 gardenctl target shoot my-shoot
 
 # Target shoot control-plane using values that match a pattern defined for a specific landscape
 gardenctl target value/that/matches/pattern --control-plane`,
-		RunE: runCmdTargetWrapper(f, o),
+		RunE: base.WrapRunE(o, f),
 	}
 
 	cmd.AddCommand(NewCmdTargetGarden(f, ioStreams))
@@ -49,67 +49,6 @@ gardenctl target value/that/matches/pattern --control-plane`,
 	o.AddFlags(cmd.Flags())
 
 	return cmd
-}
-
-type cobraRunFunction = func(cmd *cobra.Command, args []string) error
-
-func runCmdTargetWrapper(f util.Factory, o *TargetOptions) cobraRunFunction {
-	return func(cmd *cobra.Command, args []string) error {
-		if err := o.Complete(f, cmd, args); err != nil {
-			return fmt.Errorf("failed to complete command options: %w", err)
-		}
-
-		if err := o.Validate(); err != nil {
-			return err
-		}
-
-		return runCmdTarget(f, o)
-	}
-}
-
-func runCmdTarget(f util.Factory, o *TargetOptions) error {
-	manager, err := f.Manager()
-	if err != nil {
-		return err
-	}
-
-	ctx := f.Context()
-
-	switch o.Kind {
-	case TargetKindGarden:
-		err = manager.TargetGarden(ctx, o.TargetName)
-	case TargetKindProject:
-		err = manager.TargetProject(ctx, o.TargetName)
-	case TargetKindSeed:
-		err = manager.TargetSeed(ctx, o.TargetName)
-	case TargetKindShoot:
-		err = manager.TargetShoot(ctx, o.TargetName)
-	case TargetKindPattern:
-		err = manager.TargetMatchPattern(ctx, o.TargetName)
-	case TargetKindControlPlane:
-		err = manager.TargetControlPlane(ctx)
-	}
-
-	if err != nil {
-		return err
-	}
-
-	currentTarget, err := manager.CurrentTarget()
-	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
-	}
-
-	if o.Output == "" {
-		if o.Kind == TargetKindControlPlane {
-			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted control plane of shoot %q\n", currentTarget.ShootName())
-		} else if o.Kind != "" {
-			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
-		}
-
-		return nil
-	}
-
-	return o.PrintObject(currentTarget)
 }
 
 // TargetKind is representing the type of things that can be targeted
@@ -247,6 +186,50 @@ func (o *TargetOptions) Validate() error {
 	default:
 		if o.TargetName == "" {
 			return fmt.Errorf("target kind %q requires a name argument", o.Kind)
+		}
+	}
+
+	return nil
+}
+
+// Run executes the command
+func (o *TargetOptions) Run(f util.Factory) error {
+	manager, err := f.Manager()
+	if err != nil {
+		return err
+	}
+
+	ctx := f.Context()
+
+	switch o.Kind {
+	case TargetKindGarden:
+		err = manager.TargetGarden(ctx, o.TargetName)
+	case TargetKindProject:
+		err = manager.TargetProject(ctx, o.TargetName)
+	case TargetKindSeed:
+		err = manager.TargetSeed(ctx, o.TargetName)
+	case TargetKindShoot:
+		err = manager.TargetShoot(ctx, o.TargetName)
+	case TargetKindPattern:
+		err = manager.TargetMatchPattern(ctx, o.TargetName)
+	case TargetKindControlPlane:
+		err = manager.TargetControlPlane(ctx)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	currentTarget, err := manager.CurrentTarget()
+	if err != nil {
+		return fmt.Errorf("failed to get current target: %w", err)
+	}
+
+	if o.Output == "" {
+		if o.Kind == TargetKindControlPlane {
+			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted control plane of shoot %q\n", currentTarget.ShootName())
+		} else if o.Kind != "" {
+			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
 		}
 	}
 

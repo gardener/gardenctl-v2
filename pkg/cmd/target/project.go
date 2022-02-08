@@ -31,7 +31,7 @@ gardenctl target project my-project
 # target project with name my-project of garden my-garden
 gardenctl target project my-project --garden my-garden`,
 		ValidArgsFunction: validTargetFunctionWrapper(f, ioStreams, TargetKindProject),
-		RunE:              runCmdTargetWrapper(f, o),
+		RunE:              base.WrapRunE(o, f),
 	}
 
 	o.AddFlags(cmd.Flags())

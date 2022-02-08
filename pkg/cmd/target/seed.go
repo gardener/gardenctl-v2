@@ -31,7 +31,7 @@ gardenctl target seed my-seed
 # target seed with name my-seed of garden my-garden
 gardenctl target seed my-seed --garden my-garden`,
 		ValidArgsFunction: validTargetFunctionWrapper(f, ioStreams, TargetKindSeed),
-		RunE:              runCmdTargetWrapper(f, o),
+		RunE:              base.WrapRunE(o, f),
 	}
 
 	o.AddFlags(cmd.Flags())
