@@ -26,6 +26,10 @@ var (
 	NewTemplate         = newTemplate
 )
 
+type RCOptions struct {
+	rcOptions
+}
+
 type TestOptions struct {
 	options
 	out *util.SafeBytesBuffer
