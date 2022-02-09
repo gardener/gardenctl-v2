@@ -48,7 +48,7 @@ gardenctl config set-garden my-garden --context garden-context --pattern "^(?:la
 		RunE:              base.WrapRunE(o, f),
 	}
 
-	o.AddOutputFlags(cmd.Flags())
+	o.AddFlags(cmd.Flags())
 
 	return cmd
 }
