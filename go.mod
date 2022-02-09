@@ -4,20 +4,18 @@ go 1.16
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.2
-	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/gardener/gardener v1.36.0
-	github.com/gardener/gardener-extension-provider-openstack v1.22.0
+	github.com/gardener/gardener v1.40.0
+	github.com/gardener/gardener-extension-provider-openstack v1.23.1
 	github.com/golang/mock v1.6.0
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.3.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.15.0
-	github.com/spf13/cobra v1.2.1
+	github.com/onsi/gomega v1.18.1
+	github.com/spf13/cobra v1.3.0
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.8.1
-	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
-	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c // indirect
+	github.com/spf13/viper v1.10.1
+	golang.org/x/crypto v0.0.0-20220208233918-bba287dce954
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	k8s.io/api v0.22.2
 	k8s.io/apimachinery v0.22.2
@@ -29,7 +27,4 @@ require (
 	sigs.k8s.io/controller-runtime v0.10.2
 )
 
-replace (
-	github.com/gardener/gardener-resource-manager/api => github.com/gardener/gardener-resource-manager/api v0.25.0
-	k8s.io/client-go => k8s.io/client-go v0.22.2
-)
+replace k8s.io/client-go => k8s.io/client-go v0.22.2
