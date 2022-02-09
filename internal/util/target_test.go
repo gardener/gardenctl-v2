@@ -48,16 +48,6 @@ var _ = Describe("Target Utilities", func() {
 			},
 		}
 
-		testSeedKubeconfig := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-seed-kubeconfig",
-				Namespace: "garden",
-			},
-			Data: map[string][]byte{
-				"data": []byte("not-used"),
-			},
-		}
-
 		testSeed = &gardencorev1beta1.Seed{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-seed",
@@ -87,7 +77,6 @@ var _ = Describe("Target Utilities", func() {
 		gardenClient = gardenclient.NewGardenClient(fake.NewClientWithObjects(
 			testReadyProject,
 			testUnreadyProject,
-			testSeedKubeconfig,
 			testSeed,
 			testShootKubeconfig,
 			testShoot,
