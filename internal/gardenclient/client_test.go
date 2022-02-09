@@ -10,6 +10,7 @@ import (
 	"context"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -22,82 +23,52 @@ import (
 )
 
 var _ = Describe("Client", func() {
-	var (
-		ctx          context.Context
-		gardenClient gardenclient.Client
-	)
-
-	BeforeEach(func() {
-		ctx = context.Background()
-	})
-
 	Describe("GetSeedClientConfig", func() {
 		var (
-			seed string
+			ctx          context.Context
+			gardenClient gardenclient.Client
 		)
 
 		BeforeEach(func() {
-			seed = "test-seed"
-		})
-
-		Context("when the secret exists", func() {
-			var (
-				secret string
-			)
-
-			JustBeforeEach(func() {
-				seedKubeconfigSecret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      secret,
-						Namespace: "garden",
-					},
-					Data: map[string][]byte{
-						"kubeconfig": createTestKubeconfig(seed),
-					},
-				}
-
-				gardenClient = gardenclient.NewGardenClient(
-					fake.NewClientWithObjects(seedKubeconfigSecret),
-				)
-			})
-
-			assertKubeconfig := func() {
-				It("should return the kubeconfig", func() {
-					sc, err := gardenClient.GetSeedClientConfig(ctx, seed)
-					Expect(err).NotTo(HaveOccurred())
-
-					rawConfig, err := sc.RawConfig()
-					Expect(err).NotTo(HaveOccurred())
-					Expect(rawConfig.CurrentContext).To(Equal(seed))
-				})
+			ctx = context.Background()
+			oidcSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "seed-1.oidc",
+					Namespace: "garden",
+				},
+				Data: map[string][]byte{
+					"kubeconfig": createTestKubeconfig("seed-1"),
+				},
 			}
-
-			Context(".login secret", func() {
-				BeforeEach(func() {
-					secret = "test-seed.login"
-				})
-
-				assertKubeconfig()
-			})
-
-			Context(".oidc secret", func() {
-				BeforeEach(func() {
-					secret = "test-seed.oidc"
-				})
-
-				assertKubeconfig()
-			})
+			loginSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "seed-2.login",
+					Namespace: "garden",
+				},
+				Data: map[string][]byte{
+					"kubeconfig": createTestKubeconfig("seed-2"),
+				},
+			}
+			gardenClient = gardenclient.NewGardenClient(
+				fake.NewClientWithObjects(oidcSecret, loginSecret),
+			)
 		})
+
+		DescribeTable("when the secret exists", func(seedName string) {
+			clientConfig, err := gardenClient.GetSeedClientConfig(ctx, seedName)
+			Expect(err).NotTo(HaveOccurred())
+
+			rawConfig, err := clientConfig.RawConfig()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rawConfig.CurrentContext).To(Equal(seedName))
+		},
+			Entry("and the secretName has suffix .oidc", "seed-1"),
+			Entry("and the secretName has suffix .login", "seed-2"),
+		)
 
 		Context("when the secret does not exist", func() {
-			JustBeforeEach(func() {
-				gardenClient = gardenclient.NewGardenClient(
-					fake.NewClientWithObjects(),
-				)
-			})
-
 			It("it should fail with not found error", func() {
-				_, err := gardenClient.GetSeedClientConfig(ctx, seed)
+				_, err := gardenClient.GetSeedClientConfig(ctx, "seed-3")
 				Expect(err).To(HaveOccurred())
 				Expect(apierrors.IsNotFound(err)).To(BeTrue())
 			})
