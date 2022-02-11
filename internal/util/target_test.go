@@ -10,17 +10,22 @@ import (
 	"context"
 	"fmt"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+
 	"github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 	. "github.com/gardener/gardenctl-v2/internal/util"
+	utilMocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
+	targetMocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
 
 var _ = Describe("Target Utilities", func() {
@@ -28,8 +33,17 @@ var _ = Describe("Target Utilities", func() {
 		testReadyProject   *gardencorev1beta1.Project
 		testUnreadyProject *gardencorev1beta1.Project
 		testSeed           *gardencorev1beta1.Seed
+		testOtherSeed      *gardencorev1beta1.Seed
 		testShoot          *gardencorev1beta1.Shoot
+		testOtherShoot     *gardencorev1beta1.Shoot
 		gardenClient       gardenclient.Client
+		ctrl               *gomock.Controller
+		mockFactory        *utilMocks.MockFactory
+		mockManager        *targetMocks.MockManager
+		cfg                *config.Config
+		ctx                context.Context
+		gardenName1        string
+		gardenName2        string
 	)
 
 	BeforeEach(func() {
@@ -64,9 +78,25 @@ var _ = Describe("Target Utilities", func() {
 			},
 		}
 
+		testOtherSeed = &gardencorev1beta1.Seed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "A-test-seed",
+			},
+		}
+
 		testShoot = &gardencorev1beta1.Shoot{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-shoot",
+				Namespace: *testReadyProject.Spec.Namespace,
+			},
+			Spec: gardencorev1beta1.ShootSpec{
+				SeedName: pointer.String(testSeed.Name),
+			},
+		}
+
+		testOtherShoot = &gardencorev1beta1.Shoot{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "a-test-shoot",
 				Namespace: *testReadyProject.Spec.Namespace,
 			},
 			Spec: gardencorev1beta1.ShootSpec{
@@ -89,9 +119,34 @@ var _ = Describe("Target Utilities", func() {
 			testUnreadyProject,
 			testSeedKubeconfig,
 			testSeed,
+			testOtherSeed,
 			testShootKubeconfig,
 			testShoot,
+			testOtherShoot,
 		))
+
+		cfg = &config.Config{
+			Gardens: []config.Garden{{
+				Name:       "foo",
+				Kubeconfig: "/not/a/real/garden-foo/kubeconfig",
+			}, {
+				Name:       "bar",
+				Kubeconfig: "/not/a/real/garden-bar/kubeconfig",
+			}},
+		}
+
+		gardenName1 = cfg.Gardens[0].Name
+		gardenName2 = cfg.Gardens[1].Name
+
+		ctx = context.Background()
+
+		ctrl = gomock.NewController(GinkgoT())
+		mockFactory = utilMocks.NewMockFactory(ctrl)
+		mockManager = targetMocks.NewMockManager(ctrl)
+	})
+
+	AfterEach(func() {
+		ctrl.Finish()
 	})
 
 	Describe("SeedForTarget", func() {
@@ -180,6 +235,76 @@ var _ = Describe("Target Utilities", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(shoot).NotTo(BeNil())
 			Expect(shoot.Name).To(Equal(testShoot.Name))
+		})
+	})
+
+	Describe("GardenNames", func() {
+		BeforeEach(func() {
+			mockManager.EXPECT().Configuration().Return(cfg)
+			mockFactory.EXPECT().Manager().Return(mockManager, nil)
+		})
+
+		It("should return all garden names, alphabetically sorted", func() {
+			manager, err := mockFactory.Manager()
+			Expect(err).NotTo(HaveOccurred())
+
+			values, err := GardenNames(manager)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal([]string{gardenName2, gardenName1}))
+		})
+	})
+
+	Describe("ProjectNamesForTarget", func() {
+		BeforeEach(func() {
+			mockManager.EXPECT().GardenClient(gardenName1).Return(gardenClient, nil)
+			mockFactory.EXPECT().Manager().Return(mockManager, nil)
+			mockFactory.EXPECT().Context().Return(ctx)
+			mockManager.EXPECT().CurrentTarget().Return(target.NewTarget(gardenName1, "", "", ""), nil)
+		})
+
+		It("should return all project names for first garden, alphabetically sorted", func() {
+			manager, err := mockFactory.Manager()
+			Expect(err).NotTo(HaveOccurred())
+
+			values, err := ProjectNamesForTarget(mockFactory.Context(), manager)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal([]string{testReadyProject.Name, testUnreadyProject.Name}))
+		})
+	})
+
+	Describe("SeedNamesForTarget", func() {
+		BeforeEach(func() {
+			mockManager.EXPECT().GardenClient(gardenName1).Return(gardenClient, nil)
+			mockFactory.EXPECT().Manager().Return(mockManager, nil)
+			mockFactory.EXPECT().Context().Return(ctx)
+			mockManager.EXPECT().CurrentTarget().Return(target.NewTarget(gardenName1, "", "", ""), nil)
+		})
+
+		It("should return all seed names for first garden, alphabetically sorted", func() {
+			manager, err := mockFactory.Manager()
+			Expect(err).NotTo(HaveOccurred())
+
+			values, err := SeedNamesForTarget(mockFactory.Context(), manager)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal([]string{testOtherSeed.Name, testSeed.Name}))
+		})
+	})
+
+	Describe("ShootNamesForTarget", func() {
+		BeforeEach(func() {
+			mockManager.EXPECT().GardenClient(gardenName1).Return(gardenClient, nil)
+			mockFactory.EXPECT().Manager().Return(mockManager, nil)
+			mockFactory.EXPECT().Context().Return(ctx)
+			mockManager.EXPECT().CurrentTarget().Return(target.NewTarget(gardenName1, "", "", ""), nil)
+		})
+
+		It("should return all shoot names for first project, alphabetically sorted", func() {
+			manager, err := mockFactory.Manager()
+			Expect(err).NotTo(HaveOccurred())
+
+			values, err := ShootNamesForTarget(mockFactory.Context(), manager)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal([]string{testOtherShoot.Name, testShoot.Name}))
 		})
 	})
 })

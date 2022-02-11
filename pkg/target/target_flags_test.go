@@ -35,11 +35,27 @@ var _ = Describe("Target Flags", func() {
 		Expect(tf.IsTargetValid()).To(BeTrue())
 	})
 
+	It("should add override target flags to a cobra FlagSet", func() {
+		flags := &pflag.FlagSet{}
+		tf := target.NewTargetFlags("", "", "", "", false)
+		Expect(flags.HasFlags()).To(BeFalse())
+		tf.AddOverrideFlags(flags)
+		var names []string
+		flags.VisitAll(func(flag *pflag.Flag) {
+			names = append(names, flag.Name)
+		})
+		Expect(names).To(Equal([]string{"garden", "project", "seed", "shoot", "control-plane"}))
+	})
+
 	It("should add target flags to a cobra FlagSet", func() {
 		flags := &pflag.FlagSet{}
 		tf := target.NewTargetFlags("", "", "", "", false)
 		Expect(flags.HasFlags()).To(BeFalse())
-		tf.AddFlags(flags)
+		tf.AddTargetGardenFlag(flags)
+		tf.AddTargetProjectFlag(flags)
+		tf.AddTargetSeedFlag(flags)
+		tf.AddTargetShootFlag(flags)
+		tf.AddTargetControlPlaneFlag(flags)
 		var names []string
 		flags.VisitAll(func(flag *pflag.Flag) {
 			names = append(names, flag.Name)

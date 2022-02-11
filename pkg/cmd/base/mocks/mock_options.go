@@ -7,10 +7,11 @@ package mocks
 import (
 	reflect "reflect"
 
-	util "github.com/gardener/gardenctl-v2/internal/util"
 	gomock "github.com/golang/mock/gomock"
 	cobra "github.com/spf13/cobra"
 	pflag "github.com/spf13/pflag"
+
+	util "github.com/gardener/gardenctl-v2/internal/util"
 )
 
 // MockCommandOptions is a mock of CommandOptions interface.
@@ -36,16 +37,28 @@ func (m *MockCommandOptions) EXPECT() *MockCommandOptionsMockRecorder {
 	return m.recorder
 }
 
-// AddFlags mocks base method.
-func (m *MockCommandOptions) AddFlags(arg0 *pflag.FlagSet) {
+// AddOutputFlags mocks base method.
+func (m *MockCommandOptions) AddOutputFlags(arg0 *pflag.FlagSet) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "AddFlags", arg0)
+	m.ctrl.Call(m, "AddOutputFlags", arg0)
 }
 
-// AddFlags indicates an expected call of AddFlags.
-func (mr *MockCommandOptionsMockRecorder) AddFlags(arg0 interface{}) *gomock.Call {
+// AddOutputFlags indicates an expected call of AddOutputFlags.
+func (mr *MockCommandOptionsMockRecorder) AddOutputFlags(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddFlags", reflect.TypeOf((*MockCommandOptions)(nil).AddFlags), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddOutputFlags", reflect.TypeOf((*MockCommandOptions)(nil).AddOutputFlags), arg0)
+}
+
+// AddTargetOverrideFlags mocks base method.
+func (m *MockCommandOptions) AddTargetOverrideFlags(f util.Factory, flags *pflag.FlagSet) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "AddTargetOverrideFlags", f, flags)
+}
+
+// AddTargetOverrideFlags indicates an expected call of AddTargetOverrideFlags.
+func (mr *MockCommandOptionsMockRecorder) AddTargetOverrideFlags(f, flags interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTargetOverrideFlags", reflect.TypeOf((*MockCommandOptions)(nil).AddTargetOverrideFlags), f, flags)
 }
 
 // Complete mocks base method.
@@ -60,6 +73,18 @@ func (m *MockCommandOptions) Complete(arg0 util.Factory, arg1 *cobra.Command, ar
 func (mr *MockCommandOptionsMockRecorder) Complete(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Complete", reflect.TypeOf((*MockCommandOptions)(nil).Complete), arg0, arg1, arg2)
+}
+
+// RegisterTargetFlagCompletions mocks base method.
+func (m *MockCommandOptions) RegisterTargetFlagCompletions(f util.Factory, cmd *cobra.Command, ioStreams util.IOStreams) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RegisterTargetFlagCompletions", f, cmd, ioStreams)
+}
+
+// RegisterTargetFlagCompletions indicates an expected call of RegisterTargetFlagCompletions.
+func (mr *MockCommandOptionsMockRecorder) RegisterTargetFlagCompletions(f, cmd, ioStreams interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterTargetFlagCompletions", reflect.TypeOf((*MockCommandOptions)(nil).RegisterTargetFlagCompletions), f, cmd, ioStreams)
 }
 
 // Run mocks base method.

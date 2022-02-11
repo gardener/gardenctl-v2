@@ -93,5 +93,5 @@ func (f *Factory) PublicIPs(ctx context.Context) ([]string, error) {
 }
 
 func (f *Factory) TF() target.TargetFlags {
-	return nil
+	return target.NewTargetFlags("", "", "", "", false)
 }

@@ -67,11 +67,11 @@ func WrapRunE(o CommandOptions, f util.Factory) func(cmd *cobra.Command, args []
 	}
 }
 
-type cobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
-type cobraCompletionFuncWithError func(ctx context.Context, manager target.Manager) ([]string, error)
+type CobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
+type CobraCompletionFuncWithError func(ctx context.Context, manager target.Manager) ([]string, error)
 
 // WrapCompletionFunction creates a function that can be used to register a cobra completion command that has access to the manager
-func WrapCompletionFunction(f util.Factory, ioStreams util.IOStreams, completer cobraCompletionFuncWithError) cobraCompletionFunc {
+func WrapCompletionFunction(f util.Factory, ioStreams util.IOStreams, completer CobraCompletionFuncWithError) CobraCompletionFunc {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		manager, err := f.Manager()
 
@@ -112,12 +112,15 @@ func (o *Options) RegisterTargetFlagCompletions(f util.Factory, cmd *cobra.Comma
 	if cmd.Flag("garden") != nil {
 		utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", WrapCompletionFunction(f, ioStreams, gardenFlagCompletionFunc)))
 	}
+
 	if cmd.Flag("project") != nil {
 		utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", WrapCompletionFunction(f, ioStreams, projectFlagCompletionFunc)))
 	}
+
 	if cmd.Flag("seed") != nil {
 		utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", WrapCompletionFunction(f, ioStreams, seedFlagCompletionFunc)))
 	}
+
 	if cmd.Flag("shoot") != nil {
 		utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", WrapCompletionFunction(f, ioStreams, shootFlagCompletionFunc)))
 	}

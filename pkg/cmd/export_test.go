@@ -12,11 +12,3 @@ const (
 	ConfigName       = configName
 	TargetFilename   = targetFilename
 )
-
-var (
-	ShootFlagCompletionFunc   = shootFlagCompletionFunc
-	SeedFlagCompletionFunc    = seedFlagCompletionFunc
-	ProjectFlagCompletionFunc = projectFlagCompletionFunc
-	GardenFlagCompletionFunc  = gardenFlagCompletionFunc
-	CompletionWrapper         = completionWrapper
-)

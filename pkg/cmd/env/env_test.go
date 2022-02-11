@@ -12,6 +12,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 
+	"github.com/gardener/gardenctl-v2/pkg/target"
+
 	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/env"
@@ -28,6 +30,7 @@ var _ = Describe("Env Commands", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		factory = utilmocks.NewMockFactory(ctrl)
+		factory.EXPECT().TF().Return(target.NewTargetFlags("", "", "", "", false))
 		streams = util.IOStreams{}
 	})
 

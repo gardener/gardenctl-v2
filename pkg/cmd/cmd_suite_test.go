@@ -11,13 +11,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 
 	"github.com/gardener/gardenctl-v2/pkg/cmd"
 	"github.com/gardener/gardenctl-v2/pkg/config"
@@ -52,13 +53,6 @@ var _ = BeforeSuite(func() {
 	targetFile = filepath.Join(sessionDir, cmd.TargetFilename)
 	cfg = &config.Config{
 		Filename: configFile,
-		Gardens: []config.Garden{{
-			Name:       "foo",
-			Kubeconfig: "/not/a/real/garden-foo/kubeconfig",
-		}, {
-			Name:       "bar",
-			Kubeconfig: "/not/a/real/garden-bar/kubeconfig",
-		}},
 	}
 	Expect(cfg.Save()).To(Succeed())
 })

@@ -7,8 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package base_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"strings"
+
+	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
+
+	"github.com/gardener/gardenctl-v2/pkg/target"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -161,6 +167,55 @@ var _ = Describe("Base Options", func() {
 				mockOptions.EXPECT().Validate().Return(err)
 				Expect(runE(cmd, args)).To(BeIdenticalTo(err))
 			})
+		})
+	})
+
+	Describe("wrapping the completion function", func() {
+		var (
+			ctrl        *gomock.Controller
+			mockFactory *utilmocks.MockFactory
+			mockManager *targetmocks.MockManager
+			args        []string
+			streams     util.IOStreams
+			errOut      *util.SafeBytesBuffer
+		)
+
+		BeforeEach(func() {
+			streams, _, _, errOut = util.NewTestIOStreams()
+			ctx := context.Background()
+
+			ctrl = gomock.NewController(GinkgoT())
+			mockFactory = utilmocks.NewMockFactory(ctrl)
+			mockManager = targetmocks.NewMockManager(ctrl)
+			mockFactory.EXPECT().Manager().Return(mockManager, nil)
+			mockFactory.EXPECT().Context().Return(ctx)
+			args = []string{"foo", "bar"}
+		})
+
+		AfterEach(func() {
+			ctrl.Finish()
+		})
+
+		It("should respect the prefix", func() {
+			wrapped := base.WrapCompletionFunction(mockFactory, streams, func(ctx context.Context, manager target.Manager) ([]string, error) {
+				return args, nil
+			})
+
+			returned, directory := wrapped(nil, nil, "f")
+			Expect(directory).To(Equal(cobra.ShellCompDirectiveNoFileComp))
+			Expect(returned).To(Equal([]string{"foo"}))
+		})
+
+		It("should fail when executing the completer", func() {
+			wrapped := base.WrapCompletionFunction(mockFactory, streams, func(ctx context.Context, manager target.Manager) ([]string, error) {
+				return nil, errors.New("completion failed")
+			})
+
+			returned, directory := wrapped(nil, nil, "f")
+			Expect(directory).To(Equal(cobra.ShellCompDirectiveNoFileComp))
+			Expect(returned).To(BeNil())
+			head := strings.Split(errOut.String(), "\n")[0]
+			Expect(head).To(Equal("completion failed"))
 		})
 	})
 })
