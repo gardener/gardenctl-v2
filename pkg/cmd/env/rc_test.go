@@ -81,10 +81,18 @@ alias gp='eval $(gardenctl provider-env bash)'
 			Expect(out.String()).To(Equal(`if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
-source <(gardenctl completion zsh)
-compdef _gardenctl gardenctl
+if (( $+commands[gardenctl] )); then
+    gctl_completion_file="${fpath[1]}/_gardenctl"
+    if [[ ! -f "$gctl_completion_file" ]]; then
+        gardenctl completion zsh >| "$gctl_completion_file"
+        source "$gctl_completion_file"
+    else
+        source "$gctl_completion_file"
+        gardenctl completion zsh >| "$gctl_completion_file" &|
+    fi
+    unset gctl_completion_file
+fi
 alias g=gardenctl
-compdef _gardenctl g
 alias gtv='gardenctl target view -o yaml'
 alias gtc='gardenctl target control-plane'
 alias gtc-='gardenctl target unset control-plane'
