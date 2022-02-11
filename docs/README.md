@@ -3,7 +3,7 @@
 ## Usage
 
 * [Targeting](usage/targeting.md)
-* [gardenctl help](gardenctl.md)
+* [gardenctl help](help/gardenctl.md)
 
 
 ## Development

@@ -17,8 +17,10 @@ else
 fi
 
 # Install golangci-lint (linting tool)
-curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.43.0
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.44.0
 
 cd "$SOURCE_PATH"
+
+echo '> Run golangci-lint'
 
 golangci-lint -v run ./...
