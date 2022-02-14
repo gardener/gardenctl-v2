@@ -587,6 +587,20 @@ func (m *managerImpl) patchTarget(ctx context.Context, patch func(t *targetImpl)
 		return err
 	}
 
+	return m.targetProvider.Write(impl)
+	if err != nil {
+		return err
+	}
+
+	if !m.config.SymlinkTargetKubeconfig() {
+		return nil
+	}
+
+	return m.updateClientConfigSymlink(ctx, target)
+}
+
+func (m *managerImpl) updateClientConfigSymlink(ctx context.Context, target Target) error {
+
 	config, err := m.ClientConfig(ctx, target)
 	if err != nil {
 		return err
@@ -607,12 +621,7 @@ func (m *managerImpl) patchTarget(ctx context.Context, patch func(t *targetImpl)
 		}
 	}
 
-	err = os.Symlink(filename, symlinkPath)
-	if err != nil {
-		return err
-	}
-
-	return m.targetProvider.Write(impl)
+	return os.Symlink(filename, symlinkPath)
 }
 
 func (m *managerImpl) getTarget(t Target) (Target, error) {

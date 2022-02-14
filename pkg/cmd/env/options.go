@@ -69,6 +69,7 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 		return err
 	}
 
+	o.Symlink = manager.Configuration().SymlinkTargetKubeconfig()
 	o.SessionDir = manager.SessionDir()
 
 	return nil
@@ -95,8 +96,6 @@ func (o *options) AddFlags(flags *pflag.FlagSet) {
 	switch o.ProviderType {
 	case "kubernetes":
 		text = "the KUBECONFIG environment variable"
-
-		flags.BoolVarP(&o.Symlink, "link", "l", o.Symlink, "Point KUBECONFIG to the symlink of the targeted cluster")
 	default:
 		text = "the cloud provider CLI environment variables and logout"
 	}

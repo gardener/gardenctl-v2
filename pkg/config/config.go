@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 
 	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v3"
@@ -21,8 +22,8 @@ import (
 type Config struct {
 	// Filename is the name of the gardenctl configuration file
 	Filename string `yaml:"-"`
-	// NoKubeconfigLink defines
-	NoTargetKubeconfigLink bool `yaml:"no-target-kubeconfig-link,omitempty"`
+	// LinkKubeconfig defines if kubeconfig is symlinked with the target
+	LinkKubeconfig *bool `yaml:"link-kubeconfig,omitempty"`
 	// Gardens is a list of known Garden clusters
 	Gardens []Garden `yaml:"gardens"`
 }
@@ -58,6 +59,14 @@ func LoadFromFile(filename string) (*Config, error) {
 
 	config := &Config{Filename: filename}
 
+	// We don't want a dependency to root command here
+	str, ok := os.LookupEnv("GCTL_LINK_KUBECONFIG")
+	if ok {
+		if val, err := strconv.ParseBool(str); err == nil {
+			config.LinkKubeconfig = &val
+		}
+	}
+
 	if stat.Size() > 0 {
 		if err := yaml.NewDecoder(f).Decode(config); err != nil {
 			return nil, fmt.Errorf("failed to decode as YAML: %w", err)
@@ -75,6 +84,11 @@ func LoadFromFile(filename string) (*Config, error) {
 	}
 
 	return config, nil
+}
+
+// SymlinkTargetKubeconfig indicates if the kubeconfig of the current target should be always symlinked
+func (config *Config) SymlinkTargetKubeconfig() bool {
+	return config.LinkKubeconfig == nil || *config.LinkKubeconfig
 }
 
 // Save updates a gardenctl config file with the values passed via Config struct

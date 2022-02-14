@@ -10,7 +10,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	"io"
+	"k8s.io/utils/pointer"
 	"path/filepath"
 	"regexp"
 
@@ -77,6 +79,7 @@ var _ = Describe("Env Commands - Options", func() {
 				root,
 				parent,
 				child *cobra.Command
+				cfg *config.Config
 			)
 
 			BeforeEach(func() {
@@ -90,12 +93,16 @@ var _ = Describe("Env Commands - Options", func() {
 				Expect(root.Execute()).To(Succeed())
 				baseTemplate = nil
 				providerType = ""
+				cfg = &config.Config{
+					LinkKubeconfig: pointer.Bool(false),
+				}
 			})
 
 			Context("when the providerType is empty", func() {
 				It("should complete options with default shell", func() {
 					factory.EXPECT().Manager().Return(manager, nil)
 					manager.EXPECT().SessionDir().Return(sessionDir)
+					manager.EXPECT().Configuration().Return(cfg)
 					Expect(options.Template).To(BeNil())
 					Expect(options.Complete(factory, child, nil)).To(Succeed())
 					Expect(options.Shell).To(Equal(child.Name()))
@@ -122,6 +129,9 @@ var _ = Describe("Env Commands - Options", func() {
 				})
 
 				It("should complete options for providerType kubernetes", func() {
+					factory.EXPECT().Manager().Return(manager, nil)
+					manager.EXPECT().SessionDir().Return(sessionDir)
+					manager.EXPECT().Configuration().Return(cfg)
 					Expect(options.Template).To(BeNil())
 					Expect(options.Complete(factory, child, nil)).To(Succeed())
 					Expect(options.Template).NotTo(BeNil())
