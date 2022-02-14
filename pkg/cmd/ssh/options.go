@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
@@ -64,7 +65,8 @@ const (
 var (
 	// keepAliveInterval is the interval in which bastions should be given the
 	// keep-alive annotation to prolong their lifetime.
-	keepAliveInterval = 3 * time.Minute
+	keepAliveInterval      = 3 * time.Minute
+	keepAliveIntervalMutex sync.RWMutex
 
 	// pollBastionStatusInterval is the time in-between status checks on the bastion object.
 	pollBastionStatusInterval = 5 * time.Second
@@ -946,8 +948,15 @@ func sshCommandLine(o *SSHOptions, bastionAddr string, nodePrivateKeyFiles []str
 	return connectCmd
 }
 
+func getKeepAliveInterval() time.Duration {
+	keepAliveIntervalMutex.RLock()
+	defer keepAliveIntervalMutex.RUnlock()
+
+	return keepAliveInterval
+}
+
 func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, stderr io.Writer) {
-	ticker := time.NewTicker(keepAliveInterval)
+	ticker := time.NewTicker(getKeepAliveInterval())
 	defer ticker.Stop()
 
 	for {

@@ -37,5 +37,8 @@ func SetPollBastionStatusInterval(d time.Duration) {
 }
 
 func SetKeepAliveInterval(d time.Duration) {
+	keepAliveIntervalMutex.Lock()
+	defer keepAliveIntervalMutex.Unlock()
+
 	keepAliveInterval = d
 }
