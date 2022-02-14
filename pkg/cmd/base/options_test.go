@@ -23,9 +23,13 @@ import (
 
 var _ = Describe("Base Options", func() {
 	Describe("given an instance", func() {
+		type barType struct {
+			Baz string
+		}
+
 		type fooType struct {
 			Foo string
-			Bar string
+			Bar barType
 		}
 
 		var (
@@ -40,7 +44,9 @@ var _ = Describe("Base Options", func() {
 			options = base.NewOptions(streams)
 			foo = &fooType{
 				Foo: "foo",
-				Bar: "bar",
+				Bar: barType{
+					Baz: "baz",
+				},
 			}
 		})
 
@@ -70,7 +76,14 @@ var _ = Describe("Base Options", func() {
 
 			It("should print with json format", func() {
 				Expect(options.PrintObject(foo)).To(Succeed())
-				Expect(buf.String()).To(Equal(fmt.Sprintf("{\n  \"Foo\": %q,\n  \"Bar\": %q\n}\n", foo.Foo, foo.Bar)))
+				Expect(buf.String()).To(Equal(fmt.Sprintf(
+					`{
+  "Foo": %q,
+  "Bar": {
+    "Baz": %q
+  }
+}
+`, foo.Foo, foo.Bar.Baz)))
 			})
 		})
 
@@ -85,7 +98,12 @@ var _ = Describe("Base Options", func() {
 
 			It("should print with yaml format", func() {
 				Expect(options.PrintObject(foo)).To(Succeed())
-				Expect(buf.String()).To(Equal(fmt.Sprintf("foo: %s\nbar: %s\n\n", foo.Foo, foo.Bar)))
+				Expect(buf.String()).To(Equal(fmt.Sprintf(
+					`foo: %s
+bar:
+  baz: %s
+`,
+					foo.Foo, foo.Bar.Baz)))
 			})
 		})
 
