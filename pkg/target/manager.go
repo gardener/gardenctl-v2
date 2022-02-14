@@ -587,7 +587,7 @@ func (m *managerImpl) patchTarget(ctx context.Context, patch func(t *targetImpl)
 		return err
 	}
 
-	return m.targetProvider.Write(impl)
+	err = m.targetProvider.Write(impl)
 	if err != nil {
 		return err
 	}
