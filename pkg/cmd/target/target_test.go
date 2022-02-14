@@ -52,6 +52,7 @@ var _ = Describe("Target Command", func() {
 
 	BeforeEach(func() {
 		cfg = &config.Config{
+			LinkKubeconfig: pointer.Bool(false),
 			Gardens: []config.Garden{{
 				Name:       gardenName,
 				Kubeconfig: gardenKubeconfig,

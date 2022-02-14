@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package config_test
 
 import (
+	"k8s.io/utils/pointer"
 	"os"
 	"path/filepath"
 	"testing"
@@ -64,7 +65,8 @@ var _ = BeforeEach(func() {
 		"^namespace:(?P<namespace>[^/]+)$",
 	}
 	cfg = &config.Config{
-		Filename: filepath.Join(gardenHomeDir, "gardenctl-testconfig.yaml"),
+		Filename:       filepath.Join(gardenHomeDir, "gardenctl-testconfig.yaml"),
+		LinkKubeconfig: pointer.Bool(false),
 		Gardens: []config.Garden{
 			{
 				Name:       gardenIdentity1,

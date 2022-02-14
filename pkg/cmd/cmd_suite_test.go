@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cmd_test
 
 import (
+	"k8s.io/utils/pointer"
 	"os"
 	"path/filepath"
 	"testing"
@@ -51,7 +52,8 @@ var _ = BeforeSuite(func() {
 	Expect(os.MkdirAll(sessionDir, os.ModePerm))
 	targetFile = filepath.Join(sessionDir, cmd.TargetFilename)
 	cfg = &config.Config{
-		Filename: configFile,
+		Filename:       configFile,
+		LinkKubeconfig: pointer.Bool(false),
 		Gardens: []config.Garden{{
 			Name:       "foo",
 			Kubeconfig: "/not/a/real/garden-foo/kubeconfig",

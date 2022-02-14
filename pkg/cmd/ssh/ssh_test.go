@@ -136,6 +136,7 @@ var _ = Describe("SSH Command", func() {
 		ssh.SetPollBastionStatusInterval(1 * time.Second)
 
 		cfg = &config.Config{
+			LinkKubeconfig: pointer.Bool(false),
 			Gardens: []config.Garden{{
 				Name:       gardenName,
 				Kubeconfig: gardenKubeconfigFile,

@@ -100,6 +100,7 @@ var _ = Describe("Target Manager", func() {
 
 	BeforeEach(func() {
 		cfg = &config.Config{
+			LinkKubeconfig: pointer.Bool(false),
 			Gardens: []config.Garden{{
 				Name:       gardenName,
 				Kubeconfig: gardenKubeconfig,
