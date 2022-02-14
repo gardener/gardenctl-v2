@@ -77,13 +77,15 @@ func (o *Options) PrintObject(obj interface{}) error {
 		fmt.Fprintf(o.IOStreams.Out, "%v", obj)
 
 	case "yaml":
-		marshalled, err := yaml.Marshal(&obj)
+		yamlEncoder := yaml.NewEncoder(o.IOStreams.Out)
+		defer yamlEncoder.Close()
+
+		yamlEncoder.SetIndent(2)
+
+		err := yamlEncoder.Encode(&obj)
 		if err != nil {
 			return err
 		}
-
-		fmt.Fprintln(o.IOStreams.Out, string(marshalled))
-
 	case "json":
 		marshalled, err := json.MarshalIndent(&obj, "", "  ")
 		if err != nil {
