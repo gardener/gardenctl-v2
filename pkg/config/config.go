@@ -21,6 +21,8 @@ import (
 type Config struct {
 	// Filename is the name of the gardenctl configuration file
 	Filename string `yaml:"-"`
+	// NoKubeconfigLink defines
+	NoTargetKubeconfigLink bool `yaml:"no-target-kubeconfig-link,omitempty"`
 	// Gardens is a list of known Garden clusters
 	Gardens []Garden `yaml:"gardens"`
 }
