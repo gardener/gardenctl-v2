@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package config_test
 
 import (
-	"k8s.io/utils/pointer"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/pflag"
+	"k8s.io/utils/pointer"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"

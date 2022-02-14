@@ -8,8 +8,9 @@ package fake
 
 import (
 	"context"
-	"k8s.io/utils/pointer"
 	"os"
+
+	"k8s.io/utils/pointer"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/config"

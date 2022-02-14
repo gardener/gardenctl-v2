@@ -8,13 +8,13 @@ package config_test
 
 import (
 	"fmt"
-	"k8s.io/utils/pointer"
 	"os"
 	"path/filepath"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/pointer"
 
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )

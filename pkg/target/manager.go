@@ -600,7 +600,6 @@ func (m *managerImpl) patchTarget(ctx context.Context, patch func(t *targetImpl)
 }
 
 func (m *managerImpl) updateClientConfigSymlink(ctx context.Context, target Target) error {
-
 	config, err := m.ClientConfig(ctx, target)
 	if err != nil {
 		return err

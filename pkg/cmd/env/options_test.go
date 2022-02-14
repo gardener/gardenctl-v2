@@ -10,9 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gardener/gardenctl-v2/pkg/config"
 	"io"
-	"k8s.io/utils/pointer"
 	"path/filepath"
 	"regexp"
 
@@ -28,11 +26,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/utils/pointer"
 
 	gardenclientmocks "github.com/gardener/gardenctl-v2/internal/gardenclient/mocks"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/env"
 	envmocks "github.com/gardener/gardenctl-v2/pkg/cmd/env/mocks"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )

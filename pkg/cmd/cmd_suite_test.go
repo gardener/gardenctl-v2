@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package cmd_test
 
 import (
-	"k8s.io/utils/pointer"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,6 +18,7 @@ import (
 	. "github.com/onsi/gomega"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/pointer"
 
 	"github.com/gardener/gardenctl-v2/pkg/cmd"
 	"github.com/gardener/gardenctl-v2/pkg/config"
