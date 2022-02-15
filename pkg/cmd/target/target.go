@@ -238,7 +238,7 @@ func (o *TargetOptions) Run(f util.Factory) error {
 
 	if manager.Configuration().SymlinkTargetKubeconfig() {
 		if os.Getenv("KUBECONFIG") != filepath.Join(manager.SessionDir(), "kubeconfig.yaml") {
-			fmt.Fprintf(o.IOStreams.Out, "%s The KUBECONFIG environment variable does not point to gardenctl target. Use the kubectl-env command to set the KUBECONFIG environment variable. For more information run `gardenctl kubectl-env --help`\n", color.YellowString("WARN"))
+			fmt.Fprintf(o.IOStreams.Out, "%s The KUBECONFIG environment variable does not point to the current target of gardenctl. Run `gardenctl kubectl-env --help` on how to configure the KUBECONFIG environment variable accordingly\n", color.YellowString("WARN"))
 		}
 	}
 
