@@ -600,24 +600,28 @@ func (m *managerImpl) patchTarget(ctx context.Context, patch func(t *targetImpl)
 }
 
 func (m *managerImpl) updateClientConfigSymlink(ctx context.Context, target Target) error {
+	symlinkPath := path.Join(m.sessionDirectory, "kubeconfig.yaml")
+
+	_, err := os.Lstat(symlinkPath)
+	if err == nil {
+		err = os.Remove(symlinkPath)
+		if err != nil {
+			return err
+		}
+	}
+
 	config, err := m.ClientConfig(ctx, target)
 	if err != nil {
+		if errors.Is(err, ErrNoGardenTargeted) {
+			return nil
+		}
+
 		return err
 	}
 
 	filename, err := m.WriteClientConfig(config)
 	if err != nil {
 		return err
-	}
-
-	symlinkPath := path.Join(m.sessionDirectory, "kubeconfig.yaml")
-
-	_, err = os.Lstat(symlinkPath)
-	if err == nil {
-		err = os.Remove(symlinkPath)
-		if err != nil {
-			return err
-		}
 	}
 
 	return os.Symlink(filename, symlinkPath)
