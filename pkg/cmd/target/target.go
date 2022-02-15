@@ -8,11 +8,11 @@ package target
 
 import (
 	"fmt"
-	"github.com/fatih/color"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
 	"github.com/gardener/gardenctl-v2/internal/util"

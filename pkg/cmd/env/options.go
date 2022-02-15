@@ -153,7 +153,6 @@ func (o *options) runKubernetes(ctx context.Context, manager target.Manager) err
 		if o.Symlink {
 			filename = path.Join(o.SessionDir, "kubeconfig.yaml")
 		} else {
-
 			config, err := manager.ClientConfig(ctx, o.CurrentTarget)
 			if err != nil {
 				return err
