@@ -7,7 +7,7 @@ Generate a script that points KUBECONFIG to the targeted cluster for powershell
 Generate a script that points KUBECONFIG to the targeted cluster for powershell.
 
 To load the kubectl configuration script in your current shell session:
-PS /> & kubectl-env powershell | Invoke-Expression
+PS /> & gardenctl kubectl-env powershell | Invoke-Expression
 
 
 ```
