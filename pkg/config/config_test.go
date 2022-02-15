@@ -141,7 +141,7 @@ var _ = Describe("Config", func() {
 			LinkKubeconfig: actVal,
 		}
 		Expect(cfg.Save()).NotTo(HaveOccurred())
-		if envVal != "" {
+		if envVal == "" {
 			os.Unsetenv(envKey)
 		} else {
 			os.Setenv(envKey, envVal)
