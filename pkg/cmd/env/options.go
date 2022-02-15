@@ -152,6 +152,13 @@ func (o *options) runKubernetes(ctx context.Context, manager target.Manager) err
 
 		if o.Symlink {
 			filename = path.Join(o.SessionDir, "kubeconfig.yaml")
+
+			if !o.CurrentTarget.IsEmpty() {
+				_, err := os.Lstat(filename)
+				if os.IsNotExist(err) {
+					return fmt.Errorf("symlink to targeted cluster does not exist: %w", err)
+				}
+			}
 		} else {
 			config, err := manager.ClientConfig(ctx, o.CurrentTarget)
 			if err != nil {
