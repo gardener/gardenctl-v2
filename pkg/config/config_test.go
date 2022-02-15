@@ -155,9 +155,9 @@ var _ = Describe("Config", func() {
 		Entry("when LinkKubeconfig is nil and envVar is False", nil, "False", pointer.Bool(false)),
 		Entry("when LinkKubeconfig is true and envVar is unset", pointer.Bool(true), "", pointer.Bool(true)),
 		Entry("when LinkKubeconfig is true and envVar is True", pointer.Bool(true), "True", pointer.Bool(true)),
-		Entry("when LinkKubeconfig is true and envVar is False", pointer.Bool(true), "False", pointer.Bool(true)),
+		Entry("when LinkKubeconfig is true and envVar is False", pointer.Bool(true), "False", pointer.Bool(false)),
 		Entry("when LinkKubeconfig is false and envVar is unset", pointer.Bool(false), "", pointer.Bool(false)),
-		Entry("when LinkKubeconfig is false and envVar is True", pointer.Bool(false), "True", pointer.Bool(false)),
+		Entry("when LinkKubeconfig is false and envVar is True", pointer.Bool(false), "True", pointer.Bool(true)),
 		Entry("when LinkKubeconfig is false and envVar is False", pointer.Bool(false), "False", pointer.Bool(false)),
 	)
 })

@@ -59,14 +59,6 @@ func LoadFromFile(filename string) (*Config, error) {
 
 	config := &Config{Filename: filename}
 
-	// We don't want a dependency to root command here
-	str, ok := os.LookupEnv("GCTL_LINK_KUBECONFIG")
-	if ok {
-		if val, err := strconv.ParseBool(str); err == nil {
-			config.LinkKubeconfig = &val
-		}
-	}
-
 	if stat.Size() > 0 {
 		if err := yaml.NewDecoder(f).Decode(config); err != nil {
 			return nil, fmt.Errorf("failed to decode as YAML: %w", err)
@@ -81,6 +73,17 @@ func LoadFromFile(filename string) (*Config, error) {
 
 			config.Gardens[i].Kubeconfig = expanded
 		}
+	}
+
+	// we don't want a dependency to root command here
+	str, ok := os.LookupEnv("GCTL_LINK_KUBECONFIG")
+	if ok {
+		val, err := strconv.ParseBool(str)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse environment variable GCTL_LINK_KUBECONFIG: %w", err)
+		}
+
+		config.LinkKubeconfig = &val
 	}
 
 	return config, nil
