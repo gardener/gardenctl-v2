@@ -116,14 +116,18 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	if o.CurrentTarget.GardenName() == "" {
-		return target.ErrNoGardenTargeted
-	}
-
 	switch o.ProviderType {
 	case "kubernetes":
+		if !o.Symlink && o.CurrentTarget.GardenName() == "" {
+			return target.ErrNoGardenTargeted
+		}
+
 		return o.runKubernetes(f.Context(), manager)
 	default:
+		if o.CurrentTarget.GardenName() == "" {
+			return target.ErrNoGardenTargeted
+		}
+
 		t := o.CurrentTarget
 		if t.ShootName() == "" {
 			return target.ErrNoShootTargeted
@@ -149,6 +153,7 @@ func (o *options) runKubernetes(ctx context.Context, manager target.Manager) err
 		if o.Symlink {
 			filename = path.Join(o.SessionDir, "kubeconfig.yaml")
 		} else {
+
 			config, err := manager.ClientConfig(ctx, o.CurrentTarget)
 			if err != nil {
 				return err
