@@ -142,6 +142,8 @@ var _ = Describe("Config", func() {
 		}
 		Expect(cfg.Save()).NotTo(HaveOccurred())
 		if envVal != "" {
+			os.Unsetenv(envKey)
+		} else {
 			os.Setenv(envKey, envVal)
 			defer os.Unsetenv(envKey)
 		}
