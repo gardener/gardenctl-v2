@@ -23,7 +23,7 @@ type Config struct {
 	// Filename is the name of the gardenctl configuration file
 	Filename string `yaml:"-"`
 	// LinkKubeconfig defines if kubeconfig is symlinked with the target
-	LinkKubeconfig *bool `yaml:"link-kubeconfig,omitempty"`
+	LinkKubeconfig *bool `yaml:"linkKubeconfig,omitempty"`
 	// Gardens is a list of known Garden clusters
 	Gardens []Garden `yaml:"gardens"`
 }

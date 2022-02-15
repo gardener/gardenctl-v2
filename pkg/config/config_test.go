@@ -133,7 +133,7 @@ var _ = Describe("Config", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
-	DescribeTable("saving and loading the link-kubeconfig configuration", func(actVal *bool, envVal string, expVal *bool) {
+	DescribeTable("saving and loading the linkKubeconfig configuration", func(actVal *bool, envVal string, expVal *bool) {
 		envKey := "GCTL_LINK_KUBECONFIG"
 		filename := filepath.Join(gardenHomeDir, "gardenctl-v2.yaml")
 		cfg = &config.Config{
