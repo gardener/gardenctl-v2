@@ -72,6 +72,7 @@ alias gtc='gardenctl target control-plane'
 alias gtc-='gardenctl target unset control-plane'
 alias gk='eval $(gardenctl kubectl-env bash)'
 alias gp='eval $(gardenctl provider-env bash)'
+alias gcv='gardenctl config view -o yaml'
 `))
 		})
 
@@ -96,8 +97,9 @@ alias g=gardenctl
 alias gtv='gardenctl target view -o yaml'
 alias gtc='gardenctl target control-plane'
 alias gtc-='gardenctl target unset control-plane'
-alias gk='eval $(gardenctl kubectl-env bash)'
-alias gp='eval $(gardenctl provider-env bash)'
+alias gk='eval $(gardenctl kubectl-env zsh)'
+alias gp='eval $(gardenctl provider-env zsh)'
+alias gcv='gardenctl config view -o yaml'
 `))
 		})
 
@@ -113,8 +115,9 @@ complete -c g -w gardenctl
 alias gtv='gardenctl target view -o yaml'
 alias gtc='gardenctl target control-plane'
 alias gtc-='gardenctl target unset control-plane'
-alias gk='eval (gardenctl kubectl-env bash)'
-alias gp='eval (gardenctl provider-env bash)'
+alias gk='eval (gardenctl kubectl-env fish)'
+alias gp='eval (gardenctl provider-env fish)'
+alias gcv='gardenctl config view -o yaml'
 `))
 		})
 
@@ -154,6 +157,10 @@ function Gardenctl-ProviderEnv {
   gardenctl provider-env powershell | Out-String | Invoke-Expression
 }
 Set-Alias -Name gp -Value Gardenctl-ProviderEnv -Option AllScope -Force
+function Gardenctl-Config-View {
+  gardenctl config view -o yaml
+}
+Set-Alias -Name gcv -Value Gardenctl-Config-View -Option AllScope -Force
 `))
 		})
 
