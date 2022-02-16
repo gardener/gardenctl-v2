@@ -7,7 +7,7 @@ Generate the cloud provider CLI configuration script for bash
 Generate the cloud provider CLI configuration script for bash.
 
 To load the cloud provider CLI configuration script in your current shell session:
-$ eval $(provider-env bash)
+$ eval $(gardenctl provider-env bash)
 
 
 ```
