@@ -12,7 +12,7 @@ The `target` command changes the current target cluster of `gardenctl`, download
 If the target is changed the symlink points to the new target but the `KUBECONFIG` environment variable does not need to be changed. 
 The `kubectl-env` command now does nothing except creating the script to set the `KUBECONFIG` environment variable. 
 This even works if nothing is targeted and could be done in the shell profile.
-![Link-Kubeconfig-1](link-kubeconfig.svg)
+![Link-Kubeconfig-1](../images/link-kubeconfig.svg)
 The generated script only needs to be evaluated once per shell session and looks something like this:
 ```bash
 export KUBECONFIG=$TMPDIR/garden/$GCTL_SESSION_ID/kubeconfig.yaml
@@ -24,7 +24,7 @@ linkKubeconfig: false
 ```
 The `target` command only changes the current target cluster of `gardenctl`, but does not download the corresponding kubeconfig file. 
 This happens only when the `kubectl-env` command is executed. If the user evaluates the generated script the `KUBECONFIG` environment variable points the downloaded kubeconfig file for the targeted cluster.
-![Link-Kubeconfig-2](update-kubeconfig.svg)
+![Link-Kubeconfig-2](../images/update-kubeconfig.svg)
 The generated script looks something like this:
 ```bash
 export KUBECONFIG=$TMPDIR/garden/$GCTL_SESSION_ID/kubeconfig.<hash>.yaml
