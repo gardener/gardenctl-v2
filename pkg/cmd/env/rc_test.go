@@ -97,8 +97,8 @@ alias g=gardenctl
 alias gtv='gardenctl target view -o yaml'
 alias gtc='gardenctl target control-plane'
 alias gtc-='gardenctl target unset control-plane'
-alias gk='eval $(gardenctl kubectl-env bash)'
-alias gp='eval $(gardenctl provider-env bash)'
+alias gk='eval $(gardenctl kubectl-env zsh)'
+alias gp='eval $(gardenctl provider-env zsh)'
 alias gcv='gardenctl config view -o yaml'
 `))
 		})
@@ -115,8 +115,8 @@ complete -c g -w gardenctl
 alias gtv='gardenctl target view -o yaml'
 alias gtc='gardenctl target control-plane'
 alias gtc-='gardenctl target unset control-plane'
-alias gk='eval (gardenctl kubectl-env bash)'
-alias gp='eval (gardenctl provider-env bash)'
+alias gk='eval (gardenctl kubectl-env fish)'
+alias gp='eval (gardenctl provider-env fish)'
 alias gcv='gardenctl config view -o yaml'
 `))
 		})
