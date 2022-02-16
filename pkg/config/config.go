@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 
 	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v3"
@@ -21,6 +22,8 @@ import (
 type Config struct {
 	// Filename is the name of the gardenctl configuration file
 	Filename string `yaml:"-"`
+	// LinkKubeconfig defines if kubeconfig is symlinked with the target
+	LinkKubeconfig *bool `yaml:"linkKubeconfig,omitempty"`
 	// Gardens is a list of known Garden clusters
 	Gardens []Garden `yaml:"gardens"`
 }
@@ -72,7 +75,23 @@ func LoadFromFile(filename string) (*Config, error) {
 		}
 	}
 
+	// we don't want a dependency to root command here
+	str, ok := os.LookupEnv("GCTL_LINK_KUBECONFIG")
+	if ok {
+		val, err := strconv.ParseBool(str)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse environment variable GCTL_LINK_KUBECONFIG: %w", err)
+		}
+
+		config.LinkKubeconfig = &val
+	}
+
 	return config, nil
+}
+
+// SymlinkTargetKubeconfig indicates if the kubeconfig of the current target should be always symlinked
+func (config *Config) SymlinkTargetKubeconfig() bool {
+	return config.LinkKubeconfig == nil || *config.LinkKubeconfig
 }
 
 // Save updates a gardenctl config file with the values passed via Config struct

@@ -8,7 +8,6 @@ package target_test
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -73,7 +72,6 @@ func cloneTarget(t target.Target) target.Target {
 func createTestManager(t target.Target, cfg *config.Config, clientProvider target.ClientProvider) (target.Manager, target.TargetProvider) {
 	targetProvider := fake.NewFakeTargetProvider(cloneTarget(t))
 
-	sessionDir := os.TempDir()
 	manager, err := target.NewManager(cfg, targetProvider, clientProvider, sessionDir)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 	ExpectWithOffset(1, manager).NotTo(BeNil())
@@ -102,6 +100,7 @@ var _ = Describe("Target Manager", func() {
 
 	BeforeEach(func() {
 		cfg = &config.Config{
+			LinkKubeconfig: pointer.Bool(false),
 			Gardens: []config.Garden{{
 				Name:       gardenName,
 				Kubeconfig: gardenKubeconfig,
@@ -416,7 +415,7 @@ var _ = Describe("Target Manager", func() {
 		t := target.NewTarget(gardenName, "", "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		Expect(manager.UnsetTargetGarden()).Should(Equal(gardenName))
+		Expect(manager.UnsetTargetGarden(ctx)).Should(Equal(gardenName))
 		assertTargetProvider(targetProvider, target.NewTarget("", "", "", ""))
 	})
 
@@ -424,7 +423,7 @@ var _ = Describe("Target Manager", func() {
 		t := target.NewTarget("", "", "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		res, unsetErr := manager.UnsetTargetGarden()
+		res, unsetErr := manager.UnsetTargetGarden(ctx)
 		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
 		assertTargetProvider(targetProvider, t)
@@ -435,7 +434,7 @@ var _ = Describe("Target Manager", func() {
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		// Unset Garden
-		Expect(manager.UnsetTargetGarden()).Should(Equal(gardenName))
+		Expect(manager.UnsetTargetGarden(ctx)).Should(Equal(gardenName))
 
 		// should also unset project, seed and shoot
 		assertTargetProvider(targetProvider, target.NewTarget("", "", "", ""))
@@ -445,7 +444,7 @@ var _ = Describe("Target Manager", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		Expect(manager.UnsetTargetProject()).Should(Equal(prod1Project.Name))
+		Expect(manager.UnsetTargetProject(ctx)).Should(Equal(prod1Project.Name))
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
 	})
 
@@ -453,7 +452,7 @@ var _ = Describe("Target Manager", func() {
 		t := target.NewTarget(gardenName, "", "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		res, unsetErr := manager.UnsetTargetProject()
+		res, unsetErr := manager.UnsetTargetProject(ctx)
 		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
 		assertTargetProvider(targetProvider, t)
@@ -464,7 +463,7 @@ var _ = Describe("Target Manager", func() {
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		// Unset Project
-		Expect(manager.UnsetTargetProject()).Should(Equal(prod1Project.Name))
+		Expect(manager.UnsetTargetProject(ctx)).Should(Equal(prod1Project.Name))
 
 		// should also unset shoot
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
@@ -474,7 +473,7 @@ var _ = Describe("Target Manager", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name)
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		Expect(manager.UnsetTargetShoot()).Should(Equal(prod1AmbiguousShoot.Name))
+		Expect(manager.UnsetTargetShoot(ctx)).Should(Equal(prod1AmbiguousShoot.Name))
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
 	})
 
@@ -482,7 +481,7 @@ var _ = Describe("Target Manager", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		res, unsetErr := manager.UnsetTargetShoot()
+		res, unsetErr := manager.UnsetTargetShoot(ctx)
 		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
 		assertTargetProvider(targetProvider, t)
@@ -492,7 +491,7 @@ var _ = Describe("Target Manager", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name).WithControlPlane(true)
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		Expect(manager.UnsetTargetControlPlane()).To(Succeed())
+		Expect(manager.UnsetTargetControlPlane(ctx)).To(Succeed())
 		assertTargetProvider(targetProvider, t.WithControlPlane(false))
 	})
 
@@ -500,7 +499,7 @@ var _ = Describe("Target Manager", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		unsetErr := manager.UnsetTargetControlPlane()
+		unsetErr := manager.UnsetTargetControlPlane(ctx)
 		Expect(unsetErr).To(HaveOccurred())
 		assertTargetProvider(targetProvider, t)
 	})
@@ -509,7 +508,7 @@ var _ = Describe("Target Manager", func() {
 		t := target.NewTarget(gardenName, "", seed.Name, "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		Expect(manager.UnsetTargetSeed()).Should(Equal(seed.Name))
+		Expect(manager.UnsetTargetSeed(ctx)).Should(Equal(seed.Name))
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
 	})
 
@@ -517,7 +516,7 @@ var _ = Describe("Target Manager", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		res, unsetErr := manager.UnsetTargetSeed()
+		res, unsetErr := manager.UnsetTargetSeed(ctx)
 		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
 		assertTargetProvider(targetProvider, t)

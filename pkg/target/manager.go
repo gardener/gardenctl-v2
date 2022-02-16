@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 
 	"k8s.io/client-go/tools/clientcmd"
@@ -56,16 +57,16 @@ type Manager interface {
 	TargetControlPlane(ctx context.Context) error
 	// UnsetTargetGarden unsets the garden target configuration
 	// This implicitly unsets project, shoot and seed target configuration
-	UnsetTargetGarden() (string, error)
+	UnsetTargetGarden(ctx context.Context) (string, error)
 	// UnsetTargetProject unsets the project target configuration
 	// This implicitly unsets shoot target configuration
-	UnsetTargetProject() (string, error)
+	UnsetTargetProject(ctx context.Context) (string, error)
 	// UnsetTargetSeed unsets the garden seed configuration
-	UnsetTargetSeed() (string, error)
+	UnsetTargetSeed(ctx context.Context) (string, error)
 	// UnsetTargetShoot unsets the garden shoot configuration
-	UnsetTargetShoot() (string, error)
+	UnsetTargetShoot(ctx context.Context) (string, error)
 	// UnsetTargetControlPlane unsets the control plane flag
-	UnsetTargetControlPlane() error
+	UnsetTargetControlPlane(ctx context.Context) error
 	// TargetMatchPattern replaces the whole target
 	// Garden, Project and Shoot values are determined by matching the provided value
 	// against patterns defined in gardenctl configuration. Some values may only match a subset
@@ -164,10 +165,10 @@ func (m *managerImpl) TargetGarden(ctx context.Context, identity string) error {
 		return fmt.Errorf("failed to build target: %w", err)
 	}
 
-	return m.updateTarget(target)
+	return m.updateTarget(ctx, target)
 }
 
-func (m *managerImpl) UnsetTargetGarden() (string, error) {
+func (m *managerImpl) UnsetTargetGarden(ctx context.Context) (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current target: %w", err)
@@ -178,7 +179,7 @@ func (m *managerImpl) UnsetTargetGarden() (string, error) {
 		return "", ErrNoGardenTargeted
 	}
 
-	return targetedGarden, m.patchTarget(func(t *targetImpl) error {
+	return targetedGarden, m.patchTarget(ctx, func(t *targetImpl) error {
 		t.Garden = ""
 		t.Project = ""
 		t.Seed = ""
@@ -207,10 +208,10 @@ func (m *managerImpl) TargetProject(ctx context.Context, projectName string) err
 		return err
 	}
 
-	return m.updateTarget(target)
+	return m.updateTarget(ctx, target)
 }
 
-func (m *managerImpl) UnsetTargetProject() (string, error) {
+func (m *managerImpl) UnsetTargetProject(ctx context.Context) (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current target: %w", err)
@@ -221,7 +222,7 @@ func (m *managerImpl) UnsetTargetProject() (string, error) {
 		return "", ErrNoProjectTargeted
 	}
 
-	return targetedName, m.patchTarget(func(t *targetImpl) error {
+	return targetedName, m.patchTarget(ctx, func(t *targetImpl) error {
 		t.Project = ""
 		t.Shoot = ""
 		t.ControlPlaneFlag = false
@@ -248,10 +249,10 @@ func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
 		return err
 	}
 
-	return m.updateTarget(target)
+	return m.updateTarget(ctx, target)
 }
 
-func (m *managerImpl) UnsetTargetSeed() (string, error) {
+func (m *managerImpl) UnsetTargetSeed(ctx context.Context) (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current target: %w", err)
@@ -262,7 +263,7 @@ func (m *managerImpl) UnsetTargetSeed() (string, error) {
 		return "", ErrNoSeedTargeted
 	}
 
-	return targetedName, m.patchTarget(func(t *targetImpl) error {
+	return targetedName, m.patchTarget(ctx, func(t *targetImpl) error {
 		t.Seed = ""
 
 		return nil
@@ -287,10 +288,10 @@ func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
 		return err
 	}
 
-	return m.updateTarget(target)
+	return m.updateTarget(ctx, target)
 }
 
-func (m *managerImpl) UnsetTargetShoot() (string, error) {
+func (m *managerImpl) UnsetTargetShoot(ctx context.Context) (string, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current target: %w", err)
@@ -301,7 +302,7 @@ func (m *managerImpl) UnsetTargetShoot() (string, error) {
 		return "", ErrNoShootTargeted
 	}
 
-	return targetedName, m.patchTarget(func(t *targetImpl) error {
+	return targetedName, m.patchTarget(ctx, func(t *targetImpl) error {
 		t.Shoot = ""
 		t.ControlPlaneFlag = false
 
@@ -327,10 +328,10 @@ func (m *managerImpl) TargetControlPlane(ctx context.Context) error {
 		return err
 	}
 
-	return m.updateTarget(target)
+	return m.updateTarget(ctx, target)
 }
 
-func (m *managerImpl) UnsetTargetControlPlane() error {
+func (m *managerImpl) UnsetTargetControlPlane(ctx context.Context) error {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
 		return fmt.Errorf("failed to get current target: %w", err)
@@ -340,7 +341,7 @@ func (m *managerImpl) UnsetTargetControlPlane() error {
 		return ErrNoControlPlaneTargeted
 	}
 
-	return m.patchTarget(func(t *targetImpl) error {
+	return m.patchTarget(ctx, func(t *targetImpl) error {
 		t.ControlPlaneFlag = false
 
 		return nil
@@ -404,11 +405,11 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		return err
 	}
 
-	return m.updateTarget(target)
+	return m.updateTarget(ctx, target)
 }
 
-func (m *managerImpl) updateTarget(target Target) error {
-	return m.patchTarget(func(t *targetImpl) error {
+func (m *managerImpl) updateTarget(ctx context.Context, target Target) error {
+	return m.patchTarget(ctx, func(t *targetImpl) error {
 		t.Garden = target.GardenName()
 		t.Project = target.ProjectName()
 		t.Seed = target.SeedName()
@@ -570,7 +571,7 @@ func (m *managerImpl) getClientConfig(t Target, loadClientConfig func(gardenclie
 	return loadClientConfig(client)
 }
 
-func (m *managerImpl) patchTarget(patch func(t *targetImpl) error) error {
+func (m *managerImpl) patchTarget(ctx context.Context, patch func(t *targetImpl) error) error {
 	target, err := m.targetProvider.Read()
 	if err != nil {
 		return err
@@ -586,7 +587,44 @@ func (m *managerImpl) patchTarget(patch func(t *targetImpl) error) error {
 		return err
 	}
 
-	return m.targetProvider.Write(impl)
+	err = m.targetProvider.Write(impl)
+	if err != nil {
+		return err
+	}
+
+	if !m.config.SymlinkTargetKubeconfig() {
+		return nil
+	}
+
+	return m.updateClientConfigSymlink(ctx, target)
+}
+
+func (m *managerImpl) updateClientConfigSymlink(ctx context.Context, target Target) error {
+	symlinkPath := path.Join(m.sessionDirectory, "kubeconfig.yaml")
+
+	_, err := os.Lstat(symlinkPath)
+	if err == nil {
+		err = os.Remove(symlinkPath)
+		if err != nil {
+			return err
+		}
+	}
+
+	config, err := m.ClientConfig(ctx, target)
+	if err != nil {
+		if errors.Is(err, ErrNoGardenTargeted) {
+			return nil
+		}
+
+		return err
+	}
+
+	filename, err := m.WriteClientConfig(config)
+	if err != nil {
+		return err
+	}
+
+	return os.Symlink(filename, symlinkPath)
 }
 
 func (m *managerImpl) getTarget(t Target) (Target, error) {

@@ -96,17 +96,19 @@ func (o *UnsetOptions) Run(f util.Factory) error {
 		return err
 	}
 
+	ctx := f.Context()
+
 	var targetName string
 
 	switch o.Kind {
 	case TargetKindGarden:
-		targetName, err = manager.UnsetTargetGarden()
+		targetName, err = manager.UnsetTargetGarden(ctx)
 	case TargetKindProject:
-		targetName, err = manager.UnsetTargetProject()
+		targetName, err = manager.UnsetTargetProject(ctx)
 	case TargetKindSeed:
-		targetName, err = manager.UnsetTargetSeed()
+		targetName, err = manager.UnsetTargetSeed(ctx)
 	case TargetKindShoot:
-		targetName, err = manager.UnsetTargetShoot()
+		targetName, err = manager.UnsetTargetShoot(ctx)
 	case TargetKindControlPlane:
 		currentTarget, targetErr := manager.CurrentTarget()
 		if targetErr != nil {
@@ -114,7 +116,7 @@ func (o *UnsetOptions) Run(f util.Factory) error {
 		}
 
 		targetName = currentTarget.ShootName()
-		err = manager.UnsetTargetControlPlane()
+		err = manager.UnsetTargetControlPlane(ctx)
 	default:
 		err = errors.New("invalid kind")
 	}

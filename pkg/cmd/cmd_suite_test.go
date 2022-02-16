@@ -18,6 +18,7 @@ import (
 	. "github.com/onsi/gomega"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/pointer"
 
 	"github.com/gardener/gardenctl-v2/pkg/cmd"
 	"github.com/gardener/gardenctl-v2/pkg/config"
@@ -51,7 +52,8 @@ var _ = BeforeSuite(func() {
 	Expect(os.MkdirAll(sessionDir, os.ModePerm))
 	targetFile = filepath.Join(sessionDir, cmd.TargetFilename)
 	cfg = &config.Config{
-		Filename: configFile,
+		Filename:       configFile,
+		LinkKubeconfig: pointer.Bool(false),
 		Gardens: []config.Garden{{
 			Name:       "foo",
 			Kubeconfig: "/not/a/real/garden-foo/kubeconfig",

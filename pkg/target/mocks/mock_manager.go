@@ -241,77 +241,77 @@ func (mr *MockManagerMockRecorder) TargetShoot(arg0, arg1 interface{}) *gomock.C
 }
 
 // UnsetTargetControlPlane mocks base method.
-func (m *MockManager) UnsetTargetControlPlane() error {
+func (m *MockManager) UnsetTargetControlPlane(arg0 context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnsetTargetControlPlane")
+	ret := m.ctrl.Call(m, "UnsetTargetControlPlane", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UnsetTargetControlPlane indicates an expected call of UnsetTargetControlPlane.
-func (mr *MockManagerMockRecorder) UnsetTargetControlPlane() *gomock.Call {
+func (mr *MockManagerMockRecorder) UnsetTargetControlPlane(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetTargetControlPlane", reflect.TypeOf((*MockManager)(nil).UnsetTargetControlPlane))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetTargetControlPlane", reflect.TypeOf((*MockManager)(nil).UnsetTargetControlPlane), arg0)
 }
 
 // UnsetTargetGarden mocks base method.
-func (m *MockManager) UnsetTargetGarden() (string, error) {
+func (m *MockManager) UnsetTargetGarden(arg0 context.Context) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnsetTargetGarden")
+	ret := m.ctrl.Call(m, "UnsetTargetGarden", arg0)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UnsetTargetGarden indicates an expected call of UnsetTargetGarden.
-func (mr *MockManagerMockRecorder) UnsetTargetGarden() *gomock.Call {
+func (mr *MockManagerMockRecorder) UnsetTargetGarden(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetTargetGarden", reflect.TypeOf((*MockManager)(nil).UnsetTargetGarden))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetTargetGarden", reflect.TypeOf((*MockManager)(nil).UnsetTargetGarden), arg0)
 }
 
 // UnsetTargetProject mocks base method.
-func (m *MockManager) UnsetTargetProject() (string, error) {
+func (m *MockManager) UnsetTargetProject(arg0 context.Context) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnsetTargetProject")
+	ret := m.ctrl.Call(m, "UnsetTargetProject", arg0)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UnsetTargetProject indicates an expected call of UnsetTargetProject.
-func (mr *MockManagerMockRecorder) UnsetTargetProject() *gomock.Call {
+func (mr *MockManagerMockRecorder) UnsetTargetProject(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetTargetProject", reflect.TypeOf((*MockManager)(nil).UnsetTargetProject))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetTargetProject", reflect.TypeOf((*MockManager)(nil).UnsetTargetProject), arg0)
 }
 
 // UnsetTargetSeed mocks base method.
-func (m *MockManager) UnsetTargetSeed() (string, error) {
+func (m *MockManager) UnsetTargetSeed(arg0 context.Context) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnsetTargetSeed")
+	ret := m.ctrl.Call(m, "UnsetTargetSeed", arg0)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UnsetTargetSeed indicates an expected call of UnsetTargetSeed.
-func (mr *MockManagerMockRecorder) UnsetTargetSeed() *gomock.Call {
+func (mr *MockManagerMockRecorder) UnsetTargetSeed(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetTargetSeed", reflect.TypeOf((*MockManager)(nil).UnsetTargetSeed))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetTargetSeed", reflect.TypeOf((*MockManager)(nil).UnsetTargetSeed), arg0)
 }
 
 // UnsetTargetShoot mocks base method.
-func (m *MockManager) UnsetTargetShoot() (string, error) {
+func (m *MockManager) UnsetTargetShoot(arg0 context.Context) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnsetTargetShoot")
+	ret := m.ctrl.Call(m, "UnsetTargetShoot", arg0)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UnsetTargetShoot indicates an expected call of UnsetTargetShoot.
-func (mr *MockManagerMockRecorder) UnsetTargetShoot() *gomock.Call {
+func (mr *MockManagerMockRecorder) UnsetTargetShoot(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetTargetShoot", reflect.TypeOf((*MockManager)(nil).UnsetTargetShoot))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsetTargetShoot", reflect.TypeOf((*MockManager)(nil).UnsetTargetShoot), arg0)
 }
 
 // WriteClientConfig mocks base method.

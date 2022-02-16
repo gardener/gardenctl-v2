@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -36,6 +37,7 @@ var (
 	ctx              context.Context
 	cancel           context.CancelFunc
 	gardenHomeDir    string
+	sessionDir       string
 	gardenKubeconfig string
 )
 
@@ -44,6 +46,8 @@ var _ = BeforeSuite(func() {
 
 	dir, err := os.MkdirTemp("", "garden-*")
 	Expect(err).NotTo(HaveOccurred())
+	sessionDir = filepath.Join(dir, uuid.New().String())
+	Expect(os.MkdirAll(sessionDir, 0700)).To(Succeed())
 	gardenHomeDir = dir
 	gardenKubeconfig = filepath.Join(gardenHomeDir, "kubeconfig.yaml")
 	data := createTestKubeconfig(gardenName)
