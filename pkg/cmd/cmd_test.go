@@ -194,7 +194,7 @@ var _ = Describe("Gardenctl command", func() {
 				manager, err := factory.Manager()
 				Expect(err).NotTo(HaveOccurred())
 
-				values, err := cmd.GardenFlagCompletionFunc(factory.Context(), manager, targetFlags)
+				values, err := cmd.GardenFlagCompletionFunc(factory.Context(), manager)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal([]string{gardenName2, gardenName1}))
 			})
@@ -205,27 +205,17 @@ var _ = Describe("Gardenctl command", func() {
 				manager, err := factory.Manager()
 				Expect(err).NotTo(HaveOccurred())
 
-				values, err := cmd.ProjectFlagCompletionFunc(factory.Context(), manager, targetFlags)
+				values, err := cmd.ProjectFlagCompletionFunc(factory.Context(), manager)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal([]string{testProject1.Name, testProject2.Name}))
-			})
-
-			It("should return all project names for second garden, alphabetically sorted", func() {
-				manager, err := factory.Manager()
-				Expect(err).NotTo(HaveOccurred())
-
-				targetFlags = target.NewTargetFlags(gardenName2, "", "", "", false)
-				values, err := cmd.ProjectFlagCompletionFunc(factory.Context(), manager, targetFlags)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal([]string{testProject2.Name}))
 			})
 
 			It("should fail when no target is defined", func() {
 				manager, err := target.NewManager(cfg, fake.NewFakeTargetProvider(nil), nil, sessionDir)
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = cmd.ProjectFlagCompletionFunc(factory.Context(), manager, targetFlags)
-				Expect(err).To(MatchError(HavePrefix("failed to read current target:")))
+				_, err = cmd.ProjectFlagCompletionFunc(factory.Context(), manager)
+				Expect(err).To(MatchError(HavePrefix("no target set")))
 			})
 		})
 
@@ -234,27 +224,17 @@ var _ = Describe("Gardenctl command", func() {
 				manager, err := factory.Manager()
 				Expect(err).NotTo(HaveOccurred())
 
-				values, err := cmd.SeedFlagCompletionFunc(factory.Context(), manager, targetFlags)
+				values, err := cmd.SeedFlagCompletionFunc(factory.Context(), manager)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal([]string{testSeed1.Name, testSeed2.Name}))
-			})
-
-			It("should return all seed names for second garden, alphabetically sorted", func() {
-				manager, err := factory.Manager()
-				Expect(err).NotTo(HaveOccurred())
-
-				targetFlags = target.NewTargetFlags("bar", "", "", "", false)
-				values, err := cmd.SeedFlagCompletionFunc(factory.Context(), manager, targetFlags)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal([]string{testSeed2.Name}))
 			})
 
 			It("should fail when no target is defined", func() {
 				manager, err := target.NewManager(cfg, fake.NewFakeTargetProvider(nil), nil, sessionDir)
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = cmd.SeedFlagCompletionFunc(factory.Context(), manager, targetFlags)
-				Expect(err).To(MatchError(HavePrefix("failed to read current target:")))
+				_, err = cmd.SeedFlagCompletionFunc(factory.Context(), manager)
+				Expect(err).To(MatchError(HavePrefix("no target set")))
 			})
 		})
 
@@ -263,37 +243,17 @@ var _ = Describe("Gardenctl command", func() {
 				manager, err := factory.Manager()
 				Expect(err).NotTo(HaveOccurred())
 
-				values, err := cmd.ShootFlagCompletionFunc(factory.Context(), manager, targetFlags)
+				values, err := cmd.ShootFlagCompletionFunc(factory.Context(), manager)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal([]string{testShoot1.Name, testShoot2.Name}))
-			})
-
-			It("should return all shoot names for second project, alphabetically sorted", func() {
-				manager, err := factory.Manager()
-				Expect(err).NotTo(HaveOccurred())
-
-				targetFlags = target.NewTargetFlags("", "prod2", "", "", false)
-				values, err := cmd.ShootFlagCompletionFunc(factory.Context(), manager, targetFlags)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal([]string{testShoot3.Name}))
-			})
-
-			It("should return all shoot names for first seed, alphabetically sorted", func() {
-				manager, err := factory.Manager()
-				Expect(err).NotTo(HaveOccurred())
-
-				targetFlags = target.NewTargetFlags("", "", testSeed1.Name, "", false)
-				values, err := cmd.ShootFlagCompletionFunc(factory.Context(), manager, targetFlags)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal([]string{testShoot1.Name, testShoot2.Name, testShoot3.Name}))
 			})
 
 			It("should fail when no target is defined", func() {
 				manager, err := target.NewManager(cfg, fake.NewFakeTargetProvider(nil), nil, sessionDir)
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = cmd.ShootFlagCompletionFunc(factory.Context(), manager, targetFlags)
-				Expect(err).To(MatchError(HavePrefix("failed to read current target:")))
+				_, err = cmd.ShootFlagCompletionFunc(factory.Context(), manager)
+				Expect(err).To(MatchError(HavePrefix("no target set")))
 			})
 		})
 	})
@@ -310,7 +270,7 @@ var _ = Describe("Gardenctl command", func() {
 
 		Context("when wrapping completion functions", func() {
 			It("should respect the prefix", func() {
-				wrapped := cmd.CompletionWrapper(factory, streams, func(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
+				wrapped := cmd.CompletionWrapper(factory, streams, func(ctx context.Context, manager target.Manager) ([]string, error) {
 					return []string{"foo", "bar"}, nil
 				})
 
@@ -320,7 +280,7 @@ var _ = Describe("Gardenctl command", func() {
 			})
 
 			It("should fail when executing the completer", func() {
-				wrapped := cmd.CompletionWrapper(factory, streams, func(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
+				wrapped := cmd.CompletionWrapper(factory, streams, func(ctx context.Context, manager target.Manager) ([]string, error) {
 					return nil, errors.New("completion failed")
 				})
 
@@ -333,7 +293,7 @@ var _ = Describe("Gardenctl command", func() {
 
 			It("should fail when loading the config", func() {
 				factory.ConfigFile = ""
-				wrapped := cmd.CompletionWrapper(factory, streams, func(ctx context.Context, manager target.Manager, tf target.TargetFlags) ([]string, error) {
+				wrapped := cmd.CompletionWrapper(factory, streams, func(ctx context.Context, manager target.Manager) ([]string, error) {
 					return []string{"foo", "bar"}, nil
 				})
 

@@ -134,13 +134,3 @@ func callIPify(ctx context.Context, domain string) (*net.IP, error) {
 
 	return &netIP, nil
 }
-
-// WithoutTargetFlags returns a copy of the factory without target flags
-func (f *FactoryImpl) WithoutTargetFlags() Factory {
-	return &FactoryImpl{
-		GardenHomeDirectory: f.GardenHomeDirectory,
-		ConfigFile:          f.ConfigFile,
-		TargetFile:          f.TargetFile,
-		TargetFlags:         nil,
-	}
-}
