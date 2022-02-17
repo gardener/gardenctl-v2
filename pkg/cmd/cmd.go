@@ -41,6 +41,7 @@ const (
 
 	gardenHomeFolder = ".garden"
 	configName       = "gardenctl-v2"
+	configExtension  = "yaml"
 	targetFilename   = "target.yaml"
 )
 
@@ -121,7 +122,7 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 	// Do not precalculate what $HOME is for the help text, because it prevents
 	// usage where the current user has no home directory (which might _just_ be
 	// the reason the user chose to specify an explicit config file).
-	flags.StringVar(&f.ConfigFile, "config", "", fmt.Sprintf("config file (default is %s)", filepath.Join("~", gardenHomeFolder, configName+".yaml")))
+	flags.StringVar(&f.ConfigFile, "config", "", fmt.Sprintf("config file (default is %s)", filepath.Join("~", gardenHomeFolder, configName+"."+configExtension)))
 
 	// allow to temporarily re-target a different cluster
 	f.TargetFlags.AddFlags(flags)
@@ -142,28 +143,37 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig(f *util.FactoryImpl) {
-	var err error
+	var configFile string
 
 	if f.ConfigFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(f.ConfigFile)
+		configFile = f.ConfigFile
 	} else {
 		// Find home directory.
 		home, err := homedir.Dir()
 		cobra.CheckErr(err)
 
 		configPath := filepath.Join(home, gardenHomeFolder)
+		configFile = configPath
 
 		// Search config in ~/.garden or in path provided with the env variable GCTL_HOME with name "gardenctl-v2" (without extension) or name from env variable GCTL_CONFIG_NAME.
-		envHomeDir, err := homedir.Expand(os.Getenv(envGardenHomeDir))
-		cobra.CheckErr(err)
+		envHomeDir, ok := os.LookupEnv(envGardenHomeDir)
+		if ok {
+			envHomeDir, err = homedir.Expand(envHomeDir)
+			cobra.CheckErr(err)
+			configFile = envHomeDir
+			viper.AddConfigPath(envHomeDir)
+		}
 
-		viper.AddConfigPath(envHomeDir)
 		viper.AddConfigPath(configPath)
-		if os.Getenv(envConfigName) != "" {
-			viper.SetConfigName(os.Getenv(envConfigName))
+
+		if name, ok := os.LookupEnv(envConfigName); ok {
+			viper.SetConfigName(name)
+			configFile = filepath.Join(configFile, name+"."+configExtension)
 		} else {
 			viper.SetConfigName(configName)
+			configFile = filepath.Join(configFile, configName+"."+configExtension)
 		}
 	}
 
@@ -172,7 +182,11 @@ func initConfig(f *util.FactoryImpl) {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err != nil {
-		klog.Errorf("failed to read config file: %v", err)
+		klog.V(1).Infof("failed to read config file: %v", err)
+
+		f.ConfigFile = configFile
+	} else {
+		f.ConfigFile = viper.ConfigFileUsed()
 	}
 
 	// initialize the factory
@@ -181,13 +195,12 @@ func initConfig(f *util.FactoryImpl) {
 	// but fallback to the system-defined home directory
 	home := os.Getenv(envGardenHomeDir)
 	if len(home) == 0 {
-		home, err = homedir.Dir()
+		dir, err := homedir.Dir()
 		cobra.CheckErr(err)
 
-		home = filepath.Join(home, gardenHomeFolder)
+		home = filepath.Join(dir, gardenHomeFolder)
 	}
 
-	f.ConfigFile = viper.ConfigFileUsed()
 	f.GardenHomeDirectory = home
 
 	sid, err := getSessionID()

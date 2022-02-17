@@ -292,7 +292,7 @@ var _ = Describe("Gardenctl command", func() {
 			})
 
 			It("should fail when loading the config", func() {
-				factory.ConfigFile = ""
+				factory.ConfigFile = string([]byte{0})
 				wrapped := cmd.CompletionWrapper(factory, streams, func(ctx context.Context, manager target.Manager) ([]string, error) {
 					return []string{"foo", "bar"}, nil
 				})
