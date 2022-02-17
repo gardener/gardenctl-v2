@@ -102,7 +102,7 @@ func ProjectNamesForTarget(ctx context.Context, manager target.Manager) ([]strin
 	if err != nil {
 		return nil, err
 	}
-	
+
 	gardenClient, err := manager.GardenClient(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
