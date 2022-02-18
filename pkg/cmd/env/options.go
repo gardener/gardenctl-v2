@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 
@@ -44,6 +45,8 @@ type options struct {
 	ProviderType string
 	// Template is the script template
 	Template Template
+	// Symlink indicates if KUBECONFIG environment variable should point to the session stable symlink
+	Symlink bool
 }
 
 // Complete adapts from the command line args to the data required.
@@ -59,14 +62,15 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 		if err := o.Template.ParseFiles(filename); err != nil {
 			return err
 		}
-	default:
-		manager, err := f.Manager()
-		if err != nil {
-			return err
-		}
-
-		o.SessionDir = manager.SessionDir()
 	}
+
+	manager, err := f.Manager()
+	if err != nil {
+		return err
+	}
+
+	o.Symlink = manager.Configuration().SymlinkTargetKubeconfig()
+	o.SessionDir = manager.SessionDir()
 
 	return nil
 }
@@ -112,14 +116,18 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	if o.CurrentTarget.GardenName() == "" {
-		return target.ErrNoGardenTargeted
-	}
-
 	switch o.ProviderType {
 	case "kubernetes":
+		if !o.Symlink && o.CurrentTarget.GardenName() == "" {
+			return target.ErrNoGardenTargeted
+		}
+
 		return o.runKubernetes(f.Context(), manager)
 	default:
+		if o.CurrentTarget.GardenName() == "" {
+			return target.ErrNoGardenTargeted
+		}
+
 		t := o.CurrentTarget
 		if t.ShootName() == "" {
 			return target.ErrNoShootTargeted
@@ -140,14 +148,27 @@ func (o *options) runKubernetes(ctx context.Context, manager target.Manager) err
 	}
 
 	if !o.Unset {
-		config, err := manager.ClientConfig(ctx, o.CurrentTarget)
-		if err != nil {
-			return err
-		}
+		var filename string
 
-		filename, err := manager.WriteClientConfig(config)
-		if err != nil {
-			return err
+		if o.Symlink {
+			filename = path.Join(o.SessionDir, "kubeconfig.yaml")
+
+			if !o.CurrentTarget.IsEmpty() {
+				_, err := os.Lstat(filename)
+				if os.IsNotExist(err) {
+					return fmt.Errorf("symlink to targeted cluster does not exist: %w", err)
+				}
+			}
+		} else {
+			config, err := manager.ClientConfig(ctx, o.CurrentTarget)
+			if err != nil {
+				return err
+			}
+
+			filename, err = manager.WriteClientConfig(config)
+			if err != nil {
+				return err
+			}
 		}
 
 		data["filename"] = filename

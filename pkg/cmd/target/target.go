@@ -8,8 +8,11 @@ package target
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -230,6 +233,12 @@ func (o *TargetOptions) Run(f util.Factory) error {
 			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted control plane of shoot %q\n", currentTarget.ShootName())
 		} else if o.Kind != "" {
 			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
+		}
+	}
+
+	if manager.Configuration().SymlinkTargetKubeconfig() {
+		if os.Getenv("KUBECONFIG") != filepath.Join(manager.SessionDir(), "kubeconfig.yaml") {
+			fmt.Fprintf(o.IOStreams.Out, "%s The KUBECONFIG environment variable does not point to the current target of gardenctl. Run `gardenctl kubectl-env --help` on how to configure the KUBECONFIG environment variable accordingly\n", color.YellowString("WARN"))
 		}
 	}
 

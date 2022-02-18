@@ -1,23 +1,26 @@
-## gardenctl provider-env bash
+## gardenctl rc powershell
 
-Generate the cloud provider CLI configuration script for bash
+Generate a gardenctl startup script for powershell
 
 ### Synopsis
 
-Generate the cloud provider CLI configuration script for bash.
+Generate a gardenctl startup script for powershell, that contains various tweaks,
+such as setting environment variables, loadings completions and adding some helpful aliases or functions.
 
-To load the cloud provider CLI configuration script in your current shell session:
-$ eval $(gardenctl provider-env bash)
+To load gardenctl startup script for each powershell session, execute once:
+
+    echo 'gardenctl rc powershell | Out-String | Invoke-Expression' >> $profile
 
 
 ```
-gardenctl provider-env bash [flags]
+gardenctl rc powershell [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for bash
+  -h, --help            help for powershell
+  -p, --prefix string   The prefix used for aliases and functions (default "g")
 ```
 
 ### Options inherited from parent commands
@@ -40,12 +43,11 @@ gardenctl provider-env bash [flags]
       --skip-headers                     If true, avoid header prefixes in the log messages
       --skip-log-headers                 If true, avoid headers when opening log files
       --stderrthreshold severity         logs at or above this threshold go to stderr (default 2)
-  -u, --unset                            Generate the script to unset the cloud provider CLI environment variables and logout for 
   -v, --v Level                          number for the log level verbosity
       --vmodule moduleSpec               comma-separated list of pattern=N settings for file-filtered logging
 ```
 
 ### SEE ALSO
 
-* [gardenctl provider-env](gardenctl_provider-env.md)	 - Generate the cloud provider CLI configuration script for the specified shell
+* [gardenctl rc](gardenctl_rc.md)	 - Generate a gardenctl startup script for the specified shell
 

@@ -7,7 +7,7 @@ Generate a script that points KUBECONFIG to the targeted cluster for fish
 Generate a script that points KUBECONFIG to the targeted cluster for fish.
 
 To load the kubectl configuration script in your current shell session:
-$ eval (kubectl-env fish)
+$ eval (gardenctl kubectl-env fish)
 
 
 ```

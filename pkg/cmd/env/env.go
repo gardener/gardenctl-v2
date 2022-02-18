@@ -59,7 +59,7 @@ here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
 			Short: fmt.Sprintf("Generate the cloud provider CLI configuration script for %s", s),
 			Long: fmt.Sprintf("Generate the cloud provider CLI configuration script for %s.\n\n"+
 				"To load the cloud provider CLI configuration script in your current shell session:\n%s\n",
-				s, s.Prompt(runtime.GOOS)+s.EvalCommand(fmt.Sprintf("%s %s", cmd.CommandPath(), s)),
+				s, s.Prompt(runtime.GOOS)+s.EvalCommand(fmt.Sprintf("gardenctl %s %s", cmd.Name(), s)),
 			),
 			RunE: runE,
 		})
@@ -98,7 +98,7 @@ The generated script points the KUBECONFIG environment variable to the currently
 			Short: fmt.Sprintf("Generate a script that points KUBECONFIG to the targeted cluster for %s", s),
 			Long: fmt.Sprintf("Generate a script that points KUBECONFIG to the targeted cluster for %s.\n\n"+
 				"To load the kubectl configuration script in your current shell session:\n%s\n",
-				s, s.Prompt(runtime.GOOS)+s.EvalCommand(fmt.Sprintf("%s %s", cmd.CommandPath(), s)),
+				s, s.Prompt(runtime.GOOS)+s.EvalCommand(fmt.Sprintf("gardenctl %s %s", cmd.Name(), s)),
 			),
 			RunE: runE,
 		})

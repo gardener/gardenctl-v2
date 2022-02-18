@@ -1,0 +1,64 @@
+# This is the configuration for https://github.com/xrstf/gimps.
+
+importOrder: [std, external, project]
+
+exclude:
+  - "vendor/**"
+  - "third_party/**"
+  - "dev/**"
+  - "**/zz_generated.**"
+  - "**/zz_generated_**"
+  - "**/generated.pb.go"
+  - "**/generated.proto"
+  - "**/*_generated.go"
+  - ".git/**"
+  - "hack/boilerplate.go.txt"
+
+aliasRules:
+  - name: client-go
+    expr: '^k8s.io/client-go/tools/([a-z0-9-]+)/api/(v[a-z0-9-]+)$'
+    alias: '$1$2'
+
+  - name: client-go-latest
+    expr: '^k8s.io/client-go/tools/([a-z0-9-]+)/api/(latest)$'
+    alias: '$1$2'
+
+  - name: k8s-api
+    expr: '^k8s.io/api/([a-z0-9-]+)/(v[a-z0-9-]+)$'
+    alias: '$1$2'
+
+  - name: k8s-apimachinery
+    expr: '^k8s.io/apimachinery/pkg/apis/([a-z0-9-]+)/(v[a-z0-9-]+)(/([a-z0-9-]+))?$'
+    alias: '$1$2$4'
+
+  - name: gardener-garden-core-shorter
+    expr: '^github.com/gardener/gardener/pkg/apis/core/(validation)$'
+    alias: 'core$1'
+
+  - name: gardener-garden-core-short
+    expr: '^github.com/gardener/gardener/pkg/apis/core/(v[a-z0-9-]+)/([a-z0-9-]+)$'
+    alias: 'core$1$2'
+
+  - name: gardener-garden-core
+    expr: '^github.com/gardener/gardener/pkg/apis/core(/(v[a-z0-9-]+)(/([a-z0-9-]+))?)?$'
+    alias: 'gardencore$2$4'
+
+  - name: gardener-garden-other
+    expr: '^github.com/gardener/gardener/pkg/apis/([a-z0-9-]+)(/(v[a-z0-9-]+)(/([a-z0-9-]+))?)?$'
+    alias: '$1$3$5'
+
+  - name: gardener-garden-envtest
+    expr: '^github.com/gardener/gardener/pkg/envtest$'
+    alias: 'gardenenvtest'
+
+  - name: gardener-controllermanager
+    expr: '^github.com/gardener/gardener/pkg/controllermanager/apis/([a-z0-9-]+)(/(v[a-z0-9-]+)(/([a-z0-9-]+))?)?$'
+    alias: '$1$3$5'
+
+  - name: gardener-gardenlet
+    expr: '^github.com/gardener/gardener/pkg/gardenlet/apis/([a-z0-9-]+)(/(v[a-z0-9-]+)(/([a-z0-9-]+))?)?$'
+    alias: '$1$3$5'
+
+  - name: gardener-landscaper-gardenlet
+    expr: '^github.com/gardener/gardener/landscaper/pkg/gardenlet/apis/([a-z0-9-]+)(/(v[a-z0-9-]+)(/([a-z0-9-]+))?)?$'
+    alias: '$1$3$5'

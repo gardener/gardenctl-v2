@@ -7,7 +7,7 @@ Generate the cloud provider CLI configuration script for fish
 Generate the cloud provider CLI configuration script for fish.
 
 To load the cloud provider CLI configuration script in your current shell session:
-$ eval (provider-env fish)
+$ eval (gardenctl provider-env fish)
 
 
 ```

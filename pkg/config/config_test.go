@@ -8,10 +8,13 @@ package config_test
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/pointer"
 
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
@@ -28,6 +31,7 @@ var _ = Describe("Config", func() {
 
 	BeforeEach(func() {
 		cfg = &config.Config{
+			LinkKubeconfig: pointer.Bool(false),
 			Gardens: []config.Garden{
 				{
 					Name: clusterIdentity1,
@@ -128,4 +132,34 @@ var _ = Describe("Config", func() {
 		_, err := cfg.Garden("foobar")
 		Expect(err).To(HaveOccurred())
 	})
+
+	DescribeTable("saving and loading the linkKubeconfig configuration", func(actVal *bool, envVal string, expVal *bool) {
+		envKey := "GCTL_LINK_KUBECONFIG"
+		filename := filepath.Join(gardenHomeDir, "gardenctl-v2.yaml")
+		cfg = &config.Config{
+			Filename:       filename,
+			LinkKubeconfig: actVal,
+		}
+		Expect(cfg.Save()).NotTo(HaveOccurred())
+		if envVal == "" {
+			os.Unsetenv(envKey)
+		} else {
+			os.Setenv(envKey, envVal)
+			defer os.Unsetenv(envKey)
+		}
+		cfg, err := config.LoadFromFile(filename)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cfg.Filename).To(Equal(filename))
+		Expect(cfg.LinkKubeconfig).To(Equal(expVal))
+	},
+		Entry("when LinkKubeconfig is nil and envVar is unset", nil, "", nil),
+		Entry("when LinkKubeconfig is nil and envVar is True", nil, "True", pointer.Bool(true)),
+		Entry("when LinkKubeconfig is nil and envVar is False", nil, "False", pointer.Bool(false)),
+		Entry("when LinkKubeconfig is true and envVar is unset", pointer.Bool(true), "", pointer.Bool(true)),
+		Entry("when LinkKubeconfig is true and envVar is True", pointer.Bool(true), "True", pointer.Bool(true)),
+		Entry("when LinkKubeconfig is true and envVar is False", pointer.Bool(true), "False", pointer.Bool(false)),
+		Entry("when LinkKubeconfig is false and envVar is unset", pointer.Bool(false), "", pointer.Bool(false)),
+		Entry("when LinkKubeconfig is false and envVar is True", pointer.Bool(false), "True", pointer.Bool(true)),
+		Entry("when LinkKubeconfig is false and envVar is False", pointer.Bool(false), "False", pointer.Bool(false)),
+	)
 })

@@ -7,7 +7,7 @@ Generate the cloud provider CLI configuration script for zsh
 Generate the cloud provider CLI configuration script for zsh.
 
 To load the cloud provider CLI configuration script in your current shell session:
-$ eval $(provider-env zsh)
+$ eval $(gardenctl provider-env zsh)
 
 
 ```
