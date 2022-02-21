@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -53,7 +54,7 @@ var _ = Describe("Gardenctl command", func() {
 
 		targetFlags = target.NewTargetFlags("", "", "", "", false)
 
-		targetProvider := target.NewTargetProvider(targetFile, nil)
+		targetProvider := target.NewTargetProvider(filepath.Join(sessionDir, "target.yaml"), nil)
 		Expect(targetProvider.Write(target.NewTarget(gardenName1, projectName, "", shootName))).To(Succeed())
 	})
 
@@ -321,7 +322,6 @@ var _ = Describe("Gardenctl command", func() {
 				head := strings.Split(out.String(), "\n")[0]
 				Expect(head).To(Equal("#compdef _gardenctl gardenctl"))
 				Expect(factory.ConfigFile).To(Equal(configFile))
-				Expect(factory.TargetFile).To(Equal(targetFile))
 				Expect(factory.GardenHomeDirectory).To(Equal(gardenHomeDir))
 
 				manager, err := factory.Manager()
