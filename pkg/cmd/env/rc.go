@@ -140,6 +140,8 @@ type rcOptions struct {
 	CmdPath string
 	// Prefix is prefix for shell aliases and functions
 	Prefix string
+	// NoCompletion if the value is true tab completion is not part of the startip script
+	NoCompletion bool
 	// Template is the script template
 	Template Template
 }
@@ -174,8 +176,9 @@ func (o *rcOptions) Validate() error {
 // Run does the actual work of the command.
 func (o *rcOptions) Run(f util.Factory) error {
 	data := map[string]interface{}{
-		"shell":  o.Shell,
-		"prefix": o.Prefix,
+		"shell":        o.Shell,
+		"prefix":       o.Prefix,
+		"noCompletion": o.NoCompletion,
 	}
 
 	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
@@ -184,4 +187,5 @@ func (o *rcOptions) Run(f util.Factory) error {
 // AddFlags binds the command options to a given flagset.
 func (o *rcOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&o.Prefix, "prefix", "p", "g", "The prefix used for aliases and functions")
+	flags.BoolVar(&o.NoCompletion, "no-completion", false, "The startup script should not setup completion")
 }

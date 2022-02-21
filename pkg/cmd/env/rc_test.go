@@ -83,15 +83,18 @@ alias gcv='gardenctl config view -o yaml'
   export GCTL_SESSION_ID=$(uuidgen)
 fi
 if (( $+commands[gardenctl] )); then
-    gctl_completion_file="${fpath[1]}/_gardenctl"
-    if [[ ! -f "$gctl_completion_file" ]]; then
-        gardenctl completion zsh >| "$gctl_completion_file"
-        source "$gctl_completion_file"
-    else
-        source "$gctl_completion_file"
-        gardenctl completion zsh >| "$gctl_completion_file" &|
-    fi
-    unset gctl_completion_file
+  if [ -d "$ZSH_CACHE_DIR/completions" ] && (($fpath[(Ie)$ZSH_CACHE_DIR/completions])); then
+    GCTL_COMPLETION_FILE="$ZSH_CACHE_DIR/completions/_gardenctl"
+  else
+    GCTL_COMPLETION_FILE="${fpath[1]}/_gardenctl"
+  fi
+  if [[ ! -f "$GCTL_COMPLETION_FILE" ]]; then
+    typeset -g -A _comps
+    autoload -Uz _gardenctl
+    _comps[gardenctl]=_gardenctl
+  fi
+  gardenctl completion zsh >| "$GCTL_COMPLETION_FILE" &|
+  unset GCTL_COMPLETION_FILE
 fi
 alias g=gardenctl
 alias gtv='gardenctl target view -o yaml'
