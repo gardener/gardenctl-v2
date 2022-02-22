@@ -178,7 +178,7 @@ type rcOptions struct {
 	CmdPath string
 	// Prefix is prefix for shell aliases and functions
 	Prefix string
-	// NoCompletion if the value is true tab completion is not part of the startip script
+	// NoCompletion if the value is true tab completion is not part of the startup script
 	NoCompletion bool
 	// Template is the script template
 	Template Template
