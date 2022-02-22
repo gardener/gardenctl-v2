@@ -160,7 +160,7 @@ func (g *clientImpl) GetShoot(ctx context.Context, namespace, name string) (*gar
 }
 
 func (g *clientImpl) FindShoot(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.Shoot, error) {
-	opts = append(opts, client.Limit(1))
+	opts = append(opts, client.Limit(2))
 
 	shootList, err := g.ListShoots(ctx, opts...)
 	if err != nil {
