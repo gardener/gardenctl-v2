@@ -7,14 +7,46 @@ Generate a gardenctl startup script for zsh
 Generate a gardenctl startup script for zsh that contains various tweaks,
 such as setting environment variables, loading completions and adding some helpful aliases or functions.
 
-If shell completion is not already enabled in your environment you will need
-to enable it. You can execute the following once:
+If shell completion is not already enabled in your environment you need to add at least this command to your zsh configuration file:
 
-    echo "autoload -U compinit; compinit" >> ~/.zshrc
+    autoload -Uz compinit && compinit
 
-To load gardenctl startup script for each zsh session, execute once:
+To load gardenctl startup script for each zsh session add the following line at the end of the ~/.zshrc file:
 
-    echo 'source <(gardenctl rc zsh)' >> ~/.zshrc
+    source <(gardenctl rc zsh)
+
+You will need to start a new shell for this setup to take effect.
+
+### Zshell frameworks or plugin manager
+
+If you use a framework for managing your zsh configuration you may need to load this code as a custom plugin in your framework.
+
+#### oh-my-zsh:
+Create a file `~/.oh-my-zsh/custom/plugins/gardenctl/gardenctl.plugin.zsh` with the following content:
+
+    if (( $+commands[gardenctl] )); then
+      source <(gardenctl rc zsh)
+    fi
+
+To use it, add gardenctl to the plugins array in your ~/.zshrc file:
+
+    plugins=(... gardenctl)
+
+For more information about oh-my-zsh custom plugins please refer to https://github.com/ohmyzsh/ohmyzsh#custom-plugins-and-themes.
+
+#### zgen:
+Create an oh-my-zsh plugin for gardenctl like described above and load it in the .zshrc file:
+
+    zgen load /path/to/custom/plugins/gardenctl
+
+For more information about loading plugins with zgen please refer to https://github.com/tarjoilija/zgen#load-plugins-and-completions
+
+#### zinit:
+Create an oh-my-zsh plugin for gardenctl like described above and load it in the .zshrc file:
+
+    zinit snippet /path/to/custom/plugins/gardenctl/gardenctl.plugin.zsh
+
+For more information about loading plugins and snippets with zinit please refer to https://github.com/zdharma-continuum/zinit#plugins-and-snippets.
 
 
 ```
@@ -25,6 +57,7 @@ gardenctl rc zsh [flags]
 
 ```
   -h, --help            help for zsh
+      --no-completion   The startup script should not setup completion
   -p, --prefix string   The prefix used for aliases and functions (default "g")
 ```
 

@@ -8,9 +8,8 @@ package cmd
 
 const (
 	EnvGardenHomeDir = envGardenHomeDir
-	EnvSessionID     = envSessionID
+	EnvSessionID     = envPrefix + "_SESSION_ID"
 	ConfigName       = configName
-	TargetFilename   = targetFilename
 )
 
 var (

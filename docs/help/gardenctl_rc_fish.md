@@ -7,9 +7,11 @@ Generate a gardenctl startup script for fish
 Generate a gardenctl startup script for fish that contains various tweaks,
 such as setting environment variables, loading completions and adding some helpful aliases or functions.
 
-To load gardenctl startup script for each fish session, execute once:
+To load gardenctl startup script for each fish session add the following line at the end of the ~/.config/fish/config.fish file:
 
-    echo 'gardenctl rc fish | source' >> ~/.config/fish/config.fish
+    gardenctl rc fish | source
+
+You will need to start a new shell for this setup to take effect.
 
 
 ```
@@ -20,6 +22,7 @@ gardenctl rc fish [flags]
 
 ```
   -h, --help            help for fish
+      --no-completion   The startup script should not setup completion
   -p, --prefix string   The prefix used for aliases and functions (default "g")
 ```
 
