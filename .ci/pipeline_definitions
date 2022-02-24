@@ -34,5 +34,5 @@ gardenctl-v2:
           release_callback: './.ci/update_latest_version'
         slack:
           channel_cfgs:
-          - channel_name: 'C01BKP30K1U' #sap-tech-gardenctl
+          - channel_name: 'G01HZT0LS3A' #gardener-cli
             slack_cfg_name: 'ti_workspace'
