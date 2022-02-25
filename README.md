@@ -41,7 +41,7 @@ arch=amd64 # choose between amd64, arm64
 version=$(curl -s https://raw.githubusercontent.com/gardener/gardenctl-v2/master/LATEST)
 
 # Download gardenctl
-curl -LO https://github.com/gardener/gardenctl-v2/releases/download/$(curl -s https://raw.githubusercontent.com/gardener/gardenctl-v2/master/LATEST)/"gardenctl_v2_${os}_${arch}"
+curl -LO "https://github.com/gardener/gardenctl-v2/releases/download/${version}/gardenctl_v2_${os}_${arch}"
 
 # Make the gardenctl binary executable
 chmod +x "./gardenctl_v2_${os}_${arch}"

@@ -21,33 +21,39 @@ import (
 // Config holds the gardenctl configuration
 type Config struct {
 	// Filename is the name of the gardenctl configuration file
-	Filename string `yaml:"-"`
+	Filename string `yaml:"-" json:"-"`
 	// LinkKubeconfig defines if kubeconfig is symlinked with the target
-	LinkKubeconfig *bool `yaml:"linkKubeconfig,omitempty"`
+	LinkKubeconfig *bool `yaml:"linkKubeconfig,omitempty" json:"linkKubeconfig,omitempty"`
 	// Gardens is a list of known Garden clusters
-	Gardens []Garden `yaml:"gardens"`
+	Gardens []Garden `yaml:"gardens" json:"gardens"`
 }
 
 // Garden represents one garden cluster
 type Garden struct {
 	// Identity is a unique identifier of this Garden that can be used to target this Garden
-	Name string `yaml:"identity"`
+	Name string `yaml:"identity" json:"identity"`
 	// Kubeconfig holds the path for the kubeconfig of the garden cluster
-	Kubeconfig string `yaml:"kubeconfig"`
+	Kubeconfig string `yaml:"kubeconfig" json:"kubeconfig"`
 	// Context overrides the current-context of the garden cluster kubeconfig
 	// +optional
-	Context string `yaml:"context,omitempty"`
+	Context string `yaml:"context,omitempty" json:"context,omitempty"`
 	// Patterns is a list of regex patterns that can be defined to use custom input formats for targeting
 	// Use named capturing groups to match target values.
 	// Supported capturing groups: project, namespace, shoot
 	// +optional
-	Patterns []string `yaml:"patterns,omitempty"`
+	Patterns []string `yaml:"patterns,omitempty" json:"patterns,omitempty"`
 }
 
 // LoadFromFile parses a gardenctl config file and returns a Config struct
 func LoadFromFile(filename string) (*Config, error) {
+	config := &Config{Filename: filename}
+
 	f, err := os.Open(filename)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return config, nil
+		}
+
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer f.Close()
@@ -56,8 +62,6 @@ func LoadFromFile(filename string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to determine filesize: %w", err)
 	}
-
-	config := &Config{Filename: filename}
 
 	if stat.Size() > 0 {
 		if err := yaml.NewDecoder(f).Decode(config); err != nil {

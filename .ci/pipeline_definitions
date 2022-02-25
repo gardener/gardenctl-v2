@@ -36,10 +36,3 @@ gardenctl-v2:
           channel_cfgs:
           - channel_name: 'C01BKP30K1U' #sap-tech-gardenctl
             slack_cfg_name: 'ti_workspace'
-      steps:
-        update-release:
-          execute: 'update-release.py'
-          depends:
-          - 'release'
-          inputs:
-            BINARY_PATH: 'binary_path'

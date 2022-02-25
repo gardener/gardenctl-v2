@@ -62,9 +62,11 @@ func createBashCommand(cmdPath string) *cobra.Command {
 		Long: fmt.Sprintf(`Generate a gardenctl startup script for %[1]s that contains various tweaks,
 such as setting environment variables, loading completions and adding some helpful aliases or functions.
 
-To load gardenctl startup script for each %[1]s session, execute once:
+To load gardenctl startup script for each %[1]s session add the following line at the end of the ~/.bashrc file:
 
-    echo 'source <(%[2]s %[1]s)' >> ~/.bashrc
+    source <(%[2]s %[1]s)
+
+You will need to start a new shell for this setup to take effect.
 `,
 			shell, cmdPath,
 		),
@@ -80,14 +82,46 @@ func createZshCommand(cmdPath string) *cobra.Command {
 		Long: fmt.Sprintf(`Generate a gardenctl startup script for %[1]s that contains various tweaks,
 such as setting environment variables, loading completions and adding some helpful aliases or functions.
 
-If shell completion is not already enabled in your environment you will need
-to enable it. You can execute the following once:
+If shell completion is not already enabled in your environment you need to add at least this command to your zsh configuration file:
 
-    echo "autoload -U compinit; compinit" >> ~/.zshrc
+    autoload -Uz compinit && compinit
 
-To load gardenctl startup script for each %[1]s session, execute once:
+To load gardenctl startup script for each %[1]s session add the following line at the end of the ~/.zshrc file:
 
-    echo 'source <(%[2]s %[1]s)' >> ~/.zshrc
+    source <(%[2]s %[1]s)
+
+You will need to start a new shell for this setup to take effect.
+
+### Zshell frameworks or plugin manager
+
+If you use a framework for managing your zsh configuration you may need to load this code as a custom plugin in your framework.
+
+#### oh-my-zsh:
+Create a file `+"`"+`~/.oh-my-zsh/custom/plugins/gardenctl/gardenctl.plugin.zsh`+"`"+` with the following content:
+
+    if (( $+commands[gardenctl] )); then
+      source <(gardenctl rc zsh)
+    fi
+
+To use it, add gardenctl to the plugins array in your ~/.zshrc file:
+
+    plugins=(... gardenctl)
+
+For more information about oh-my-zsh custom plugins please refer to https://github.com/ohmyzsh/ohmyzsh#custom-plugins-and-themes.
+
+#### zgen:
+Create an oh-my-zsh plugin for gardenctl like described above and load it in the .zshrc file:
+
+    zgen load /path/to/custom/plugins/gardenctl
+
+For more information about loading plugins with zgen please refer to https://github.com/tarjoilija/zgen#load-plugins-and-completions
+
+#### zinit:
+Create an oh-my-zsh plugin for gardenctl like described above and load it in the .zshrc file:
+
+    zinit snippet /path/to/custom/plugins/gardenctl/gardenctl.plugin.zsh
+
+For more information about loading plugins and snippets with zinit please refer to https://github.com/zdharma-continuum/zinit#plugins-and-snippets.
 `,
 			shell, cmdPath,
 		),
@@ -103,9 +137,11 @@ func createFishCommand(cmdPath string) *cobra.Command {
 		Long: fmt.Sprintf(`Generate a gardenctl startup script for %[1]s that contains various tweaks,
 such as setting environment variables, loading completions and adding some helpful aliases or functions.
 
-To load gardenctl startup script for each %[1]s session, execute once:
+To load gardenctl startup script for each %[1]s session add the following line at the end of the ~/.config/fish/config.fish file:
 
-    echo '%[2]s %[1]s | source' >> ~/.config/fish/config.fish
+    %[2]s %[1]s | source
+
+You will need to start a new shell for this setup to take effect.
 `,
 			shell, cmdPath,
 		),
@@ -121,9 +157,11 @@ func createPowershellCommand(cmdPath string) *cobra.Command {
 		Long: fmt.Sprintf(`Generate a gardenctl startup script for %[1]s, that contains various tweaks,
 such as setting environment variables, loadings completions and adding some helpful aliases or functions.
 
-To load gardenctl startup script for each %[1]s session, execute once:
+To load gardenctl startup script for each %[1]s session add the following line at the end of the $profile file:
 
-    echo '%[2]s %[1]s | Out-String | Invoke-Expression' >> $profile
+    %[2]s %[1]s | Out-String | Invoke-Expression
+
+You will need to start a new shell for this setup to take effect.
 `,
 			shell, cmdPath,
 		),
@@ -140,6 +178,8 @@ type rcOptions struct {
 	CmdPath string
 	// Prefix is prefix for shell aliases and functions
 	Prefix string
+	// NoCompletion if the value is true tab completion is not part of the startup script
+	NoCompletion bool
 	// Template is the script template
 	Template Template
 }
@@ -174,8 +214,9 @@ func (o *rcOptions) Validate() error {
 // Run does the actual work of the command.
 func (o *rcOptions) Run(f util.Factory) error {
 	data := map[string]interface{}{
-		"shell":  o.Shell,
-		"prefix": o.Prefix,
+		"shell":        o.Shell,
+		"prefix":       o.Prefix,
+		"noCompletion": o.NoCompletion,
 	}
 
 	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
@@ -184,4 +225,5 @@ func (o *rcOptions) Run(f util.Factory) error {
 // AddFlags binds the command options to a given flagset.
 func (o *rcOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&o.Prefix, "prefix", "p", "g", "The prefix used for aliases and functions")
+	flags.BoolVar(&o.NoCompletion, "no-completion", false, "The startup script should not setup completion")
 }

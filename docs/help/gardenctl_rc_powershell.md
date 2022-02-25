@@ -7,9 +7,11 @@ Generate a gardenctl startup script for powershell
 Generate a gardenctl startup script for powershell, that contains various tweaks,
 such as setting environment variables, loadings completions and adding some helpful aliases or functions.
 
-To load gardenctl startup script for each powershell session, execute once:
+To load gardenctl startup script for each powershell session add the following line at the end of the $profile file:
 
-    echo 'gardenctl rc powershell | Out-String | Invoke-Expression' >> $profile
+    gardenctl rc powershell | Out-String | Invoke-Expression
+
+You will need to start a new shell for this setup to take effect.
 
 
 ```
@@ -20,6 +22,7 @@ gardenctl rc powershell [flags]
 
 ```
   -h, --help            help for powershell
+      --no-completion   The startup script should not setup completion
   -p, --prefix string   The prefix used for aliases and functions (default "g")
 ```
 

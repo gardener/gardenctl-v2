@@ -12,10 +12,23 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
+)
+
+const (
+	envSessionID     = "GCTL_SESSION_ID"
+	envTermSessionID = "TERM_SESSION_ID"
+)
+
+var (
+	sidRegexp  = regexp.MustCompile(`^[\w-]{1,128}$`)
+	uuidRegexp = regexp.MustCompile(`([a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})`)
 )
 
 //go:generate mockgen -destination=./mocks/mock_factory.go -package=mocks github.com/gardener/gardenctl-v2/internal/util Factory
@@ -52,12 +65,6 @@ type FactoryImpl struct {
 	// if empty.
 	ConfigFile string
 
-	// SessionDirectory is the temporary directory where the target fileand the kubeconfig files are located.
-	SessionDirectory string
-
-	// TargetFile is the filename where the currently active target is located.
-	TargetFile string
-
 	// TargetFlags can be used to completely override the target configuration
 	// stored on the filesystem via a CLI flags.
 	TargetFlags target.TargetFlags
@@ -75,10 +82,22 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	targetProvider := target.NewTargetProvider(f.TargetFile, f.TargetFlags)
+	sid, err := getSessionID()
+	if err != nil {
+		return nil, err
+	}
+
+	sessionDirectory := filepath.Join(os.TempDir(), "garden", sid)
+
+	err = os.MkdirAll(sessionDirectory, 0700)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create session directory: %w", err)
+	}
+
+	targetProvider := target.NewTargetProvider(filepath.Join(sessionDirectory, "target.yaml"), f.TargetFlags)
 	clientProvider := target.NewClientProvider()
 
-	return target.NewManager(cfg, targetProvider, clientProvider, f.SessionDirectory)
+	return target.NewManager(cfg, targetProvider, clientProvider, sessionDirectory)
 }
 
 func (f *FactoryImpl) GardenHomeDir() string {
@@ -139,4 +158,23 @@ func callIPify(ctx context.Context, domain string) (*net.IP, error) {
 
 func (f *FactoryImpl) TF() target.TargetFlags {
 	return f.TargetFlags
+}
+
+func getSessionID() (string, error) {
+	if value, ok := os.LookupEnv(envSessionID); ok {
+		if sidRegexp.MatchString(value) {
+			return value, nil
+		}
+
+		return "", fmt.Errorf("Environment variable %s must only contain alphanumeric characters, underscore and dash and have a minimum length of 1 and a maximum length of 128", envSessionID)
+	}
+
+	if value, ok := os.LookupEnv(envTermSessionID); ok {
+		match := uuidRegexp.FindStringSubmatch(strings.ToLower(value))
+		if len(match) > 1 {
+			return match[1], nil
+		}
+	}
+
+	return "", fmt.Errorf("Environment variable %s is required. Use \"gardenctl help\" for more information about the requirements of gardenctl", envSessionID)
 }

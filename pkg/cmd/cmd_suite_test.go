@@ -28,7 +28,6 @@ var (
 	gardenHomeDir string
 	sessionDir    string
 	configFile    string
-	targetFile    string
 	cfg           *config.Config
 )
 
@@ -50,7 +49,6 @@ var _ = BeforeSuite(func() {
 	Expect(os.Setenv(cmd.EnvSessionID, sessionID)).To(Succeed())
 	sessionDir = filepath.Join(os.TempDir(), "garden", sessionID)
 	Expect(os.MkdirAll(sessionDir, os.ModePerm))
-	targetFile = filepath.Join(sessionDir, cmd.TargetFilename)
 	cfg = &config.Config{
 		Filename: configFile,
 	}

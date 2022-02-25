@@ -2,9 +2,11 @@
 if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
+{{if not .noCompletion -}}
 source <(gardenctl completion {{.shell}})
 alias {{.prefix}}=gardenctl
 complete -o default -F __start_gardenctl {{.prefix}}
+{{end -}}
 alias {{.prefix}}tv='gardenctl target view -o yaml'
 alias {{.prefix}}tc='gardenctl target control-plane'
 alias {{.prefix}}tc-='gardenctl target unset control-plane'
@@ -17,17 +19,22 @@ alias {{.prefix}}cv='gardenctl config view -o yaml'
 if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
+{{if not .noCompletion -}}
 if (( $+commands[gardenctl] )); then
-    gctl_completion_file="${fpath[1]}/_gardenctl"
-    if [[ ! -f "$gctl_completion_file" ]]; then
-        gardenctl completion {{.shell}} >| "$gctl_completion_file"
-        source "$gctl_completion_file"
-    else
-        source "$gctl_completion_file"
-        gardenctl completion {{.shell}} >| "$gctl_completion_file" &|
-    fi
-    unset gctl_completion_file
+  if [ -d "$ZSH_CACHE_DIR/completions" ] && (($fpath[(Ie)$ZSH_CACHE_DIR/completions])); then
+    GCTL_COMPLETION_FILE="$ZSH_CACHE_DIR/completions/_gardenctl"
+  else
+    GCTL_COMPLETION_FILE="${fpath[1]}/_gardenctl"
+  fi
+  if [[ ! -f "$GCTL_COMPLETION_FILE" ]]; then
+    typeset -g -A _comps
+    autoload -Uz _gardenctl
+    _comps[gardenctl]=_gardenctl
+  fi
+  gardenctl completion zsh >| "$GCTL_COMPLETION_FILE" &|
+  unset GCTL_COMPLETION_FILE
 fi
+{{end -}}
 alias {{.prefix}}=gardenctl
 alias {{.prefix}}tv='gardenctl target view -o yaml'
 alias {{.prefix}}tc='gardenctl target control-plane'
@@ -41,9 +48,11 @@ alias {{.prefix}}cv='gardenctl config view -o yaml'
 if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ];
   set -gx GCTL_SESSION_ID (uuidgen)
 end
+{{if not .noCompletion -}}
 gardenctl completion {{.shell}} | source
 alias {{.prefix}}=gardenctl
 complete -c {{.prefix}} -w gardenctl
+{{end -}}
 alias {{.prefix}}tv='gardenctl target view -o yaml'
 alias {{.prefix}}tc='gardenctl target control-plane'
 alias {{.prefix}}tc-='gardenctl target unset control-plane'
@@ -57,6 +66,7 @@ if ( !(Test-Path Env:GCTL_SESSION_ID) -and !(Test-Path Env:TERM_SESSION_ID) ) {
   $Env:GCTL_SESSION_ID = [guid]::NewGuid().ToString()
 }
 Set-Alias -Name {{.prefix}} -Value (get-command gardenctl).Path -Option AllScope -Force
+{{if not .noCompletion -}}
 function Gardenctl-Completion-Powershell {
   $s = (gardenctl completion {{.shell}})
   @(
@@ -66,6 +76,7 @@ function Gardenctl-Completion-Powershell {
   )
 }
 Gardenctl-Completion-Powershell | Out-String | Invoke-Expression
+{{end -}}
 function Gardenctl-Target-View {
   gardenctl target view -o yaml
 }

@@ -11,8 +11,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -34,17 +32,10 @@ const (
 	envPrefix        = "GCTL"
 	envGardenHomeDir = envPrefix + "_HOME"
 	envConfigName    = envPrefix + "_CONFIG_NAME"
-	envSessionID     = envPrefix + "_SESSION_ID"
-	envTermSessionID = "TERM_SESSION_ID"
 
 	gardenHomeFolder = ".garden"
 	configName       = "gardenctl-v2"
-	targetFilename   = "target.yaml"
-)
-
-var (
-	sidRegexp  = regexp.MustCompile(`^[\w-]{1,128}$`)
-	uuidRegexp = regexp.MustCompile(`([a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})`)
+	configExtension  = "yaml"
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -119,7 +110,7 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 	// Do not precalculate what $HOME is for the help text, because it prevents
 	// usage where the current user has no home directory (which might _just_ be
 	// the reason the user chose to specify an explicit config file).
-	flags.StringVar(&f.ConfigFile, "config", "", fmt.Sprintf("config file (default is %s)", filepath.Join("~", gardenHomeFolder, configName+".yaml")))
+	flags.StringVar(&f.ConfigFile, "config", "", fmt.Sprintf("config file (default is %s)", filepath.Join("~", gardenHomeFolder, configName+"."+configExtension)))
 
 	// add subcommands
 	cmd.AddCommand(cmdssh.NewCmdSSH(f, ioStreams))
@@ -135,28 +126,37 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig(f *util.FactoryImpl) {
-	var err error
+	var configFile string
 
 	if f.ConfigFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(f.ConfigFile)
+		configFile = f.ConfigFile
 	} else {
 		// Find home directory.
 		home, err := homedir.Dir()
 		cobra.CheckErr(err)
 
 		configPath := filepath.Join(home, gardenHomeFolder)
+		configFile = configPath
 
 		// Search config in ~/.garden or in path provided with the env variable GCTL_HOME with name "gardenctl-v2" (without extension) or name from env variable GCTL_CONFIG_NAME.
-		envHomeDir, err := homedir.Expand(os.Getenv(envGardenHomeDir))
-		cobra.CheckErr(err)
+		envHomeDir, ok := os.LookupEnv(envGardenHomeDir)
+		if ok {
+			envHomeDir, err = homedir.Expand(envHomeDir)
+			cobra.CheckErr(err)
+			configFile = envHomeDir
+			viper.AddConfigPath(envHomeDir)
+		}
 
-		viper.AddConfigPath(envHomeDir)
 		viper.AddConfigPath(configPath)
-		if os.Getenv(envConfigName) != "" {
-			viper.SetConfigName(os.Getenv(envConfigName))
+
+		if name, ok := os.LookupEnv(envConfigName); ok {
+			viper.SetConfigName(name)
+			configFile = filepath.Join(configFile, name+"."+configExtension)
 		} else {
 			viper.SetConfigName(configName)
+			configFile = filepath.Join(configFile, configName+"."+configExtension)
 		}
 	}
 
@@ -165,7 +165,11 @@ func initConfig(f *util.FactoryImpl) {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err != nil {
-		klog.Errorf("failed to read config file: %v", err)
+		klog.V(1).Infof("failed to read config file: %v", err)
+
+		f.ConfigFile = configFile
+	} else {
+		f.ConfigFile = viper.ConfigFileUsed()
 	}
 
 	// initialize the factory
@@ -174,23 +178,13 @@ func initConfig(f *util.FactoryImpl) {
 	// but fallback to the system-defined home directory
 	home := os.Getenv(envGardenHomeDir)
 	if len(home) == 0 {
-		home, err = homedir.Dir()
+		dir, err := homedir.Dir()
 		cobra.CheckErr(err)
 
-		home = filepath.Join(home, gardenHomeFolder)
+		home = filepath.Join(dir, gardenHomeFolder)
 	}
 
-	f.ConfigFile = viper.ConfigFileUsed()
 	f.GardenHomeDirectory = home
-
-	sid, err := getSessionID()
-	cobra.CheckErr(err)
-
-	f.SessionDirectory = filepath.Join(os.TempDir(), "garden", sid)
-	err = os.MkdirAll(f.SessionDirectory, 0700)
-	cobra.CheckErr(err)
-
-	f.TargetFile = filepath.Join(f.SessionDirectory, targetFilename)
 }
 
 // addKlogFlags adds flags from k8s.io/klog
@@ -201,23 +195,4 @@ func addKlogFlags(fs *pflag.FlagSet) {
 	local.VisitAll(func(fl *flag.Flag) {
 		fs.AddGoFlag(fl)
 	})
-}
-
-func getSessionID() (string, error) {
-	if value, ok := os.LookupEnv(envSessionID); ok {
-		if sidRegexp.MatchString(value) {
-			return value, nil
-		}
-
-		return "", fmt.Errorf("Environment variable %s must only contain alphanumeric characters, underscore and dash and have a minimum length of 1 and a maximum length of 128", envSessionID)
-	}
-
-	if value, ok := os.LookupEnv(envTermSessionID); ok {
-		match := uuidRegexp.FindStringSubmatch(strings.ToLower(value))
-		if len(match) > 1 {
-			return match[1], nil
-		}
-	}
-
-	return "", fmt.Errorf("Environment variable %s is required. Use \"gardenctl help\" for more information about the requirements of gardenctl", envSessionID)
 }
