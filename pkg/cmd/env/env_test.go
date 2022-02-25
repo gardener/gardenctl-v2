@@ -12,11 +12,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 
-	"github.com/gardener/gardenctl-v2/pkg/target"
-
 	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/env"
+	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 var _ = Describe("Env Commands", func() {

@@ -12,10 +12,6 @@ import (
 	"fmt"
 	"strings"
 
-	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
-
-	"github.com/gardener/gardenctl-v2/pkg/target"
-
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -25,6 +21,8 @@ import (
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	basemocks "github.com/gardener/gardenctl-v2/pkg/cmd/base/mocks"
+	"github.com/gardener/gardenctl-v2/pkg/target"
+	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
 
 var _ = Describe("Base Options", func() {

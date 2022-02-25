@@ -12,15 +12,13 @@ import (
 	"errors"
 	"fmt"
 
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-
-	"github.com/gardener/gardenctl-v2/pkg/target"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 //go:generate mockgen -destination=./mocks/mock_options.go -package=mocks github.com/gardener/gardenctl-v2/pkg/cmd/base CommandOptions
