@@ -33,8 +33,8 @@ type CommandOptions interface {
 	Validate() error
 	// Run does the actual work of the command.
 	Run(util.Factory) error
-	// AddOutputFlags adds flags to adjust the output to a cobra command.
-	AddOutputFlags(*pflag.FlagSet)
+	// AddOutputFlag adds flag to adjust the output to a cobra command.
+	AddOutputFlag(*pflag.FlagSet)
 	// AddTargetOverrideFlags adds flags to adjust the output to a cobra command.
 	AddTargetOverrideFlags(f util.Factory, flags *pflag.FlagSet)
 	// RegisterTargetFlagCompletions registers completions for all target flags added to this command.
@@ -97,8 +97,8 @@ func NewOptions(ioStreams util.IOStreams) *Options {
 	}
 }
 
-// AddOutputFlags adds flags to adjust the output to a cobra command
-func (o *Options) AddOutputFlags(flags *pflag.FlagSet) {
+// AddOutputFlag adds flag to adjust the output to a cobra command
+func (o *Options) AddOutputFlag(flags *pflag.FlagSet) {
 	flags.StringVarP(&o.Output, "output", "o", o.Output, "One of 'yaml' or 'json'.")
 }
 

@@ -90,7 +90,7 @@ var _ = Describe("Config Subcommand View", func() {
 		Describe("AddFlags", func() {
 			It("should add the output flag", func() {
 				flags := &pflag.FlagSet{}
-				options.AddOutputFlags(flags)
+				options.AddOutputFlag(flags)
 				Expect(flags.Lookup("output")).NotTo(BeNil())
 			})
 		})

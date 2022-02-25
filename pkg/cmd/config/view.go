@@ -29,7 +29,7 @@ gardenctl config view`,
 		RunE: base.WrapRunE(o, f),
 	}
 
-	o.AddOutputFlags(cmd.Flags())
+	o.AddOutputFlag(cmd.Flags())
 
 	return cmd
 }

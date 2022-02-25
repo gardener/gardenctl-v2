@@ -49,7 +49,7 @@ gardenctl target value/that/matches/pattern --control-plane`,
 	cmd.AddCommand(NewCmdUnset(f, NewUnsetOptions(ioStreams)))
 	cmd.AddCommand(NewCmdView(f, NewViewOptions(ioStreams)))
 
-	o.AddOutputFlags(cmd.Flags())
+	o.AddOutputFlag(cmd.Flags())
 
 	f.TF().AddTargetGardenFlag(cmd.Flags())
 	f.TF().AddTargetProjectFlag(cmd.Flags())

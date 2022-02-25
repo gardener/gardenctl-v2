@@ -77,5 +77,5 @@ func NewVersionOptions(ioStreams util.IOStreams) *VersionOptions {
 // AddFlags adds flags to adjust the output to a cobra command
 func (o *VersionOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.BoolVar(&o.Short, "short", o.Short, "If true, print just the version number.")
-	o.Options.AddOutputFlags(flags)
+	o.Options.AddOutputFlag(flags)
 }

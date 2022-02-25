@@ -34,7 +34,7 @@ gardenctl target control-plane --garden my-garden --project my-project --shoot m
 		RunE:              base.WrapRunE(o, f),
 	}
 
-	o.AddOutputFlags(cmd.Flags())
+	o.AddOutputFlag(cmd.Flags())
 
 	f.TF().AddTargetGardenFlag(cmd.Flags())
 	f.TF().AddTargetProjectFlag(cmd.Flags())

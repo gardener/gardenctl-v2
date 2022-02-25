@@ -37,16 +37,16 @@ func (m *MockCommandOptions) EXPECT() *MockCommandOptionsMockRecorder {
 	return m.recorder
 }
 
-// AddOutputFlags mocks base method.
-func (m *MockCommandOptions) AddOutputFlags(arg0 *pflag.FlagSet) {
+// AddOutputFlag mocks base method.
+func (m *MockCommandOptions) AddOutputFlag(arg0 *pflag.FlagSet) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "AddOutputFlags", arg0)
+	m.ctrl.Call(m, "AddOutputFlag", arg0)
 }
 
-// AddOutputFlags indicates an expected call of AddOutputFlags.
-func (mr *MockCommandOptionsMockRecorder) AddOutputFlags(arg0 interface{}) *gomock.Call {
+// AddOutputFlag indicates an expected call of AddOutputFlag.
+func (mr *MockCommandOptionsMockRecorder) AddOutputFlag(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddOutputFlags", reflect.TypeOf((*MockCommandOptions)(nil).AddOutputFlags), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddOutputFlag", reflect.TypeOf((*MockCommandOptions)(nil).AddOutputFlag), arg0)
 }
 
 // AddTargetOverrideFlags mocks base method.
