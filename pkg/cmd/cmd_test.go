@@ -49,7 +49,6 @@ var _ = Describe("Root Command", func() {
 		head := strings.Split(out.String(), "\n")[0]
 		Expect(head).To(Equal("#compdef _gardenctl gardenctl"))
 		Expect(factory.ConfigFile).To(Equal(configFile))
-		Expect(factory.TargetFile).To(Equal(targetFile))
 		Expect(factory.GardenHomeDirectory).To(Equal(gardenHomeDir))
 	})
 })

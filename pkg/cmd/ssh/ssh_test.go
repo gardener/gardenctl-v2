@@ -258,8 +258,6 @@ var _ = Describe("SSH Command", func() {
 		})
 
 		It("should print the SSH command and then wait for user interrupt", func() {
-			cmd := ssh.NewCmdSSH(factory, streams)
-
 			// simulate an external controller processing the bastion and proving a successful status
 			go waitForBastionThenPatchStatus(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, func(status *operationsv1alpha1.BastionStatus) {
 				status.Ingress = &corev1.LoadBalancerIngress{
@@ -273,8 +271,13 @@ var _ = Describe("SSH Command", func() {
 				}}
 			})
 
+			sshOptions := ssh.NewSSHOptions(streams)
+
+			// complete the options
+			Expect(sshOptions.Complete(factory, nil, nil)).To(Succeed())
+
 			// let the magic happen
-			Expect(cmd.RunE(cmd, nil)).To(Succeed())
+			Expect(sshOptions.Run(factory)).To(Succeed())
 
 			// assert the output
 			Expect(out.String()).To(ContainSubstring(bastionName))
@@ -288,11 +291,11 @@ var _ = Describe("SSH Command", func() {
 			Expect(gardenClient.Get(ctx, key, bastion)).NotTo(Succeed())
 
 			// assert that no temporary SSH keypair remained on disk
-			//_, err := os.Stat(options.SSHPublicKeyFile)
-			//Expect(err).To(HaveOccurred())
+			_, err := os.Stat(sshOptions.SSHPublicKeyFile)
+			Expect(err).To(HaveOccurred())
 
-			//_, err = os.Stat(options.SSHPrivateKeyFile)
-			//Expect(err).To(HaveOccurred())
+			_, err = os.Stat(sshOptions.SSHPrivateKeyFile)
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should connect to a given node", func() {
@@ -347,13 +350,6 @@ var _ = Describe("SSH Command", func() {
 			bastion := &operationsv1alpha1.Bastion{}
 
 			Expect(gardenClient.Get(ctx, key, bastion)).NotTo(Succeed())
-
-			// assert that no temporary SSH keypair remained on disk
-			//_, err := os.Stat(options.SSHPublicKeyFile)
-			//Expect(err).To(HaveOccurred())
-
-			//_, err = os.Stat(options.SSHPrivateKeyFile)
-			//Expect(err).To(HaveOccurred())
 		})
 
 		It("should keep the bastion alive", func() {
