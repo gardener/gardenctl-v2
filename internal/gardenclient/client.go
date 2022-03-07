@@ -15,6 +15,7 @@ import (
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -257,7 +258,27 @@ func (g *clientImpl) GetConfigMap(ctx context.Context, namespace, name string) (
 	return cm, nil
 }
 
+func (g *clientImpl) GetManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.ManagedSeed, error) {
+	managedSeed := &seedmanagementv1alpha1.ManagedSeed{}
+	key := types.NamespacedName{Name: name, Namespace: "garden"} // Currently, managed seeds are restricted to the garden namespace
+
+	if err := g.c.Get(ctx, key, managedSeed); err != nil {
+		return nil, fmt.Errorf("failed to get managed seed %v: %w", name, err)
+	}
+
+	return managedSeed, nil
+}
+
 func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clientcmd.ClientConfig, error) {
+	managedSeed, err := g.GetManagedSeed(ctx, name)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+
+	if managedSeed != nil {
+		return g.GetShootClientConfig(ctx, managedSeed.Namespace, managedSeed.Name)
+	}
+
 	key := types.NamespacedName{Name: name}
 
 	secret, err := g.GetSecret(ctx, "garden", name+".login")

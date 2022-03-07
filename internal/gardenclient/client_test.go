@@ -9,6 +9,7 @@ package gardenclient_test
 import (
 	"context"
 
+	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -49,8 +50,47 @@ var _ = Describe("Client", func() {
 					"kubeconfig": createTestKubeconfig("seed-2"),
 				},
 			}
+			managedSeed1Secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "managedSeed-1.login",
+					Namespace: "garden",
+				},
+				Data: map[string][]byte{
+					"kubeconfig": createTestKubeconfig("managedSeed-1"),
+				},
+			}
+			managedSeed1 := &seedmanagementv1alpha1.ManagedSeed{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "managedSeed-1",
+					Namespace: "garden",
+				},
+			}
+			ms1ShootConfigMap := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "managedSeed-1.kubeconfig",
+					Namespace: "garden",
+				},
+				Data: map[string]string{
+					"kubeconfig": string(createTestKubeconfig("managedSeed-1")),
+				},
+			}
+			managedSeed2 := &seedmanagementv1alpha1.ManagedSeed{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "managedSeed-2",
+					Namespace: "garden",
+				},
+			}
+			ms2ShootConfigMap := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "managedSeed-2.kubeconfig",
+					Namespace: "garden",
+				},
+				Data: map[string]string{
+					"kubeconfig": string(createTestKubeconfig("managedSeed-2")),
+				},
+			}
 			gardenClient = gardenclient.NewGardenClient(
-				fake.NewClientWithObjects(oidcSecret, loginSecret),
+				fake.NewClientWithObjects(oidcSecret, loginSecret, managedSeed1Secret, managedSeed1, ms1ShootConfigMap, managedSeed2, ms2ShootConfigMap),
 			)
 		})
 
@@ -64,6 +104,7 @@ var _ = Describe("Client", func() {
 		},
 			Entry("and the secretName has suffix .oidc", "seed-1"),
 			Entry("and the secretName has suffix .login", "seed-2"),
+			Entry("and seed is a managed seed, return shoot client config", "managedSeed-1"),
 		)
 
 		Context("when the secret does not exist", func() {
@@ -71,6 +112,14 @@ var _ = Describe("Client", func() {
 				_, err := gardenClient.GetSeedClientConfig(ctx, "seed-3")
 				Expect(err).To(HaveOccurred())
 				Expect(apierrors.IsNotFound(err)).To(BeTrue())
+			})
+			It("and seed is a managed seed, return shoot client config", func() {
+				clientConfig, err := gardenClient.GetSeedClientConfig(ctx, "managedSeed-2")
+				Expect(err).NotTo(HaveOccurred())
+
+				rawConfig, err := clientConfig.RawConfig()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(rawConfig.CurrentContext).To(Equal("managedSeed-2"))
 			})
 		})
 	})
