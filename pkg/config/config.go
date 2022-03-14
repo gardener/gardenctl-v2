@@ -17,6 +17,8 @@ import (
 	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+
+	"github.com/gardener/gardenctl-v2/pkg/acc"
 )
 
 // Config holds the gardenctl configuration
@@ -43,6 +45,8 @@ type Garden struct {
 	// Supported capturing groups: project, namespace, shoot
 	// +optional
 	Patterns []string `yaml:"patterns,omitempty" json:"patterns,omitempty"`
+	// AccessRestrictions is a list of access restriction definitions
+	AccessRestrictions []acc.AccessRestriction `yaml:"accessRestrictions,omitempty" json:"accessRestrictions,omitempty"`
 }
 
 // LoadFromFile parses a gardenctl config file and returns a Config struct
