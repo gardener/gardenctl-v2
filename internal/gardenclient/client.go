@@ -11,6 +11,11 @@ import (
 	"errors"
 	"fmt"
 
+	openstackinstall "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/install"
+	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
+	gardencore "github.com/gardener/gardener/pkg/apis/core"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,12 +26,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	openstackinstall "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/install"
-	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
-	gardencore "github.com/gardener/gardener/pkg/apis/core"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 )
 
 var decoder runtime.Decoder
@@ -77,6 +76,9 @@ type Client interface {
 	GetSecret(ctx context.Context, namespace, name string) (*corev1.Secret, error)
 	// GetConfigMap returns a Kubernetes configmap resource
 	GetConfigMap(ctx context.Context, namespace, name string) (*corev1.ConfigMap, error)
+
+	// GetManagedSeed returns a Gardener Seed Management ManagedSeed resource
+	GetManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.ManagedSeed, error)
 
 	// RuntimeClient returns the underlying kubernetes runtime client
 	// TODO: Remove this when we switched all APIs to the new gardenclient
@@ -283,6 +285,7 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clie
 		}
 
 		if clientConfig != nil {
+			// TODO write notification message
 			return clientConfig, nil
 		}
 	}

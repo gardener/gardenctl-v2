@@ -26,6 +26,21 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fatih/color"
+	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh"
+	cryptossh "golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/cli-runtime/pkg/printers"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
 	corev1alpha1helper "github.com/gardener/gardener/pkg/apis/core/v1alpha1/helper"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -34,18 +49,6 @@ import (
 	"github.com/gardener/gardener/pkg/utils"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
 	"github.com/gardener/gardener/pkg/utils/secrets"
-	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh"
-	cryptossh "golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/agent"
-	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/cli-runtime/pkg/printers"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
@@ -419,17 +422,29 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	if currentTarget.ShootName() == "" {
-		return errors.New("no Shoot cluster targeted")
-	}
-
-	printTargetInformation(o.IOStreams.Out, currentTarget)
-
 	// create client for the garden cluster
 	gardenClient, err := manager.GardenClient(currentTarget.GardenName())
 	if err != nil {
 		return err
 	}
+
+	if currentTarget.ShootName() == "" {
+		if currentTarget.SeedName() != "" {
+			managedSeed, err := gardenClient.GetManagedSeed(f.Context(), currentTarget.SeedName())
+			if err != nil && !apierrors.IsNotFound(err) {
+				return err
+			}
+
+			if managedSeed != nil {
+				fmt.Fprintf(o.IOStreams.Out, "%s The targted seed is a managed seed. Preparing access to referred shoot %q\n", color.BlueString("INFO"), managedSeed.Name)
+				currentTarget = currentTarget.WithProjectName("garden").WithShootName(managedSeed.Name)
+			} else {
+				return target.ErrNoShootTargeted
+			}
+		}
+	}
+
+	printTargetInformation(o.IOStreams.Out, currentTarget)
 
 	// fetch targeted shoot (ctx is cancellable to stop the keep alive goroutine later)
 	ctx, cancel := context.WithCancel(f.Context())
@@ -664,7 +679,7 @@ func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
 	}
 
 	if currentTarget.ShootName() == "" {
-		return nil, errors.New("no Shoot cluster targeted")
+		return nil, target.ErrNoShootTargeted
 	}
 
 	// create client for the shoot cluster

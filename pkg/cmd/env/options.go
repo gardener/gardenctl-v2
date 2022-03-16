@@ -15,10 +15,13 @@ import (
 	"path/filepath"
 	"runtime"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -129,13 +132,26 @@ func (o *options) Run(f util.Factory) error {
 		}
 
 		t := o.CurrentTarget
-		if t.ShootName() == "" {
-			return target.ErrNoShootTargeted
-		}
 
 		client, err := manager.GardenClient(t.GardenName())
 		if err != nil {
 			return fmt.Errorf("failed to create garden cluster client: %w", err)
+		}
+
+		if t.ShootName() == "" {
+			if t.SeedName() != "" {
+				managedSeed, err := client.GetManagedSeed(f.Context(), t.SeedName())
+				if err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
+
+				if managedSeed != nil {
+					fmt.Fprintf(o.IOStreams.Out, "%s The targted seed is a managed seed. Providing cloud provider CLI configuration script for referred shoot %q\n", color.BlueString("INFO"), managedSeed.Name)
+					o.CurrentTarget = o.CurrentTarget.WithProjectName("garden").WithShootName(managedSeed.Name)
+				} else {
+					return target.ErrNoShootTargeted
+				}
+			}
 		}
 
 		return o.run(f.Context(), client)
