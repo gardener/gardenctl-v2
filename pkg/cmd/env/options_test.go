@@ -14,8 +14,8 @@ import (
 	"path/filepath"
 	"regexp"
 
-	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
+
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -27,6 +27,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/pointer"
+
+	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 
 	gardenclientmocks "github.com/gardener/gardenctl-v2/internal/gardenclient/mocks"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
@@ -390,6 +393,28 @@ var _ = Describe("Env Commands - Options", func() {
 						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.seed.bash"), sessionDir)))
 					})
 				})
+
+				Context("and the seed is a managed seed", func() {
+					JustBeforeEach(func() {
+						managedSeed := &seedmanagementv1alpha1.ManagedSeed{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "seed",
+								Namespace: "garden",
+							},
+						}
+
+						factory.EXPECT().Context().Return(ctx)
+						manager.EXPECT().CurrentTarget().Return(t.WithProjectName("").WithShootName(""), nil)
+						client.EXPECT().GetManagedSeed(ctx, "seed").Return(managedSeed, nil)
+						currentTarget := t.WithShootName("seed").WithProjectName("garden")
+						client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
+					})
+
+					It("use referred shoot", func() {
+						Expect(options.Run(factory)).To(Succeed())
+						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.managedseed.bash"), sessionDir)))
+					})
+				})
 			})
 
 			Context("when an error occurs before running the command", func() {
@@ -408,7 +433,10 @@ var _ = Describe("Env Commands - Options", func() {
 
 				It("should fail with ErrNoShootTargeted", func() {
 					factory.EXPECT().Manager().Return(manager, nil)
+					manager.EXPECT().GardenClient(t.GardenName()).Return(client, nil)
+					factory.EXPECT().Context().Return(ctx)
 					manager.EXPECT().CurrentTarget().Return(t.WithShootName(""), nil)
+					client.EXPECT().GetManagedSeed(ctx, "seed").Return(nil, nil)
 					Expect(options.Run(factory)).To(BeIdenticalTo(target.ErrNoShootTargeted))
 				})
 

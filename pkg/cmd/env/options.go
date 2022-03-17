@@ -15,7 +15,6 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
@@ -146,7 +145,6 @@ func (o *options) Run(f util.Factory) error {
 				}
 
 				if managedSeed != nil {
-					fmt.Fprintf(o.IOStreams.Out, "%s The targted seed is a managed seed. Providing cloud provider CLI configuration script for referred shoot %q\n", color.BlueString("INFO"), managedSeed.Name)
 					o.CurrentTarget = o.CurrentTarget.WithProjectName("garden").WithShootName(managedSeed.Name)
 				} else {
 					return target.ErrNoShootTargeted

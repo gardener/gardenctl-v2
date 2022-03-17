@@ -8,11 +8,15 @@ import (
 	context "context"
 	reflect "reflect"
 
-	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+
 	gomock "github.com/golang/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
+
+	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	"github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 )
 
 // MockClient is a mock of Client interface.
@@ -39,10 +43,10 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // FindShoot mocks base method.
-func (m *MockClient) FindShoot(arg0 context.Context, arg1 ...client.ListOption) (*v1beta1.Shoot, error) {
+func (m *MockClient) FindShoot(ctx context.Context, opts ...client.ListOption) (*v1beta1.Shoot, error) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{arg0}
-	for _, a := range arg1 {
+	varargs := []interface{}{ctx}
+	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "FindShoot", varargs...)
@@ -52,182 +56,197 @@ func (m *MockClient) FindShoot(arg0 context.Context, arg1 ...client.ListOption) 
 }
 
 // FindShoot indicates an expected call of FindShoot.
-func (mr *MockClientMockRecorder) FindShoot(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) FindShoot(ctx interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{arg0}, arg1...)
+	varargs := append([]interface{}{ctx}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindShoot", reflect.TypeOf((*MockClient)(nil).FindShoot), varargs...)
 }
 
 // GetCloudProfile mocks base method.
-func (m *MockClient) GetCloudProfile(arg0 context.Context, arg1 string) (*v1beta1.CloudProfile, error) {
+func (m *MockClient) GetCloudProfile(ctx context.Context, name string) (*v1beta1.CloudProfile, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCloudProfile", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetCloudProfile", ctx, name)
 	ret0, _ := ret[0].(*v1beta1.CloudProfile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetCloudProfile indicates an expected call of GetCloudProfile.
-func (mr *MockClientMockRecorder) GetCloudProfile(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetCloudProfile(ctx, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCloudProfile", reflect.TypeOf((*MockClient)(nil).GetCloudProfile), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCloudProfile", reflect.TypeOf((*MockClient)(nil).GetCloudProfile), ctx, name)
 }
 
 // GetConfigMap mocks base method.
-func (m *MockClient) GetConfigMap(arg0 context.Context, arg1, arg2 string) (*v1.ConfigMap, error) {
+func (m *MockClient) GetConfigMap(ctx context.Context, namespace, name string) (*v1.ConfigMap, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetConfigMap", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetConfigMap", ctx, namespace, name)
 	ret0, _ := ret[0].(*v1.ConfigMap)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetConfigMap indicates an expected call of GetConfigMap.
-func (mr *MockClientMockRecorder) GetConfigMap(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetConfigMap(ctx, namespace, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfigMap", reflect.TypeOf((*MockClient)(nil).GetConfigMap), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfigMap", reflect.TypeOf((*MockClient)(nil).GetConfigMap), ctx, namespace, name)
+}
+
+// GetManagedSeed mocks base method.
+func (m *MockClient) GetManagedSeed(ctx context.Context, name string) (*v1alpha1.ManagedSeed, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetManagedSeed", ctx, name)
+	ret0, _ := ret[0].(*v1alpha1.ManagedSeed)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetManagedSeed indicates an expected call of GetManagedSeed.
+func (mr *MockClientMockRecorder) GetManagedSeed(ctx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetManagedSeed", reflect.TypeOf((*MockClient)(nil).GetManagedSeed), ctx, name)
 }
 
 // GetNamespace mocks base method.
-func (m *MockClient) GetNamespace(arg0 context.Context, arg1 string) (*v1.Namespace, error) {
+func (m *MockClient) GetNamespace(ctx context.Context, name string) (*v1.Namespace, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetNamespace", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetNamespace", ctx, name)
 	ret0, _ := ret[0].(*v1.Namespace)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetNamespace indicates an expected call of GetNamespace.
-func (mr *MockClientMockRecorder) GetNamespace(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetNamespace(ctx, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNamespace", reflect.TypeOf((*MockClient)(nil).GetNamespace), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNamespace", reflect.TypeOf((*MockClient)(nil).GetNamespace), ctx, name)
 }
 
 // GetProject mocks base method.
-func (m *MockClient) GetProject(arg0 context.Context, arg1 string) (*v1beta1.Project, error) {
+func (m *MockClient) GetProject(ctx context.Context, name string) (*v1beta1.Project, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetProject", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetProject", ctx, name)
 	ret0, _ := ret[0].(*v1beta1.Project)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetProject indicates an expected call of GetProject.
-func (mr *MockClientMockRecorder) GetProject(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetProject(ctx, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProject", reflect.TypeOf((*MockClient)(nil).GetProject), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProject", reflect.TypeOf((*MockClient)(nil).GetProject), ctx, name)
 }
 
 // GetProjectByNamespace mocks base method.
-func (m *MockClient) GetProjectByNamespace(arg0 context.Context, arg1 string) (*v1beta1.Project, error) {
+func (m *MockClient) GetProjectByNamespace(ctx context.Context, namespace string) (*v1beta1.Project, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetProjectByNamespace", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetProjectByNamespace", ctx, namespace)
 	ret0, _ := ret[0].(*v1beta1.Project)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetProjectByNamespace indicates an expected call of GetProjectByNamespace.
-func (mr *MockClientMockRecorder) GetProjectByNamespace(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetProjectByNamespace(ctx, namespace interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProjectByNamespace", reflect.TypeOf((*MockClient)(nil).GetProjectByNamespace), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProjectByNamespace", reflect.TypeOf((*MockClient)(nil).GetProjectByNamespace), ctx, namespace)
 }
 
 // GetSecret mocks base method.
-func (m *MockClient) GetSecret(arg0 context.Context, arg1, arg2 string) (*v1.Secret, error) {
+func (m *MockClient) GetSecret(ctx context.Context, namespace, name string) (*v1.Secret, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSecret", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetSecret", ctx, namespace, name)
 	ret0, _ := ret[0].(*v1.Secret)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSecret indicates an expected call of GetSecret.
-func (mr *MockClientMockRecorder) GetSecret(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetSecret(ctx, namespace, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSecret", reflect.TypeOf((*MockClient)(nil).GetSecret), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSecret", reflect.TypeOf((*MockClient)(nil).GetSecret), ctx, namespace, name)
 }
 
 // GetSecretBinding mocks base method.
-func (m *MockClient) GetSecretBinding(arg0 context.Context, arg1, arg2 string) (*v1beta1.SecretBinding, error) {
+func (m *MockClient) GetSecretBinding(ctx context.Context, namespace, name string) (*v1beta1.SecretBinding, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSecretBinding", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetSecretBinding", ctx, namespace, name)
 	ret0, _ := ret[0].(*v1beta1.SecretBinding)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSecretBinding indicates an expected call of GetSecretBinding.
-func (mr *MockClientMockRecorder) GetSecretBinding(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetSecretBinding(ctx, namespace, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSecretBinding", reflect.TypeOf((*MockClient)(nil).GetSecretBinding), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSecretBinding", reflect.TypeOf((*MockClient)(nil).GetSecretBinding), ctx, namespace, name)
 }
 
 // GetSeed mocks base method.
-func (m *MockClient) GetSeed(arg0 context.Context, arg1 string) (*v1beta1.Seed, error) {
+func (m *MockClient) GetSeed(ctx context.Context, name string) (*v1beta1.Seed, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSeed", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetSeed", ctx, name)
 	ret0, _ := ret[0].(*v1beta1.Seed)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSeed indicates an expected call of GetSeed.
-func (mr *MockClientMockRecorder) GetSeed(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetSeed(ctx, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeed", reflect.TypeOf((*MockClient)(nil).GetSeed), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeed", reflect.TypeOf((*MockClient)(nil).GetSeed), ctx, name)
 }
 
 // GetSeedClientConfig mocks base method.
-func (m *MockClient) GetSeedClientConfig(arg0 context.Context, arg1 string) (clientcmd.ClientConfig, error) {
+func (m *MockClient) GetSeedClientConfig(ctx context.Context, name string) (clientcmd.ClientConfig, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSeedClientConfig", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetSeedClientConfig", ctx, name)
 	ret0, _ := ret[0].(clientcmd.ClientConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSeedClientConfig indicates an expected call of GetSeedClientConfig.
-func (mr *MockClientMockRecorder) GetSeedClientConfig(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetSeedClientConfig(ctx, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeedClientConfig", reflect.TypeOf((*MockClient)(nil).GetSeedClientConfig), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeedClientConfig", reflect.TypeOf((*MockClient)(nil).GetSeedClientConfig), ctx, name)
 }
 
 // GetShoot mocks base method.
-func (m *MockClient) GetShoot(arg0 context.Context, arg1, arg2 string) (*v1beta1.Shoot, error) {
+func (m *MockClient) GetShoot(ctx context.Context, namespace, name string) (*v1beta1.Shoot, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetShoot", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetShoot", ctx, namespace, name)
 	ret0, _ := ret[0].(*v1beta1.Shoot)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetShoot indicates an expected call of GetShoot.
-func (mr *MockClientMockRecorder) GetShoot(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetShoot(ctx, namespace, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShoot", reflect.TypeOf((*MockClient)(nil).GetShoot), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShoot", reflect.TypeOf((*MockClient)(nil).GetShoot), ctx, namespace, name)
 }
 
 // GetShootClientConfig mocks base method.
-func (m *MockClient) GetShootClientConfig(arg0 context.Context, arg1, arg2 string) (clientcmd.ClientConfig, error) {
+func (m *MockClient) GetShootClientConfig(ctx context.Context, namespace, name string) (clientcmd.ClientConfig, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetShootClientConfig", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetShootClientConfig", ctx, namespace, name)
 	ret0, _ := ret[0].(clientcmd.ClientConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetShootClientConfig indicates an expected call of GetShootClientConfig.
-func (mr *MockClientMockRecorder) GetShootClientConfig(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetShootClientConfig(ctx, namespace, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootClientConfig", reflect.TypeOf((*MockClient)(nil).GetShootClientConfig), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootClientConfig", reflect.TypeOf((*MockClient)(nil).GetShootClientConfig), ctx, namespace, name)
 }
 
 // ListProjects mocks base method.
-func (m *MockClient) ListProjects(arg0 context.Context, arg1 ...client.ListOption) (*v1beta1.ProjectList, error) {
+func (m *MockClient) ListProjects(ctx context.Context, opts ...client.ListOption) (*v1beta1.ProjectList, error) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{arg0}
-	for _, a := range arg1 {
+	varargs := []interface{}{ctx}
+	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "ListProjects", varargs...)
@@ -237,17 +256,17 @@ func (m *MockClient) ListProjects(arg0 context.Context, arg1 ...client.ListOptio
 }
 
 // ListProjects indicates an expected call of ListProjects.
-func (mr *MockClientMockRecorder) ListProjects(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) ListProjects(ctx interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{arg0}, arg1...)
+	varargs := append([]interface{}{ctx}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListProjects", reflect.TypeOf((*MockClient)(nil).ListProjects), varargs...)
 }
 
 // ListSeeds mocks base method.
-func (m *MockClient) ListSeeds(arg0 context.Context, arg1 ...client.ListOption) (*v1beta1.SeedList, error) {
+func (m *MockClient) ListSeeds(ctx context.Context, opts ...client.ListOption) (*v1beta1.SeedList, error) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{arg0}
-	for _, a := range arg1 {
+	varargs := []interface{}{ctx}
+	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "ListSeeds", varargs...)
@@ -257,17 +276,17 @@ func (m *MockClient) ListSeeds(arg0 context.Context, arg1 ...client.ListOption) 
 }
 
 // ListSeeds indicates an expected call of ListSeeds.
-func (mr *MockClientMockRecorder) ListSeeds(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) ListSeeds(ctx interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{arg0}, arg1...)
+	varargs := append([]interface{}{ctx}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeeds", reflect.TypeOf((*MockClient)(nil).ListSeeds), varargs...)
 }
 
 // ListShoots mocks base method.
-func (m *MockClient) ListShoots(arg0 context.Context, arg1 ...client.ListOption) (*v1beta1.ShootList, error) {
+func (m *MockClient) ListShoots(ctx context.Context, opts ...client.ListOption) (*v1beta1.ShootList, error) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{arg0}
-	for _, a := range arg1 {
+	varargs := []interface{}{ctx}
+	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "ListShoots", varargs...)
@@ -277,9 +296,9 @@ func (m *MockClient) ListShoots(arg0 context.Context, arg1 ...client.ListOption)
 }
 
 // ListShoots indicates an expected call of ListShoots.
-func (mr *MockClientMockRecorder) ListShoots(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) ListShoots(ctx interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{arg0}, arg1...)
+	varargs := append([]interface{}{ctx}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListShoots", reflect.TypeOf((*MockClient)(nil).ListShoots), varargs...)
 }
 
@@ -295,4 +314,90 @@ func (m *MockClient) RuntimeClient() client.Client {
 func (mr *MockClientMockRecorder) RuntimeClient() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RuntimeClient", reflect.TypeOf((*MockClient)(nil).RuntimeClient))
+}
+
+// Mockresolver is a mock of resolver interface.
+type Mockresolver struct {
+	ctrl     *gomock.Controller
+	recorder *MockresolverMockRecorder
+}
+
+// MockresolverMockRecorder is the mock recorder for Mockresolver.
+type MockresolverMockRecorder struct {
+	mock *Mockresolver
+}
+
+// NewMockresolver creates a new mock instance.
+func NewMockresolver(ctrl *gomock.Controller) *Mockresolver {
+	mock := &Mockresolver{ctrl: ctrl}
+	mock.recorder = &MockresolverMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *Mockresolver) EXPECT() *MockresolverMockRecorder {
+	return m.recorder
+}
+
+// resolve mocks base method.
+func (m *Mockresolver) resolve(arg0 context.Context, arg1 gardenclient.Client) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "resolve", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// resolve indicates an expected call of resolve.
+func (mr *MockresolverMockRecorder) resolve(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "resolve", reflect.TypeOf((*Mockresolver)(nil).resolve), arg0, arg1)
+}
+
+// MocklistOptionResolver is a mock of listOptionResolver interface.
+type MocklistOptionResolver struct {
+	ctrl     *gomock.Controller
+	recorder *MocklistOptionResolverMockRecorder
+}
+
+// MocklistOptionResolverMockRecorder is the mock recorder for MocklistOptionResolver.
+type MocklistOptionResolverMockRecorder struct {
+	mock *MocklistOptionResolver
+}
+
+// NewMocklistOptionResolver creates a new mock instance.
+func NewMocklistOptionResolver(ctrl *gomock.Controller) *MocklistOptionResolver {
+	mock := &MocklistOptionResolver{ctrl: ctrl}
+	mock.recorder = &MocklistOptionResolverMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MocklistOptionResolver) EXPECT() *MocklistOptionResolverMockRecorder {
+	return m.recorder
+}
+
+// ApplyToList mocks base method.
+func (m *MocklistOptionResolver) ApplyToList(arg0 *client.ListOptions) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ApplyToList", arg0)
+}
+
+// ApplyToList indicates an expected call of ApplyToList.
+func (mr *MocklistOptionResolverMockRecorder) ApplyToList(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplyToList", reflect.TypeOf((*MocklistOptionResolver)(nil).ApplyToList), arg0)
+}
+
+// resolve mocks base method.
+func (m *MocklistOptionResolver) resolve(arg0 context.Context, arg1 gardenclient.Client) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "resolve", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// resolve indicates an expected call of resolve.
+func (mr *MocklistOptionResolverMockRecorder) resolve(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "resolve", reflect.TypeOf((*MocklistOptionResolver)(nil).resolve), arg0, arg1)
 }

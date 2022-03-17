@@ -11,11 +11,6 @@ import (
 	"errors"
 	"fmt"
 
-	openstackinstall "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/install"
-	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
-	gardencore "github.com/gardener/gardener/pkg/apis/core"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,6 +21,12 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	openstackinstall "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/install"
+	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
+	gardencore "github.com/gardener/gardener/pkg/apis/core"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 )
 
 var decoder runtime.Decoder
@@ -285,7 +286,6 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clie
 		}
 
 		if clientConfig != nil {
-			// TODO write notification message
 			return clientConfig, nil
 		}
 	}

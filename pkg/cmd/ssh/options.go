@@ -26,7 +26,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 	cryptossh "golang.org/x/crypto/ssh"
@@ -436,7 +435,6 @@ func (o *SSHOptions) Run(f util.Factory) error {
 			}
 
 			if managedSeed != nil {
-				fmt.Fprintf(o.IOStreams.Out, "%s The targted seed is a managed seed. Preparing access to referred shoot %q\n", color.BlueString("INFO"), managedSeed.Name)
 				currentTarget = currentTarget.WithProjectName("garden").WithShootName(managedSeed.Name)
 			} else {
 				return target.ErrNoShootTargeted
