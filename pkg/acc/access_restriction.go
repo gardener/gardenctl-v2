@@ -36,7 +36,7 @@ type AccessRestrictionOption struct {
 // AccessRestrictionHandler is a function that should display a single AccessRestrictionMessage to the user.
 // The typical implementation of this function looks like this:
 //  func(message *AccessRestrictionMessage) { message.Render(os.Stdout) }
-type AccessRestrictionHandler func(messages *AccessRestrictionMessage)
+type AccessRestrictionHandler func(*AccessRestrictionMessage)
 type accessRestrictionHandlerContextKey struct{}
 
 // WithAccessRestrictionHandler returns a copy of parent context to which the given AccessRestrictionHandler function has been added.
