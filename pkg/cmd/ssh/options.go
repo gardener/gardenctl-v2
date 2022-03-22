@@ -415,40 +415,40 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	// validate the current target
-	currentTarget, err := manager.CurrentTarget()
+	// sshTarget is the target used for the run method
+	sshTarget, err := manager.CurrentTarget()
 	if err != nil {
 		return err
 	}
 
 	// create client for the garden cluster
-	gardenClient, err := manager.GardenClient(currentTarget.GardenName())
+	gardenClient, err := manager.GardenClient(sshTarget.GardenName())
 	if err != nil {
 		return err
 	}
 
-	if currentTarget.ShootName() == "" {
-		if currentTarget.SeedName() != "" {
-			managedSeed, err := gardenClient.GetManagedSeed(f.Context(), currentTarget.SeedName())
+	if sshTarget.ShootName() == "" {
+		if sshTarget.SeedName() != "" {
+			managedSeed, err := gardenClient.GetManagedSeed(f.Context(), sshTarget.SeedName())
 			if err != nil && !apierrors.IsNotFound(err) {
 				return err
 			}
 
 			if managedSeed != nil {
-				currentTarget = currentTarget.WithProjectName("garden").WithShootName(managedSeed.Name)
+				sshTarget = sshTarget.WithProjectName("garden").WithShootName(managedSeed.Spec.Shoot.Name)
 			} else {
 				return target.ErrNoShootTargeted
 			}
 		}
 	}
 
-	printTargetInformation(o.IOStreams.Out, currentTarget)
+	printTargetInformation(o.IOStreams.Out, sshTarget)
 
 	// fetch targeted shoot (ctx is cancellable to stop the keep alive goroutine later)
 	ctx, cancel := context.WithCancel(f.Context())
 	defer cancel()
 
-	shoot, err := util.ShootForTarget(ctx, gardenClient, currentTarget)
+	shoot, err := util.ShootForTarget(ctx, gardenClient, sshTarget)
 	if err != nil {
 		return err
 	}
@@ -471,14 +471,14 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		nodePrivateKeyFiles = append(nodePrivateKeyFiles, filename)
 	}
 
-	shootClient, err := manager.ShootClient(ctx, currentTarget)
+	shootClient, err := manager.ShootClient(ctx, sshTarget)
 	if err != nil {
 		return err
 	}
 
 	// if a node was given, check if the node exists
 	// and if not, exit early and do not create a bastion
-	node, err := getShootNode(ctx, o, shootClient, currentTarget)
+	node, err := getShootNode(ctx, o, shootClient, sshTarget)
 	if err != nil {
 		return err
 	}

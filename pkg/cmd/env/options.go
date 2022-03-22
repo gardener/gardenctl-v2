@@ -41,8 +41,8 @@ type options struct {
 	SessionDir string
 	// CmdPath is the path of the called command.
 	CmdPath string
-	// CurrentTarget is the current target
-	CurrentTarget target.Target
+	// Target is the target used when executing the command
+	Target target.Target
 	// ProviderType is the name of the cloud provider
 	ProviderType string
 	// Template is the script template
@@ -113,24 +113,24 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	o.CurrentTarget, err = manager.CurrentTarget()
+	o.Target, err = manager.CurrentTarget()
 	if err != nil {
 		return err
 	}
 
 	switch o.ProviderType {
 	case "kubernetes":
-		if !o.Symlink && o.CurrentTarget.GardenName() == "" {
+		if !o.Symlink && o.Target.GardenName() == "" {
 			return target.ErrNoGardenTargeted
 		}
 
 		return o.runKubernetes(f.Context(), manager)
 	default:
-		if o.CurrentTarget.GardenName() == "" {
+		if o.Target.GardenName() == "" {
 			return target.ErrNoGardenTargeted
 		}
 
-		t := o.CurrentTarget
+		t := o.Target
 
 		client, err := manager.GardenClient(t.GardenName())
 		if err != nil {
@@ -145,7 +145,7 @@ func (o *options) Run(f util.Factory) error {
 				}
 
 				if managedSeed != nil {
-					o.CurrentTarget = o.CurrentTarget.WithProjectName("garden").WithShootName(managedSeed.Name)
+					o.Target = o.Target.WithProjectName("garden").WithShootName(managedSeed.Spec.Shoot.Name)
 				} else {
 					return target.ErrNoShootTargeted
 				}
@@ -167,14 +167,14 @@ func (o *options) runKubernetes(ctx context.Context, manager target.Manager) err
 		if o.Symlink {
 			filename = path.Join(o.SessionDir, "kubeconfig.yaml")
 
-			if !o.CurrentTarget.IsEmpty() {
+			if !o.Target.IsEmpty() {
 				_, err := os.Lstat(filename)
 				if os.IsNotExist(err) {
 					return fmt.Errorf("symlink to targeted cluster does not exist: %w", err)
 				}
 			}
 		} else {
-			config, err := manager.ClientConfig(ctx, o.CurrentTarget)
+			config, err := manager.ClientConfig(ctx, o.Target)
 			if err != nil {
 				return err
 			}
@@ -192,7 +192,7 @@ func (o *options) runKubernetes(ctx context.Context, manager target.Manager) err
 }
 
 func (o *options) run(ctx context.Context, client gardenclient.Client) error {
-	shoot, err := client.FindShoot(ctx, o.CurrentTarget.AsListOption())
+	shoot, err := client.FindShoot(ctx, o.Target.AsListOption())
 	if err != nil {
 		return err
 	}
@@ -280,7 +280,7 @@ func generateMetadata(o *options) map[string]interface{} {
 	metadata["commandPath"] = o.CmdPath
 	metadata["cli"] = getProviderCLI(o.ProviderType)
 	metadata["prompt"] = Shell(o.Shell).Prompt(runtime.GOOS)
-	metadata["targetFlags"] = getTargetFlags(o.CurrentTarget)
+	metadata["targetFlags"] = getTargetFlags(o.Target)
 
 	return metadata
 }

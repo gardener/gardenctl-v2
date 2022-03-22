@@ -280,7 +280,7 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clie
 	}
 
 	if managedSeed != nil {
-		clientConfig, err := g.GetShootClientConfig(ctx, managedSeed.Namespace, managedSeed.Name)
+		clientConfig, err := g.GetShootClientConfig(ctx, managedSeed.Namespace, managedSeed.Spec.Shoot.Name)
 		if err != nil && !apierrors.IsNotFound(err) {
 			return nil, err
 		}

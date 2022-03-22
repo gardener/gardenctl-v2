@@ -9,7 +9,6 @@ package gardenclient_test
 import (
 	"context"
 
-	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -18,6 +17,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+
+	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 
 	"github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
@@ -64,6 +65,11 @@ var _ = Describe("Client", func() {
 					Name:      "managedSeed-1",
 					Namespace: "garden",
 				},
+				Spec: seedmanagementv1alpha1.ManagedSeedSpec{
+					Shoot: &seedmanagementv1alpha1.Shoot{
+						Name: "managedSeed-1",
+					},
+				},
 			}
 			ms1ShootConfigMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -79,6 +85,11 @@ var _ = Describe("Client", func() {
 					Name:      "managedSeed-2",
 					Namespace: "garden",
 				},
+				Spec: seedmanagementv1alpha1.ManagedSeedSpec{
+					Shoot: &seedmanagementv1alpha1.Shoot{
+						Name: "managedSeed-2",
+					},
+				},
 			}
 			ms2ShootConfigMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -93,6 +104,11 @@ var _ = Describe("Client", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "managedSeed-3",
 					Namespace: "garden",
+				},
+				Spec: seedmanagementv1alpha1.ManagedSeedSpec{
+					Shoot: &seedmanagementv1alpha1.Shoot{
+						Name: "managedSeed-3",
+					},
 				},
 			}
 			loginSecret3 := &corev1.Secret{
