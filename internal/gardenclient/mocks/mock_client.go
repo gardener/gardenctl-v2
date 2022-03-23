@@ -8,15 +8,14 @@ import (
 	context "context"
 	reflect "reflect"
 
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
-
 	gomock "github.com/golang/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 
+	gardenclient "github.com/gardener/gardenctl-v2/internal/gardenclient"
 	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	"github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
+	v1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 )
 
 // MockClient is a mock of Client interface.
@@ -90,21 +89,6 @@ func (m *MockClient) GetConfigMap(ctx context.Context, namespace, name string) (
 func (mr *MockClientMockRecorder) GetConfigMap(ctx, namespace, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfigMap", reflect.TypeOf((*MockClient)(nil).GetConfigMap), ctx, namespace, name)
-}
-
-// GetManagedSeed mocks base method.
-func (m *MockClient) GetManagedSeed(ctx context.Context, name string) (*v1alpha1.ManagedSeed, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetManagedSeed", ctx, name)
-	ret0, _ := ret[0].(*v1alpha1.ManagedSeed)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetManagedSeed indicates an expected call of GetManagedSeed.
-func (mr *MockClientMockRecorder) GetManagedSeed(ctx, name interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetManagedSeed", reflect.TypeOf((*MockClient)(nil).GetManagedSeed), ctx, name)
 }
 
 // GetNamespace mocks base method.
@@ -240,6 +224,21 @@ func (m *MockClient) GetShootClientConfig(ctx context.Context, namespace, name s
 func (mr *MockClientMockRecorder) GetShootClientConfig(ctx, namespace, name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootClientConfig", reflect.TypeOf((*MockClient)(nil).GetShootClientConfig), ctx, namespace, name)
+}
+
+// GetShootOfManagedSeed mocks base method.
+func (m *MockClient) GetShootOfManagedSeed(ctx context.Context, name string) (*v1alpha1.Shoot, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetShootOfManagedSeed", ctx, name)
+	ret0, _ := ret[0].(*v1alpha1.Shoot)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetShootOfManagedSeed indicates an expected call of GetShootOfManagedSeed.
+func (mr *MockClientMockRecorder) GetShootOfManagedSeed(ctx, name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootOfManagedSeed", reflect.TypeOf((*MockClient)(nil).GetShootOfManagedSeed), ctx, name)
 }
 
 // ListProjects mocks base method.

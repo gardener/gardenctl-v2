@@ -78,8 +78,8 @@ type Client interface {
 	// GetConfigMap returns a Kubernetes configmap resource
 	GetConfigMap(ctx context.Context, namespace, name string) (*corev1.ConfigMap, error)
 
-	// GetManagedSeed returns a Gardener Seed Management ManagedSeed resource
-	GetManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.ManagedSeed, error)
+	// GetShootOfManagedSeed returns shoot of seed using ManagedSeed resource, nil if not a managed seed
+	GetShootOfManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.Shoot, error)
 
 	// RuntimeClient returns the underlying kubernetes runtime client
 	// TODO: Remove this when we switched all APIs to the new gardenclient
@@ -262,31 +262,31 @@ func (g *clientImpl) GetConfigMap(ctx context.Context, namespace, name string) (
 	return cm, nil
 }
 
-func (g *clientImpl) GetManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.ManagedSeed, error) {
+func (g *clientImpl) GetShootOfManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.Shoot, error) {
 	managedSeed := &seedmanagementv1alpha1.ManagedSeed{}
-	key := types.NamespacedName{Name: name, Namespace: "garden"} // Currently, managed seeds are restricted to the garden namespace
+	key := types.NamespacedName{Namespace: "garden", Name: name} // Currently, managed seeds are restricted to the garden namespace
 
 	if err := g.c.Get(ctx, key, managedSeed); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
+
 		return nil, fmt.Errorf("failed to get managed seed %v: %w", key, err)
 	}
 
-	return managedSeed, nil
+	return managedSeed.Spec.Shoot, nil
 }
 
 func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clientcmd.ClientConfig, error) {
-	managedSeed, err := g.GetManagedSeed(ctx, name)
-	if err != nil && !apierrors.IsNotFound(err) {
+	if shoot, err := g.GetShootOfManagedSeed(ctx, name); err != nil {
 		return nil, err
-	}
-
-	if managedSeed != nil {
-		clientConfig, err := g.GetShootClientConfig(ctx, managedSeed.Namespace, managedSeed.Spec.Shoot.Name)
-		if err != nil && !apierrors.IsNotFound(err) {
+	} else if shoot != nil {
+		// TODO: Discuss if we want to have the fallback in case GetShootClientConfig returns an error or better just do:
+		// return g.GetShootClientConfig(ctx, "garden", shoot.Name)
+		if config, err := g.GetShootClientConfig(ctx, "garden", shoot.Name); err == nil {
+			return config, nil
+		} else if !apierrors.IsNotFound(err) {
 			return nil, err
-		}
-
-		if clientConfig != nil {
-			return clientConfig, nil
 		}
 	}
 

@@ -32,7 +32,6 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
@@ -429,13 +428,10 @@ func (o *SSHOptions) Run(f util.Factory) error {
 
 	if sshTarget.ShootName() == "" {
 		if sshTarget.SeedName() != "" {
-			managedSeed, err := gardenClient.GetManagedSeed(f.Context(), sshTarget.SeedName())
-			if err != nil && !apierrors.IsNotFound(err) {
+			if shoot, err := gardenClient.GetShootOfManagedSeed(f.Context(), sshTarget.SeedName()); err != nil {
 				return err
-			}
-
-			if managedSeed != nil {
-				sshTarget = sshTarget.WithProjectName("garden").WithShootName(managedSeed.Spec.Shoot.Name)
+			} else if shoot != nil {
+				sshTarget = sshTarget.WithProjectName("garden").WithShootName(shoot.Name)
 			} else {
 				return target.ErrNoShootTargeted
 			}

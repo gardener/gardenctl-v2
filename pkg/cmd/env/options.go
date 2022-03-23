@@ -18,7 +18,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 
@@ -139,13 +138,10 @@ func (o *options) Run(f util.Factory) error {
 
 		if t.ShootName() == "" {
 			if t.SeedName() != "" {
-				managedSeed, err := client.GetManagedSeed(f.Context(), t.SeedName())
-				if err != nil && !apierrors.IsNotFound(err) {
+				if shoot, err := client.GetShootOfManagedSeed(f.Context(), t.SeedName()); err != nil {
 					return err
-				}
-
-				if managedSeed != nil {
-					o.Target = o.Target.WithProjectName("garden").WithShootName(managedSeed.Spec.Shoot.Name)
+				} else if shoot != nil {
+					o.Target = o.Target.WithProjectName("garden").WithShootName(shoot.Name)
 				} else {
 					return target.ErrNoShootTargeted
 				}

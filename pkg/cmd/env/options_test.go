@@ -396,21 +396,13 @@ var _ = Describe("Env Commands - Options", func() {
 
 				Context("and the seed is a managed seed", func() {
 					JustBeforeEach(func() {
-						managedSeed := &seedmanagementv1alpha1.ManagedSeed{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "seed",
-								Namespace: "garden",
-							},
-							Spec: seedmanagementv1alpha1.ManagedSeedSpec{
-								Shoot: &seedmanagementv1alpha1.Shoot{
-									Name: "seed",
-								},
-							},
+						seedShoot := &seedmanagementv1alpha1.Shoot{
+							Name: "seed",
 						}
 
 						factory.EXPECT().Context().Return(ctx)
 						manager.EXPECT().CurrentTarget().Return(t.WithProjectName("").WithShootName(""), nil)
-						client.EXPECT().GetManagedSeed(ctx, "seed").Return(managedSeed, nil)
+						client.EXPECT().GetShootOfManagedSeed(ctx, "seed").Return(seedShoot, nil)
 						currentTarget := t.WithShootName("seed").WithProjectName("garden")
 						client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
 					})
@@ -441,7 +433,7 @@ var _ = Describe("Env Commands - Options", func() {
 					manager.EXPECT().GardenClient(t.GardenName()).Return(client, nil)
 					factory.EXPECT().Context().Return(ctx)
 					manager.EXPECT().CurrentTarget().Return(t.WithShootName(""), nil)
-					client.EXPECT().GetManagedSeed(ctx, "seed").Return(nil, nil)
+					client.EXPECT().GetShootOfManagedSeed(ctx, "seed").Return(nil, nil)
 					Expect(options.Run(factory)).To(BeIdenticalTo(target.ErrNoShootTargeted))
 				})
 
