@@ -401,6 +401,11 @@ var _ = Describe("Env Commands - Options", func() {
 								Name:      "seed",
 								Namespace: "garden",
 							},
+							Spec: seedmanagementv1alpha1.ManagedSeedSpec{
+								Shoot: &seedmanagementv1alpha1.Shoot{
+									Name: "seed",
+								},
+							},
 						}
 
 						factory.EXPECT().Context().Return(ctx)
