@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 
+	"k8s.io/klog/v2"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -273,6 +275,8 @@ func (g *clientImpl) GetShootOfManagedSeed(ctx context.Context, name string) (*s
 
 		return nil, fmt.Errorf("failed to get managed seed %v: %w", key, err)
 	}
+
+	klog.V(1).Infof("using referred shoot %q for seed %q", managedSeed.Spec.Shoot.Name, name)
 
 	return managedSeed.Spec.Shoot, nil
 }
