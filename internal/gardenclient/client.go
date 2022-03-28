@@ -281,13 +281,7 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clie
 	if shoot, err := g.GetShootOfManagedSeed(ctx, name); err != nil {
 		return nil, err
 	} else if shoot != nil {
-		// TODO: Discuss if we want to have the fallback in case GetShootClientConfig returns an error or better just do:
-		// return g.GetShootClientConfig(ctx, "garden", shoot.Name)
-		if config, err := g.GetShootClientConfig(ctx, "garden", shoot.Name); err == nil {
-			return config, nil
-		} else if !apierrors.IsNotFound(err) {
-			return nil, err
-		}
+		return g.GetShootClientConfig(ctx, "garden", shoot.Name)
 	}
 
 	key := types.NamespacedName{Name: name}

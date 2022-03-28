@@ -136,7 +136,6 @@ var _ = Describe("Client", func() {
 			Entry("and the secretName has suffix .oidc", "seed-1"),
 			Entry("and the secretName has suffix .login", "seed-2"),
 			Entry("and seed is a managed seed, return shoot client config", "managedSeed-1"),
-			Entry("and seed is a managed seed, but shoot client config return not found, fallback to seed secret", "managedSeed-3"),
 		)
 
 		Context("when the secret does not exist", func() {
