@@ -180,6 +180,8 @@ type rcOptions struct {
 	Prefix string
 	// NoCompletion if the value is true tab completion is not part of the startup script
 	NoCompletion bool
+	// NoKubeconfig if the value is true the KUBECONFIG environment variable is not modified in the startup script
+	NoKubeconfig bool
 	// Template is the script template
 	Template Template
 }
@@ -217,6 +219,7 @@ func (o *rcOptions) Run(f util.Factory) error {
 		"shell":        o.Shell,
 		"prefix":       o.Prefix,
 		"noCompletion": o.NoCompletion,
+		"noKubeconfig": o.NoKubeconfig,
 	}
 
 	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
@@ -226,4 +229,5 @@ func (o *rcOptions) Run(f util.Factory) error {
 func (o *rcOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&o.Prefix, "prefix", "p", "g", "The prefix used for aliases and functions")
 	flags.BoolVar(&o.NoCompletion, "no-completion", false, "The startup script should not setup completion")
+	flags.BoolVar(&o.NoKubeconfig, "no-kubeconfig", false, "The startup script should not modify the KUBECONFIG environment variable")
 }
