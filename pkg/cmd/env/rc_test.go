@@ -173,7 +173,7 @@ gk
 		})
 
 		It("should execute the bash subcommand with prefix flag", func() {
-			cmd.SetArgs([]string{"--prefix=gctl", "bash"})
+			cmd.SetArgs([]string{"bash", "--prefix=gctl"})
 			Expect(cmd.Execute()).To(Succeed())
 			Expect(out.String()).To(MatchRegexp(`(?m)^alias gctl=gardenctl$`))
 		})
