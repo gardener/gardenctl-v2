@@ -178,6 +178,18 @@ gk
 			Expect(out.String()).To(MatchRegexp(`(?m)^alias gctl=gardenctl$`))
 		})
 
+		DescribeTable("Execute the shell subcommand with no-completion flag", func(shell, aliasRegexp string) {
+			cmd.SetArgs([]string{shell, "--no-completion"})
+			Expect(cmd.Execute()).To(Succeed())
+			Expect(out.String()).NotTo(MatchRegexp(fmt.Sprintf("(?m)gardenctl completion %s", shell)))
+			Expect(out.String()).To(MatchRegexp(aliasRegexp))
+		},
+			Entry("when subcommand is bash", "bash", `(?m)^alias g=`),
+			Entry("when subcommand is zsh", "zsh", `(?m)^alias g=`),
+			Entry("when subcommand is fish", "fish", `(?m)^alias g=`),
+			Entry("when subcommand is powershell", "powershell", `(?m)^Set-Alias -Name g -Value`),
+		)
+
 		DescribeTable("Execute the shell subcommand with no-kubeconfig flag", func(shell string) {
 			cmd.SetArgs([]string{shell, "--no-kubeconfig"})
 			Expect(cmd.Execute()).To(Succeed())
