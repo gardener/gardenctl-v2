@@ -66,14 +66,14 @@ var _ = Describe("Env Commands", func() {
   export GCTL_SESSION_ID=$(uuidgen)
 fi
 alias g=gardenctl
-source <(gardenctl completion bash)
-complete -o default -F __start_gardenctl g
 alias gtv='gardenctl target view -o yaml'
 alias gtc='gardenctl target control-plane'
 alias gtc-='gardenctl target unset control-plane'
 alias gk='eval $(gardenctl kubectl-env bash)'
 alias gp='eval $(gardenctl provider-env bash)'
 alias gcv='gardenctl config view -o yaml'
+source <(gardenctl completion bash)
+complete -o default -F __start_gardenctl g
 gk
 `))
 		})
@@ -84,6 +84,13 @@ gk
 			Expect(out.String()).To(Equal(`if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
+alias g=gardenctl
+alias gtv='gardenctl target view -o yaml'
+alias gtc='gardenctl target control-plane'
+alias gtc-='gardenctl target unset control-plane'
+alias gk='eval $(gardenctl kubectl-env zsh)'
+alias gp='eval $(gardenctl provider-env zsh)'
+alias gcv='gardenctl config view -o yaml'
 if (( $+commands[gardenctl] )); then
   if [ -d "$ZSH_CACHE_DIR/completions" ] && (($fpath[(Ie)$ZSH_CACHE_DIR/completions])); then
     GCTL_COMPLETION_FILE="$ZSH_CACHE_DIR/completions/_gardenctl"
@@ -98,13 +105,6 @@ if (( $+commands[gardenctl] )); then
   gardenctl completion zsh >| "$GCTL_COMPLETION_FILE" &|
   unset GCTL_COMPLETION_FILE
 fi
-alias g=gardenctl
-alias gtv='gardenctl target view -o yaml'
-alias gtc='gardenctl target control-plane'
-alias gtc-='gardenctl target unset control-plane'
-alias gk='eval $(gardenctl kubectl-env zsh)'
-alias gp='eval $(gardenctl provider-env zsh)'
-alias gcv='gardenctl config view -o yaml'
 gk
 `))
 		})
@@ -116,14 +116,14 @@ gk
   set -gx GCTL_SESSION_ID (uuidgen)
 end
 alias g=gardenctl
-gardenctl completion fish | source
-complete -c g -w gardenctl
 alias gtv='gardenctl target view -o yaml'
 alias gtc='gardenctl target control-plane'
 alias gtc-='gardenctl target unset control-plane'
 alias gk='eval (gardenctl kubectl-env fish)'
 alias gp='eval (gardenctl provider-env fish)'
 alias gcv='gardenctl config view -o yaml'
+gardenctl completion fish | source
+complete -c g -w gardenctl
 gk
 `))
 		})
@@ -135,15 +135,6 @@ gk
   $Env:GCTL_SESSION_ID = [guid]::NewGuid().ToString()
 }
 Set-Alias -Name g -Value (get-command gardenctl).Path -Option AllScope -Force
-function Gardenctl-Completion-Powershell {
-  $s = (gardenctl completion powershell)
-  @(
-    ($s -replace "(?ms)^Register-ArgumentCompleter -CommandName 'gardenctl' -ScriptBlock", "` + "`" + `$scriptBlock =")
-    "Register-ArgumentCompleter -CommandName 'gardenctl' -ScriptBlock ` + "`" + `$scriptBlock"
-    "Register-ArgumentCompleter -CommandName 'g' -ScriptBlock ` + "`" + `$scriptBlock"
-  )
-}
-Gardenctl-Completion-Powershell | Out-String | Invoke-Expression
 function Gardenctl-Target-View {
   gardenctl target view -o yaml
 }
@@ -168,6 +159,15 @@ function Gardenctl-Config-View {
   gardenctl config view -o yaml
 }
 Set-Alias -Name gcv -Value Gardenctl-Config-View -Option AllScope -Force
+function Gardenctl-Completion-Powershell {
+  $s = (gardenctl completion powershell)
+  @(
+    ($s -replace "(?ms)^Register-ArgumentCompleter -CommandName 'gardenctl' -ScriptBlock", "` + "`" + `$scriptBlock =")
+    "Register-ArgumentCompleter -CommandName 'gardenctl' -ScriptBlock ` + "`" + `$scriptBlock"
+    "Register-ArgumentCompleter -CommandName 'g' -ScriptBlock ` + "`" + `$scriptBlock"
+  )
+}
+Gardenctl-Completion-Powershell | Out-String | Invoke-Expression
 gk
 `))
 		})
