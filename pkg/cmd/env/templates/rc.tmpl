@@ -13,6 +13,9 @@ alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval $(gardenctl kubectl-env {{.shell}})'
 alias {{.prefix}}p='eval $(gardenctl provider-env {{.shell}})'
 alias {{.prefix}}cv='gardenctl config view -o yaml'
+{{if not .noKubeconfig -}}
+{{.prefix}}k
+{{end -}}
 {{end}}
 
 {{define "zsh" -}}
@@ -42,6 +45,9 @@ alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval $(gardenctl kubectl-env {{.shell}})'
 alias {{.prefix}}p='eval $(gardenctl provider-env {{.shell}})'
 alias {{.prefix}}cv='gardenctl config view -o yaml'
+{{if not .noKubeconfig -}}
+{{.prefix}}k
+{{end -}}
 {{end}}
 
 {{define "fish" -}}
@@ -59,6 +65,9 @@ alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval (gardenctl kubectl-env {{.shell}})'
 alias {{.prefix}}p='eval (gardenctl provider-env {{.shell}})'
 alias {{.prefix}}cv='gardenctl config view -o yaml'
+{{if not .noKubeconfig -}}
+{{.prefix}}k
+{{end -}}
 {{end}}
 
 {{define "powershell" -}}
@@ -101,4 +110,7 @@ function Gardenctl-Config-View {
   gardenctl config view -o yaml
 }
 Set-Alias -Name {{.prefix}}cv -Value Gardenctl-Config-View -Option AllScope -Force
+{{if not .noKubeconfig -}}
+{{.prefix}}k
+{{end -}}
 {{end}}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -73,6 +74,7 @@ alias gtc-='gardenctl target unset control-plane'
 alias gk='eval $(gardenctl kubectl-env bash)'
 alias gp='eval $(gardenctl provider-env bash)'
 alias gcv='gardenctl config view -o yaml'
+gk
 `))
 		})
 
@@ -103,6 +105,7 @@ alias gtc-='gardenctl target unset control-plane'
 alias gk='eval $(gardenctl kubectl-env zsh)'
 alias gp='eval $(gardenctl provider-env zsh)'
 alias gcv='gardenctl config view -o yaml'
+gk
 `))
 		})
 
@@ -121,6 +124,7 @@ alias gtc-='gardenctl target unset control-plane'
 alias gk='eval (gardenctl kubectl-env fish)'
 alias gp='eval (gardenctl provider-env fish)'
 alias gcv='gardenctl config view -o yaml'
+gk
 `))
 		})
 
@@ -164,6 +168,7 @@ function Gardenctl-Config-View {
   gardenctl config view -o yaml
 }
 Set-Alias -Name gcv -Value Gardenctl-Config-View -Option AllScope -Force
+gk
 `))
 		})
 
@@ -172,6 +177,17 @@ Set-Alias -Name gcv -Value Gardenctl-Config-View -Option AllScope -Force
 			Expect(cmd.Execute()).To(Succeed())
 			Expect(out.String()).To(MatchRegexp(`(?m)^alias gctl=gardenctl$`))
 		})
+
+		DescribeTable("Execute the shell subcommand with no-kubeconfig flag", func(shell string) {
+			cmd.SetArgs([]string{shell, "--no-kubeconfig"})
+			Expect(cmd.Execute()).To(Succeed())
+			Expect(out.String()).NotTo(MatchRegexp(`(?m)^gk$`))
+		},
+			Entry("when subcommand is bash", "bash"),
+			Entry("when subcommand is zsh", "zsh"),
+			Entry("when subcommand is fish", "fish"),
+			Entry("when subcommand is powershell", "powershell"),
+		)
 	})
 
 	Describe("Validating the RC command options", func() {
