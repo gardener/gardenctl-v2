@@ -65,8 +65,8 @@ var _ = Describe("Env Commands", func() {
 			Expect(out.String()).To(Equal(`if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
-source <(gardenctl completion bash)
 alias g=gardenctl
+source <(gardenctl completion bash)
 complete -o default -F __start_gardenctl g
 alias gtv='gardenctl target view -o yaml'
 alias gtc='gardenctl target control-plane'
@@ -115,8 +115,8 @@ gk
 			Expect(out.String()).To(Equal(`if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ];
   set -gx GCTL_SESSION_ID (uuidgen)
 end
-gardenctl completion fish | source
 alias g=gardenctl
+gardenctl completion fish | source
 complete -c g -w gardenctl
 alias gtv='gardenctl target view -o yaml'
 alias gtc='gardenctl target control-plane'

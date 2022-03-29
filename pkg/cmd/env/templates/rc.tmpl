@@ -2,9 +2,9 @@
 if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
+alias {{.prefix}}=gardenctl
 {{if not .noCompletion -}}
 source <(gardenctl completion {{.shell}})
-alias {{.prefix}}=gardenctl
 complete -o default -F __start_gardenctl {{.prefix}}
 {{end -}}
 alias {{.prefix}}tv='gardenctl target view -o yaml'
@@ -54,9 +54,9 @@ alias {{.prefix}}cv='gardenctl config view -o yaml'
 if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ];
   set -gx GCTL_SESSION_ID (uuidgen)
 end
+alias {{.prefix}}=gardenctl
 {{if not .noCompletion -}}
 gardenctl completion {{.shell}} | source
-alias {{.prefix}}=gardenctl
 complete -c {{.prefix}} -w gardenctl
 {{end -}}
 alias {{.prefix}}tv='gardenctl target view -o yaml'
