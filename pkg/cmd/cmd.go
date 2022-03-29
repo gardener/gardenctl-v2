@@ -126,6 +126,7 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 	cmd.AddCommand(cmdconfig.NewCmdConfig(f, ioStreams))
 	cmd.AddCommand(cmdenv.NewCmdProviderEnv(f, ioStreams))
 	cmd.AddCommand(cmdenv.NewCmdKubectlEnv(f, ioStreams))
+	cmd.AddCommand(cmdenv.NewCmdLokiEnv(f, ioStreams))
 	cmd.AddCommand(cmdenv.NewCmdRC(f, ioStreams))
 
 	return cmd

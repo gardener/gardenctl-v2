@@ -19,11 +19,14 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/networking/v1"
 
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/gardener/gardenctl-v2/pkg/target"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type options struct {
@@ -96,6 +99,8 @@ func (o *options) AddFlags(flags *pflag.FlagSet) {
 	switch o.ProviderType {
 	case "kubernetes":
 		text = "the KUBECONFIG environment variable"
+	case "loki":
+		text = "the loki CLI environment variables"
 	default:
 		text = "the cloud provider CLI environment variables and logout"
 	}
@@ -123,6 +128,24 @@ func (o *options) Run(f util.Factory) error {
 		}
 
 		return o.runKubernetes(f.Context(), manager)
+
+	case "loki":
+		t := o.CurrentTarget.WithControlPlane(true)
+		ctx := f.Context()
+
+		if !t.ControlPlane() {
+			return target.ErrNoControlPlaneTargeted
+		}
+
+		client, err := manager.SeedClient(ctx, t)
+		if err != nil {
+			return fmt.Errorf("failed to create seed cluster client: %w", err)
+		}
+
+		shootns := "shoot--" + o.CurrentTarget.ProjectName() + "--" + o.CurrentTarget.ShootName()
+
+		return o.runLoki(ctx, client, shootns)
+
 	default:
 		if o.CurrentTarget.GardenName() == "" {
 			return target.ErrNoGardenTargeted
@@ -201,6 +224,41 @@ func (o *options) run(ctx context.Context, client gardenclient.Client) error {
 	return execTmpl(o, shoot, secret, cloudProfile)
 }
 
+func (o *options) runLoki(ctx context.Context, client client.Client, namespace string) error {
+	data := map[string]interface{}{
+		"__meta": generateMetadata(o),
+	}
+
+	secret := &corev1.Secret{}
+	key := types.NamespacedName{Namespace: namespace, Name: "monitoring-ingress-credentials"}
+
+	if err := client.Get(ctx, key, secret); err != nil {
+		return fmt.Errorf("failed to get secret %v: %w", key, err)
+	}
+
+	ing := &v1.Ingress{}
+	key = types.NamespacedName{Namespace: namespace, Name: "grafana-operators"}
+
+	if err := client.Get(ctx, key, ing); err != nil {
+		return fmt.Errorf("failed to get ingress %v: %w", key, err)
+	}
+
+	for key, value := range secret.Data {
+		data[key] = string(value)
+	}
+
+	for _, rule := range ing.Spec.Rules {
+		data["hostname"] = "https://" + rule.Host + "/api/datasources/proxy/2/"
+	}
+
+	filename := filepath.Join(o.GardenDir, "templates", "loki.tmpl")
+	if err := o.Template.ParseFiles(filename); err != nil {
+		return fmt.Errorf("failed to generate the loki CLI configuration script: %w", err)
+	}
+
+	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
+}
+
 func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile) error {
 	o.ProviderType = shoot.Spec.Provider.Type
 
@@ -249,6 +307,7 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 		}
 
 		data["authURL"] = authURL
+
 	}
 
 	filename := filepath.Join(o.GardenDir, "templates", o.ProviderType+".tmpl")
@@ -281,6 +340,8 @@ func getProviderCLI(providerType string) string {
 		return "az"
 	case "kubernetes":
 		return "kubectl"
+	case "loki":
+		return "loki"
 	default:
 		return providerType
 	}

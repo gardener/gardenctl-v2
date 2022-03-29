@@ -103,3 +103,41 @@ The generated script points the KUBECONFIG environment variable to the currently
 
 	return cmd
 }
+
+// NewCmdLokiEnv returns a new loki-env command.
+func NewCmdLokiEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+	o := &options{
+		Options: base.Options{
+			IOStreams: ioStreams,
+		},
+		ProviderType: "loki",
+	}
+	runE := base.WrapRunE(o, f)
+	cmd := &cobra.Command{
+		Use:   "loki-env",
+		Short: "Generate the loki CLI configuration script for the specified shell",
+		Long: `Generate the loki CLI configuration script for the specified shell.
+
+The generated script sets the environment variables for the loki CLI of the targeted shoot.
+
+Loki CLI must be installed, please refer to the installation instructions.
+* Grafana Loki (logcli) - https://grafana.com/docs/loki/latest/getting-started/logcli
+`,
+		Aliases: []string{"l-env"},
+	}
+	o.AddFlags(cmd.PersistentFlags())
+
+	for _, s := range validShells {
+		cmd.AddCommand(&cobra.Command{
+			Use:   string(s),
+			Short: fmt.Sprintf("Generate the loki CLI configuration script for %s", s),
+			Long: fmt.Sprintf("Generate the loki CLI configuration script for %s.\n\n"+
+				"To load the loki CLI configuration script in your current shell session:\n%s\n",
+				s, s.Prompt(runtime.GOOS)+s.EvalCommand(fmt.Sprintf("gardenctl %s %s", cmd.Name(), s)),
+			),
+			RunE: runE,
+		})
+	}
+
+	return cmd
+}
