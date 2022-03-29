@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package acc_test
+package ac_test
 
 import (
 	"bytes"
@@ -15,21 +15,21 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/gardener/gardenctl-v2/pkg/acc"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 )
 
 var _ = Describe("AccessRestriction", func() {
 	Describe("Checking access restrictions", func() {
-		var accessRestrictions []acc.AccessRestriction
+		var accessRestrictions []ac.AccessRestriction
 		var shoot *gardencorev1beta1.Shoot
 
 		BeforeEach(func() {
-			accessRestrictions = []acc.AccessRestriction{
+			accessRestrictions = []ac.AccessRestriction{
 				{
 					Key:      "a",
 					NotifyIf: true,
 					Msg:      "A",
-					Options: []acc.AccessRestrictionOption{
+					Options: []ac.AccessRestrictionOption{
 						{
 							Key:      "a1",
 							NotifyIf: true,
@@ -46,7 +46,7 @@ var _ = Describe("AccessRestriction", func() {
 					Key:      "b",
 					NotifyIf: false,
 					Msg:      "B",
-					Options: []acc.AccessRestrictionOption{
+					Options: []ac.AccessRestrictionOption{
 						{
 							Key:      "b1",
 							NotifyIf: false,
@@ -83,9 +83,9 @@ var _ = Describe("AccessRestriction", func() {
 		})
 
 		It("should match all access restrictions and options", func() {
-			messages := acc.CheckAccessRestrictions(accessRestrictions, shoot)
+			messages := ac.CheckAccessRestrictions(accessRestrictions, shoot)
 			Expect(messages).To(HaveLen(2))
-			Expect(messages).To(Equal([]*acc.AccessRestrictionMessage{
+			Expect(messages).To(Equal([]*ac.AccessRestrictionMessage{
 				{Header: "A", Items: []string{"A1", "A2"}},
 				{Header: "B", Items: []string{"B1", "B2"}},
 			}))
@@ -95,7 +95,7 @@ var _ = Describe("AccessRestriction", func() {
 			matchLabels := shoot.Spec.SeedSelector.MatchLabels
 			matchLabels["a"] = "false"
 			matchLabels["b"] = "true"
-			messages := acc.CheckAccessRestrictions(accessRestrictions, shoot)
+			messages := ac.CheckAccessRestrictions(accessRestrictions, shoot)
 			Expect(messages).To(HaveLen(0))
 		})
 
@@ -105,9 +105,9 @@ var _ = Describe("AccessRestriction", func() {
 			annotations["a2"] = "1"
 			annotations["b1"] = "TRUE"
 			annotations["b2"] = "Faux"
-			messages := acc.CheckAccessRestrictions(accessRestrictions, shoot)
+			messages := ac.CheckAccessRestrictions(accessRestrictions, shoot)
 			Expect(messages).To(HaveLen(2))
-			Expect(messages).To(Equal([]*acc.AccessRestrictionMessage{
+			Expect(messages).To(Equal([]*ac.AccessRestrictionMessage{
 				{Header: "A"},
 				{Header: "B"},
 			}))
@@ -115,7 +115,7 @@ var _ = Describe("AccessRestriction", func() {
 
 		It("should not return messages if seed selector is nil", func() {
 			shoot.Spec.SeedSelector = nil
-			messages := acc.CheckAccessRestrictions(accessRestrictions, shoot)
+			messages := ac.CheckAccessRestrictions(accessRestrictions, shoot)
 			Expect(messages).To(HaveLen(0))
 		})
 	})
@@ -123,16 +123,16 @@ var _ = Describe("AccessRestriction", func() {
 	Describe("Handling an access restriction message", func() {
 		It("should add and get a handler function from the context", func() {
 
-			message := &acc.AccessRestrictionMessage{}
-			ctx := acc.WithAccessRestrictionHandler(context.Background(), func(msg *acc.AccessRestrictionMessage) {
+			message := &ac.AccessRestrictionMessage{}
+			ctx := ac.WithAccessRestrictionHandler(context.Background(), func(msg *ac.AccessRestrictionMessage) {
 				Expect(msg).To(BeIdenticalTo(message))
 			})
-			acc.AccessRestrictionHandlerFromContext(ctx)(message)
+			ac.AccessRestrictionHandlerFromContext(ctx)(message)
 		})
 
 		It("should return nil if no handler function has been added", func() {
 			ctx := context.Background()
-			Expect(acc.AccessRestrictionHandlerFromContext(ctx)).To(BeNil())
+			Expect(ac.AccessRestrictionHandlerFromContext(ctx)).To(BeNil())
 		})
 	})
 
@@ -144,7 +144,7 @@ var _ = Describe("AccessRestriction", func() {
 		})
 
 		It("should return nil if no handler function has been added", func() {
-			message := &acc.AccessRestrictionMessage{Header: "A", Items: []string{"A1", "A2"}}
+			message := &ac.AccessRestrictionMessage{Header: "A", Items: []string{"A1", "A2"}}
 			message.Render(out)
 			Expect(out.String()).To(Equal(`┌─ Access Restriction ─────────────────────────────────────────────────────────┐
 │ A                                                                            │

@@ -19,7 +19,7 @@ import (
 
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
-	"github.com/gardener/gardenctl-v2/pkg/acc"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -59,7 +59,7 @@ var _ = Describe("Target Command", func() {
 				Patterns: []string{
 					"^shoot--(?P<project>.+)--(?P<shoot>.+)$",
 				},
-				AccessRestrictions: []acc.AccessRestriction{{Key: "a", NotifyIf: true, Msg: "Access strictly prohibited"}},
+				AccessRestrictions: []ac.AccessRestriction{{Key: "a", NotifyIf: true, Msg: "Access strictly prohibited"}},
 			}, {
 				Name:       "another-garden",
 				Kubeconfig: gardenKubeconfig,

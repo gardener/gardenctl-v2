@@ -14,7 +14,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
-	"github.com/gardener/gardenctl-v2/pkg/acc"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
@@ -206,9 +206,9 @@ func (b *targetBuilderImpl) completeTargetForShoot(ctx context.Context, t *targe
 		return fmt.Errorf("failed to fetch shoot: %w", err)
 	}
 
-	if handler := acc.AccessRestrictionHandlerFromContext(ctx); handler != nil {
+	if handler := ac.AccessRestrictionHandlerFromContext(ctx); handler != nil {
 		if garden, err := b.config.Garden(t.GardenName()); err == nil {
-			for _, message := range acc.CheckAccessRestrictions(garden.AccessRestrictions, shoot) {
+			for _, message := range ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot) {
 				handler(message)
 			}
 		}

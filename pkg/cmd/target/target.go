@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
-	"github.com/gardener/gardenctl-v2/pkg/acc"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
 
@@ -191,7 +191,7 @@ func (o *TargetOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	ctx := acc.WithAccessRestrictionHandler(f.Context(), func(message *acc.AccessRestrictionMessage) {
+	ctx := ac.WithAccessRestrictionHandler(f.Context(), func(message *ac.AccessRestrictionMessage) {
 		message.Render(o.IOStreams.Out)
 	})
 
