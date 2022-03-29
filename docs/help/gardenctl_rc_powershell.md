@@ -23,6 +23,7 @@ gardenctl rc powershell [flags]
 ```
   -h, --help            help for powershell
       --no-completion   The startup script should not setup completion
+      --no-kubeconfig   The startup script should not modify the KUBECONFIG environment variable
   -p, --prefix string   The prefix used for aliases and functions (default "g")
 ```
 
