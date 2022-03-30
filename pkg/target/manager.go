@@ -28,6 +28,8 @@ var (
 	ErrNoShootTargeted               = errors.New("no shoot targeted")
 	ErrNeitherProjectNorSeedTargeted = errors.New("neither project nor seed are targeted")
 	ErrNoControlPlaneTargeted        = errors.New("no control plane targeted")
+	//nolint:golint,error
+	Aborted = errors.New("operation aborted")
 )
 
 //go:generate mockgen -destination=./mocks/mock_manager.go -package=mocks github.com/gardener/gardenctl-v2/pkg/target Manager

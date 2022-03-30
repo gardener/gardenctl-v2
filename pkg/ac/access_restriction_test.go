@@ -9,6 +9,7 @@ package ac_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo"
@@ -85,7 +86,7 @@ var _ = Describe("AccessRestriction", func() {
 		It("should match all access restrictions and options", func() {
 			messages := ac.CheckAccessRestrictions(accessRestrictions, shoot)
 			Expect(messages).To(HaveLen(2))
-			Expect(messages).To(Equal([]*ac.AccessRestrictionMessage{
+			Expect(messages).To(Equal(ac.AccessRestrictionMessages{
 				{Header: "A", Items: []string{"A1", "A2"}},
 				{Header: "B", Items: []string{"B1", "B2"}},
 			}))
@@ -107,7 +108,7 @@ var _ = Describe("AccessRestriction", func() {
 			annotations["b2"] = "Faux"
 			messages := ac.CheckAccessRestrictions(accessRestrictions, shoot)
 			Expect(messages).To(HaveLen(2))
-			Expect(messages).To(Equal([]*ac.AccessRestrictionMessage{
+			Expect(messages).To(Equal(ac.AccessRestrictionMessages{
 				{Header: "A"},
 				{Header: "B"},
 			}))
@@ -124,10 +125,14 @@ var _ = Describe("AccessRestriction", func() {
 		It("should add and get a handler function from the context", func() {
 
 			message := &ac.AccessRestrictionMessage{}
-			ctx := ac.WithAccessRestrictionHandler(context.Background(), func(msg *ac.AccessRestrictionMessage) {
-				Expect(msg).To(BeIdenticalTo(message))
+			messages := ac.AccessRestrictionMessages{message}
+			ctx := ac.WithAccessRestrictionHandler(context.Background(), func(messages ac.AccessRestrictionMessages) bool {
+				Expect(messages).To(HaveLen(1))
+				Expect(messages[0]).To(BeIdenticalTo(message))
+
+				return true
 			})
-			ac.AccessRestrictionHandlerFromContext(ctx)(message)
+			Expect(ac.AccessRestrictionHandlerFromContext(ctx)(messages)).To(BeTrue())
 		})
 
 		It("should return nil if no handler function has been added", func() {
@@ -136,22 +141,65 @@ var _ = Describe("AccessRestriction", func() {
 		})
 	})
 
-	Describe("Rendering an access restriction message", func() {
+	Describe("Rendering access restriction messages", func() {
 		var out *bytes.Buffer
 
 		BeforeEach(func() {
 			out = &bytes.Buffer{}
 		})
 
-		It("should return nil if no handler function has been added", func() {
-			message := &ac.AccessRestrictionMessage{Header: "A", Items: []string{"A1", "A2"}}
-			message.Render(out)
+		It("should render a single message with two options", func() {
+			messages := ac.AccessRestrictionMessages{
+				{Header: "A", Items: []string{"A1", "A2"}},
+			}
+			messages.Render(out)
 			Expect(out.String()).To(Equal(`┌─ Access Restriction ─────────────────────────────────────────────────────────┐
 │ A                                                                            │
 │ * A1                                                                         │
 │ * A2                                                                         │
 └──────────────────────────────────────────────────────────────────────────────┘
 `))
+		})
+
+		It("should render two messages with one options", func() {
+			messages := ac.AccessRestrictionMessages{
+				{Header: "A", Items: []string{"A1"}},
+				{Header: "B", Items: []string{"B1"}},
+			}
+			messages.Render(out)
+			Expect(out.String()).To(Equal(`┌─ Access Restrictions ────────────────────────────────────────────────────────┐
+│ A                                                                            │
+│ * A1                                                                         │
+│ B                                                                            │
+│ * B1                                                                         │
+└──────────────────────────────────────────────────────────────────────────────┘
+`))
+		})
+
+		Describe("Confirming access restriction messages", func() {
+			var (
+				in       *bytes.Buffer
+				out      *bytes.Buffer
+				messages ac.AccessRestrictionMessages
+			)
+
+			BeforeEach(func() {
+				in = &bytes.Buffer{}
+				out = &bytes.Buffer{}
+				messages = ac.AccessRestrictionMessages{{Header: "A"}}
+			})
+
+			It("should confirm the operation", func() {
+				fmt.Fprintln(in, "yes")
+				Expect(messages.Confirm(in, out)).To(BeTrue())
+				Expect(out.String()).To(Equal("Do you want to continue? [y/N]: "))
+			})
+
+			It("should abort the operation", func() {
+				fmt.Fprintln(in, "no")
+				Expect(messages.Confirm(in, out)).To(BeFalse())
+				Expect(out.String()).To(Equal("Do you want to continue? [y/N]: "))
+			})
 		})
 	})
 })

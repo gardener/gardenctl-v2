@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package target
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 // NewCmdTarget returns a new target command.
@@ -191,8 +193,14 @@ func (o *TargetOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	ctx := ac.WithAccessRestrictionHandler(f.Context(), func(message *ac.AccessRestrictionMessage) {
-		message.Render(o.IOStreams.Out)
+	ctx := ac.WithAccessRestrictionHandler(f.Context(), func(messages ac.AccessRestrictionMessages) bool {
+		if len(messages) == 0 {
+			return true
+		}
+
+		messages.Render(o.IOStreams.Out)
+
+		return messages.Confirm(o.IOStreams.In, o.IOStreams.Out)
 	})
 
 	switch o.Kind {
@@ -211,6 +219,10 @@ func (o *TargetOptions) Run(f util.Factory) error {
 	}
 
 	if err != nil {
+		if errors.Is(err, target.Aborted) {
+			return nil
+		}
+
 		return err
 	}
 

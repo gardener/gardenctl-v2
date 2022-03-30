@@ -38,6 +38,7 @@ var _ = Describe("Target Command", func() {
 
 	var (
 		streams        util.IOStreams
+		in             *util.SafeBytesBuffer
 		out            *util.SafeBytesBuffer
 		ctrl           *gomock.Controller
 		cfg            *config.Config
@@ -93,7 +94,7 @@ var _ = Describe("Target Command", func() {
 			},
 		}
 
-		streams, _, out, _ = util.NewTestIOStreams()
+		streams, in, out, _ = util.NewTestIOStreams()
 
 		ctrl = gomock.NewController(GinkgoT())
 
@@ -229,9 +230,12 @@ var _ = Describe("Target Command", func() {
 				targetProvider.Target = target.NewTarget(gardenName, projectName, "", "")
 				cmd := cmdtarget.NewCmdTargetShoot(factory, streams)
 
+				// user confirms the access restriction message
+				fmt.Fprintln(in, "yes")
+
 				// run command
 				Expect(cmd.RunE(cmd, []string{shootName})).To(Succeed())
-				Expect(out.String()).To(MatchRegexp(`(?s)Access strictly prohibited.*Successfully targeted shoot %q\n`, shootName))
+				Expect(out.String()).To(MatchRegexp(`(?s)Access strictly prohibited.*Do you want to continue\?.*Successfully targeted shoot %q\n`, shootName))
 			})
 		})
 	})

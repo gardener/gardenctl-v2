@@ -6,13 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 package ac
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 
-	"github.com/fatih/color"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
@@ -35,8 +35,8 @@ type AccessRestrictionOption struct {
 
 // AccessRestrictionHandler is a function that should display a single AccessRestrictionMessage to the user.
 // The typical implementation of this function looks like this:
-//  func(message *AccessRestrictionMessage) { message.Render(os.Stdout) }
-type AccessRestrictionHandler func(*AccessRestrictionMessage)
+//  func(messages AccessRestrictionMessages) { message.Render(os.Stdout) }
+type AccessRestrictionHandler func(AccessRestrictionMessages) bool
 type accessRestrictionHandlerContextKey struct{}
 
 // WithAccessRestrictionHandler returns a copy of parent context to which the given AccessRestrictionHandler function has been added.
@@ -55,12 +55,6 @@ func AccessRestrictionHandlerFromContext(ctx context.Context) AccessRestrictionH
 	return nil
 }
 
-// AccessRestrictionMessage collects all messages for an access restriction in order to display them to the user.
-type AccessRestrictionMessage struct {
-	Header string
-	Items  []string
-}
-
 func (m *AccessRestrictionMessage) messageWidth() int {
 	width := len(m.Header)
 
@@ -76,21 +70,6 @@ func (m *AccessRestrictionMessage) messageWidth() int {
 	}
 
 	return width
-}
-
-// Render writes out an access restriction as a formatted text box that can be displayed to a user in the console.
-func (m *AccessRestrictionMessage) Render(w io.Writer) {
-	bold := color.New(color.Bold)
-	width := m.messageWidth()
-
-	fmt.Fprintf(w, "┌─ %s %s─┐\n", bold.Sprint("Access Restriction"), strings.Repeat("─", width-20))
-	fmt.Fprintf(w, "│ %s │\n", m.Header+strings.Repeat(" ", width-len(m.Header)))
-
-	for _, item := range m.Items {
-		fmt.Fprintf(w, "│ %s │\n", "* "+item+strings.Repeat(" ", width-len(item)-2))
-	}
-
-	fmt.Fprintf(w, "└─%s─┘\n", strings.Repeat("─", width))
 }
 
 func (accessRestriction *AccessRestriction) checkAccessRestriction(matchLabels, annotations map[string]string) *AccessRestrictionMessage {
@@ -122,7 +101,7 @@ func (accessRestriction *AccessRestriction) checkAccessRestriction(matchLabels, 
 }
 
 // CheckAccessRestrictions returns a list of access restriction messages for a given shoot cluster.
-func CheckAccessRestrictions(accessRestrictions []AccessRestriction, shoot *gardencorev1beta1.Shoot) (messages []*AccessRestrictionMessage) {
+func CheckAccessRestrictions(accessRestrictions []AccessRestriction, shoot *gardencorev1beta1.Shoot) (messages AccessRestrictionMessages) {
 	seedSelector := shoot.Spec.SeedSelector
 	if seedSelector == nil || seedSelector.MatchLabels == nil {
 		return
@@ -138,4 +117,63 @@ func CheckAccessRestrictions(accessRestrictions []AccessRestriction, shoot *gard
 	}
 
 	return messages
+}
+
+// AccessRestrictionMessage collects all messages for an access restriction in order to display them to the user.
+type AccessRestrictionMessage struct {
+	Header string
+	Items  []string
+}
+
+// AccessRestrictionMessages is a list of access restriction messages
+type AccessRestrictionMessages []*AccessRestrictionMessage
+
+// Render displays the access restriction messages
+func (messages AccessRestrictionMessages) Render(w io.Writer) {
+	width := 0
+
+	for _, m := range messages {
+		mw := m.messageWidth()
+		if mw > width {
+			width = mw
+		}
+	}
+
+	title := "Access Restriction"
+	if len(messages) > 1 {
+		title += "s"
+	}
+
+	fmt.Fprintf(w, "┌─ %s %s─┐\n", title, strings.Repeat("─", width-len(title)-2))
+
+	for _, m := range messages {
+		fmt.Fprintf(w, "│ %s%s │\n", m.Header, strings.Repeat(" ", width-len(m.Header)))
+
+		for _, item := range m.Items {
+			fmt.Fprintf(w, "│ * %s%s │\n", item, strings.Repeat(" ", width-len(item)-2))
+		}
+	}
+
+	fmt.Fprintf(w, "└─%s─┘\n", strings.Repeat("─", width))
+}
+
+// Confirm  asks for confirmation to continue
+func (messages AccessRestrictionMessages) Confirm(r io.Reader, w io.Writer) bool {
+	reader := bufio.NewReader(r)
+
+	for {
+		fmt.Fprint(w, "Do you want to continue? [y/N]: ")
+
+		str, _ := reader.ReadString('\n')
+
+		str = strings.TrimSpace(str)
+		str = strings.ToLower(str)
+
+		switch str {
+		case "y", "yes":
+			return true
+		case "", "n", "no":
+			return false
+		}
+	}
 }
