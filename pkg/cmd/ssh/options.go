@@ -803,9 +803,6 @@ func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1
 // waitForSignal informs the user about their SSHOptions and keeps the
 // bastion alive until gardenctl exits.
 func waitForSignal(ctx context.Context, o *SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string, signalChan <-chan struct{}) error {
-	bastionAddr := preferredBastionAddress(bastion)
-	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFiles, nodeHostname)
-
 	if nodeHostname == "" {
 		nodeHostname = "IP_OR_HOSTNAME"
 
@@ -885,6 +882,9 @@ func waitForSignal(ctx context.Context, o *SSHOptions, shootClient client.Client
 
 		fmt.Fprintln(o.IOStreams.Out, "")
 	}
+
+	bastionAddr := preferredBastionAddress(bastion)
+	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFiles, nodeHostname)
 
 	fmt.Fprintln(o.IOStreams.Out, "Connect to shoot nodes by using the bastion as a proxy/jump host, for example:")
 	fmt.Fprintln(o.IOStreams.Out, "")
