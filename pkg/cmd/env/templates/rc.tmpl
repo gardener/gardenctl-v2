@@ -2,23 +2,33 @@
 if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
-{{if not .noCompletion -}}
-source <(gardenctl completion {{.shell}})
 alias {{.prefix}}=gardenctl
-complete -o default -F __start_gardenctl {{.prefix}}
-{{end -}}
 alias {{.prefix}}tv='gardenctl target view -o yaml'
 alias {{.prefix}}tc='gardenctl target control-plane'
 alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval $(gardenctl kubectl-env {{.shell}})'
 alias {{.prefix}}p='eval $(gardenctl provider-env {{.shell}})'
 alias {{.prefix}}cv='gardenctl config view -o yaml'
+{{if not .noCompletion -}}
+source <(gardenctl completion {{.shell}})
+complete -o default -F __start_gardenctl {{.prefix}}
+{{end -}}
+{{if not .noKubeconfig -}}
+{{.prefix}}k
+{{end -}}
 {{end}}
 
 {{define "zsh" -}}
 if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
+alias {{.prefix}}=gardenctl
+alias {{.prefix}}tv='gardenctl target view -o yaml'
+alias {{.prefix}}tc='gardenctl target control-plane'
+alias {{.prefix}}tc-='gardenctl target unset control-plane'
+alias {{.prefix}}k='eval $(gardenctl kubectl-env {{.shell}})'
+alias {{.prefix}}p='eval $(gardenctl provider-env {{.shell}})'
+alias {{.prefix}}cv='gardenctl config view -o yaml'
 {{if not .noCompletion -}}
 if (( $+commands[gardenctl] )); then
   if [ -d "$ZSH_CACHE_DIR/completions" ] && (($fpath[(Ie)$ZSH_CACHE_DIR/completions])); then
@@ -35,30 +45,29 @@ if (( $+commands[gardenctl] )); then
   unset GCTL_COMPLETION_FILE
 fi
 {{end -}}
-alias {{.prefix}}=gardenctl
-alias {{.prefix}}tv='gardenctl target view -o yaml'
-alias {{.prefix}}tc='gardenctl target control-plane'
-alias {{.prefix}}tc-='gardenctl target unset control-plane'
-alias {{.prefix}}k='eval $(gardenctl kubectl-env {{.shell}})'
-alias {{.prefix}}p='eval $(gardenctl provider-env {{.shell}})'
-alias {{.prefix}}cv='gardenctl config view -o yaml'
+{{if not .noKubeconfig -}}
+{{.prefix}}k
+{{end -}}
 {{end}}
 
 {{define "fish" -}}
 if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ];
   set -gx GCTL_SESSION_ID (uuidgen)
 end
-{{if not .noCompletion -}}
-gardenctl completion {{.shell}} | source
 alias {{.prefix}}=gardenctl
-complete -c {{.prefix}} -w gardenctl
-{{end -}}
 alias {{.prefix}}tv='gardenctl target view -o yaml'
 alias {{.prefix}}tc='gardenctl target control-plane'
 alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval (gardenctl kubectl-env {{.shell}})'
 alias {{.prefix}}p='eval (gardenctl provider-env {{.shell}})'
 alias {{.prefix}}cv='gardenctl config view -o yaml'
+{{if not .noCompletion -}}
+gardenctl completion {{.shell}} | source
+complete -c {{.prefix}} -w gardenctl
+{{end -}}
+{{if not .noKubeconfig -}}
+{{.prefix}}k
+{{end -}}
 {{end}}
 
 {{define "powershell" -}}
@@ -66,17 +75,6 @@ if ( !(Test-Path Env:GCTL_SESSION_ID) -and !(Test-Path Env:TERM_SESSION_ID) ) {
   $Env:GCTL_SESSION_ID = [guid]::NewGuid().ToString()
 }
 Set-Alias -Name {{.prefix}} -Value (get-command gardenctl).Path -Option AllScope -Force
-{{if not .noCompletion -}}
-function Gardenctl-Completion-Powershell {
-  $s = (gardenctl completion {{.shell}})
-  @(
-    ($s -replace "(?ms)^Register-ArgumentCompleter -CommandName 'gardenctl' -ScriptBlock", "`$scriptBlock =")
-    "Register-ArgumentCompleter -CommandName 'gardenctl' -ScriptBlock `$scriptBlock"
-    "Register-ArgumentCompleter -CommandName '{{.prefix}}' -ScriptBlock `$scriptBlock"
-  )
-}
-Gardenctl-Completion-Powershell | Out-String | Invoke-Expression
-{{end -}}
 function Gardenctl-Target-View {
   gardenctl target view -o yaml
 }
@@ -101,4 +99,18 @@ function Gardenctl-Config-View {
   gardenctl config view -o yaml
 }
 Set-Alias -Name {{.prefix}}cv -Value Gardenctl-Config-View -Option AllScope -Force
+{{if not .noCompletion -}}
+function Gardenctl-Completion-Powershell {
+  $s = (gardenctl completion {{.shell}})
+  @(
+    ($s -replace "(?ms)^Register-ArgumentCompleter -CommandName 'gardenctl' -ScriptBlock", "`$scriptBlock =")
+    "Register-ArgumentCompleter -CommandName 'gardenctl' -ScriptBlock `$scriptBlock"
+    "Register-ArgumentCompleter -CommandName '{{.prefix}}' -ScriptBlock `$scriptBlock"
+  )
+}
+Gardenctl-Completion-Powershell | Out-String | Invoke-Expression
+{{end -}}
+{{if not .noKubeconfig -}}
+{{.prefix}}k
+{{end -}}
 {{end}}
