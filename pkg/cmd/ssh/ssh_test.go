@@ -72,6 +72,20 @@ func waitForBastionThenPatchStatus(ctx context.Context, gardenClient client.Clie
 	}
 }
 
+func waitForBastionThenSetBastionReady(ctx context.Context, gardenClient client.Client, bastionName string, namespace string, bastionHostname string, bastionIP string) {
+	waitForBastionThenPatchStatus(ctx, gardenClient, bastionName, namespace, func(status *operationsv1alpha1.BastionStatus) {
+		status.Ingress = &corev1.LoadBalancerIngress{
+			Hostname: bastionHostname,
+			IP:       bastionIP,
+		}
+		status.Conditions = []gardencorev1alpha1.Condition{{
+			Type:   "BastionReady",
+			Status: gardencorev1alpha1.ConditionTrue,
+			Reason: "Testing",
+		}}
+	})
+}
+
 var _ = Describe("SSH Command", func() {
 	const (
 		gardenName           = "mygarden"
@@ -279,17 +293,7 @@ var _ = Describe("SSH Command", func() {
 			cmd := ssh.NewCmdSSH(factory, options)
 
 			// simulate an external controller processing the bastion and proving a successful status
-			go waitForBastionThenPatchStatus(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, func(status *operationsv1alpha1.BastionStatus) {
-				status.Ingress = &corev1.LoadBalancerIngress{
-					Hostname: bastionHostname,
-					IP:       bastionIP,
-				}
-				status.Conditions = []gardencorev1alpha1.Condition{{
-					Type:   "BastionReady",
-					Status: gardencorev1alpha1.ConditionTrue,
-					Reason: "Testing",
-				}}
-			})
+			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
 
 			// let the magic happen
 			Expect(cmd.RunE(cmd, nil)).To(Succeed())
@@ -318,17 +322,7 @@ var _ = Describe("SSH Command", func() {
 			cmd := ssh.NewCmdSSH(factory, options)
 
 			// simulate an external controller processing the bastion and proving a successful status
-			go waitForBastionThenPatchStatus(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, func(status *operationsv1alpha1.BastionStatus) {
-				status.Ingress = &corev1.LoadBalancerIngress{
-					Hostname: bastionHostname,
-					IP:       bastionIP,
-				}
-				status.Conditions = []gardencorev1alpha1.Condition{{
-					Type:   "BastionReady",
-					Status: gardencorev1alpha1.ConditionTrue,
-					Reason: "Testing",
-				}}
-			})
+			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
 
 			// do not actually execute any commands
 			executedCommands := 0
@@ -382,17 +376,7 @@ var _ = Describe("SSH Command", func() {
 			cmd := ssh.NewCmdSSH(factory, options)
 
 			// simulate an external controller processing the bastion and proving a successful status
-			go waitForBastionThenPatchStatus(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, func(status *operationsv1alpha1.BastionStatus) {
-				status.Ingress = &corev1.LoadBalancerIngress{
-					Hostname: bastionHostname,
-					IP:       bastionIP,
-				}
-				status.Conditions = []gardencorev1alpha1.Condition{{
-					Type:   "BastionReady",
-					Status: gardencorev1alpha1.ConditionTrue,
-					Reason: "Testing",
-				}}
-			})
+			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
 
 			// end the test after a couple of seconds (enough seconds for the keep-alive
 			// goroutine to do its thing)
