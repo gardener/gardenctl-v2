@@ -369,6 +369,61 @@ var _ = Describe("SSH Command", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
+		It("should connect to a given node that has not yet joined the cluster", func() {
+			options := ssh.NewSSHOptions(streams)
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			nodeName := "unjoined-node"
+
+			// simulate an external controller processing the bastion and proving a successful status
+			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
+
+			// do not actually execute any commands
+			executedCommands := 0
+			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, o *ssh.SSHOptions) error {
+				executedCommands++
+
+				Expect(command).To(Equal("ssh"))
+				Expect(args).To(Equal([]string{
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "IdentitiesOnly=yes",
+					"-o", fmt.Sprintf(
+						"ProxyCommand=ssh -W%%h:%%p -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i %s %s@%s",
+						o.SSHPrivateKeyFile,
+						ssh.SSHBastionUsername,
+						bastionIP,
+					),
+					"-i", nodePrivateKeyFile,
+					fmt.Sprintf("%s@%s", ssh.SSHNodeUsername, nodeName),
+				}))
+
+				return nil
+			})
+
+			// let the magic happen
+			Expect(cmd.RunE(cmd, []string{nodeName})).To(Succeed())
+
+			// assert output
+			Expect(executedCommands).To(Equal(1))
+			Expect(out.String()).To(ContainSubstring(bastionName))
+			Expect(out.String()).To(ContainSubstring(bastionHostname))
+			Expect(out.String()).To(ContainSubstring(bastionIP))
+			Expect(out.String()).To(ContainSubstring("node did not yet join the cluster"))
+
+			// assert that the bastion has been cleaned up
+			key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
+			bastion := &operationsv1alpha1.Bastion{}
+
+			Expect(gardenClient.Get(ctx, key, bastion)).NotTo(Succeed())
+
+			// assert that no temporary SSH keypair remained on disk
+			_, err := os.Stat(options.SSHPublicKeyFile)
+			Expect(err).To(HaveOccurred())
+
+			_, err = os.Stat(options.SSHPrivateKeyFile)
+			Expect(err).To(HaveOccurred())
+		})
+
 		It("should keep the bastion alive", func() {
 			options := ssh.NewSSHOptions(streams)
 			options.KeepBastion = true // we need to assert its annotations later
