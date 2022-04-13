@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	"github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -54,6 +55,17 @@ func createTestShoot(name string, namespace string, seedName *string) *gardencor
 		},
 		Spec: gardencorev1beta1.ShootSpec{
 			SeedName: seedName,
+			Kubernetes: gardencorev1beta1.Kubernetes{
+				Version: "1.20.0", // >= 1.20.0 for non-legacy shoot kubeconfigs
+			},
+		},
+		Status: gardencorev1beta1.ShootStatus{
+			AdvertisedAddresses: []gardencorev1beta1.ShootAdvertisedAddress{
+				{
+					Name: "shoot-address1",
+					URL:  "https://api.bar.baz",
+				},
+			},
 		},
 	}
 
@@ -81,21 +93,20 @@ func createTestManager(t target.Target, cfg *config.Config, clientProvider targe
 
 var _ = Describe("Target Manager", func() {
 	var (
-		ctrl                                *gomock.Controller
-		prod1Project                        *gardencorev1beta1.Project
-		prod2Project                        *gardencorev1beta1.Project
-		unreadyProject                      *gardencorev1beta1.Project
-		seed                                *gardencorev1beta1.Seed
-		seedKubeconfigSecret                *corev1.Secret
-		prod1GoldenShoot                    *gardencorev1beta1.Shoot
-		prod1GoldenShootKubeconfigConfigMap *corev1.ConfigMap
-		prod1AmbiguousShoot                 *gardencorev1beta1.Shoot
-		prod2AmbiguousShoot                 *gardencorev1beta1.Shoot
-		prod1PendingShoot                   *gardencorev1beta1.Shoot
-		cfg                                 *config.Config
-		gardenClient                        client.Client
-		clientProvider                      *targetmocks.MockClientProvider
-		namespace                           *corev1.Namespace
+		ctrl                 *gomock.Controller
+		prod1Project         *gardencorev1beta1.Project
+		prod2Project         *gardencorev1beta1.Project
+		unreadyProject       *gardencorev1beta1.Project
+		seed                 *gardencorev1beta1.Seed
+		seedKubeconfigSecret *corev1.Secret
+		prod1GoldenShoot     *gardencorev1beta1.Shoot
+		prod1AmbiguousShoot  *gardencorev1beta1.Shoot
+		prod2AmbiguousShoot  *gardencorev1beta1.Shoot
+		prod1PendingShoot    *gardencorev1beta1.Shoot
+		cfg                  *config.Config
+		gardenClient         client.Client
+		clientProvider       *targetmocks.MockClientProvider
+		namespace            *corev1.Namespace
 	)
 
 	BeforeEach(func() {
@@ -161,18 +172,27 @@ var _ = Describe("Target Manager", func() {
 		}
 
 		prod1GoldenShoot = createTestShoot("golden-shoot", *prod1Project.Spec.Namespace, pointer.String(seed.Name))
-		prod1GoldenShootKubeconfigConfigMap = &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      prod1GoldenShoot.Name + ".kubeconfig",
-				Namespace: prod1GoldenShoot.Namespace,
-			},
-			Data: map[string]string{
-				"kubeconfig": string(createTestKubeconfig(prod1GoldenShoot.Name)),
-			},
-		}
 		prod1AmbiguousShoot = createTestShoot("ambiguous-shoot", *prod1Project.Spec.Namespace, pointer.String(seed.Name))
 		prod2AmbiguousShoot = createTestShoot("ambiguous-shoot", *prod2Project.Spec.Namespace, pointer.String(seed.Name))
 		prod1PendingShoot = createTestShoot("pending-shoot", *prod1Project.Spec.Namespace, nil)
+
+		csc := &secrets.CertificateSecretConfig{
+			Name:       "ca-test",
+			CommonName: "ca-test",
+			CertType:   secrets.CACert,
+		}
+		ca, err := csc.GenerateCertificate()
+		Expect(err).NotTo(HaveOccurred())
+
+		prod1GoldenShootCaSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      prod1GoldenShoot.Name + ".ca-cluster",
+				Namespace: *prod1Project.Spec.Namespace,
+			},
+			Data: map[string][]byte{
+				"ca.crt": ca.CertificatePEM,
+			},
+		}
 
 		gardenClient = fake.NewClientWithObjects(
 			prod1Project,
@@ -181,11 +201,11 @@ var _ = Describe("Target Manager", func() {
 			seed,
 			seedKubeconfigSecret,
 			prod1GoldenShoot,
-			prod1GoldenShootKubeconfigConfigMap,
 			prod1AmbiguousShoot,
 			prod2AmbiguousShoot,
 			prod1PendingShoot,
 			namespace,
+			prod1GoldenShootCaSecret,
 		)
 
 		ctrl = gomock.NewController(GinkgoT())
@@ -402,9 +422,7 @@ var _ = Describe("Target Manager", func() {
 		manager, _ := createTestManager(t, cfg, clientProvider)
 
 		shootClient := fake.NewClientWithObjects()
-		clientConfig, err := clientcmd.NewClientConfigFromBytes([]byte(prod1GoldenShootKubeconfigConfigMap.Data["kubeconfig"]))
-		Expect(err).NotTo(HaveOccurred())
-		clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(shootClient, nil)
+		clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(shootClient, nil)
 
 		newClient, err := manager.ShootClient(ctx, t)
 		Expect(err).NotTo(HaveOccurred())
@@ -552,7 +570,9 @@ var _ = Describe("Target Manager", func() {
 			It("should return the client configuration", func() {
 				clientConfig, err := manager.ClientConfig(ctx, t)
 				Expect(err).NotTo(HaveOccurred())
-				assertClientConfig(clientConfig, prod1GoldenShoot.Name, "default")
+
+				currentContextName := prod1GoldenShoot.Namespace + "--" + prod1GoldenShoot.Name + "-" + prod1GoldenShoot.Status.AdvertisedAddresses[0].Name
+				assertClientConfig(clientConfig, currentContextName, "default")
 			})
 		})
 

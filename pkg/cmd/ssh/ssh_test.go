@@ -18,6 +18,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
+	"github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -82,25 +83,24 @@ var _ = Describe("SSH Command", func() {
 	)
 
 	var (
-		ctrl                *gomock.Controller
-		clientProvider      *targetmocks.MockClientProvider
-		cfg                 *config.Config
-		streams             util.IOStreams
-		out                 *util.SafeBytesBuffer
-		factory             *internalfake.Factory
-		ctx                 context.Context
-		cancel              context.CancelFunc
-		ctxTimeout          context.Context
-		cancelTimeout       context.CancelFunc
-		currentTarget       target.Target
-		testProject         *gardencorev1beta1.Project
-		testSeed            *gardencorev1beta1.Seed
-		testShoot           *gardencorev1beta1.Shoot
-		testShootKubeconfig *corev1.ConfigMap
-		testNode            *corev1.Node
-		gardenClient        client.Client
-		shootClient         client.Client
-		nodePrivateKeyFile  string
+		ctrl               *gomock.Controller
+		clientProvider     *targetmocks.MockClientProvider
+		cfg                *config.Config
+		streams            util.IOStreams
+		out                *util.SafeBytesBuffer
+		factory            *internalfake.Factory
+		ctx                context.Context
+		cancel             context.CancelFunc
+		ctxTimeout         context.Context
+		cancelTimeout      context.CancelFunc
+		currentTarget      target.Target
+		testProject        *gardencorev1beta1.Project
+		testSeed           *gardencorev1beta1.Seed
+		testShoot          *gardencorev1beta1.Shoot
+		testNode           *corev1.Node
+		gardenClient       client.Client
+		shootClient        client.Client
+		nodePrivateKeyFile string
 	)
 
 	BeforeEach(func() {
@@ -165,16 +165,17 @@ var _ = Describe("SSH Command", func() {
 			},
 			Spec: gardencorev1beta1.ShootSpec{
 				SeedName: pointer.String(testSeed.Name),
+				Kubernetes: gardencorev1beta1.Kubernetes{
+					Version: "1.20.0", // >= 1.20.0 for non-legacy shoot kubeconfigs
+				},
 			},
-		}
-
-		testShootKubeconfig = &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      testShoot.Name + ".kubeconfig",
-				Namespace: *testProject.Spec.Namespace,
-			},
-			Data: map[string]string{
-				"kubeconfig": string(createTestKubeconfig(testShoot.Name)),
+			Status: gardencorev1beta1.ShootStatus{
+				AdvertisedAddresses: []gardencorev1beta1.ShootAdvertisedAddress{
+					{
+						Name: "shoot-address1",
+						URL:  "https://api.bar.baz",
+					},
+				},
 			},
 		}
 
@@ -188,12 +189,30 @@ var _ = Describe("SSH Command", func() {
 			},
 		}
 
+		csc := &secrets.CertificateSecretConfig{
+			Name:       "ca-test",
+			CommonName: "ca-test",
+			CertType:   secrets.CACert,
+		}
+		ca, err := csc.GenerateCertificate()
+		Expect(err).NotTo(HaveOccurred())
+
+		caSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      testShoot.Name + ".ca-cluster",
+				Namespace: testShoot.Namespace,
+			},
+			Data: map[string][]byte{
+				"ca.crt": ca.CertificatePEM,
+			},
+		}
+
 		gardenClient = internalfake.NewClientWithObjects(
 			testProject,
 			testSeed,
 			testShoot,
-			testShootKubeconfig,
 			testShootKeypair,
+			caSecret,
 		)
 
 		// create a fake shoot cluster with a single node in it
@@ -233,7 +252,7 @@ var _ = Describe("SSH Command", func() {
 			Do(func(clientConfig clientcmd.ClientConfig) {
 				config, err := clientConfig.RawConfig()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(config.CurrentContext).To(Equal(testShoot.Name))
+				Expect(config.CurrentContext).To(Equal(testShoot.Namespace + "--" + testShoot.Name + "-" + testShoot.Status.AdvertisedAddresses[0].Name))
 			})
 	})
 

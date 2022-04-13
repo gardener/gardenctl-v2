@@ -8,12 +8,10 @@ package util_test
 
 import (
 	"context"
-	"fmt"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 
@@ -64,21 +62,10 @@ var _ = Describe("Target Utilities", func() {
 			},
 		}
 
-		testShootKubeconfig := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%s.kubeconfig", testShoot.Name),
-				Namespace: *testReadyProject.Spec.Namespace,
-			},
-			Data: map[string][]byte{
-				"data": []byte("not-used"),
-			},
-		}
-
 		gardenClient = gardenclient.NewGardenClient(fake.NewClientWithObjects(
 			testReadyProject,
 			testUnreadyProject,
 			testSeed,
-			testShootKubeconfig,
 			testShoot,
 		))
 	})
