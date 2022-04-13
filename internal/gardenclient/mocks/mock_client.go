@@ -209,18 +209,18 @@ func (mr *MockClientMockRecorder) GetShoot(arg0, arg1, arg2 interface{}) *gomock
 }
 
 // GetShootClientConfig mocks base method.
-func (m *MockClient) GetShootClientConfig(arg0 context.Context, arg1, arg2 string) (clientcmd.ClientConfig, error) {
+func (m *MockClient) GetShootClientConfig(arg0 context.Context, arg1, arg2, arg3 string) (clientcmd.ClientConfig, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetShootClientConfig", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetShootClientConfig", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(clientcmd.ClientConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetShootClientConfig indicates an expected call of GetShootClientConfig.
-func (mr *MockClientMockRecorder) GetShootClientConfig(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetShootClientConfig(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootClientConfig", reflect.TypeOf((*MockClient)(nil).GetShootClientConfig), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootClientConfig", reflect.TypeOf((*MockClient)(nil).GetShootClientConfig), arg0, arg1, arg2, arg3)
 }
 
 // ListProjects mocks base method.
