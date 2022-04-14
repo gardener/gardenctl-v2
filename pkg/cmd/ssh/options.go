@@ -49,6 +49,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
@@ -436,9 +437,19 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	ctx, cancel := context.WithCancel(f.Context())
 	defer cancel()
 
-	shoot, err := util.ShootForTarget(ctx, gardenClient, currentTarget)
+	shoot, err := gardenClient.FindShoot(ctx, currentTarget.AsListOption())
 	if err != nil {
 		return err
+	}
+
+	// handle access restrictions
+	if garden, err := manager.Configuration().Garden(currentTarget.GardenName()); err == nil {
+		askForConfirmation := manager.TargetFlags().ShootName() != ""
+		handler := ac.NewAccessRestrictionHandler(o.IOStreams.In, o.IOStreams.Out, askForConfirmation)
+
+		if !handler(ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)) {
+			return nil
+		}
 	}
 
 	// fetch the SSH key(s) for the shoot nodes

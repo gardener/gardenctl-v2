@@ -193,15 +193,9 @@ func (o *TargetOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	ctx := ac.WithAccessRestrictionHandler(f.Context(), func(messages ac.AccessRestrictionMessages) bool {
-		if len(messages) == 0 {
-			return true
-		}
-
-		messages.Render(o.IOStreams.Out)
-
-		return messages.Confirm(o.IOStreams.In, o.IOStreams.Out)
-	})
+	askForConfirmation := manager.TargetFlags().ShootName() != "" || o.Kind == TargetKindShoot
+	handler := ac.NewAccessRestrictionHandler(o.IOStreams.In, o.IOStreams.Out, askForConfirmation)
+	ctx := ac.WithAccessRestrictionHandler(f.Context(), handler)
 
 	switch o.Kind {
 	case TargetKindGarden:

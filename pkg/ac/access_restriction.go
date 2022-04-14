@@ -55,6 +55,22 @@ func AccessRestrictionHandlerFromContext(ctx context.Context) AccessRestrictionH
 	return nil
 }
 
+func NewAccessRestrictionHandler(r io.Reader, w io.Writer, askForConfirmation bool) AccessRestrictionHandler {
+	return func(messages AccessRestrictionMessages) bool {
+		if len(messages) == 0 {
+			return true
+		}
+
+		messages.Render(w)
+
+		if !askForConfirmation {
+			return true
+		}
+
+		return messages.Confirm(r, w)
+	}
+}
+
 func (m *AccessRestrictionMessage) messageWidth() int {
 	width := len(m.Header)
 
