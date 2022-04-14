@@ -7,7 +7,7 @@ Generate a script that points KUBECONFIG to the targeted cluster for zsh
 Generate a script that points KUBECONFIG to the targeted cluster for zsh.
 
 To load the kubectl configuration script in your current shell session:
-$ eval $(gardenctl kubectl-env zsh)
+$ eval "$(gardenctl kubectl-env zsh)"
 
 
 ```
