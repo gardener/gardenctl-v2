@@ -105,6 +105,7 @@ var _ = Describe("Env Commands - Options", func() {
 					factory.EXPECT().Manager().Return(manager, nil)
 					manager.EXPECT().SessionDir().Return(sessionDir)
 					manager.EXPECT().Configuration().Return(cfg)
+					manager.EXPECT().TargetFlags().Return(tf)
 					Expect(options.Template).To(BeNil())
 					Expect(options.Complete(factory, child, nil)).To(Succeed())
 					Expect(options.Shell).To(Equal(child.Name()))
@@ -134,6 +135,7 @@ var _ = Describe("Env Commands - Options", func() {
 					factory.EXPECT().Manager().Return(manager, nil)
 					manager.EXPECT().SessionDir().Return(sessionDir)
 					manager.EXPECT().Configuration().Return(cfg)
+					manager.EXPECT().TargetFlags().Return(tf)
 					Expect(options.Template).To(BeNil())
 					Expect(options.Complete(factory, child, nil)).To(Succeed())
 					Expect(options.Template).NotTo(BeNil())
@@ -194,14 +196,12 @@ var _ = Describe("Env Commands - Options", func() {
 				shell = "bash"
 				pathToKubeconfig = "/path/to/kube/config"
 				config = &clientcmd.DirectClientConfig{}
+
+				factory.EXPECT().Context().Return(ctx)
+				factory.EXPECT().Manager().Return(manager, nil)
 			})
 
 			Context("when the command runs successfully", func() {
-				BeforeEach(func() {
-					factory.EXPECT().Manager().Return(manager, nil)
-					factory.EXPECT().Context().Return(ctx)
-				})
-
 				Context("and the shoot is targeted via project", func() {
 					It("does the work when the shoot is targeted via project", func() {
 						currentTarget := t.WithSeedName("")
@@ -226,10 +226,6 @@ var _ = Describe("Env Commands - Options", func() {
 			Context("when an error occurs", func() {
 				var currentTarget target.Target
 
-				BeforeEach(func() {
-					factory.EXPECT().Manager().Return(manager, nil)
-				})
-
 				JustBeforeEach(func() {
 					manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
 				})
@@ -249,7 +245,6 @@ var _ = Describe("Env Commands - Options", func() {
 
 					BeforeEach(func() {
 						currentTarget = t.WithGardenName("test")
-						factory.EXPECT().Context().Return(ctx)
 					})
 
 					It("should fail with a read error", func() {
@@ -285,7 +280,6 @@ var _ = Describe("Env Commands - Options", func() {
 			)
 
 			BeforeEach(func() {
-				ctx = context.Background()
 				manager = targetmocks.NewMockManager(ctrl)
 				client = gardenclientmocks.NewMockClient(ctrl)
 				t = target.NewTarget("test", "project", "seed", "shoot")
@@ -302,6 +296,9 @@ var _ = Describe("Env Commands - Options", func() {
 				}
 				shell = "bash"
 				options.SessionDir = sessionDir
+				ctx = context.Background()
+
+				factory.EXPECT().Context().Return(ctx)
 			})
 
 			JustBeforeEach(func() {
@@ -351,7 +348,6 @@ var _ = Describe("Env Commands - Options", func() {
 				BeforeEach(func() {
 					factory.EXPECT().Manager().Return(manager, nil)
 					manager.EXPECT().GardenClient(t.GardenName()).Return(client, nil)
-					factory.EXPECT().Context().Return(ctx)
 				})
 
 				JustBeforeEach(func() {
@@ -365,6 +361,7 @@ var _ = Describe("Env Commands - Options", func() {
 						currentTarget := t.WithSeedName("")
 						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
 						client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
+						manager.EXPECT().Configuration().Return(cfg)
 					})
 
 					It("does the work when the shoot is targeted via project", func() {
@@ -385,6 +382,7 @@ var _ = Describe("Env Commands - Options", func() {
 						currentTarget := t.WithProjectName("")
 						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
 						client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
+						manager.EXPECT().Configuration().Return(cfg)
 					})
 
 					It("does the work when the shoot is targeted via seed", func() {
@@ -425,7 +423,6 @@ var _ = Describe("Env Commands - Options", func() {
 					BeforeEach(func() {
 						factory.EXPECT().Manager().Return(manager, nil)
 						manager.EXPECT().GardenClient(t.GardenName()).Return(client, nil)
-						factory.EXPECT().Context().Return(ctx)
 					})
 
 					It("should fail with GetShootByProjectError", func() {
@@ -725,7 +722,7 @@ var _ = Describe("Env Commands - Options", func() {
 				cli = env.GetProviderCLI(options.ProviderType)
 				meta = options.GenerateMetadata()
 				targetFlags = env.GetTargetFlags(t)
-				Expect(env.NewTemplate("usage-hint").ExecuteTemplate(options.IOStreams.Out, "usage-hint", meta)).To(Succeed())
+				Expect(env.NewTemplate("helpers").ExecuteTemplate(options.IOStreams.Out, "usage-hint", meta)).To(Succeed())
 			})
 
 			Context("when configuring the shell", func() {

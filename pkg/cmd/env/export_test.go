@@ -9,6 +9,8 @@ package env
 import (
 	"text/template"
 
+	"github.com/gardener/gardenctl-v2/pkg/ac"
+
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 
@@ -48,8 +50,8 @@ func NewOptions() *TestOptions {
 	}
 }
 
-func (o *TestOptions) ExecTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile) error {
-	return execTmpl(&o.options, shoot, secret, cloudProfile)
+func (o *TestOptions) ExecTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile, messages ...*ac.AccessRestrictionMessage) error {
+	return execTmpl(&o.options, shoot, secret, cloudProfile, messages)
 }
 
 func (o *TestOptions) GenerateMetadata() map[string]interface{} {
