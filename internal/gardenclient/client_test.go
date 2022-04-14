@@ -28,6 +28,10 @@ import (
 )
 
 var _ = Describe("Client", func() {
+	const (
+		gardenName = "my-garden"
+	)
+
 	var (
 		ctx          context.Context
 		gardenClient gardenclient.Client
@@ -56,6 +60,7 @@ var _ = Describe("Client", func() {
 			}
 			gardenClient = gardenclient.NewGardenClient(
 				fake.NewClientWithObjects(oidcSecret, loginSecret),
+				gardenName,
 			)
 		})
 
@@ -82,10 +87,9 @@ var _ = Describe("Client", func() {
 
 	Describe("GetShootClientConfig", func() {
 		const (
-			shootName       = "test-shoot1"
-			namespace       = "garden-prod1"
-			domain          = "foo.bar.baz"
-			clusterIdentity = "my-garden"
+			shootName = "test-shoot1"
+			namespace = "garden-prod1"
+			domain    = "foo.bar.baz"
 
 			k8sVersion       = "1.20.0"
 			k8sVersionLegacy = "1.19.0" // legacy kubeconfig should be rendered
@@ -146,15 +150,17 @@ var _ = Describe("Client", func() {
 			JustBeforeEach(func() {
 				gardenClient = gardenclient.NewGardenClient(
 					fake.NewClientWithObjects(testShoot1, caSecret),
+					gardenName,
 				)
 			})
 
 			It("it should return the client config", func() {
 				gardenClient = gardenclient.NewGardenClient(
 					fake.NewClientWithObjects(testShoot1, caSecret),
+					gardenName,
 				)
 
-				clientConfig, err := gardenClient.GetShootClientConfig(ctx, clusterIdentity, namespace, shootName)
+				clientConfig, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName)
 				Expect(err).NotTo(HaveOccurred())
 
 				rawConfig, err := clientConfig.RawConfig()
@@ -175,7 +181,7 @@ var _ = Describe("Client", func() {
 						Namespace: namespace,
 						Name:      shootName,
 					},
-					GardenClusterIdentity: clusterIdentity,
+					GardenClusterIdentity: gardenName,
 				}))
 
 				Expect(rawConfig.Contexts).To(HaveLen(2))
@@ -196,7 +202,7 @@ var _ = Describe("Client", func() {
 				})
 
 				It("should create legacy kubeconfig configMap", func() {
-					clientConfig, err := gardenClient.GetShootClientConfig(ctx, clusterIdentity, namespace, shootName)
+					clientConfig, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName)
 					Expect(err).NotTo(HaveOccurred())
 
 					rawConfig, err := clientConfig.RawConfig()
@@ -218,7 +224,7 @@ var _ = Describe("Client", func() {
 						"get-client-certificate",
 						fmt.Sprintf("--name=%s", shootName),
 						fmt.Sprintf("--namespace=%s", namespace),
-						fmt.Sprintf("--garden-cluster-identity=%s", clusterIdentity),
+						fmt.Sprintf("--garden-cluster-identity=%s", gardenName),
 					}))
 				})
 			})
@@ -228,11 +234,12 @@ var _ = Describe("Client", func() {
 			BeforeEach(func() {
 				gardenClient = gardenclient.NewGardenClient(
 					fake.NewClientWithObjects(testShoot1),
+					gardenName,
 				)
 			})
 
 			It("it should fail with not found error", func() {
-				_, err := gardenClient.GetShootClientConfig(ctx, clusterIdentity, namespace, shootName)
+				_, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName)
 				Expect(err).To(HaveOccurred())
 				Expect(apierrors.IsNotFound(err)).To(BeTrue())
 				Expect(err.Error()).To(ContainSubstring(shootName + ".ca-cluster"))

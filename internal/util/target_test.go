@@ -62,12 +62,15 @@ var _ = Describe("Target Utilities", func() {
 			},
 		}
 
-		gardenClient = gardenclient.NewGardenClient(fake.NewClientWithObjects(
-			testReadyProject,
-			testUnreadyProject,
-			testSeed,
-			testShoot,
-		))
+		gardenClient = gardenclient.NewGardenClient(
+			fake.NewClientWithObjects(
+				testReadyProject,
+				testUnreadyProject,
+				testSeed,
+				testShoot,
+			),
+			"my-garden",
+		)
 	})
 
 	Describe("SeedForTarget", func() {
