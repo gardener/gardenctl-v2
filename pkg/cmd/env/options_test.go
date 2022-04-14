@@ -49,6 +49,8 @@ var _ = Describe("Env Commands - Options", func() {
 			providerType string
 			unset        bool
 			baseTemplate env.Template
+			cfg          *config.Config
+			tf           target.TargetFlags
 		)
 
 		BeforeEach(func() {
@@ -57,9 +59,13 @@ var _ = Describe("Env Commands - Options", func() {
 			manager = targetmocks.NewMockManager(ctrl)
 			options = env.NewOptions()
 			cmdPath = "gardenctl provider-env"
-			baseTemplate = env.NewTemplate("usage-hint")
+			baseTemplate = env.NewTemplate("helpers")
 			shell = "default"
 			providerType = "aws"
+			cfg = &config.Config{
+				LinkKubeconfig: pointer.Bool(false),
+			}
+			tf = target.NewTargetFlags("", "", "", "", false)
 		})
 
 		AfterEach(func() {
@@ -79,7 +85,6 @@ var _ = Describe("Env Commands - Options", func() {
 				root,
 				parent,
 				child *cobra.Command
-				cfg *config.Config
 			)
 
 			BeforeEach(func() {
@@ -93,9 +98,6 @@ var _ = Describe("Env Commands - Options", func() {
 				Expect(root.Execute()).To(Succeed())
 				baseTemplate = nil
 				providerType = ""
-				cfg = &config.Config{
-					LinkKubeconfig: pointer.Bool(false),
-				}
 			})
 
 			Context("when the providerType is empty", func() {

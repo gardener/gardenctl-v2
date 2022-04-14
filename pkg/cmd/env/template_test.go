@@ -62,7 +62,7 @@ var _ = Describe("Env Commands - Template", func() {
 
 	Describe("parsing the usage-hint template", func() {
 		BeforeEach(func() {
-			filenames = append(filenames, "usage-hint")
+			filenames = append(filenames, "helpers")
 		})
 
 		DescribeTable("executing the eval-cmd template",
@@ -107,7 +107,7 @@ var _ = Describe("Env Commands - Template", func() {
 		BeforeEach(func() {
 			providerType = "kubernetes"
 			commandPath = "gardenctl kubectl-env"
-			filenames = append(filenames, "usage-hint", providerType)
+			filenames = append(filenames, "helpers", providerType)
 		})
 
 		JustBeforeEach(func() {
@@ -158,7 +158,7 @@ unset CLOUDSDK_CONFIG;
 		BeforeEach(func() {
 			providerType = "gcp"
 			commandPath = "gardenctl provider-env"
-			filenames = append(filenames, "usage-hint", providerType)
+			filenames = append(filenames, "helpers", providerType)
 		})
 
 		JustBeforeEach(func() {
@@ -215,7 +215,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 			providerType = "azure"
 			shell = "powershell"
 			commandPath = "gardenctl provider-env"
-			filenames = append(filenames, "usage-hint", providerType)
+			filenames = append(filenames, "helpers", providerType)
 		})
 
 		JustBeforeEach(func() {
@@ -242,7 +242,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 		var filename string
 
 		BeforeEach(func() {
-			filenames = append(filenames, "usage-hint")
+			filenames = append(filenames, "helpers")
 		})
 
 		AfterEach(func() {

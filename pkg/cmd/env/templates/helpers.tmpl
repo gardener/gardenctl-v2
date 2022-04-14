@@ -1,6 +1,8 @@
 {{define "usage-hint"}}{{if .unset}}{{template "unset-hint" .}}{{else}}{{template "export-hint" .}}{{end}}{{end}}
 
 {{define "export-hint" -}}
+{{if .notification}}{{template "printf" dict "format" .notification}}
+{{end -}}
 {{if not (eq .shell "powershell")}}
 {{end -}}
 # Run this command to configure {{.cli}} for your shell:
@@ -15,3 +17,5 @@
 {{end}}
 
 {{define "eval-cmd"}}{{if eq .shell "powershell"}}& {{.cmd}} | Invoke-Expression{{else if eq .shell "fish" -}}eval ({{.cmd}}){{else}}eval $({{.cmd}}){{end}}{{end}}
+
+{{define "printf"}}{{if .format}}printf {{.format | replace "\n" "\\n" | shellEscape}}{{range .arguments}} {{. | shellEscape}}{{end}}{{end}}{{end}}
