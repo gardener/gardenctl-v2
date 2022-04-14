@@ -69,8 +69,8 @@ alias g=gardenctl
 alias gtv='gardenctl target view -o yaml'
 alias gtc='gardenctl target control-plane'
 alias gtc-='gardenctl target unset control-plane'
-alias gk='eval $(gardenctl kubectl-env bash)'
-alias gp='eval $(gardenctl provider-env bash)'
+alias gk='eval "$(gardenctl kubectl-env bash)"'
+alias gp='eval "$(gardenctl provider-env bash)"'
 alias gcv='gardenctl config view -o yaml'
 source <(gardenctl completion bash)
 complete -o default -F __start_gardenctl g
@@ -88,8 +88,8 @@ alias g=gardenctl
 alias gtv='gardenctl target view -o yaml'
 alias gtc='gardenctl target control-plane'
 alias gtc-='gardenctl target unset control-plane'
-alias gk='eval $(gardenctl kubectl-env zsh)'
-alias gp='eval $(gardenctl provider-env zsh)'
+alias gk='eval "$(gardenctl kubectl-env zsh)"'
+alias gp='eval "$(gardenctl provider-env zsh)"'
 alias gcv='gardenctl config view -o yaml'
 if (( $+commands[gardenctl] )); then
   if [ -d "$ZSH_CACHE_DIR/completions" ] && (($fpath[(Ie)$ZSH_CACHE_DIR/completions])); then
