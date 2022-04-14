@@ -61,7 +61,7 @@ type Client interface {
 	// ListShoots returns all Gardener shoot resources, filtered by a list option
 	ListShoots(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.ShootList, error)
 	// GetShootClientConfig returns the client config for a shoot
-	GetShootClientConfig(ctx context.Context, clusterIdentity, namespace, name string) (clientcmd.ClientConfig, error)
+	GetShootClientConfig(ctx context.Context, namespace, name string) (clientcmd.ClientConfig, error)
 
 	// GetSecretBinding returns a Gardener secretbinding resource
 	GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error)
@@ -83,12 +83,16 @@ type Client interface {
 
 type clientImpl struct {
 	c client.Client
+
+	// name is a unique identifier of this Garden client
+	name string
 }
 
 // NewGardenClient returns a new gardenclient
-func NewGardenClient(client client.Client) Client {
+func NewGardenClient(client client.Client, name string) Client {
 	return &clientImpl{
-		c: client,
+		c:    client,
+		name: name,
 	}
 }
 

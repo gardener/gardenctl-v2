@@ -198,9 +198,9 @@ func (k *shootKubeconfigRequest) generate(legacy bool) ([]byte, error) {
 	return runtime.Encode(clientcmdlatest.Codec, config)
 }
 
-func (g *clientImpl) GetShootClientConfig(ctx context.Context, clusterIdentity, namespace, name string) (clientcmd.ClientConfig, error) {
-	if len(clusterIdentity) == 0 {
-		return nil, errors.New("cluster identity must not be empty")
+func (g *clientImpl) GetShootClientConfig(ctx context.Context, namespace, name string) (clientcmd.ClientConfig, error) {
+	if len(g.name) == 0 {
+		return nil, errors.New("garden name must not be empty")
 	}
 
 	// fetch Shoot
@@ -231,7 +231,7 @@ func (g *clientImpl) GetShootClientConfig(ctx context.Context, clusterIdentity, 
 	kubeconfigRequest := shootKubeconfigRequest{
 		namespace:             shoot.Namespace,
 		shootName:             shoot.Name,
-		gardenClusterIdentity: clusterIdentity,
+		gardenClusterIdentity: g.name,
 	}
 
 	for _, address := range shoot.Status.AdvertisedAddresses {

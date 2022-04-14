@@ -112,7 +112,7 @@ func newGardenClient(name string, config *config.Config, provider ClientProvider
 		return nil, err
 	}
 
-	return gardenclient.NewGardenClient(client), nil
+	return gardenclient.NewGardenClient(client, name), nil
 }
 
 // NewManager returns a new manager
@@ -465,7 +465,7 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 				namespace = shoot.Namespace
 			}
 
-			return client.GetShootClientConfig(ctx, t.GardenName(), namespace, t.ShootName())
+			return client.GetShootClientConfig(ctx, namespace, t.ShootName())
 		})
 	}
 
