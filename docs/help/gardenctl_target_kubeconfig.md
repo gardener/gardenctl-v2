@@ -1,28 +1,15 @@
-## gardenctl target
+## gardenctl target kubeconfig
 
-Set scope for next operations, using subcommands or pattern
-
-```
-gardenctl target [flags]
-```
-
-### Examples
+Print the kubeconfig for the current target
 
 ```
-# target project "my-project" of garden "my-garden"
-gardenctl target --garden my-garden --project my-project
-
-# target shoot "my-shoot" of currently selected project
-gardenctl target shoot my-shoot
-
-# Target shoot control-plane using values that match a pattern defined for a specific garden
-gardenctl target value/that/matches/pattern --control-plane
+gardenctl target kubeconfig [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help            help for target
+  -h, --help            help for kubeconfig
   -o, --output string   One of 'yaml' or 'json'.
 ```
 
@@ -52,13 +39,5 @@ gardenctl target value/that/matches/pattern --control-plane
 
 ### SEE ALSO
 
-* [gardenctl](gardenctl.md)	 - Gardenctl is a utility to interact with Gardener installations
-* [gardenctl target control-plane](gardenctl_target_control-plane.md)	 - Target the control plane of the shoot
-* [gardenctl target garden](gardenctl_target_garden.md)	 - Target a garden
-* [gardenctl target kubeconfig](gardenctl_target_kubeconfig.md)	 - Print the kubeconfig for the current target
-* [gardenctl target project](gardenctl_target_project.md)	 - Target a project
-* [gardenctl target seed](gardenctl_target_seed.md)	 - Target a seed
-* [gardenctl target shoot](gardenctl_target_shoot.md)	 - Target a shoot
-* [gardenctl target unset](gardenctl_target_unset.md)	 - Unset target
-* [gardenctl target view](gardenctl_target_view.md)	 - Print the current target
+* [gardenctl target](gardenctl_target.md)	 - Set scope for next operations, using subcommands or pattern
 
