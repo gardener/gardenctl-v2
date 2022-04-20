@@ -156,6 +156,11 @@ func (k *shootKubeconfigRequest) generate(legacy bool) (*clientcmdapi.Config, er
 		APIVersion:         clientauthenticationv1beta1.SchemeGroupVersion.String(),
 		InstallHint:        "",
 		ProvideClusterInfo: true,
+
+		// gardenlogin kubectl auth plugin does not require stdin itself,
+		// but relies on the provided garden kubeconfig which could include auth plugins that require stdin.
+		// E.g. kubelogin with --grant-type=authcode-keyboard flag, which will then prompt for the code
+		InteractiveMode: clientcmdapi.IfAvailableExecInteractiveMode,
 	}
 	authName := fmt.Sprintf("%s--%s", k.namespace, k.shootName) // TODO instead of namespace, use project? But this would require an additional call
 	config.AuthInfos[authName] = authInfo
