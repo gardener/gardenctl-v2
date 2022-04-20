@@ -8,7 +8,6 @@ package gardenclient_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -19,7 +18,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
@@ -166,30 +164,25 @@ var _ = Describe("Client", func() {
 				rawConfig, err := clientConfig.RawConfig()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(rawConfig.Clusters).To(HaveLen(2))
-				currentCluster := rawConfig.Contexts[rawConfig.CurrentContext].Cluster
-				Expect(rawConfig.Clusters[currentCluster].Server).To(Equal("https://api." + domain))
-				Expect(rawConfig.Clusters[currentCluster].CertificateAuthorityData).To(Equal(ca.CertificatePEM))
-				Expect(rawConfig.Clusters[currentCluster].Extensions).ToNot(BeEmpty())
+				context := rawConfig.Contexts[rawConfig.CurrentContext]
+				cluster := rawConfig.Clusters[context.Cluster]
+				Expect(cluster.Server).To(Equal("https://api." + domain))
+				Expect(cluster.CertificateAuthorityData).To(Equal(ca.CertificatePEM))
 
-				execConfig := rawConfig.Clusters[currentCluster].Extensions["client.authentication.k8s.io/exec"].(*runtime.Unknown)
-				Expect(execConfig.Raw).ToNot(BeNil())
-
-				var extension gardenclient.ExecPluginConfig
-				Expect(json.Unmarshal(execConfig.Raw, &extension)).To(Succeed())
-				Expect(extension).To(Equal(gardenclient.ExecPluginConfig{
+				Expect(cluster.Extensions["client.authentication.k8s.io/exec"]).To(Equal(&gardenclient.ExecPluginConfig{
+					GardenClusterIdentity: gardenName,
 					ShootRef: gardenclient.ShootRef{
 						Namespace: namespace,
 						Name:      shootName,
 					},
-					GardenClusterIdentity: gardenName,
 				}))
 
 				Expect(rawConfig.Contexts).To(HaveLen(2))
 
 				Expect(rawConfig.AuthInfos).To(HaveLen(1))
-				currentAuthInfo := rawConfig.Contexts[rawConfig.CurrentContext].AuthInfo
-				Expect(rawConfig.AuthInfos[currentAuthInfo].Exec.Command).To(Equal("kubectl"))
-				Expect(rawConfig.AuthInfos[currentAuthInfo].Exec.Args).To(Equal([]string{
+				authInfo := rawConfig.AuthInfos[context.AuthInfo]
+				Expect(authInfo.Exec.Command).To(Equal("kubectl"))
+				Expect(authInfo.Exec.Args).To(Equal([]string{
 					"gardenlogin",
 					"get-client-certificate",
 				}))
@@ -209,17 +202,18 @@ var _ = Describe("Client", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(rawConfig.Clusters).To(HaveLen(2))
-					currentCluster := rawConfig.Contexts[rawConfig.CurrentContext].Cluster
-					Expect(rawConfig.Clusters[currentCluster].Server).To(Equal("https://api." + domain))
-					Expect(rawConfig.Clusters[currentCluster].CertificateAuthorityData).To(Equal(ca.CertificatePEM))
-					Expect(rawConfig.Clusters[currentCluster].Extensions).To(BeEmpty())
+					context := rawConfig.Contexts[rawConfig.CurrentContext]
+					cluster := rawConfig.Clusters[context.Cluster]
+					Expect(cluster.Server).To(Equal("https://api." + domain))
+					Expect(cluster.CertificateAuthorityData).To(Equal(ca.CertificatePEM))
+					Expect(cluster.Extensions).To(BeEmpty())
 
 					Expect(rawConfig.Contexts).To(HaveLen(2))
 
 					Expect(rawConfig.AuthInfos).To(HaveLen(1))
-					currentAuthInfo := rawConfig.Contexts[rawConfig.CurrentContext].AuthInfo
-					Expect(rawConfig.AuthInfos[currentAuthInfo].Exec.Command).To(Equal("kubectl"))
-					Expect(rawConfig.AuthInfos[currentAuthInfo].Exec.Args).To(Equal([]string{
+					authInfo := rawConfig.AuthInfos[context.AuthInfo]
+					Expect(authInfo.Exec.Command).To(Equal("kubectl"))
+					Expect(authInfo.Exec.Args).To(Equal([]string{
 						"gardenlogin",
 						"get-client-certificate",
 						fmt.Sprintf("--name=%s", shootName),

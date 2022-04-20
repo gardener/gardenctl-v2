@@ -16,12 +16,11 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/json"
 	clientauthenticationv1beta1 "k8s.io/client-go/pkg/apis/clientauthentication/v1beta1"
 	"k8s.io/client-go/tools/clientcmd"
-	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
-	clientcmdv1 "k8s.io/client-go/tools/clientcmd/api/v1"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 const (
@@ -72,6 +71,20 @@ type ShootRef struct {
 	Name string `json:"name"`
 }
 
+func (e *ExecPluginConfig) GetObjectKind() schema.ObjectKind {
+	return schema.EmptyObjectKind
+}
+
+func (e *ExecPluginConfig) DeepCopyObject() runtime.Object {
+	return &ExecPluginConfig{
+		ShootRef: ShootRef{
+			Namespace: e.ShootRef.Namespace,
+			Name:      e.ShootRef.Name,
+		},
+		GardenClusterIdentity: e.GardenClusterIdentity,
+	}
+}
+
 // validate validates the kubeconfig request by ensuring that all required fields are set
 func (k *shootKubeconfigRequest) validate() error {
 	if len(k.clusters) == 0 {
@@ -108,94 +121,69 @@ func (k *shootKubeconfigRequest) validate() error {
 // If legacy is false, the shoot reference and garden cluster identity is passed via the cluster extensions,
 // which is supported starting with kubectl version v1.20.0.
 // If legacy is true, the shoot reference and garden cluster identity are passed as command line flags to the plugin
-func (k *shootKubeconfigRequest) generate(legacy bool) ([]byte, error) {
-	authName := fmt.Sprintf("%s--%s", k.namespace, k.shootName) // TODO instead of namespace, use project? But this would require an additional call
-	name := fmt.Sprintf("%s-%s", authName, k.clusters[0].name)
+func (k *shootKubeconfigRequest) generate(legacy bool) (*clientcmdapi.Config, error) {
+	var extension *ExecPluginConfig
 
-	var legacyArgs []string
+	args := []string{
+		"gardenlogin",
+		"get-client-certificate",
+	}
+
 	if legacy {
-		legacyArgs = []string{
+		args = append(
+			args,
 			fmt.Sprintf("--name=%s", k.shootName),
 			fmt.Sprintf("--namespace=%s", k.namespace),
 			fmt.Sprintf("--garden-cluster-identity=%s", k.gardenClusterIdentity),
+		)
+	} else {
+		extension = &ExecPluginConfig{
+			ShootRef: ShootRef{
+				Namespace: k.namespace,
+				Name:      k.shootName,
+			},
+			GardenClusterIdentity: k.gardenClusterIdentity,
 		}
 	}
 
-	var authInfos []clientcmdv1.NamedAuthInfo
-	authInfos = append(authInfos, clientcmdv1.NamedAuthInfo{
-		Name: authName,
-		AuthInfo: clientcmdv1.AuthInfo{
-			Exec: &clientcmdv1.ExecConfig{
-				Command: "kubectl",
-				Args: append([]string{
-					"gardenlogin",
-					"get-client-certificate",
-				},
-					legacyArgs...,
-				),
-				Env:                nil,
-				APIVersion:         clientauthenticationv1beta1.SchemeGroupVersion.String(),
-				InstallHint:        "",
-				ProvideClusterInfo: true,
-			},
-		},
-	})
+	config := clientcmdapi.NewConfig()
 
-	config := &clientcmdv1.Config{
-		CurrentContext: name,
-		Clusters:       []clientcmdv1.NamedCluster{},
-		Contexts:       []clientcmdv1.NamedContext{},
-		AuthInfos:      authInfos,
+	authInfo := clientcmdapi.NewAuthInfo()
+	authInfo.Exec = &clientcmdapi.ExecConfig{
+		Command:            "kubectl",
+		Args:               args,
+		Env:                nil,
+		APIVersion:         clientauthenticationv1beta1.SchemeGroupVersion.String(),
+		InstallHint:        "",
+		ProvideClusterInfo: true,
 	}
+	authName := fmt.Sprintf("%s--%s", k.namespace, k.shootName) // TODO instead of namespace, use project? But this would require an additional call
+	config.AuthInfos[authName] = authInfo
 
-	extension := ExecPluginConfig{
-		ShootRef: ShootRef{
-			Namespace: k.namespace,
-			Name:      k.shootName,
-		},
-		GardenClusterIdentity: k.gardenClusterIdentity,
-	}
-
-	var clusterExtensions []clientcmdv1.NamedExtension
-
-	if !legacy {
-		raw, err := json.Marshal(extension)
-		if err != nil {
-			return nil, fmt.Errorf("could not json marshal cluster extension: %w", err)
+	for i, c := range k.clusters {
+		name := fmt.Sprintf("%s-%s", authName, c.name)
+		if i == 0 {
+			config.CurrentContext = name
 		}
 
-		clusterExtensions = []clientcmdv1.NamedExtension{
-			{
-				Name: "client.authentication.k8s.io/exec",
-				Extension: runtime.RawExtension{
-					Raw: raw,
-				},
-			},
+		cluster := clientcmdapi.NewCluster()
+		cluster.CertificateAuthorityData = c.caCert
+		cluster.Server = fmt.Sprintf("https://%s", c.apiServerHost)
+
+		if !legacy {
+			cluster.Extensions["client.authentication.k8s.io/exec"] = extension
 		}
+
+		config.Clusters[name] = cluster
+
+		context := clientcmdapi.NewContext()
+		context.Cluster = name
+		context.AuthInfo = authName
+		context.Namespace = "default" // TODO leave hardcoded? Or omit?
+		config.Contexts[name] = context
 	}
 
-	for _, cluster := range k.clusters {
-		name := fmt.Sprintf("%s-%s", authName, cluster.name)
-
-		config.Clusters = append(config.Clusters, clientcmdv1.NamedCluster{
-			Name: name,
-			Cluster: clientcmdv1.Cluster{
-				CertificateAuthorityData: cluster.caCert,
-				Server:                   fmt.Sprintf("https://%s", cluster.apiServerHost),
-				Extensions:               clusterExtensions,
-			},
-		})
-		config.Contexts = append(config.Contexts, clientcmdv1.NamedContext{
-			Name: name,
-			Context: clientcmdv1.Context{
-				Cluster:   name,
-				AuthInfo:  authName,
-				Namespace: "default", // TODO leave hardcoded? Or omit?
-			},
-		})
-	}
-
-	return runtime.Encode(clientcmdlatest.Codec, config)
+	return config, nil
 }
 
 func (g *clientImpl) GetShootClientConfig(ctx context.Context, namespace, name string) (clientcmd.ClientConfig, error) {
@@ -264,10 +252,10 @@ func (g *clientImpl) GetShootClientConfig(ctx context.Context, namespace, name s
 
 	legacy := constraint.Check(version)
 
-	kubeconfig, err := kubeconfigRequest.generate(legacy)
+	config, err := kubeconfigRequest.generate(legacy)
 	if err != nil {
 		return nil, fmt.Errorf("generation failed for kubeconfig request: %w", err)
 	}
 
-	return clientcmd.NewClientConfigFromBytes(kubeconfig)
+	return clientcmd.NewDefaultClientConfig(*config, nil), nil
 }
