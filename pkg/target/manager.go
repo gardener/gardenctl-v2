@@ -112,7 +112,7 @@ func newGardenClient(name string, config *config.Config, provider ClientProvider
 		return nil, err
 	}
 
-	return gardenclient.NewGardenClient(client), nil
+	return gardenclient.NewGardenClient(client, name), nil
 }
 
 // NewManager returns a new manager

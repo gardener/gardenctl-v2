@@ -30,7 +30,7 @@ type Config struct {
 
 // Garden represents one garden cluster
 type Garden struct {
-	// Identity is a unique identifier of this Garden that can be used to target this Garden
+	// Name is a unique identifier of this Garden that can be used to target this Garden
 	Name string `yaml:"identity" json:"identity"`
 	// Kubeconfig holds the path for the kubeconfig of the garden cluster
 	Kubeconfig string `yaml:"kubeconfig" json:"kubeconfig"`

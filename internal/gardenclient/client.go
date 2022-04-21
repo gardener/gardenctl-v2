@@ -83,12 +83,16 @@ type Client interface {
 
 type clientImpl struct {
 	c client.Client
+
+	// name is a unique identifier of this Garden client
+	name string
 }
 
 // NewGardenClient returns a new gardenclient
-func NewGardenClient(client client.Client) Client {
+func NewGardenClient(client client.Client, name string) Client {
 	return &clientImpl{
-		c: client,
+		c:    client,
+		name: name,
 	}
 }
 
@@ -278,27 +282,6 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clie
 	config, err := clientcmd.NewClientConfigFromBytes(value)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deserialize kubeconfig for seed %v: %w", key, err)
-	}
-
-	return config, nil
-}
-
-func (g *clientImpl) GetShootClientConfig(ctx context.Context, namespace, name string) (clientcmd.ClientConfig, error) {
-	key := types.NamespacedName{Namespace: namespace, Name: name}
-
-	cm, err := g.GetConfigMap(ctx, namespace, name+".kubeconfig")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get kubeconfig for shoot %v: %w", key, err)
-	}
-
-	value, ok := cm.Data["kubeconfig"]
-	if !ok {
-		return nil, fmt.Errorf("invalid kubeconfig configmap for shoot %v", key)
-	}
-
-	config, err := clientcmd.NewClientConfigFromBytes([]byte(value))
-	if err != nil {
-		return nil, fmt.Errorf("failed to deserialize kubeconfig for shoot %v: %w", key, err)
 	}
 
 	return config, nil

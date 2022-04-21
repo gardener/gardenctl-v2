@@ -15,8 +15,6 @@ import (
 	. "github.com/onsi/gomega"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 func init() {
@@ -27,13 +25,4 @@ func init() {
 func TestCommand(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "SSH Command Test Suite")
-}
-
-func createTestKubeconfig(name string) []byte {
-	config := clientcmdapi.NewConfig()
-	config.CurrentContext = name
-	data, err := clientcmd.Write(*config)
-	Expect(err).NotTo(HaveOccurred())
-
-	return data
 }
