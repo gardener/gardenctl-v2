@@ -57,6 +57,7 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 ### SEE ALSO
 
 * [gardenctl config](gardenctl_config.md)	 - Modify gardenctl configuration file using subcommands
+* [gardenctl kubeconfig](gardenctl_kubeconfig.md)	 - Print the kubeconfig for the current target
 * [gardenctl kubectl-env](gardenctl_kubectl-env.md)	 - Generate a script that points KUBECONFIG to the targeted cluster for the specified shell
 * [gardenctl provider-env](gardenctl_provider-env.md)	 - Generate the cloud provider CLI configuration script for the specified shell
 * [gardenctl rc](gardenctl_rc.md)	 - Generate a gardenctl startup script for the specified shell
