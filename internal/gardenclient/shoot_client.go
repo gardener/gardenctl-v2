@@ -54,30 +54,30 @@ type cluster struct {
 	caCert []byte
 }
 
-// ExecPluginConfig contains a reference to the garden and shoot cluster
-type ExecPluginConfig struct {
+// execPluginConfig contains a reference to the garden and shoot cluster
+type execPluginConfig struct {
 	// ShootRef references the shoot cluster
-	ShootRef ShootRef `json:"shootRef"`
+	ShootRef shootRef `json:"shootRef"`
 	// GardenClusterIdentity is the cluster identifier of the garden cluster.
 	// See cluster-identity ConfigMap in kube-system namespace of the garden cluster
 	GardenClusterIdentity string `json:"gardenClusterIdentity"`
 }
 
-// ShootRef references the shoot cluster by namespace and name
-type ShootRef struct {
+// shootRef references the shoot cluster by namespace and name
+type shootRef struct {
 	// Namespace is the namespace of the shoot cluster
 	Namespace string `json:"namespace"`
 	// Name is the name of the shoot cluster
 	Name string `json:"name"`
 }
 
-func (e *ExecPluginConfig) GetObjectKind() schema.ObjectKind {
+func (e *execPluginConfig) GetObjectKind() schema.ObjectKind {
 	return schema.EmptyObjectKind
 }
 
-func (e *ExecPluginConfig) DeepCopyObject() runtime.Object {
-	return &ExecPluginConfig{
-		ShootRef: ShootRef{
+func (e *execPluginConfig) DeepCopyObject() runtime.Object {
+	return &execPluginConfig{
+		ShootRef: shootRef{
 			Namespace: e.ShootRef.Namespace,
 			Name:      e.ShootRef.Name,
 		},
@@ -122,7 +122,7 @@ func (k *shootKubeconfigRequest) validate() error {
 // which is supported starting with kubectl version v1.20.0.
 // If legacy is true, the shoot reference and garden cluster identity are passed as command line flags to the plugin
 func (k *shootKubeconfigRequest) generate(legacy bool) (*clientcmdapi.Config, error) {
-	var extension *ExecPluginConfig
+	var extension *execPluginConfig
 
 	args := []string{
 		"gardenlogin",
@@ -137,8 +137,8 @@ func (k *shootKubeconfigRequest) generate(legacy bool) (*clientcmdapi.Config, er
 			fmt.Sprintf("--garden-cluster-identity=%s", k.gardenClusterIdentity),
 		)
 	} else {
-		extension = &ExecPluginConfig{
-			ShootRef: ShootRef{
+		extension = &execPluginConfig{
+			ShootRef: shootRef{
 				Namespace: k.namespace,
 				Name:      k.shootName,
 			},

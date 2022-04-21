@@ -169,13 +169,12 @@ var _ = Describe("Client", func() {
 				Expect(cluster.Server).To(Equal("https://api." + domain))
 				Expect(cluster.CertificateAuthorityData).To(Equal(ca.CertificatePEM))
 
-				Expect(cluster.Extensions["client.authentication.k8s.io/exec"]).To(Equal(&gardenclient.ExecPluginConfig{
-					GardenClusterIdentity: gardenName,
-					ShootRef: gardenclient.ShootRef{
-						Namespace: namespace,
-						Name:      shootName,
-					},
-				}))
+				extension := &gardenclient.ExecPluginConfig{}
+				extension.GardenClusterIdentity = gardenName
+				extension.ShootRef.Namespace = namespace
+				extension.ShootRef.Name = shootName
+
+				Expect(cluster.Extensions["client.authentication.k8s.io/exec"]).To(Equal(extension.ToRuntimeObject()))
 
 				Expect(rawConfig.Contexts).To(HaveLen(2))
 
