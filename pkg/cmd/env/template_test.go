@@ -262,7 +262,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 		Context("and the template has invalid syntax", func() {
 			BeforeEach(func() {
 				filename = filepath.Join("templates", "invalid.tmpl")
-				writeTempFile(filename, readTestFile(filename))
+				writeTempFile(filename, readTestFile("templates/invalid.tmpl"))
 			})
 
 			It("should fail to parse the template", func() {
@@ -282,7 +282,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 				providerType = "test"
 				token = "token"
 				filename = filepath.Join("templates", providerType+".tmpl")
-				writeTempFile(filename, readTestFile(filename))
+				writeTempFile(filename, readTestFile("templates/"+providerType+".tmpl"))
 				data["testToken"] = token
 			})
 
