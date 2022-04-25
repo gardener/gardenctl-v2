@@ -86,7 +86,7 @@ func (t *templateImpl) Delegate() *template.Template {
 
 func parseFile(fsys fs.FS, t *template.Template, filename string) error {
 	name := strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
-	pattern := filepath.Join("templates", name+".tmpl")
+	pattern := fmt.Sprintf("templates/%s.tmpl", name)
 	embedExist := false
 
 	list, err := fs.Glob(fsys, pattern)
