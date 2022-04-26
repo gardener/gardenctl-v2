@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 
@@ -151,7 +150,7 @@ func (o *options) runKubernetes(ctx context.Context, manager target.Manager) err
 		var filename string
 
 		if o.Symlink {
-			filename = path.Join(o.SessionDir, "kubeconfig.yaml")
+			filename = filepath.Join(o.SessionDir, "kubeconfig.yaml")
 
 			if !o.CurrentTarget.IsEmpty() {
 				_, err := os.Lstat(filename)
