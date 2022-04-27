@@ -25,8 +25,15 @@ gardenctl kubeconfig --garden my-garden --project my-project
 ### Options
 
 ```
-  -h, --help            help for kubeconfig
-  -o, --output string   One of 'yaml' or 'json'.
+      --allow-missing-template-keys   If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats. (default true)
+      --context string                The name of the kubeconfig context to use
+      --flatten                       Flatten the resulting kubeconfig file into self-contained output (useful for creating portable kubeconfig files)
+  -h, --help                          help for kubeconfig
+      --minify                        Remove all information not used by current-context from the output
+  -o, --output string                 Output format. One of: json|yaml|name|go-template|go-template-file|template|templatefile|jsonpath|jsonpath-as-json|jsonpath-file. (default "yaml")
+      --raw                           Display raw byte data
+      --show-managed-fields           If true, keep the managedFields when printing objects in JSON or YAML format.
+      --template string               Template string or path to template file to use when -o=go-template, -o=go-template-file. The template format is golang templates [http://golang.org/pkg/text/template/#pkg-overview].
 ```
 
 ### Options inherited from parent commands
