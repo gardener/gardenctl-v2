@@ -304,10 +304,6 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 			textTemplate = template.New("base")
 		})
 
-		It("should fail to match the pattern", func() {
-			Expect(env.ParseFile(fsys, textTemplate, "[-x]")).To(MatchError(filepath.ErrBadPattern))
-		})
-
 		It("should fail to parse the template", func() {
 			Expect(env.ParseFile(fsys, textTemplate, "invalid")).To(MatchError(MatchRegexp("^parsing embedded template \\\"invalid\\\" failed")))
 		})
