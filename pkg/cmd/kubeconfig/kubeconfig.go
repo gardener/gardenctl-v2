@@ -54,8 +54,8 @@ gardenctl kubeconfig --garden my-garden --project my-project`,
 	return cmd
 }
 
-// kubeconfigOptions is a struct to support kubeconfig command
-type kubeconfigOptions struct {
+// options is a struct to support kubeconfig command
+type options struct {
 	base.Options
 
 	// CurrentTarget is the current target
@@ -77,9 +77,9 @@ type kubeconfigOptions struct {
 	Context string
 }
 
-// newOptions returns initialized kubeconfigOptions
-func newOptions(ioStreams util.IOStreams) *kubeconfigOptions {
-	return &kubeconfigOptions{
+// newOptions returns initialized options
+func newOptions(ioStreams util.IOStreams) *options {
+	return &options{
 		Options: base.Options{
 			IOStreams: ioStreams,
 		},
@@ -88,7 +88,7 @@ func newOptions(ioStreams util.IOStreams) *kubeconfigOptions {
 }
 
 // Complete adapts from the command line args to the data required.
-func (o *kubeconfigOptions) Complete(f util.Factory, _ *cobra.Command, _ []string) error {
+func (o *options) Complete(f util.Factory, _ *cobra.Command, _ []string) error {
 	manager, err := f.Manager()
 	if err != nil {
 		return err
@@ -109,8 +109,8 @@ func (o *kubeconfigOptions) Complete(f util.Factory, _ *cobra.Command, _ []strin
 	return nil
 }
 
-// Validate validates the provided command kubeconfigOptions.
-func (o *kubeconfigOptions) Validate() error {
+// Validate validates the provided command options.
+func (o *options) Validate() error {
 	if o.CurrentTarget.GardenName() == "" {
 		return target.ErrNoGardenTargeted
 	}
@@ -119,7 +119,7 @@ func (o *kubeconfigOptions) Validate() error {
 }
 
 // Run does the actual work of the command.
-func (o *kubeconfigOptions) Run(f util.Factory) error {
+func (o *options) Run(f util.Factory) error {
 	ctx := f.Context()
 
 	manager, err := f.Manager()
