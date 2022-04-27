@@ -21,11 +21,7 @@ import (
 
 // NewCmdTarget returns a new target command.
 func NewCmdTarget(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
-	o := &TargetOptions{
-		Options: base.Options{
-			IOStreams: ioStreams,
-		},
-	}
+	o := NewTargetOptions(ioStreams)
 	cmd := &cobra.Command{
 		Use:   "target",
 		Short: "Set scope for next operations, using subcommands or pattern",
