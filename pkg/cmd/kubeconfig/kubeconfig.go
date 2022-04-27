@@ -6,22 +6,22 @@ SPDX-License-Identifier: Apache-2.0
 package kubeconfig
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/tools/clientcmd"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/printers"
+	"k8s.io/client-go/kubernetes/scheme"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
-// NewCmdKubeconfig returns a new target kubeconfig command.
+// NewCmdKubeconfig returns a new kubeconfig command.
 func NewCmdKubeconfig(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
-	o := &kubeconfigOptions{
-		Options: base.Options{
-			IOStreams: ioStreams,
-		},
-	}
+	o := newOptions(ioStreams)
 
 	cmd := &cobra.Command{
 		Use:   "kubeconfig",
@@ -40,7 +40,16 @@ gardenctl kubeconfig --garden my-garden --project my-project`,
 		RunE: base.WrapRunE(o, f),
 	}
 
-	o.AddFlags(cmd.Flags())
+	o.PrintFlags.AddFlags(cmd)
+
+	cmd.Flags().BoolVar(&o.RawByteData, "raw", o.RawByteData, "Display raw byte data")
+	cmd.Flags().BoolVar(&o.Flatten, "flatten", o.Flatten, "Flatten the resulting kubeconfig file into self-contained output (useful for creating portable kubeconfig files)")
+	cmd.Flags().BoolVar(&o.Minify, "minify", o.Minify, "Remove all information not used by current-context from the output")
+	cmd.Flags().StringVar(&o.Context, "context", o.Context, "The name of the kubeconfig context to use")
+
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("output", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return o.PrintFlags.AllowedFormats(), cobra.ShellCompDirectiveNoFileComp
+	}))
 
 	return cmd
 }
@@ -51,6 +60,31 @@ type kubeconfigOptions struct {
 
 	// CurrentTarget is the current target
 	CurrentTarget target.Target
+
+	// PrintFlags composes common printer flag structs
+	PrintFlags *genericclioptions.PrintFlags
+	// ResourcePrinterFunc is a function that can print objects
+	PrintObject printers.ResourcePrinterFunc
+
+	// Flatten flag the resulting kubeconfig file into self-contained output
+	Flatten bool
+	// Minify flag to remove all information not used by current-context from the output
+	Minify bool
+	// RawByteData flag to display raw byte data
+	RawByteData bool
+
+	// Context holds the name of the kubeconfig context to use
+	Context string
+}
+
+// newOptions returns initialized kubeconfigOptions
+func newOptions(ioStreams util.IOStreams) *kubeconfigOptions {
+	return &kubeconfigOptions{
+		Options: base.Options{
+			IOStreams: ioStreams,
+		},
+		PrintFlags: genericclioptions.NewPrintFlags("").WithTypeSetter(scheme.Scheme).WithDefaultOutput("yaml"),
+	}
 }
 
 // Complete adapts from the command line args to the data required.
@@ -65,10 +99,17 @@ func (o *kubeconfigOptions) Complete(f util.Factory, _ *cobra.Command, _ []strin
 		return err
 	}
 
+	printer, err := o.PrintFlags.ToPrinter()
+	if err != nil {
+		return err
+	}
+
+	o.PrintObject = printer.PrintObj
+
 	return nil
 }
 
-// Validate validates the provided command options.
+// Validate validates the provided command kubeconfigOptions.
 func (o *kubeconfigOptions) Validate() error {
 	if o.CurrentTarget.GardenName() == "" {
 		return target.ErrNoGardenTargeted
@@ -77,6 +118,7 @@ func (o *kubeconfigOptions) Validate() error {
 	return nil
 }
 
+// Run does the actual work of the command.
 func (o *kubeconfigOptions) Run(f util.Factory) error {
 	ctx := f.Context()
 
@@ -90,21 +132,33 @@ func (o *kubeconfigOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	b, err := writeRawConfig(config)
+	rawConfig, err := config.RawConfig()
 	if err != nil {
 		return err
 	}
 
-	_, err = fmt.Fprintf(o.IOStreams.Out, "%s", b)
+	if o.Minify {
+		if len(o.Context) > 0 {
+			rawConfig.CurrentContext = o.Context
+		}
 
-	return err
-}
-
-func writeRawConfig(config clientcmd.ClientConfig) ([]byte, error) {
-	rawConfig, err := config.RawConfig()
-	if err != nil {
-		return nil, err
+		if err := clientcmdapi.MinifyConfig(&rawConfig); err != nil {
+			return err
+		}
 	}
 
-	return clientcmd.Write(rawConfig)
+	if o.Flatten {
+		if err := clientcmdapi.FlattenConfig(&rawConfig); err != nil {
+			return err
+		}
+	} else if !o.RawByteData {
+		clientcmdapi.ShortenConfig(&rawConfig)
+	}
+
+	convertedObj, err := clientcmdlatest.Scheme.ConvertToVersion(&rawConfig, clientcmdlatest.ExternalVersion)
+	if err != nil {
+		return err
+	}
+
+	return o.PrintObject(convertedObj, o.IOStreams.Out)
 }
