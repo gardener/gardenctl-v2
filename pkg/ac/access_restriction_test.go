@@ -178,15 +178,19 @@ var _ = Describe("AccessRestriction", func() {
 
 		It("should render a message with line breaks", func() {
 			messages := ac.AccessRestrictionMessages{
-				{Header: "A\nB", Items: []string{"A1\nA2"}},
+				{
+					Header: "Lorem ipsum dolor sit amet,\nconsectetur adipiscing elit",
+					Items:  []string{"sed do eiusmod tempor incididunt\nut labore et dolore magna aliqua"},
+				},
 			}
 			messages.Render(out)
-			Expect(out.String()).To(Equal(`┌─ Access Restriction ─┐
-│ A                    │
-│ B                    │
-│ * A1                 │
-│   A2                 │
-└──────────────────────┘
+			fmt.Println(out.String())
+			Expect(out.String()).To(Equal(`┌─ Access Restriction ───────────────┐
+│ Lorem ipsum dolor sit amet,        │
+│ consectetur adipiscing elit        │
+│ * sed do eiusmod tempor incididunt │
+│   ut labore et dolore magna aliqua │
+└────────────────────────────────────┘
 `))
 		})
 

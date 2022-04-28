@@ -69,14 +69,27 @@ func NewAccessRestrictionHandler(r io.Reader, w io.Writer, askForConfirmation bo
 	}
 }
 
-func (m *AccessRestrictionMessage) messageWidth() int {
-	width := len(m.Header)
+func max(x, y int) int {
+	if y > x {
+		return y
+	}
 
-	for _, msg := range m.Items {
-		l := len(msg) + 2
-		if l > width {
-			width = l
+	return x
+}
+
+func (m *AccessRestrictionMessage) messageWidth() int {
+	width := 0
+
+	for _, text := range m.Items {
+		for _, line := range strings.Split(text, "\n") {
+			width = max(width, len(line))
 		}
+	}
+
+	width += 2
+
+	for _, line := range strings.Split(m.Header, "\n") {
+		width = max(width, len(line))
 	}
 
 	return width
