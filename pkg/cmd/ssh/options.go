@@ -465,15 +465,19 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	}
 
 	var nodeHostname string
-	if o.NodeName != "" {
-		nodeHostname, err = getNodeHostname(ctx, o, shootClient, o.NodeName)
-		if err != nil {
-			if !apierrors.IsNotFound(err) {
-				return fmt.Errorf("failed to determine hostname for node: %w", err)
-			}
 
+	if o.NodeName != "" {
+		node, err := getShootNode(ctx, o, shootClient)
+		if err == nil {
+			nodeHostname, err = getNodeHostname(node)
+			if err != nil {
+				return err
+			}
+		} else if apierrors.IsNotFound(err) {
 			fmt.Fprintf(o.IOStreams.Out, "Node with name %q not found. Wrong name provided or this node did not yet join the cluster, continuing anyways: %v\n", o.NodeName, err)
 			nodeHostname = o.NodeName
+		} else {
+			return fmt.Errorf("failed to determine hostname for node: %w", err)
 		}
 	}
 
@@ -1025,12 +1029,7 @@ func writeToTemporaryFile(key []byte) (string, error) {
 	return f.Name(), nil
 }
 
-func getNodeHostname(ctx context.Context, o *SSHOptions, shootClient client.Client, nodeName string) (string, error) {
-	node, err := getShootNode(ctx, o, shootClient)
-	if err != nil {
-		return "", err
-	}
-
+func getNodeHostname(node *corev1.Node) (string, error) {
 	addresses := map[corev1.NodeAddressType]string{}
 	for _, addr := range node.Status.Addresses {
 		addresses[addr.Type] = addr.Address
