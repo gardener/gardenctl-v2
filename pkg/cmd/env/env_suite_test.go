@@ -51,6 +51,8 @@ func makeTempGardenHomeDir() string {
 	return dir
 }
 
+// The separator in the filename must be a forward slash, even on Windows systems.
+// see https://pkg.go.dev/embed#hdr-Directives
 func readTestFile(filename string) string {
 	data, err := testdata.FS.ReadFile(filename)
 	Expect(err).NotTo(HaveOccurred())

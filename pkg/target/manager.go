@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 
 	"k8s.io/client-go/tools/clientcmd"
@@ -600,7 +599,7 @@ func (m *managerImpl) patchTarget(ctx context.Context, patch func(t *targetImpl)
 }
 
 func (m *managerImpl) updateClientConfigSymlink(ctx context.Context, target Target) error {
-	symlinkPath := path.Join(m.sessionDirectory, "kubeconfig.yaml")
+	symlinkPath := filepath.Join(m.sessionDirectory, "kubeconfig.yaml")
 
 	_, err := os.Lstat(symlinkPath)
 	if err == nil {

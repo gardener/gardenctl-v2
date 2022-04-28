@@ -86,18 +86,15 @@ func (t *templateImpl) Delegate() *template.Template {
 
 func parseFile(fsys fs.FS, t *template.Template, filename string) error {
 	name := strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
-	pattern := filepath.Join("templates", name+".tmpl")
+	// For embed.FS the path separator in is a forward slash, even on Windows systems.
+	// see https://pkg.go.dev/embed#hdr-Directives
+	embedFilename := "templates/" + name + ".tmpl"
 	embedExist := false
 
-	list, err := fs.Glob(fsys, pattern)
-	if err != nil {
-		return err
-	}
-
-	if len(list) > 0 {
+	if _, err := fs.Stat(fsys, embedFilename); err == nil {
 		embedExist = true
 
-		_, err := t.ParseFS(fsys, pattern)
+		_, err := t.ParseFS(fsys, embedFilename)
 		if err != nil {
 			return fmt.Errorf("parsing embedded template %q failed: %w", name, err)
 		}

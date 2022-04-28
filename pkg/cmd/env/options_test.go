@@ -328,7 +328,7 @@ var _ = Describe("Env Commands - Options", func() {
 						Name:      secretRef.Name,
 					},
 					Data: map[string][]byte{
-						"serviceaccount.json": []byte(readTestFile(filepath.Join(provider.Type, "serviceaccount.json"))),
+						"serviceaccount.json": []byte(readTestFile(provider.Type + "/serviceaccount.json")),
 					},
 				}
 				cloudProfile = &gardencorev1beta1.CloudProfile{
@@ -367,7 +367,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 					It("does the work when the shoot is targeted via project", func() {
 						Expect(options.Run(factory)).To(Succeed())
-						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.bash"), sessionDir)))
+						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.bash"), filepath.Join(sessionDir, ".config", "gcloud"))))
 					})
 
 					It("should print how to reset configuration for powershell", func() {
@@ -387,7 +387,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 					It("does the work when the shoot is targeted via seed", func() {
 						Expect(options.Run(factory)).To(Succeed())
-						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.seed.bash"), sessionDir)))
+						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.seed.bash"), filepath.Join(sessionDir, ".config", "gcloud"))))
 					})
 				})
 			})
@@ -548,7 +548,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 				It("should render the template successfully", func() {
 					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
-					Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.bash"), sessionDir)))
+					Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.bash"), filepath.Join(sessionDir, ".config", "gcloud"))))
 				})
 			})
 
@@ -591,7 +591,7 @@ var _ = Describe("Env Commands - Options", func() {
 				BeforeEach(func() {
 					providerType = "test"
 					filename = filepath.Join("templates", providerType+".tmpl")
-					writeTempFile(filename, readTestFile(filename))
+					writeTempFile(filename, readTestFile("templates/"+providerType+".tmpl"))
 				})
 
 				AfterEach(func() {
@@ -694,7 +694,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 				It("should render the template successfully", func() {
 					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
-					Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("azure/export.fish"), sessionDir)))
+					Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("azure/export.fish"), filepath.Join(sessionDir, ".config", "az"))))
 				})
 
 				It("should fail with mkdir error", func() {
