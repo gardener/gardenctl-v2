@@ -16,8 +16,6 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
-const minAccessRestrictionMessageWidth = 76
-
 // AccessRestriction is used to define an access restriction
 type AccessRestriction struct {
 	Key      string                    `yaml:"key,omitempty" json:"key,omitempty"`
@@ -81,10 +79,6 @@ func (m *AccessRestrictionMessage) messageWidth() int {
 		}
 	}
 
-	if width < minAccessRestrictionMessageWidth {
-		width = minAccessRestrictionMessageWidth
-	}
-
 	return width
 }
 
@@ -144,9 +138,69 @@ type AccessRestrictionMessage struct {
 // AccessRestrictionMessages is a list of access restriction messages
 type AccessRestrictionMessages []*AccessRestrictionMessage
 
+type pos int
+
+const (
+	header pos = iota
+	body
+	footer
+)
+
+func (p pos) start() string {
+	switch p {
+	case header:
+		return "┌─"
+	case footer:
+		return "└─"
+	default:
+		return "│ "
+	}
+}
+
+func (p pos) end() string {
+	switch p {
+	case header:
+		return "─┐"
+	case footer:
+		return "─┘"
+	default:
+		return " │"
+	}
+}
+
+func (p pos) paddEnd(text string, width int) string {
+	switch p {
+	case header, footer:
+		return fmt.Sprintf("%s%s", text, strings.Repeat("─", width-len(text)))
+	default:
+		return fmt.Sprintf("%-*s", width, text)
+	}
+}
+
+func (p pos) print(text string, width int) string {
+	var results []string
+
+	hasPrefix := strings.HasPrefix(text, "* ")
+	for i, line := range strings.Split(text, "\n") {
+		if hasPrefix && i > 0 {
+			line = "  " + line
+		}
+
+		results = append(results, p.start()+p.paddEnd(line, width)+p.end())
+	}
+
+	return strings.Join(results, "\n")
+}
+
 // Render displays the access restriction messages
 func (messages AccessRestrictionMessages) Render(w io.Writer) {
-	width := 0
+	title := " Access Restriction"
+	if len(messages) > 1 {
+		title += "s"
+	}
+
+	title += " "
+	width := len(title)
 
 	for _, m := range messages {
 		mw := m.messageWidth()
@@ -155,22 +209,17 @@ func (messages AccessRestrictionMessages) Render(w io.Writer) {
 		}
 	}
 
-	title := "Access Restriction"
-	if len(messages) > 1 {
-		title += "s"
-	}
-
-	fmt.Fprintf(w, "┌─ %s %s─┐\n", title, strings.Repeat("─", width-len(title)-2))
+	fmt.Fprintln(w, header.print(title, width))
 
 	for _, m := range messages {
-		fmt.Fprintf(w, "│ %s%s │\n", m.Header, strings.Repeat(" ", width-len(m.Header)))
+		fmt.Fprintln(w, body.print(m.Header, width))
 
 		for _, item := range m.Items {
-			fmt.Fprintf(w, "│ * %s%s │\n", item, strings.Repeat(" ", width-len(item)-2))
+			fmt.Fprintln(w, body.print("* "+item, width))
 		}
 	}
 
-	fmt.Fprintf(w, "└─%s─┘\n", strings.Repeat("─", width))
+	fmt.Fprintln(w, footer.print("", width))
 }
 
 // Confirm  asks for confirmation to continue

@@ -153,26 +153,40 @@ var _ = Describe("AccessRestriction", func() {
 				{Header: "A", Items: []string{"A1", "A2"}},
 			}
 			messages.Render(out)
-			Expect(out.String()).To(Equal(`┌─ Access Restriction ─────────────────────────────────────────────────────────┐
-│ A                                                                            │
-│ * A1                                                                         │
-│ * A2                                                                         │
-└──────────────────────────────────────────────────────────────────────────────┘
+			Expect(out.String()).To(Equal(`┌─ Access Restriction ─┐
+│ A                    │
+│ * A1                 │
+│ * A2                 │
+└──────────────────────┘
 `))
 		})
 
-		It("should render two messages with one options", func() {
+		It("should render two messages with one option", func() {
 			messages := ac.AccessRestrictionMessages{
 				{Header: "A", Items: []string{"A1"}},
 				{Header: "B", Items: []string{"B1"}},
 			}
 			messages.Render(out)
-			Expect(out.String()).To(Equal(`┌─ Access Restrictions ────────────────────────────────────────────────────────┐
-│ A                                                                            │
-│ * A1                                                                         │
-│ B                                                                            │
-│ * B1                                                                         │
-└──────────────────────────────────────────────────────────────────────────────┘
+			Expect(out.String()).To(Equal(`┌─ Access Restrictions ─┐
+│ A                     │
+│ * A1                  │
+│ B                     │
+│ * B1                  │
+└───────────────────────┘
+`))
+		})
+
+		It("should render a message with line breaks", func() {
+			messages := ac.AccessRestrictionMessages{
+				{Header: "A\nB", Items: []string{"A1\nA2"}},
+			}
+			messages.Render(out)
+			Expect(out.String()).To(Equal(`┌─ Access Restriction ─┐
+│ A                    │
+│ B                    │
+│ * A1                 │
+│   A2                 │
+└──────────────────────┘
 `))
 		})
 
