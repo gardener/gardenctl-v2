@@ -30,9 +30,10 @@ help: ## Display this help.
 
 ##@ Development
 
+
+
 .PHONY: test
-test: fmt lint check ## Run tests.
-	@./hack/test-integration.sh
+test: fmt lint check go-test ## Run tests.
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -45,6 +46,10 @@ lint: ## Run golangci-lint against code.
 .PHONY: check
 check: ## Check that the generated markdown is up-to-date
 	@./hack/check-markdown.sh
+
+.PHONY: go-test
+go-test: ## Run go tests.
+	@./hack/test-integration.sh
 
 .PHONY: gen-markdown
 gen-markdown: ## Check that the generated markdown is up-to-date
