@@ -265,7 +265,12 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clie
 	key := types.NamespacedName{Name: name}
 
 	secret, err := g.GetSecret(ctx, "garden", name+".login")
-	if apierrors.IsNotFound(err) { // fallback to deprecated .oidc secret
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+
+		// fallback to deprecated .oidc secret
 		var oidcErr error
 
 		secret, oidcErr = g.GetSecret(ctx, "garden", name+".oidc")
