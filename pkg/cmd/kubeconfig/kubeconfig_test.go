@@ -9,106 +9,137 @@ package kubeconfig_test
 import (
 	"context"
 	"errors"
+	"io"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/utils/pointer"
 
+	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	cmdkubeconfig "github.com/gardener/gardenctl-v2/pkg/cmd/kubeconfig"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
 
-var _ = Describe("Target Commands - Options", func() {
-	Describe("having an Options instance", func() {
+var _ = Describe("Kubeconfig Command - Options", func() {
+	var (
+		ctrl    *gomock.Controller
+		factory *utilmocks.MockFactory
+		manager *targetmocks.MockManager
+		options *cmdkubeconfig.TestOptions
+		t       target.Target
+	)
+
+	BeforeEach(func() {
+		ctrl = gomock.NewController(GinkgoT())
+		factory = utilmocks.NewMockFactory(ctrl)
+		manager = targetmocks.NewMockManager(ctrl)
+		options = cmdkubeconfig.NewOptions()
+		t = target.NewTarget("test", "project", "seed", "shoot")
+	})
+
+	AfterEach(func() {
+		ctrl.Finish()
+	})
+
+	Describe("Having a Kubeconfig command instance", func() {
 		var (
-			ctrl    *gomock.Controller
-			factory *utilmocks.MockFactory
-			manager *targetmocks.MockManager
-			options *cmdkubeconfig.TestOptions
-			t       target.Target
+			streams util.IOStreams
+			cmd     *cobra.Command
+			out     *util.SafeBytesBuffer
+			ctx     context.Context
+			config  clientcmd.ClientConfig
 		)
 
 		BeforeEach(func() {
-			ctrl = gomock.NewController(GinkgoT())
-			factory = utilmocks.NewMockFactory(ctrl)
-			manager = targetmocks.NewMockManager(ctrl)
-			options = cmdkubeconfig.NewOptions()
-			t = target.NewTarget("test", "project", "seed", "shoot")
+			streams, _, out, _ = util.NewTestIOStreams()
+			cmd = cmdkubeconfig.NewCmdKubeconfig(factory, streams)
+
+			ctx = context.Background()
+			config = &clientcmd.DirectClientConfig{}
+
+			factory.EXPECT().Manager().Return(manager, nil).AnyTimes()
+			factory.EXPECT().Context().Return(ctx)
+
+			manager.EXPECT().CurrentTarget().Return(t, nil)
+			manager.EXPECT().ClientConfig(ctx, t).Return(config, nil)
 		})
 
-		AfterEach(func() {
-			ctrl.Finish()
+		It("should execute the kubeconfig subcommand", func() {
+			cmd = cmdkubeconfig.NewCmdKubeconfig(factory, streams)
+			cmd.SetArgs([]string{"--output", "yaml"})
+			Expect(cmd.Execute()).To(Succeed())
+			Expect(out.String()).To(Equal(`apiVersion: v1
+clusters: null
+contexts: null
+current-context: ""
+kind: Config
+preferences: {}
+users: null
+`))
+		})
+	})
+
+	Describe("having an Options instance", func() {
+		var (
+			err       error
+			ctx       context.Context
+			config    clientcmd.ClientConfig
+			rawConfig clientcmdapi.Config
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+			config = &clientcmd.DirectClientConfig{}
+			rawConfig, err = config.RawConfig()
+			Expect(err).To(Succeed())
 		})
 
 		Describe("completing the command options", func() {
-			var (
-				root,
-				parent *cobra.Command
-			)
-
-			BeforeEach(func() {
-				root = &cobra.Command{Use: "root"}
-				parent = &cobra.Command{Use: "parent", Aliases: []string{"alias"}}
-				root.AddCommand(parent)
-				root.SetArgs([]string{"alias", "child"})
-				Expect(root.Execute()).To(Succeed())
-			})
-
-			It("should complete options with current target and print object", func() {
+			It("should complete options", func() {
 				factory.EXPECT().Manager().Return(manager, nil)
+				factory.EXPECT().Context().Return(ctx)
 				manager.EXPECT().CurrentTarget().Return(t, nil)
-				Expect(options.Complete(factory, parent, nil)).To(Succeed())
-				Expect(options.CurrentTarget).To(Equal(t))
+				manager.EXPECT().ClientConfig(ctx, t).Return(config, nil)
+
+				Expect(options.Complete(factory, nil, nil)).To(Succeed())
 				Expect(options.PrintObject).NotTo(BeNil())
+				Expect(options.RawConfig).To(Equal(rawConfig))
 			})
 
-			It("should fail to complete options", func() {
-				err := errors.New("error")
-				factory.EXPECT().Manager().Return(nil, err)
-				Expect(options.Complete(factory, parent, nil)).To(MatchError(err))
+			It("should fail to complete options when the target is empty", func() {
+				currentTarget := target.NewTarget("", "", "", "")
+
+				factory.EXPECT().Manager().Return(manager, nil)
+				manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+
+				Expect(options.Complete(factory, nil, nil)).To(MatchError(target.ErrNoGardenTargeted))
 			})
 		})
 
 		Describe("validating the command options", func() {
 			It("should successfully validate the options", func() {
-				options.CurrentTarget = target.NewTarget("my-garden", "", "", "")
 				Expect(options.Validate()).To(Succeed())
-			})
-
-			It("should return an error when the target is empty", func() {
-				options.CurrentTarget = target.NewTarget("", "", "", "")
-				Expect(options.Validate()).To(MatchError(target.ErrNoGardenTargeted))
 			})
 		})
 
 		Describe("running the kubeconfig command with the given options", func() {
-			var (
-				ctx    context.Context
-				config clientcmd.ClientConfig
-			)
+			JustBeforeEach(func() {
+				printer, err := options.PrintFlags.ToPrinter()
+				Expect(err).To(Succeed())
 
-			BeforeEach(func() {
-				ctx = context.Background()
-				config = &clientcmd.DirectClientConfig{}
+				options.PrintObject = printer.PrintObj
 			})
 
 			Context("when the command runs successfully", func() {
-				BeforeEach(func() {
-					factory.EXPECT().Manager().Return(manager, nil).AnyTimes()
-					factory.EXPECT().Context().Return(ctx)
-				})
-
 				It("should return the kubeconfig in yaml format", func() {
-					manager.EXPECT().CurrentTarget().Return(t, nil)
-					manager.EXPECT().ClientConfig(ctx, t).Return(config, nil)
-					Expect(options.Complete(factory, nil, nil)).To(Succeed())
-					Expect(options.Run(factory)).To(Succeed())
+					Expect(options.Run(nil)).To(Succeed())
 					Expect(options.String()).To(Equal(`apiVersion: v1
 clusters: null
 contexts: null
@@ -119,15 +150,14 @@ users: null
 `))
 				})
 
-				It("should return the kubeconfig in json format", func() {
-					options.PrintFlags.OutputFormat = pointer.StringPtr("json")
+				Context("json format", func() {
+					BeforeEach(func() {
+						options.PrintFlags.OutputFormat = pointer.StringPtr("json")
+					})
 
-					manager.EXPECT().CurrentTarget().Return(t, nil)
-					manager.EXPECT().ClientConfig(ctx, t).Return(config, nil)
-
-					Expect(options.Complete(factory, nil, nil)).To(Succeed())
-					Expect(options.Run(factory)).To(Succeed())
-					Expect(options.String()).To(Equal(`{
+					It("should return the kubeconfig ", func() {
+						Expect(options.Run(nil)).To(Succeed())
+						Expect(options.String()).To(Equal(`{
     "kind": "Config",
     "apiVersion": "v1",
     "preferences": {},
@@ -137,18 +167,20 @@ users: null
     "current-context": ""
 }
 `))
+					})
 				})
 
 				It("should return the kubeconfig minified", func() {
 					options.Minify = true
 					options.RawByteData = true
-					config = clientcmd.NewDefaultClientConfig(*createTestKubeconfig("context-a"), nil)
+					options.Context = "context2"
 
-					manager.EXPECT().CurrentTarget().Return(t, nil)
-					manager.EXPECT().ClientConfig(ctx, t).Return(config, nil)
+					config = clientcmd.NewDefaultClientConfig(*createTestKubeconfig(), nil)
+					rawConfig, err = config.RawConfig()
+					Expect(err).To(Succeed())
+					options.RawConfig = rawConfig
 
-					Expect(options.Complete(factory, nil, nil)).To(Succeed())
-					Expect(options.Run(factory)).To(Succeed())
+					Expect(options.Run(nil)).To(Succeed())
 					Expect(options.String()).To(Equal(`apiVersion: v1
 clusters:
 - cluster:
@@ -158,42 +190,28 @@ clusters:
 contexts:
 - context:
     cluster: cluster
-    namespace: default
-    user: user
-  name: context-a
-current-context: context-a
+    namespace: default2
+    user: user2
+  name: context2
+current-context: context2
 kind: Config
 preferences: {}
 users:
-- name: user
+- name: user2
   user:
-    token: token
+    token: token2
 `))
 				})
 
-				Context("when an error occurs", func() {
-					var currentTarget target.Target
+				Context("when an error occurs during PrintObject", func() {
+					var err = errors.New("error")
 
-					BeforeEach(func() {
-						factory.EXPECT().Manager().Return(manager, nil).AnyTimes()
-					})
+					It("should fail with an error", func() {
+						options.PrintObject = func(_ runtime.Object, _ io.Writer) error {
+							return err
+						}
 
-					JustBeforeEach(func() {
-						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
-					})
-
-					Context("because fetching kubeconfig fails", func() {
-						var err = errors.New("error")
-
-						BeforeEach(func() {
-							currentTarget = t.WithGardenName("test")
-						})
-
-						It("should fail with a read error", func() {
-							manager.EXPECT().ClientConfig(ctx, currentTarget).Return(nil, err)
-							Expect(options.Complete(factory, nil, nil)).To(Succeed())
-							Expect(options.Run(factory)).To(BeIdenticalTo(err))
-						})
+						Expect(options.Run(nil)).To(BeIdenticalTo(err))
 					})
 				})
 			})
@@ -201,23 +219,7 @@ users:
 	})
 })
 
-var _ = Describe("Kubeconfig Options", func() {
-	It("should validate", func() {
-		o := cmdkubeconfig.NewOptions()
-		o.CurrentTarget = target.NewTarget("my-garden", "", "", "")
-
-		Expect(o.Validate()).To(Succeed())
-	})
-
-	It("should reject empty target", func() {
-		o := cmdkubeconfig.NewOptions()
-		o.CurrentTarget = target.NewTarget("", "", "", "")
-
-		Expect(o.Validate()).ToNot(Succeed())
-	})
-})
-
-func createTestKubeconfig(name string) *clientcmdapi.Config {
+func createTestKubeconfig() *clientcmdapi.Config {
 	config := clientcmdapi.NewConfig()
 	config.Clusters["cluster"] = &clientcmdapi.Cluster{
 		Server:                "https://kubernetes:6443/",
@@ -229,7 +231,7 @@ func createTestKubeconfig(name string) *clientcmdapi.Config {
 	config.AuthInfos["user2"] = &clientcmdapi.AuthInfo{
 		Token: "token2",
 	}
-	config.Contexts[name] = &clientcmdapi.Context{
+	config.Contexts["context"] = &clientcmdapi.Context{
 		Namespace: "default",
 		AuthInfo:  "user",
 		Cluster:   "cluster",
@@ -239,7 +241,7 @@ func createTestKubeconfig(name string) *clientcmdapi.Config {
 		AuthInfo:  "user2",
 		Cluster:   "cluster",
 	}
-	config.CurrentContext = name
+	config.CurrentContext = "context"
 
 	return config
 }

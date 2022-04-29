@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestCommand(t *testing.T) {
+func TestKubeconfigCommand(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Kubeconfig Command Test Suite")
 }
