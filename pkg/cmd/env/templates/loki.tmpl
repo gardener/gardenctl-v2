@@ -1,0 +1,32 @@
+{{define "default"}}{{if .__meta.unset -}}
+unset LOKI_ADDR;
+unset LOKI_USERNAME;
+unset LOKI_PASSWORD;
+{{else -}}
+export LOKI_ADDR={{.hostname | shellEscape}};
+export LOKI_USERNAME={{.username | shellEscape}};
+export LOKI_PASSWORD={{.password | shellEscape}};
+{{end}}{{template "usage-hint" .__meta}}{{end}}
+
+{{define "bash"}}{{template "default" .}}{{end}}
+{{define "zsh"}}{{template "default" .}}{{end}}
+
+{{define "fish"}}{{if .__meta.unset -}}
+set -e LOKI_ADDR;
+set -e LOKI_USERNAME;
+set -e LOKI_PASSWORD;
+{{else -}}
+set -gx LOKI_ADDR {{.hostname | shellEscape}};
+set -gx LOKI_USERNAME {{.username | shellEscape}};
+set -gx LOKI_PASSWORD {{.password | shellEscape}};
+{{end}}{{template "usage-hint" .__meta}}{{end}}
+
+{{define "powershell"}}{{if .__meta.unset -}}
+Remove-Item -ErrorAction SilentlyContinue Env:\LOKI_ADDR;
+Remove-Item -ErrorAction SilentlyContinue Env:\LOKI_USERNAME;
+Remove-Item -ErrorAction SilentlyContinue Env:\LOKI_PASSWORD;
+{{else -}}
+$Env:LOKI_ADDR = {{.hostname | shellEscape}};
+$Env:LOKI_USERNAME = {{.username | shellEscape}};
+$Env:LOKI_PASSWORD = {{.password | shellEscape}};
+{{end}}{{template "usage-hint" .__meta}}{{end}}

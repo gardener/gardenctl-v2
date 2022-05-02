@@ -527,8 +527,8 @@ func (m *managerImpl) SeedClient(ctx context.Context, t Target) (client.Client, 
 	if t.GardenName() == "" {
 		return nil, ErrNoGardenTargeted
 	}
-
-	if t.SeedName() == "" {
+	
+	if t.SeedName() == "" && !(t.ShootName() != "" && t.ControlPlane()) {
 		return nil, ErrNoSeedTargeted
 	}
 
