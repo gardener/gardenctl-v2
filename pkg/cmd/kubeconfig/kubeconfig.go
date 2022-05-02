@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 package kubeconfig
 
 import (
+	"errors"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -71,7 +73,7 @@ type options struct {
 	Context string
 
 	// RawConfig holds the information needed to build connect to remote kubernetes clusters as a given user
-	RawConfig clientcmdapi.Config
+	RawConfig *clientcmdapi.Config
 }
 
 // newOptions returns initialized options
@@ -127,7 +129,16 @@ func (o *options) Complete(f util.Factory, _ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	o.RawConfig = rawConfig
+	o.RawConfig = &rawConfig
+
+	return nil
+}
+
+// Validate validates the provided command options.
+func (o *options) Validate() error {
+	if o.RawConfig == nil {
+		return errors.New("raw Config is required")
+	}
 
 	return nil
 }
@@ -139,20 +150,20 @@ func (o *options) Run(f util.Factory) error {
 			o.RawConfig.CurrentContext = o.Context
 		}
 
-		if err := clientcmdapi.MinifyConfig(&o.RawConfig); err != nil {
+		if err := clientcmdapi.MinifyConfig(o.RawConfig); err != nil {
 			return err
 		}
 	}
 
 	if o.Flatten {
-		if err := clientcmdapi.FlattenConfig(&o.RawConfig); err != nil {
+		if err := clientcmdapi.FlattenConfig(o.RawConfig); err != nil {
 			return err
 		}
 	} else if !o.RawByteData {
-		clientcmdapi.ShortenConfig(&o.RawConfig)
+		clientcmdapi.ShortenConfig(o.RawConfig)
 	}
 
-	convertedObj, err := clientcmdlatest.Scheme.ConvertToVersion(&o.RawConfig, clientcmdlatest.ExternalVersion)
+	convertedObj, err := clientcmdlatest.Scheme.ConvertToVersion(o.RawConfig, clientcmdlatest.ExternalVersion)
 	if err != nil {
 		return err
 	}

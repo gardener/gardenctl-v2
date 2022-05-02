@@ -64,7 +64,7 @@ var _ = Describe("Kubeconfig Command - Options", func() {
 			ctx = context.Background()
 			config = &clientcmd.DirectClientConfig{}
 
-			factory.EXPECT().Manager().Return(manager, nil).AnyTimes()
+			factory.EXPECT().Manager().Return(manager, nil)
 			factory.EXPECT().Context().Return(ctx)
 
 			manager.EXPECT().CurrentTarget().Return(t, nil)
@@ -110,7 +110,7 @@ users: null
 
 				Expect(options.Complete(factory, nil, nil)).To(Succeed())
 				Expect(options.PrintObject).NotTo(BeNil())
-				Expect(options.RawConfig).To(Equal(rawConfig))
+				Expect(options.RawConfig).To(Equal(&rawConfig))
 			})
 
 			It("should fail to complete options when the target is empty", func() {
@@ -125,7 +125,13 @@ users: null
 
 		Describe("validating the command options", func() {
 			It("should successfully validate the options", func() {
+				options.RawConfig = &rawConfig
 				Expect(options.Validate()).To(Succeed())
+			})
+
+			It("should return an error when raw config is not set", func() {
+				options.RawConfig = nil
+				Expect(options.Validate()).To(MatchError("raw Config is required"))
 			})
 		})
 
@@ -134,6 +140,7 @@ users: null
 				printer, err := options.PrintFlags.ToPrinter()
 				Expect(err).To(Succeed())
 
+				options.RawConfig = &rawConfig
 				options.PrintObject = printer.PrintObj
 			})
 
@@ -178,7 +185,7 @@ users: null
 					config = clientcmd.NewDefaultClientConfig(*createTestKubeconfig(), nil)
 					rawConfig, err = config.RawConfig()
 					Expect(err).To(Succeed())
-					options.RawConfig = rawConfig
+					options.RawConfig = &rawConfig
 
 					Expect(options.Run(nil)).To(Succeed())
 					Expect(options.String()).To(Equal(`apiVersion: v1
