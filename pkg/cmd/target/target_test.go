@@ -19,6 +19,7 @@ import (
 
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -37,6 +38,7 @@ var _ = Describe("Target Command", func() {
 
 	var (
 		streams        util.IOStreams
+		in             *util.SafeBytesBuffer
 		out            *util.SafeBytesBuffer
 		ctrl           *gomock.Controller
 		cfg            *config.Config
@@ -58,6 +60,7 @@ var _ = Describe("Target Command", func() {
 				Patterns: []string{
 					"^shoot--(?P<project>.+)--(?P<shoot>.+)$",
 				},
+				AccessRestrictions: []ac.AccessRestriction{{Key: "a", NotifyIf: true, Msg: "Access strictly prohibited"}},
 			}, {
 				Name:       "another-garden",
 				Kubeconfig: gardenKubeconfig,
@@ -91,7 +94,7 @@ var _ = Describe("Target Command", func() {
 			},
 		}
 
-		streams, _, out, _ = util.NewTestIOStreams()
+		streams, in, out, _ = util.NewTestIOStreams()
 
 		ctrl = gomock.NewController(GinkgoT())
 
@@ -210,6 +213,30 @@ var _ = Describe("Target Command", func() {
 			Expect(currentTarget.ProjectName()).To(Equal(projectName))
 			Expect(currentTarget.SeedName()).To(BeEmpty())
 			Expect(currentTarget.ShootName()).To(Equal(shootName))
+		})
+
+		Context("when the shoot has access restrictions", func() {
+			BeforeEach(func() {
+				shoot.Spec.SeedSelector = &gardencorev1beta1.SeedSelector{
+					LabelSelector: metav1.LabelSelector{
+						MatchLabels: map[string]string{"a": "true"},
+					},
+				}
+				gardenClient = internalfake.NewClientWithObjects(project, shoot)
+			})
+
+			It("should display a corresponding message", func() {
+				// user has already targeted a garden and project
+				targetProvider.Target = target.NewTarget(gardenName, projectName, "", "")
+				cmd := cmdtarget.NewCmdTargetShoot(factory, streams)
+
+				// user confirms the access restriction message
+				fmt.Fprintln(in, "yes")
+
+				// run command
+				Expect(cmd.RunE(cmd, []string{shootName})).To(Succeed())
+				Expect(out.String()).To(MatchRegexp(`(?s)Access strictly prohibited.*Do you want to continue\?.*Successfully targeted shoot %q\n`, shootName))
+			})
 		})
 	})
 

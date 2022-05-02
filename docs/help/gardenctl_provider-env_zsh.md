@@ -7,7 +7,7 @@ Generate the cloud provider CLI configuration script for zsh
 Generate the cloud provider CLI configuration script for zsh.
 
 To load the cloud provider CLI configuration script in your current shell session:
-$ eval $(gardenctl provider-env zsh)
+$ eval "$(gardenctl provider-env zsh)"
 
 
 ```
@@ -27,6 +27,7 @@ gardenctl provider-env zsh [flags]
       --alsologtostderr                  log to standard error as well as files
       --config string                    config file (default is ~/.garden/gardenctl-v2.yaml)
       --control-plane                    target control plane of shoot, use together with shoot argument
+  -f, --force                            Generate the script even if there are access restrictions to be confirmed
       --garden string                    target the given garden cluster
       --log-backtrace-at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
       --log-dir string                   If non-empty, write log files in this directory

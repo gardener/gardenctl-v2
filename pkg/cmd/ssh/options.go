@@ -49,7 +49,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
@@ -436,9 +438,17 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	ctx, cancel := context.WithCancel(f.Context())
 	defer cancel()
 
-	shoot, err := util.ShootForTarget(ctx, gardenClient, currentTarget)
+	shoot, err := gardenClient.FindShoot(ctx, currentTarget.AsListOption())
 	if err != nil {
 		return err
+	}
+
+	// check access restrictions
+	ok, err := o.checkAccessRestrictions(manager.Configuration(), currentTarget.GardenName(), manager.TargetFlags(), shoot)
+	if err != nil {
+		return err
+	} else if !ok {
+		return nil // abort
 	}
 
 	// fetch the SSH key(s) for the shoot nodes
@@ -1053,4 +1063,25 @@ func getNodes(ctx context.Context, c client.Client) ([]corev1.Node, error) {
 	}
 
 	return nodeList.Items, nil
+}
+
+func (o *SSHOptions) checkAccessRestrictions(cfg *config.Config, gardenName string, tf target.TargetFlags, shoot *gardencorev1beta1.Shoot) (bool, error) {
+	if cfg == nil {
+		return false, errors.New("Garden configuration is required")
+	}
+
+	if tf == nil {
+		return false, errors.New("Target flags are required")
+	}
+
+	// handle access restrictions
+	garden, err := cfg.Garden(gardenName)
+	if err != nil {
+		return false, err
+	}
+
+	askForConfirmation := tf.ShootName() != ""
+	handler := ac.NewAccessRestrictionHandler(o.IOStreams.In, o.IOStreams.Out, askForConfirmation)
+
+	return handler(ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)), nil
 }

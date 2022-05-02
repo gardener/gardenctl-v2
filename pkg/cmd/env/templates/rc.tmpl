@@ -6,8 +6,8 @@ alias {{.prefix}}=gardenctl
 alias {{.prefix}}tv='gardenctl target view -o yaml'
 alias {{.prefix}}tc='gardenctl target control-plane'
 alias {{.prefix}}tc-='gardenctl target unset control-plane'
-alias {{.prefix}}k='eval $(gardenctl kubectl-env {{.shell}})'
-alias {{.prefix}}p='eval $(gardenctl provider-env {{.shell}})'
+alias {{.prefix}}k='eval "$(gardenctl kubectl-env {{.shell}})"'
+alias {{.prefix}}p='eval "$(gardenctl provider-env {{.shell}})"'
 alias {{.prefix}}cv='gardenctl config view -o yaml'
 {{if not .noCompletion -}}
 source <(gardenctl completion {{.shell}})
@@ -26,8 +26,8 @@ alias {{.prefix}}=gardenctl
 alias {{.prefix}}tv='gardenctl target view -o yaml'
 alias {{.prefix}}tc='gardenctl target control-plane'
 alias {{.prefix}}tc-='gardenctl target unset control-plane'
-alias {{.prefix}}k='eval $(gardenctl kubectl-env {{.shell}})'
-alias {{.prefix}}p='eval $(gardenctl provider-env {{.shell}})'
+alias {{.prefix}}k='eval "$(gardenctl kubectl-env {{.shell}})"'
+alias {{.prefix}}p='eval "$(gardenctl provider-env {{.shell}})"'
 alias {{.prefix}}cv='gardenctl config view -o yaml'
 {{if not .noCompletion -}}
 if (( $+commands[gardenctl] )); then

@@ -40,7 +40,7 @@ var _ = Describe("Env Commands - Shell", func() {
 	Describe("getting the eval command", func() {
 		It("should return the script to eval a command", func() {
 			cmd := "test"
-			Expect(env.Shell("bash").EvalCommand(cmd)).To(Equal(fmt.Sprintf("eval $(%s)", cmd)))
+			Expect(env.Shell("bash").EvalCommand(cmd)).To(Equal(fmt.Sprintf("eval \"$(%s)\"", cmd)))
 			Expect(env.Shell("fish").EvalCommand(cmd)).To(Equal(fmt.Sprintf("eval (%s)", cmd)))
 			Expect(env.Shell("powershell").EvalCommand(cmd)).To(Equal(fmt.Sprintf("& %s | Invoke-Expression", cmd)))
 		})

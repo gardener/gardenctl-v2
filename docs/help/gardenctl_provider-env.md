@@ -30,6 +30,7 @@ here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
 ### Options
 
 ```
+  -f, --force   Generate the script even if there are access restrictions to be confirmed
   -h, --help    help for provider-env
   -u, --unset   Generate the script to unset the cloud provider CLI environment variables and logout for 
 ```

@@ -7,8 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package env
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,7 +23,9 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
@@ -40,12 +44,16 @@ type options struct {
 	CmdPath string
 	// CurrentTarget is the current target
 	CurrentTarget target.Target
+	// TargetFlags are the target override flags
+	TargetFlags target.TargetFlags
 	// ProviderType is the name of the cloud provider
 	ProviderType string
 	// Template is the script template
 	Template Template
 	// Symlink indicates if KUBECONFIG environment variable should point to the session stable symlink
 	Symlink bool
+	// Force generates the script even if there are access restrictions to be confirmed
+	Force bool
 }
 
 // Complete adapts from the command line args to the data required.
@@ -53,7 +61,7 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 	o.Shell = cmd.Name()
 	o.CmdPath = cmd.Parent().CommandPath()
 	o.GardenDir = f.GardenHomeDir()
-	o.Template = newTemplate("usage-hint")
+	o.Template = newTemplate("helpers")
 
 	switch o.ProviderType {
 	case "kubernetes":
@@ -70,6 +78,7 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 
 	o.Symlink = manager.Configuration().SymlinkTargetKubeconfig()
 	o.SessionDir = manager.SessionDir()
+	o.TargetFlags = manager.TargetFlags()
 
 	return nil
 }
@@ -97,6 +106,8 @@ func (o *options) AddFlags(flags *pflag.FlagSet) {
 		text = "the KUBECONFIG environment variable"
 	default:
 		text = "the cloud provider CLI environment variables and logout"
+
+		flags.BoolVarP(&o.Force, "force", "f", false, "Generate the script even if there are access restrictions to be confirmed")
 	}
 
 	usage := fmt.Sprintf("Generate the script to unset %s for %s", text, o.Shell)
@@ -105,6 +116,8 @@ func (o *options) AddFlags(flags *pflag.FlagSet) {
 
 // Run does the actual work of the command.
 func (o *options) Run(f util.Factory) error {
+	ctx := f.Context()
+
 	manager, err := f.Manager()
 	if err != nil {
 		return err
@@ -121,23 +134,13 @@ func (o *options) Run(f util.Factory) error {
 			return target.ErrNoGardenTargeted
 		}
 
-		return o.runKubernetes(f.Context(), manager)
+		return o.runKubernetes(ctx, manager)
 	default:
 		if o.CurrentTarget.GardenName() == "" {
 			return target.ErrNoGardenTargeted
 		}
 
-		t := o.CurrentTarget
-		if t.ShootName() == "" {
-			return target.ErrNoShootTargeted
-		}
-
-		client, err := manager.GardenClient(t.GardenName())
-		if err != nil {
-			return fmt.Errorf("failed to create garden cluster client: %w", err)
-		}
-
-		return o.run(f.Context(), client)
+		return o.run(ctx, manager)
 	}
 }
 
@@ -176,7 +179,17 @@ func (o *options) runKubernetes(ctx context.Context, manager target.Manager) err
 	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
 }
 
-func (o *options) run(ctx context.Context, client gardenclient.Client) error {
+func (o *options) run(ctx context.Context, manager target.Manager) error {
+	t := o.CurrentTarget
+	if t.ShootName() == "" {
+		return target.ErrNoShootTargeted
+	}
+
+	client, err := manager.GardenClient(t.GardenName())
+	if err != nil {
+		return fmt.Errorf("failed to create garden cluster client: %w", err)
+	}
+
 	shoot, err := client.FindShoot(ctx, o.CurrentTarget.AsListOption())
 	if err != nil {
 		return err
@@ -197,14 +210,41 @@ func (o *options) run(ctx context.Context, client gardenclient.Client) error {
 		return err
 	}
 
-	return execTmpl(o, shoot, secret, cloudProfile)
+	// check access restrictions
+	messages, err := o.checkAccessRestrictions(manager.Configuration(), t.GardenName(), shoot)
+	if err != nil {
+		return err
+	}
+
+	return execTmpl(o, shoot, secret, cloudProfile, messages)
 }
 
-func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile) error {
+func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile, messages ac.AccessRestrictionMessages) error {
 	o.ProviderType = shoot.Spec.Provider.Type
 
+	metadata := generateMetadata(o)
+
+	if len(messages) > 0 {
+		b := &bytes.Buffer{}
+		messages.Render(b)
+
+		if o.TargetFlags.ShootName() == "" || o.Force {
+			metadata["notification"] = b.String()
+		} else {
+			s := Shell(o.Shell)
+			return o.Template.ExecuteTemplate(o.IOStreams.Out, "printf", map[string]interface{}{
+				"format": b.String() + "\n%s %s\n%s\n",
+				"arguments": []string{
+					"The cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions.",
+					"Use the --force flag to confirm the access.",
+					s.Prompt(runtime.GOOS) + s.EvalCommand(fmt.Sprintf("%s --force %s", o.CmdPath, o.Shell)),
+				},
+			})
+		}
+	}
+
 	data := map[string]interface{}{
-		"__meta": generateMetadata(o),
+		"__meta": metadata,
 		"region": shoot.Spec.Region,
 	}
 
@@ -335,4 +375,19 @@ func createProviderConfigDir(sessionDir string, providerType string) (string, er
 	}
 
 	return configDir, nil
+}
+
+func (o *options) checkAccessRestrictions(cfg *config.Config, gardenName string, shoot *gardencorev1beta1.Shoot) (ac.AccessRestrictionMessages, error) {
+	if cfg == nil {
+		return nil, errors.New("Garden configuration is required")
+	}
+
+	garden, err := cfg.Garden(gardenName)
+	if err != nil {
+		return nil, err
+	}
+
+	messages := ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)
+
+	return messages, nil
 }

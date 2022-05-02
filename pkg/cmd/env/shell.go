@@ -33,7 +33,7 @@ func (s Shell) EvalCommand(cmd string) string {
 		// Invoke-Expression cannot execute multi-line functions!!!
 		format = "& %s | Invoke-Expression"
 	default:
-		format = "eval $(%s)"
+		format = "eval \"$(%s)\""
 	}
 
 	return fmt.Sprintf(format, cmd)

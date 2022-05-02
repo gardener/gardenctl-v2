@@ -14,6 +14,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
@@ -181,9 +182,8 @@ func (b *targetBuilderImpl) SetControlPlane(ctx context.Context) TargetBuilder {
 			return ErrNoGardenTargeted
 		}
 
-		err := b.completeTargetForShoot(ctx, t, t.Shoot)
-		if err != nil {
-			return err
+		if t.Shoot == "" {
+			return ErrNoShootTargeted
 		}
 
 		t.ControlPlaneFlag = true
@@ -203,6 +203,14 @@ func (b *targetBuilderImpl) completeTargetForShoot(ctx context.Context, t *targe
 	shoot, err := gardenClient.FindShoot(ctx, t.WithShootName(name).AsListOption())
 	if err != nil {
 		return fmt.Errorf("failed to fetch shoot: %w", err)
+	}
+
+	if handler := ac.AccessRestrictionHandlerFromContext(ctx); handler != nil {
+		if garden, err := b.config.Garden(t.GardenName()); err == nil {
+			if !handler(ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)) {
+				return fmt.Errorf("%w", Aborted)
+			}
+		}
 	}
 
 	if t.Project == "" {

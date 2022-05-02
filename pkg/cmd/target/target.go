@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package target
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,7 +17,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 // NewCmdTarget returns a new target command.
@@ -190,7 +193,9 @@ func (o *TargetOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	ctx := f.Context()
+	askForConfirmation := manager.TargetFlags().ShootName() != "" || o.Kind == TargetKindShoot
+	handler := ac.NewAccessRestrictionHandler(o.IOStreams.In, o.IOStreams.Out, askForConfirmation)
+	ctx := ac.WithAccessRestrictionHandler(f.Context(), handler)
 
 	switch o.Kind {
 	case TargetKindGarden:
@@ -208,6 +213,10 @@ func (o *TargetOptions) Run(f util.Factory) error {
 	}
 
 	if err != nil {
+		if errors.Is(err, target.Aborted) {
+			return nil
+		}
+
 		return err
 	}
 
