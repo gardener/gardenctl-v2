@@ -64,6 +64,7 @@ var _ = Describe("Env Commands - Options", func() {
 			providerType = "aws"
 			cfg = &config.Config{
 				LinkKubeconfig: pointer.Bool(false),
+				Gardens:        []config.Garden{{Name: "test"}},
 			}
 			tf = target.NewTargetFlags("", "", "", "", false)
 		})

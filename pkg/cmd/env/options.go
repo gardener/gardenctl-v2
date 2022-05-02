@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,6 +25,7 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
@@ -208,9 +210,10 @@ func (o *options) run(ctx context.Context, manager target.Manager) error {
 		return err
 	}
 
-	var messages ac.AccessRestrictionMessages
-	if garden, err := manager.Configuration().Garden(t.GardenName()); err == nil {
-		messages = ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)
+	// check access restrictions
+	messages, err := o.checkAccessRestrictions(manager.Configuration(), t.GardenName(), shoot)
+	if err != nil {
+		return err
 	}
 
 	return execTmpl(o, shoot, secret, cloudProfile, messages)
@@ -372,4 +375,19 @@ func createProviderConfigDir(sessionDir string, providerType string) (string, er
 	}
 
 	return configDir, nil
+}
+
+func (o *options) checkAccessRestrictions(cfg *config.Config, gardenName string, shoot *gardencorev1beta1.Shoot) (ac.AccessRestrictionMessages, error) {
+	if cfg == nil {
+		return nil, errors.New("Garden configuration is required")
+	}
+
+	garden, err := cfg.Garden(gardenName)
+	if err != nil {
+		return nil, err
+	}
+
+	messages := ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)
+
+	return messages, nil
 }
