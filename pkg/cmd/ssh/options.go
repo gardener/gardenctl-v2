@@ -40,6 +40,7 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
@@ -463,11 +464,21 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	// if a node was given, check if the node exists
-	// and if not, exit early and do not create a bastion
-	node, err := getShootNode(ctx, o, shootClient, currentTarget)
-	if err != nil {
-		return err
+	var nodeHostname string
+
+	if o.NodeName != "" {
+		node, err := getShootNode(ctx, o, shootClient)
+		if err == nil {
+			nodeHostname, err = getNodeHostname(node)
+			if err != nil {
+				return err
+			}
+		} else if apierrors.IsNotFound(err) {
+			fmt.Fprintf(o.IOStreams.Out, "Node with name %q not found. Wrong name provided or this node did not yet join the cluster, continuing anyways: %v\n", o.NodeName, err)
+			nodeHostname = o.NodeName
+		} else {
+			return fmt.Errorf("failed to determine hostname for node: %w", err)
+		}
 	}
 
 	// prepare Bastion resource
@@ -556,10 +567,10 @@ func (o *SSHOptions) Run(f util.Factory) error {
 
 	fmt.Fprintf(o.IOStreams.Out, "Bastion host became available at %s.\n", printAddr)
 
-	if node != nil && o.Interactive {
-		err = remoteShell(ctx, o, bastion, nodePrivateKeyFiles, node)
+	if nodeHostname != "" && o.Interactive {
+		err = remoteShell(ctx, o, bastion, nodeHostname, nodePrivateKeyFiles)
 	} else {
-		err = waitForSignal(ctx, o, shootClient, bastion, nodePrivateKeyFiles, node, ctx.Done())
+		err = waitForSignal(ctx, o, shootClient, bastion, nodeHostname, nodePrivateKeyFiles, ctx.Done())
 	}
 
 	fmt.Fprintln(o.IOStreams.Out, "Exiting…")
@@ -748,11 +759,7 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 	return waitErr
 }
 
-func getShootNode(ctx context.Context, o *SSHOptions, shootClient client.Client, currentTarget target.Target) (*corev1.Node, error) {
-	if o.NodeName == "" {
-		return nil, nil
-	}
-
+func getShootNode(ctx context.Context, o *SSHOptions, shootClient client.Client) (*corev1.Node, error) {
 	node := &corev1.Node{}
 	if err := shootClient.Get(ctx, types.NamespacedName{Name: o.NodeName}, node); err != nil {
 		return nil, err
@@ -761,12 +768,7 @@ func getShootNode(ctx context.Context, o *SSHOptions, shootClient client.Client,
 	return node, nil
 }
 
-func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string, node *corev1.Node) error {
-	nodeHostname, err := getNodeHostname(node)
-	if err != nil {
-		return err
-	}
-
+func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string) error {
 	bastionAddr := preferredBastionAddress(bastion)
 	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFiles, nodeHostname)
 
@@ -804,22 +806,10 @@ func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1
 
 // waitForSignal informs the user about their SSHOptions and keeps the
 // bastion alive until gardenctl exits.
-func waitForSignal(ctx context.Context, o *SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string, node *corev1.Node, signalChan <-chan struct{}) error {
-	nodeHostname := "IP_OR_HOSTNAME"
+func waitForSignal(ctx context.Context, o *SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string, signalChan <-chan struct{}) error {
+	if nodeHostname == "" {
+		nodeHostname = "IP_OR_HOSTNAME"
 
-	if node != nil {
-		var err error
-
-		nodeHostname, err = getNodeHostname(node)
-		if err != nil {
-			return fmt.Errorf("failed to determine hostname for node: %w", err)
-		}
-	}
-
-	bastionAddr := preferredBastionAddress(bastion)
-	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFiles, nodeHostname)
-
-	if node == nil {
 		nodes, err := getNodes(ctx, shootClient)
 		if err != nil {
 			return fmt.Errorf("failed to list shoot cluster nodes: %w", err)
@@ -896,6 +886,9 @@ func waitForSignal(ctx context.Context, o *SSHOptions, shootClient client.Client
 
 		fmt.Fprintln(o.IOStreams.Out, "")
 	}
+
+	bastionAddr := preferredBastionAddress(bastion)
+	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFiles, nodeHostname)
 
 	fmt.Fprintln(o.IOStreams.Out, "Connect to shoot nodes by using the bastion as a proxy/jump host, for example:")
 	fmt.Fprintln(o.IOStreams.Out, "")
