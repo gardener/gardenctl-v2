@@ -10,8 +10,8 @@ import (
 	"context"
 	"fmt"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	"github.com/gardener/gardener/pkg/utils/secrets"
+	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -20,6 +20,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	"github.com/gardener/gardener/pkg/utils/secrets"
 
 	"github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
@@ -80,6 +83,33 @@ var _ = Describe("Client", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(apierrors.IsNotFound(err)).To(BeTrue())
 			})
+		})
+	})
+
+	Describe("GetShootOfManagedSeed", func() {
+		BeforeEach(func() {
+			ctx = context.Background()
+			managedSeed := &seedmanagementv1alpha1.ManagedSeed{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "managedSeed",
+					Namespace: "garden",
+				},
+				Spec: seedmanagementv1alpha1.ManagedSeedSpec{
+					Shoot: &seedmanagementv1alpha1.Shoot{
+						Name: "shootOfManagedSeed",
+					},
+				},
+			}
+			gardenClient = gardenclient.NewGardenClient(
+				fake.NewClientWithObjects(managedSeed),
+				gardenName,
+			)
+		})
+
+		It("should return spec.shoot of managed seed ", func() {
+			shoot, err := gardenClient.GetShootOfManagedSeed(ctx, "managedSeed")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(shoot.Name).To(Equal("shootOfManagedSeed"))
 		})
 	})
 
