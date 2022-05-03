@@ -26,14 +26,6 @@ import (
 	"sync"
 	"time"
 
-	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
-	corev1alpha1helper "github.com/gardener/gardener/pkg/apis/core/v1alpha1/helper"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
-	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
-	"github.com/gardener/gardener/pkg/utils"
-	gutil "github.com/gardener/gardener/pkg/utils/gardener"
-	"github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 	cryptossh "golang.org/x/crypto/ssh"
@@ -47,6 +39,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
+	corev1alpha1helper "github.com/gardener/gardener/pkg/apis/core/v1alpha1/helper"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
+	"github.com/gardener/gardener/pkg/utils"
+	gutil "github.com/gardener/gardener/pkg/utils/gardener"
+	"github.com/gardener/gardener/pkg/utils/secrets"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
@@ -416,35 +417,43 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	// validate the current target
-	currentTarget, err := manager.CurrentTarget()
+	// sshTarget is the target used for the run method
+	sshTarget, err := manager.CurrentTarget()
 	if err != nil {
 		return err
 	}
-
-	if currentTarget.ShootName() == "" {
-		return errors.New("no Shoot cluster targeted")
-	}
-
-	printTargetInformation(o.IOStreams.Out, currentTarget)
 
 	// create client for the garden cluster
-	gardenClient, err := manager.GardenClient(currentTarget.GardenName())
+	gardenClient, err := manager.GardenClient(sshTarget.GardenName())
 	if err != nil {
 		return err
 	}
+
+	if sshTarget.ShootName() == "" && sshTarget.SeedName() != "" {
+		if shoot, err := gardenClient.GetShootOfManagedSeed(f.Context(), sshTarget.SeedName()); err != nil {
+			return err
+		} else if shoot != nil {
+			sshTarget = sshTarget.WithProjectName("garden").WithShootName(shoot.Name)
+		}
+	}
+
+	if sshTarget.ShootName() == "" {
+		return target.ErrNoShootTargeted
+	}
+
+	printTargetInformation(o.IOStreams.Out, sshTarget)
 
 	// fetch targeted shoot (ctx is cancellable to stop the keep alive goroutine later)
 	ctx, cancel := context.WithCancel(f.Context())
 	defer cancel()
 
-	shoot, err := gardenClient.FindShoot(ctx, currentTarget.AsListOption())
+	shoot, err := gardenClient.FindShoot(ctx, sshTarget.AsListOption())
 	if err != nil {
 		return err
 	}
 
 	// check access restrictions
-	ok, err := o.checkAccessRestrictions(manager.Configuration(), currentTarget.GardenName(), manager.TargetFlags(), shoot)
+	ok, err := o.checkAccessRestrictions(manager.Configuration(), sshTarget.GardenName(), manager.TargetFlags(), shoot)
 	if err != nil {
 		return err
 	} else if !ok {
@@ -469,7 +478,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		nodePrivateKeyFiles = append(nodePrivateKeyFiles, filename)
 	}
 
-	shootClient, err := manager.ShootClient(ctx, currentTarget)
+	shootClient, err := manager.ShootClient(ctx, sshTarget)
 	if err != nil {
 		return err
 	}

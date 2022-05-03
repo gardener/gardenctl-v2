@@ -409,7 +409,8 @@ var _ = Describe("Env Commands - Options", func() {
 
 				It("should fail with ErrNoShootTargeted", func() {
 					factory.EXPECT().Manager().Return(manager, nil)
-					manager.EXPECT().CurrentTarget().Return(t.WithShootName(""), nil)
+					manager.EXPECT().CurrentTarget().Return(t.WithShootName("").WithSeedName(""), nil)
+					manager.EXPECT().GardenClient(t.GardenName()).Return(client, nil)
 					Expect(options.Run(factory)).To(BeIdenticalTo(target.ErrNoShootTargeted))
 				})
 
@@ -498,7 +499,7 @@ var _ = Describe("Env Commands - Options", func() {
 				providerConfig = nil
 				serviceaccountJSON = readTestFile("gcp/serviceaccount.json")
 				token = "token"
-				options.CurrentTarget = target.NewTarget("test", "project", "", shootName)
+				options.Target = target.NewTarget("test", "project", "", shootName)
 			})
 
 			JustBeforeEach(func() {
@@ -716,7 +717,7 @@ var _ = Describe("Env Commands - Options", func() {
 				providerType = "alicloud"
 				shell = "bash"
 				unset = false
-				options.CurrentTarget = t.WithSeedName("")
+				options.Target = t.WithSeedName("")
 			})
 
 			JustBeforeEach(func() {

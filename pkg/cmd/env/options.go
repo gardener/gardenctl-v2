@@ -16,10 +16,11 @@ import (
 	"path/filepath"
 	"runtime"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -42,8 +43,8 @@ type options struct {
 	SessionDir string
 	// CmdPath is the path of the called command.
 	CmdPath string
-	// CurrentTarget is the current target
-	CurrentTarget target.Target
+	// Target is the target used when executing the command
+	Target target.Target
 	// TargetFlags are the target override flags
 	TargetFlags target.TargetFlags
 	// ProviderType is the name of the cloud provider
@@ -123,20 +124,20 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	o.CurrentTarget, err = manager.CurrentTarget()
+	o.Target, err = manager.CurrentTarget()
 	if err != nil {
 		return err
 	}
 
 	switch o.ProviderType {
 	case "kubernetes":
-		if !o.Symlink && o.CurrentTarget.GardenName() == "" {
+		if !o.Symlink && o.Target.GardenName() == "" {
 			return target.ErrNoGardenTargeted
 		}
 
 		return o.runKubernetes(ctx, manager)
 	default:
-		if o.CurrentTarget.GardenName() == "" {
+		if o.Target.GardenName() == "" {
 			return target.ErrNoGardenTargeted
 		}
 
@@ -155,14 +156,14 @@ func (o *options) runKubernetes(ctx context.Context, manager target.Manager) err
 		if o.Symlink {
 			filename = filepath.Join(o.SessionDir, "kubeconfig.yaml")
 
-			if !o.CurrentTarget.IsEmpty() {
+			if !o.Target.IsEmpty() {
 				_, err := os.Lstat(filename)
 				if os.IsNotExist(err) {
 					return fmt.Errorf("symlink to targeted cluster does not exist: %w", err)
 				}
 			}
 		} else {
-			config, err := manager.ClientConfig(ctx, o.CurrentTarget)
+			config, err := manager.ClientConfig(ctx, o.Target)
 			if err != nil {
 				return err
 			}
@@ -180,17 +181,28 @@ func (o *options) runKubernetes(ctx context.Context, manager target.Manager) err
 }
 
 func (o *options) run(ctx context.Context, manager target.Manager) error {
-	t := o.CurrentTarget
-	if t.ShootName() == "" {
-		return target.ErrNoShootTargeted
-	}
+	t := o.Target
 
 	client, err := manager.GardenClient(t.GardenName())
 	if err != nil {
 		return fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	shoot, err := client.FindShoot(ctx, o.CurrentTarget.AsListOption())
+	if t.ShootName() == "" && t.SeedName() != "" {
+		if shoot, err := client.GetShootOfManagedSeed(ctx, t.SeedName()); err != nil {
+			return err
+		} else if shoot != nil {
+			o.Target = o.Target.WithProjectName("garden").WithShootName(shoot.Name)
+		} else {
+			return target.ErrNoShootTargeted
+		}
+	}
+
+	if t.ShootName() == "" {
+		return target.ErrNoShootTargeted
+	}
+
+	shoot, err := client.FindShoot(ctx, o.Target.AsListOption())
 	if err != nil {
 		return err
 	}
@@ -305,7 +317,7 @@ func generateMetadata(o *options) map[string]interface{} {
 	metadata["commandPath"] = o.CmdPath
 	metadata["cli"] = getProviderCLI(o.ProviderType)
 	metadata["prompt"] = Shell(o.Shell).Prompt(runtime.GOOS)
-	metadata["targetFlags"] = getTargetFlags(o.CurrentTarget)
+	metadata["targetFlags"] = getTargetFlags(o.Target)
 
 	return metadata
 }
