@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # pin@v2.4.0
       - uses: actions/setup-go@331ce1d993939866bb63c32c6cbbfd48fa76fc57 # pin@v2.1.4
         with:
-          go-version: '^1.17'
+          go-version: '^1.18'
       - name: Build the binary-files
         id: build_binary_files
         run: |

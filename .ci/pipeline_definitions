@@ -9,11 +9,11 @@ gardenctl-v2:
         inject_effective_version: true
     steps:
       check:
-        image: 'golang:1.17'
+        image: 'golang:1.18'
       test:
-        image: 'golang:1.17'
+        image: 'golang:1.18'
       build:
-        image: 'golang:1.17'
+        image: 'golang:1.18'
         output_dir: 'binary'
         timeout: '5m'
 
