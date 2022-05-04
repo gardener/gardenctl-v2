@@ -431,7 +431,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	if sshTarget.ShootName() == "" && sshTarget.SeedName() != "" {
 		if shoot, err := gardenClient.GetShootOfManagedSeed(f.Context(), sshTarget.SeedName()); err != nil {
 			if apierrors.IsNotFound(err) {
-				return errors.New("cannot ssh to non-managed seeds")
+				return fmt.Errorf("cannot ssh to non-managed seeds: %w", err)
 			}
 
 			return err

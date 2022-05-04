@@ -191,7 +191,7 @@ func (o *options) run(ctx context.Context, manager target.Manager) error {
 	if t.ShootName() == "" && t.SeedName() != "" {
 		if shoot, err := client.GetShootOfManagedSeed(ctx, t.SeedName()); err != nil {
 			if apierrors.IsNotFound(err) {
-				return errors.New("cannot generate cloud provider CLI configuration script for non-managed seeds")
+				return fmt.Errorf("cannot generate cloud provider CLI configuration script for non-managed seeds: %w", err)
 			}
 
 			return err
