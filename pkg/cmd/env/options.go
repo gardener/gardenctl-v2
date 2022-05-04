@@ -16,11 +16,11 @@ import (
 	"path/filepath"
 	"runtime"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
-
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -190,15 +190,17 @@ func (o *options) run(ctx context.Context, manager target.Manager) error {
 
 	if t.ShootName() == "" && t.SeedName() != "" {
 		if shoot, err := client.GetShootOfManagedSeed(ctx, t.SeedName()); err != nil {
+			if apierrors.IsNotFound(err) {
+				return errors.New("cannot generate cloud provider CLI configuration script for non-managed seeds")
+			}
+
 			return err
 		} else if shoot != nil {
 			o.Target = o.Target.WithProjectName("garden").WithShootName(shoot.Name)
-		} else {
-			return target.ErrNoShootTargeted
 		}
 	}
 
-	if t.ShootName() == "" {
+	if o.Target.ShootName() == "" {
 		return target.ErrNoShootTargeted
 	}
 

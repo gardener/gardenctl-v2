@@ -26,6 +26,14 @@ import (
 	"sync"
 	"time"
 
+	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
+	corev1alpha1helper "github.com/gardener/gardener/pkg/apis/core/v1alpha1/helper"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
+	"github.com/gardener/gardener/pkg/utils"
+	gutil "github.com/gardener/gardener/pkg/utils/gardener"
+	"github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 	cryptossh "golang.org/x/crypto/ssh"
@@ -39,15 +47,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
-	corev1alpha1helper "github.com/gardener/gardener/pkg/apis/core/v1alpha1/helper"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
-	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
-	"github.com/gardener/gardener/pkg/utils"
-	gutil "github.com/gardener/gardener/pkg/utils/gardener"
-	"github.com/gardener/gardener/pkg/utils/secrets"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
@@ -431,6 +430,10 @@ func (o *SSHOptions) Run(f util.Factory) error {
 
 	if sshTarget.ShootName() == "" && sshTarget.SeedName() != "" {
 		if shoot, err := gardenClient.GetShootOfManagedSeed(f.Context(), sshTarget.SeedName()); err != nil {
+			if apierrors.IsNotFound(err) {
+				return errors.New("cannot ssh to non-managed seeds")
+			}
+
 			return err
 		} else if shoot != nil {
 			sshTarget = sshTarget.WithProjectName("garden").WithShootName(shoot.Name)
