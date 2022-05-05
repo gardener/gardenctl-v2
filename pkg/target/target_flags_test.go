@@ -7,12 +7,19 @@ SPDX-License-Identifier: Apache-2.0
 package target_test
 
 import (
+	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/pflag"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
+
+func init() {
+	utilruntime.Must(seedmanagementv1alpha1.AddToScheme(scheme.Scheme))
+}
 
 var _ = Describe("Target Flags", func() {
 	It("should return an empty set of target flags", func() {

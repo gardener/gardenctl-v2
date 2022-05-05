@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	v1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	gomock "github.com/golang/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
@@ -221,6 +222,21 @@ func (m *MockClient) GetShootClientConfig(arg0 context.Context, arg1, arg2 strin
 func (mr *MockClientMockRecorder) GetShootClientConfig(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootClientConfig", reflect.TypeOf((*MockClient)(nil).GetShootClientConfig), arg0, arg1, arg2)
+}
+
+// GetShootOfManagedSeed mocks base method.
+func (m *MockClient) GetShootOfManagedSeed(arg0 context.Context, arg1 string) (*v1alpha1.Shoot, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetShootOfManagedSeed", arg0, arg1)
+	ret0, _ := ret[0].(*v1alpha1.Shoot)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetShootOfManagedSeed indicates an expected call of GetShootOfManagedSeed.
+func (mr *MockClientMockRecorder) GetShootOfManagedSeed(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootOfManagedSeed", reflect.TypeOf((*MockClient)(nil).GetShootOfManagedSeed), arg0, arg1)
 }
 
 // ListProjects mocks base method.

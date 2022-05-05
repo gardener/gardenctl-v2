@@ -15,6 +15,7 @@ import (
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -75,6 +77,8 @@ type Client interface {
 	GetSecret(ctx context.Context, namespace, name string) (*corev1.Secret, error)
 	// GetConfigMap returns a Kubernetes configmap resource
 	GetConfigMap(ctx context.Context, namespace, name string) (*corev1.ConfigMap, error)
+	// GetShootOfManagedSeed returns shoot of seed using ManagedSeed resource, nil if not a managed seed
+	GetShootOfManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.Shoot, error)
 
 	// RuntimeClient returns the underlying kubernetes runtime client
 	// TODO: Remove this when we switched all APIs to the new gardenclient
@@ -261,7 +265,30 @@ func (g *clientImpl) GetConfigMap(ctx context.Context, namespace, name string) (
 	return cm, nil
 }
 
+func (g *clientImpl) GetShootOfManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.Shoot, error) {
+	managedSeed := &seedmanagementv1alpha1.ManagedSeed{}
+	key := types.NamespacedName{Namespace: "garden", Name: name} // Currently, managed seeds are restricted to the garden namespace
+
+	if err := g.c.Get(ctx, key, managedSeed); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("failed to get managed seed %v: %w", key, err)
+	}
+
+	klog.V(1).Infof("using referred shoot %q for seed %q", managedSeed.Spec.Shoot.Name, name)
+
+	return managedSeed.Spec.Shoot, nil
+}
+
 func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clientcmd.ClientConfig, error) {
+	if shoot, err := g.GetShootOfManagedSeed(ctx, name); err != nil {
+		return nil, err
+	} else if shoot != nil {
+		return g.GetShootClientConfig(ctx, "garden", shoot.Name)
+	}
+
 	key := types.NamespacedName{Name: name}
 
 	secret, err := g.GetSecret(ctx, "garden", name+".login")
