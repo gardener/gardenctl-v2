@@ -2,10 +2,10 @@
 
 Gardenctl can be configured with access restrictions.
 
-<img src="../images/access-restrictions-tty.gif">
+<img width="800" src="../images/access-restrictions-tty.gif">
 
 When a user accesses a cluster with access restrictions he gets a notification with a prompt and has to
-confirm it with Yes before he can continue.
+confirm it with `Yes` before he can continue.
 
 Access restrictions are shown for regions that have a matching label in the `CloudProfile`
 
@@ -38,11 +38,13 @@ spec:
 ```
 
 **Configuration**
+
 In order for gardenctl to display access restrictions, they must be configured as described below.
 Access restrictions must be configured separately for each garden. 
 The configuration structure is identical to the structure from gardenctl v1.
 But if you want to use the same access restriction configuration for all you can do this by using [YAML anchors and aliases](https://yaml.org/spec/1.2.2/#alias-nodes).
 The example below shows how a single confiugration can be used for several different Gardens.
+
 ```yaml
 sharedAccessRestrictions: &accessRestrictions
 - key: seed.gardener.cloud/eu-access
@@ -89,6 +91,7 @@ gardenClusters:
 
 If you don't want to have an access restriction configuration you don't have to delete configuration. 
 You can simply point the YAML anchor `&accessRestrictions` to an empty node.
+
 ```diff
 + noAccessRestrictions: &accessRestrictions ~
 - sharedAccessRestrictions: &accessRestrictions
