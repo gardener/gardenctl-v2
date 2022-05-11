@@ -4,8 +4,8 @@ Gardenctl can be configured with access restrictions.
 
 <img width="800" src="../images/access-restrictions.svg">
 
-When a user accesses a cluster with access restrictions he gets a notification with a prompt and has to
-confirm it with Yes before he can continue.
+When a user accesses a cluster with access restrictions a notification is shown. The user is prompted to
+confirm access with `Yes` or he can cancel the action with `No`.
 
 Access restrictions are shown for clusters where the property `spec.seedSelector.matchLabels[key]` is set 
 and access restrictions options are shown if the annotation `metadata.annotations[optionKey]` is set.
@@ -29,6 +29,7 @@ spec:
 In order for `gardenctl` to display access restrictions, they must be configured as described below.
 Access restrictions must be configured separately for each garden. 
 The configuration structure is identical to the structure from gardenctl v1.
+
 
 ```yaml
 gardens:
