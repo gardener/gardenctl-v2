@@ -4,8 +4,8 @@ Gardenctl can be configured with access restrictions.
 
 <img width="800" src="../images/access-restrictions-tty.gif">
 
-When a user accesses a cluster with access restrictions he gets a notification with a prompt and has to
-confirm it with `Yes` before he can continue.
+When a user accesses a cluster with access restrictions a notification is shown. The user is prompted to
+confirm access with `Yes` or he can cancel the action with `No`.
 
 Access restrictions are shown for regions that have a matching label in the `CloudProfile`
 
