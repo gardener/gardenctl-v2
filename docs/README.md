@@ -9,10 +9,6 @@
 * [Targeting](usage/targeting.md)
 * [gardenctl help](help/gardenctl.md)
 
-
-## Development
-
-TODO
-
 ### Configuration
 * [Configure Access Restrictions](config/access-restrictions.md)
+
