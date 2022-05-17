@@ -87,7 +87,7 @@ func (tf *targetFlagsImpl) AddFlags(flags *pflag.FlagSet) {
 }
 
 func (tf *targetFlagsImpl) ToTarget() Target {
-	return NewTarget(tf.gardenName, tf.projectName, tf.seedName, tf.shootName)
+	return NewTarget(tf.gardenName, tf.projectName, tf.seedName, tf.shootName).WithControlPlane(tf.controlPlane)
 }
 
 func (tf *targetFlagsImpl) isEmpty() bool {
