@@ -55,6 +55,7 @@ gardenctl target value/that/matches/pattern --control-plane
 * [gardenctl](gardenctl.md)	 - Gardenctl is a utility to interact with Gardener installations
 * [gardenctl target control-plane](gardenctl_target_control-plane.md)	 - Target the control plane of the shoot
 * [gardenctl target garden](gardenctl_target_garden.md)	 - Target a garden
+* [gardenctl target history](gardenctl_target_history.md)	 - Print the target history
 * [gardenctl target project](gardenctl_target_project.md)	 - Target a project
 * [gardenctl target seed](gardenctl_target_seed.md)	 - Target a seed
 * [gardenctl target shoot](gardenctl_target_shoot.md)	 - Target a shoot
