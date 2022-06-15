@@ -37,6 +37,9 @@ gardenctl target shoot my-shoot
 # Target shoot control-plane using values that match a pattern defined for a specific garden
 gardenctl target value/that/matches/pattern --control-plane`,
 		RunE: base.WrapRunE(o, f),
+		PostRunE: func(cmd *cobra.Command, args []string) error {
+			return HistoryWrite(historyPath(f), strings.Join(os.Args[0:], " ")+"\n")
+		},
 	}
 
 	cmd.AddCommand(NewCmdTargetGarden(f, ioStreams))
@@ -47,7 +50,7 @@ gardenctl target value/that/matches/pattern --control-plane`,
 
 	cmd.AddCommand(NewCmdUnset(f, NewUnsetOptions(ioStreams)))
 	cmd.AddCommand(NewCmdView(f, NewViewOptions(ioStreams)))
-
+	cmd.AddCommand(NewCmdHistory(f, o.Options))
 	o.AddFlags(cmd.Flags())
 
 	return cmd
