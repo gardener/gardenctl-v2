@@ -13,6 +13,7 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/target"
+
 	"github.com/spf13/cobra"
 
 	. "github.com/onsi/ginkgo"
@@ -67,14 +68,6 @@ var _ = Describe("history Command", func() {
 			err := cmdtarget.HistoryOutput(historyPath, *options)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(out.String()).Should(ContainSubstring("hello"))
-		})
-	})
-
-	Describe("#NewCmdHistory", func() {
-		It("should execute NewCmdHistory", func() {
-			factory.GardenHomeDirectory = "./"
-			cmd := cmdtarget.NewCmdHistory(factory, *options)
-			Expect(cmd.RunE(cmd, nil)).To(Succeed())
 		})
 	})
 
