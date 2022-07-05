@@ -83,6 +83,7 @@ func checkInstalled(name string) error {
 
 func HistoryParse(f util.Factory, c *cobra.Command) (string, error) {
 	var slice []string
+
 	m, err := f.Manager()
 	if err != nil {
 		return "", err
