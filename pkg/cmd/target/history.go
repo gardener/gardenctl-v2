@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -78,6 +79,41 @@ func checkInstalled(name string) error {
 	}
 
 	return nil
+}
+
+func HistoryParse(f util.Factory, c *cobra.Command) (string, error) {
+	var slice []string
+	m, err := f.Manager()
+	if err != nil {
+		return "", err
+	}
+
+	currentTarget, err := m.CurrentTarget()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current target: %v", err)
+	}
+
+	if currentTarget.GardenName() != "" {
+		slice = append(slice, "--garden", currentTarget.GardenName())
+	}
+
+	if currentTarget.ProjectName() != "" {
+		slice = append(slice, "--project", currentTarget.ProjectName())
+	}
+
+	if currentTarget.SeedName() != "" {
+		slice = append(slice, "--seed", currentTarget.SeedName())
+	}
+
+	if currentTarget.ShootName() != "" {
+		slice = append(slice, "--shoot", currentTarget.ShootName())
+	}
+
+	if currentTarget.ControlPlane() {
+		slice = append(slice, "--control-plane")
+	}
+
+	return fmt.Sprintln(c.Root().Name(), c.CalledAs(), strings.Join(slice, " ")), nil
 }
 
 func historyPath(f util.Factory) string {
