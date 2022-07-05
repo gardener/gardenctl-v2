@@ -40,7 +40,11 @@ gardenctl target shoot my-shoot
 gardenctl target value/that/matches/pattern --control-plane`,
 		RunE: base.WrapRunE(o, f),
 		PostRunE: func(cmd *cobra.Command, args []string) error {
-			return HistoryWrite(historyPath(f), strings.Join(os.Args[0:], " ")+"\n")
+			s, err := HistoryParse(f, cmd)
+			if err != nil {
+				return err
+			}
+			return HistoryWrite(historyPath(f), s)
 		},
 	}
 
