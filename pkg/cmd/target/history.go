@@ -81,8 +81,17 @@ func checkInstalled(name string) error {
 	return nil
 }
 
-func HistoryParse(f util.Factory, c *cobra.Command) (string, error) {
-	var slice []string
+func HistoryParse(f util.Factory, c *cobra.Command, name string) (string, error) {
+	var (
+		callAs string
+		slice  []string
+	)
+
+	if name == "" {
+		callAs = c.CalledAs()
+	} else {
+		callAs = name
+	}
 
 	m, err := f.Manager()
 	if err != nil {
@@ -114,7 +123,7 @@ func HistoryParse(f util.Factory, c *cobra.Command) (string, error) {
 		slice = append(slice, "--control-plane")
 	}
 
-	return fmt.Sprintln(c.Root().Name(), c.CalledAs(), strings.Join(slice, " ")), nil
+	return fmt.Sprintln(c.Root().Name(), callAs, strings.Join(slice, " ")), nil
 }
 
 func historyPath(f util.Factory) string {

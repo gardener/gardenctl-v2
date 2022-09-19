@@ -72,10 +72,17 @@ var _ = Describe("history Command", func() {
 	})
 
 	Describe("#HistoryParse", func() {
-		It("should print history parse", func() {
-			string, err := cmdtarget.HistoryParse(factory, cmd)
+		It("should succeed print history parse", func() {
+			string, err := cmdtarget.HistoryParse(factory, cmd, "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string).Should(ContainSubstring("--garden mygarden --project myproject --shoot myshoot"))
 		})
+
+		It("should succeed print history parse", func() {
+			string, err := cmdtarget.HistoryParse(factory, cmd, "target")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string).Should(ContainSubstring("--garden mygarden --project myproject --shoot myshoot"))
+		})
+
 	})
 })

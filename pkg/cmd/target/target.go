@@ -39,15 +39,23 @@ gardenctl target shoot my-shoot
 # Target shoot control-plane using values that match a pattern defined for a specific garden
 gardenctl target value/that/matches/pattern --control-plane`,
 		RunE: base.WrapRunE(o, f),
-		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Use == "target" {
-				s, err := HistoryParse(f, cmd)
-				if err != nil {
-					return err
-				}
-				return HistoryWrite(historyPath(f), s)
+		PostRunE: func(cmd *cobra.Command, args []string) error {
+			s, err := HistoryParse(f, cmd, "")
+			if err != nil {
+				return err
 			}
-			return nil
+			return HistoryWrite(historyPath(f), s)
+		},
+		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.CalledAs() != string(TargetKindGarden) && cmd.CalledAs() != string(TargetKindProject) && cmd.CalledAs() != string(TargetKindSeed) && cmd.CalledAs() != string(TargetKindShoot) && cmd.CalledAs() != string(TargetKindControlPlane) {
+				return nil
+			}
+
+			s, err := HistoryParse(f, cmd, cmd.Parent().Use)
+			if err != nil {
+				return err
+			}
+			return HistoryWrite(historyPath(f), s)
 		},
 	}
 
