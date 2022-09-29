@@ -59,13 +59,19 @@ You can modify this file directly using the `gardenctl config` command. It allow
 Example `config` command:
 ``` bash
 # Adapt the path to your kubeconfig file for the garden cluster
-export KUBECONFIG=~/relative/path/to/kubeconfig.yaml
+❯ export KUBECONFIG=~/relative/path/to/kubeconfig.yaml
 
-# Fetch cluster-identity of garden cluster
-CLUSTER_IDENTITY=$(kubectl -n kube-system get configmap cluster-identity -ojsonpath={.data.cluster-identity})
+# Method 1 : Fetch cluster-identity of garden cluster from the configmap
+❯ export CLUSTER_IDENTITY=$(kubectl -n kube-system get configmap cluster-identity -ojsonpath={.data.cluster-identity})
+# OR
+# Method 2 : If you don't have access to the kube-system namespace in the garden, the garden cluster-identity is also available in every shoot's 
+❯ export SHOOT_UID=$(kubectl get shoot -n garden-my-project my-shoot -ojsonpath={.metadata.uid})
+❯ export PREFIX="shoot--my-project--my-shoot-$SHOOT_UID-"
+❯ kubectl -n garden-my-project get shoot my-shoot -ojsonpath={.status.clusterIdentity}
+❯ export CLUSTER_IDENTITY="landscape-dev" # difference between both
 
 # Configure garden cluster
-gardenctl config set-garden $CLUSTER_IDENTITY --kubeconfig $KUBECONFIG
+❯ gardenctl config set-garden $CLUSTER_IDENTITY --kubeconfig $KUBECONFIG
 ```
 This command will create or update a garden with the provided identity and kubeconfig path of your garden cluster.
 
