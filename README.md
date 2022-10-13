@@ -62,17 +62,19 @@ Example `config` command:
 export KUBECONFIG=~/relative/path/to/kubeconfig.yaml
 
 # Method 1 : Fetch cluster-identity of garden cluster from the configmap
-CLUSTER_IDENTITY=$(kubectl -n kube-system get configmap cluster-identity -ojsonpath={.data.cluster-identity})
+cluster_identity=$(kubectl -n kube-system get configmap cluster-identity -ojsonpath={.data.cluster-identity})
 # OR
 # Method 2 : If you don't have access to the kube-system namespace in the garden cluster, the garden cluster-identity can also be extracted from every shoot's yaml
-PROJECT="your-project-name" # Change to your project name
-SHOOT="your-shoot-name" # Change to any shoot's name in your project
-PREFIX="shoot--$PROJECT--$SHOOT-"$(kubectl get shoot -n garden-$PROJECT $SHOOT -ojsonpath={.metadata.uid})"-"
-STATUS=$(kubectl get shoot -n garden-$PROJECT $SHOOT -ojsonpath={.status.clusterIdentity})
-CLUSTER_IDENTITY=$(echo ${STATUS#$PREFIX}) # difference between both
+project="your-project-name" # Change to your project name
+shoot="your-shoot-name" # Change to any shoot's name in your project
+# Simply copy/paste the following lines
+ns=$(kubectl get project $project -ojsonpath={.spec.namespace})
+prefix="shoot--$project--$shoot-"$(kubectl get shoot -n $ns $shoot -ojsonpath={.metadata.uid})"-"
+identity_status=$(kubectl get shoot -n $ns $shoot -ojsonpath={.status.clusterIdentity})
+cluster_identity=$(echo ${identity_status#"$prefix"})
 
 # Configure garden cluster
-gardenctl config set-garden $CLUSTER_IDENTITY --kubeconfig $KUBECONFIG
+gardenctl config set-garden $cluster_identity --kubeconfig $KUBECONFIG
 ```
 This command will create or update a garden with the provided identity and kubeconfig path of your garden cluster.
 
