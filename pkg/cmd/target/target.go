@@ -56,7 +56,8 @@ gardenctl target value/that/matches/pattern --control-plane`,
 // TargetKind is representing the type of things that can be targeted
 // by this cobra command. While this may sound stuttery, the alternative
 // of just calling it "Kind" is even worse, hence the nolint.
-// nolint
+//
+//nolint:revive
 type TargetKind string
 
 const (
@@ -107,7 +108,8 @@ func validTargetArgsFunction(f util.Factory, kind TargetKind) ([]string, error) 
 }
 
 // TargetOptions is a struct to support target command
-// nolint
+//
+//nolint:revive
 type TargetOptions struct {
 	base.Options
 

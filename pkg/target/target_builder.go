@@ -19,7 +19,8 @@ import (
 )
 
 // TargetBuilder builds, completes and validates target values to create valid targets
-//nolint
+//
+//nolint:revive
 type TargetBuilder interface {
 	// Init updates the TargetBuilder with the provided target
 	// Use this function to overwrite target baseline data before updating with new values

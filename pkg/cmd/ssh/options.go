@@ -154,7 +154,8 @@ var (
 )
 
 // SSHOptions is a struct to support ssh command
-// nolint
+//
+//nolint:revive
 type SSHOptions struct {
 	base.Options
 
