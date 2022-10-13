@@ -9,7 +9,7 @@ package util
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -139,7 +139,7 @@ func callIPify(ctx context.Context, domain string) (*net.IP, error) {
 	}
 	defer resp.Body.Close()
 
-	ip, err := ioutil.ReadAll(resp.Body)
+	ip, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

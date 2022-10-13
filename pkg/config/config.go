@@ -182,7 +182,7 @@ func (config *Config) DirectClientConfig(name string) (clientcmd.ClientConfig, e
 	return clientcmd.NewDefaultClientConfig(*rawConfig, nil), nil
 }
 
-//LoadRawConfig directly loads the raw config from file, validates the content and removes all the irrelevant pieces
+// LoadRawConfig directly loads the raw config from file, validates the content and removes all the irrelevant pieces
 func (g *Garden) LoadRawConfig() (*clientcmdapi.Config, error) {
 	rawConfig, err := clientcmd.LoadFromFile(g.Kubeconfig)
 	if err != nil {

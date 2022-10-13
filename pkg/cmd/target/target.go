@@ -213,7 +213,7 @@ func (o *TargetOptions) Run(f util.Factory) error {
 	}
 
 	if err != nil {
-		if errors.Is(err, target.Aborted) {
+		if errors.Is(err, target.ErrAborted) {
 			return nil
 		}
 

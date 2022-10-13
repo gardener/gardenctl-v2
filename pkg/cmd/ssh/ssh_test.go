@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -547,7 +546,7 @@ var _ = Describe("SSH Options", func() {
 	})
 
 	It("should require a valid public SSH key file", func() {
-		Expect(ioutil.WriteFile(publicSSHKeyFile, []byte("not a key"), 0644)).To(Succeed())
+		Expect(os.WriteFile(publicSSHKeyFile, []byte("not a key"), 0644)).To(Succeed())
 
 		o := ssh.NewSSHOptions(streams)
 		o.CIDRs = []string{"8.8.8.8/32"}
