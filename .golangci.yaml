@@ -5,7 +5,7 @@ run:
     - "zz_generated.*"
 linters:
   enable:
-    - golint
+    - revive
     - whitespace
     - wsl
     - goimports
