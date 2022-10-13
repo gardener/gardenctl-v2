@@ -22,6 +22,7 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	cmdconfig "github.com/gardener/gardenctl-v2/pkg/cmd/config"
 	cmdenv "github.com/gardener/gardenctl-v2/pkg/cmd/env"
+	cmdinfo "github.com/gardener/gardenctl-v2/pkg/cmd/info"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/kubeconfig"
 	cmdssh "github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
 	cmdsshpatch "github.com/gardener/gardenctl-v2/pkg/cmd/sshpatch"
@@ -124,6 +125,7 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 	cmd.AddCommand(cmdenv.NewCmdKubectlEnv(f, ioStreams))
 	cmd.AddCommand(cmdenv.NewCmdRC(f, ioStreams))
 	cmd.AddCommand(kubeconfig.NewCmdKubeconfig(f, ioStreams))
+	cmd.AddCommand(cmdinfo.NewCmdInfo(f, cmdinfo.NewInfoOptions(ioStreams)))
 
 	return cmd
 }
