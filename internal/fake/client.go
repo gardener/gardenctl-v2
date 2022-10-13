@@ -32,8 +32,8 @@ type clientWrapper struct {
 
 var _ client.Client = &clientWrapper{}
 
-func (w *clientWrapper) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
-	return w.delegate.Get(ctx, key, obj)
+func (w *clientWrapper) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	return w.delegate.Get(ctx, key, obj, opts...)
 }
 
 func (w *clientWrapper) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
