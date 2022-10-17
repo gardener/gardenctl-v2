@@ -39,24 +39,6 @@ gardenctl target shoot my-shoot
 # Target shoot control-plane using values that match a pattern defined for a specific garden
 gardenctl target value/that/matches/pattern --control-plane`,
 		RunE: base.WrapRunE(o, f),
-		PostRunE: func(cmd *cobra.Command, args []string) error {
-			s, err := HistoryParse(f, cmd, "")
-			if err != nil {
-				return err
-			}
-			return HistoryWrite(historyPath(f), s)
-		},
-		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.CalledAs() != string(TargetKindGarden) && cmd.CalledAs() != string(TargetKindProject) && cmd.CalledAs() != string(TargetKindSeed) && cmd.CalledAs() != string(TargetKindShoot) && cmd.CalledAs() != string(TargetKindControlPlane) {
-				return nil
-			}
-
-			s, err := HistoryParse(f, cmd, cmd.Parent().Use)
-			if err != nil {
-				return err
-			}
-			return HistoryWrite(historyPath(f), s)
-		},
 	}
 
 	cmd.AddCommand(NewCmdTargetGarden(f, ioStreams))
@@ -266,6 +248,18 @@ func (o *TargetOptions) Run(f util.Factory) error {
 		if os.Getenv("KUBECONFIG") != filepath.Join(manager.SessionDir(), "kubeconfig.yaml") {
 			fmt.Fprintf(o.IOStreams.Out, "%s The KUBECONFIG environment variable does not point to the current target of gardenctl. Run `gardenctl kubectl-env --help` on how to configure the KUBECONFIG environment variable accordingly\n", color.YellowString("WARN"))
 		}
+	}
+
+	// HistoryParse return history string
+	s, err := HistoryParse(currentTarget)
+
+	if err != nil {
+		return err
+	}
+	// HistoryWrite executes history file write
+	err = HistoryWrite(strings.Join([]string{f.GardenHomeDir(), historyFile}, "/"), s)
+	if err != nil {
+		return err
 	}
 
 	return nil

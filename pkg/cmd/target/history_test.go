@@ -8,13 +8,10 @@ package target_test
 import (
 	"os"
 
-	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/target"
-
-	"github.com/spf13/cobra"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -30,25 +27,16 @@ var _ = Describe("history Command", func() {
 	)
 
 	var (
-		streams        util.IOStreams
-		options        *base.Options
-		out            *util.SafeBytesBuffer
-		factory        *internalfake.Factory
-		targetProvider *internalfake.TargetProvider
-		currentTarget  target.Target
-		cmd            *cobra.Command
+		streams       util.IOStreams
+		options       *base.Options
+		out           *util.SafeBytesBuffer
+		currentTarget target.Target
 	)
 
 	BeforeEach(func() {
 		streams, _, out, _ = util.NewTestIOStreams()
 		options = base.NewOptions(streams)
-		cmd = &cobra.Command{}
 		currentTarget = target.NewTarget(gardenName, projectName, "", shootName)
-	})
-
-	JustBeforeEach(func() {
-		targetProvider = internalfake.NewFakeTargetProvider(currentTarget)
-		factory = internalfake.NewFakeFactory(nil, nil, nil, targetProvider)
 	})
 
 	AfterSuite(func() {
@@ -72,17 +60,11 @@ var _ = Describe("history Command", func() {
 	})
 
 	Describe("#HistoryParse", func() {
-		It("should succeed print history parse", func() {
-			string, err := cmdtarget.HistoryParse(factory, cmd, "")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(string).Should(ContainSubstring("--garden mygarden --project myproject --shoot myshoot"))
-		})
 
 		It("should succeed print history parse", func() {
-			string, err := cmdtarget.HistoryParse(factory, cmd, "target")
+			string, err := cmdtarget.HistoryParse(currentTarget)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string).Should(ContainSubstring("--garden mygarden --project myproject --shoot myshoot"))
+			Expect(string).Should((Equal("target --garden mygarden --project myproject --shoot myshoot")))
 		})
-
 	})
 })

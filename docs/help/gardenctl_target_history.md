@@ -2,6 +2,13 @@
 
 Print the target history
 
+### Synopsis
+
+Print the target history
+The fuzzy finder must be installed.
+Please refer to the installation instructions of the 3rd party tools:
+* fuzzy finder -https://github.com/junegunn/fzf
+
 ```
 gardenctl target history [flags]
 ```
