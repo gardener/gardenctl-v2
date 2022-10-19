@@ -14,7 +14,8 @@ import (
 )
 
 // TargetFlags represents the target cobra flags.
-//nolint
+//
+//nolint:revive
 type TargetFlags interface {
 	// GardenName returns the value that is tied to the corresponding cobra flag.
 	GardenName() string

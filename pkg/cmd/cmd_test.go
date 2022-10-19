@@ -320,7 +320,7 @@ var _ = Describe("Gardenctl command", func() {
 				Expect(cmd.Execute()).To(Succeed())
 
 				head := strings.Split(out.String(), "\n")[0]
-				Expect(head).To(Equal("#compdef _gardenctl gardenctl"))
+				Expect(head).To(Equal("#compdef gardenctl"))
 				Expect(factory.ConfigFile).To(Equal(configFile))
 				Expect(factory.GardenHomeDirectory).To(Equal(gardenHomeDir))
 

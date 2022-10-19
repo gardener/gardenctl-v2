@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package target_test
 
 import (
-	"io/ioutil"
 	"os"
 
 	. "github.com/onsi/ginkgo"
@@ -34,7 +33,7 @@ var _ = Describe("Target Provider", func() {
 	BeforeEach(func() {
 		var err error
 
-		tmpFile, err = ioutil.TempFile("", "gardenertarget*")
+		tmpFile, err = os.CreateTemp("", "gardenertarget*")
 		Expect(err).NotTo(HaveOccurred())
 
 		provider = target.NewTargetProvider(tmpFile.Name(), nil)
@@ -91,7 +90,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 	BeforeEach(func() {
 		var err error
 
-		tmpFile, err = ioutil.TempFile("", "gardenertarget*")
+		tmpFile, err = os.CreateTemp("", "gardenertarget*")
 		Expect(err).NotTo(HaveOccurred())
 
 		provider = target.NewTargetProvider(tmpFile.Name(), nil)

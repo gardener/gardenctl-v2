@@ -179,7 +179,7 @@ func (g *clientImpl) FindShoot(ctx context.Context, opts ...client.ListOption) (
 		return nil, fmt.Errorf("no shoot found matching the given list options %q", opts)
 	}
 
-	var remainingItemCount int64 = 0
+	var remainingItemCount int64
 	if shootList.RemainingItemCount != nil {
 		remainingItemCount = *shootList.RemainingItemCount
 	}

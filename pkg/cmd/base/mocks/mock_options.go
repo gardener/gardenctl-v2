@@ -7,10 +7,11 @@ package mocks
 import (
 	reflect "reflect"
 
-	util "github.com/gardener/gardenctl-v2/internal/util"
 	gomock "github.com/golang/mock/gomock"
 	cobra "github.com/spf13/cobra"
 	pflag "github.com/spf13/pflag"
+
+	util "github.com/gardener/gardenctl-v2/internal/util"
 )
 
 // MockCommandOptions is a mock of CommandOptions interface.

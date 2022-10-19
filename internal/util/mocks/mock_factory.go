@@ -8,9 +8,10 @@ import (
 	context "context"
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
+
 	util "github.com/gardener/gardenctl-v2/internal/util"
 	target "github.com/gardener/gardenctl-v2/pkg/target"
-	gomock "github.com/golang/mock/gomock"
 )
 
 // MockFactory is a mock of Factory interface.

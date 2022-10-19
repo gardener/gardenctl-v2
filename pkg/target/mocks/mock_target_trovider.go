@@ -7,8 +7,9 @@ package mocks
 import (
 	reflect "reflect"
 
-	target "github.com/gardener/gardenctl-v2/pkg/target"
 	gomock "github.com/golang/mock/gomock"
+
+	target "github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 // MockTargetProvider is a mock of TargetProvider interface.

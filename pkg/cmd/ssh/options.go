@@ -15,7 +15,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -155,7 +154,8 @@ var (
 )
 
 // SSHOptions is a struct to support ssh command
-// nolint
+//
+//nolint:revive
 type SSHOptions struct {
 	base.Options
 
@@ -306,7 +306,7 @@ func (o *SSHOptions) Validate() error {
 		}
 	}
 
-	content, err := ioutil.ReadFile(o.SSHPublicKeyFile)
+	content, err := os.ReadFile(o.SSHPublicKeyFile)
 	if err != nil {
 		return fmt.Errorf("invalid SSH public key file: %w", err)
 	}
@@ -383,7 +383,7 @@ func encodePublicKey(publicKey ssh.PublicKey) []byte {
 }
 
 func writeKeyFile(filename string, content []byte) error {
-	if err := ioutil.WriteFile(filename, content, 0600); err != nil {
+	if err := os.WriteFile(filename, content, 0600); err != nil {
 		return fmt.Errorf("failed to write %q: %w", filename, err)
 	}
 
@@ -509,7 +509,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return fmt.Errorf("failed to get bastion ingress policies: %w", err)
 	}
 
-	sshPublicKey, err := ioutil.ReadFile(o.SSHPublicKeyFile)
+	sshPublicKey, err := os.ReadFile(o.SSHPublicKeyFile)
 	if err != nil {
 		return fmt.Errorf("failed to read SSH public key: %w", err)
 	}
@@ -744,7 +744,7 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 	)
 
 	if o.SSHPrivateKeyFile != "" {
-		privateKeyBytes, err = ioutil.ReadFile(o.SSHPrivateKeyFile)
+		privateKeyBytes, err = os.ReadFile(o.SSHPrivateKeyFile)
 		if err != nil {
 			return fmt.Errorf("failed to read SSH private key from %q: %w", o.SSHPrivateKeyFile, err)
 		}

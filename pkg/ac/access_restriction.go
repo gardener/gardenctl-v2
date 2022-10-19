@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and Gardener con
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package ac
 
 import (
@@ -40,7 +41,8 @@ type AccessRestrictionOption struct {
 
 // AccessRestrictionHandler is a function that should display a single AccessRestrictionMessage to the user.
 // The typical implementation of this function looks like this:
-//  func(messages AccessRestrictionMessages) { message.Render(os.Stdout) }
+//
+//	func(messages AccessRestrictionMessages) { message.Render(os.Stdout) }
 type AccessRestrictionHandler func(AccessRestrictionMessages) bool
 type accessRestrictionHandlerContextKey struct{}
 
