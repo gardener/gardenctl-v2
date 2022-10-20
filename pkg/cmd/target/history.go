@@ -19,26 +19,32 @@ import (
 )
 
 const (
-	historyFile string = "history"
+	historyFile = "history"
 )
 
-// NewCmdHistory returns a new target history command.
+// NewCmdHistory returns a new target history command
 func NewCmdHistory(f util.Factory, o *HistoryOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "history",
 		Short: "Print the target history",
-		Long: `Print the target history
-The fuzzy finder must be installed.
-Please refer to the installation instructions of the 3rd party tools:
-* fuzzy finder -https://github.com/junegunn/fzf`,
-		RunE: base.WrapRunE(o, f),
+		Long:  "Print the target history",
+		RunE:  base.WrapRunE(o, f),
 	}
 
 	return cmd
 }
 
+// HistoryOptions is a struct to support target history command
 type HistoryOptions struct {
 	base.Options
+	path string
+}
+
+// HistoryWriteOptions is a struct to support target history write command
+type HistoryWriteOptions struct {
+	base.Options
+	cmd  *cobra.Command
+	path string
 }
 
 // NewHistoryOptions returns initialized HistoryOptions
@@ -50,16 +56,25 @@ func NewHistoryOptions(ioStreams util.IOStreams) *HistoryOptions {
 	}
 }
 
-// Run does the actual work of the command
+// NewHistoryWriteOptions returns initialized HistoryWriteOptions
+func NewHistoryWriteOptions(ioStreams util.IOStreams) *HistoryWriteOptions {
+	return &HistoryWriteOptions{
+		Options: base.Options{
+			IOStreams: ioStreams,
+		},
+	}
+}
+
+// Run does the actual work of the command.
 func (o *HistoryOptions) Run(f util.Factory) error {
-	if err := HistoryOutput(filepath.Join(f.GardenHomeDir(), historyFile), o.Options); err != nil {
+	if err := HistoryOutput(o.path, o.Options); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// HistoryWrite history write
+// HistoryWrite executes history file write
 func HistoryWrite(path string, s string) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
@@ -74,7 +89,7 @@ func HistoryWrite(path string, s string) error {
 	return nil
 }
 
-// HistoryOutput history output
+// HistoryOutput executes history output
 func HistoryOutput(path string, o base.Options) error {
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -86,6 +101,7 @@ func HistoryOutput(path string, o base.Options) error {
 	return err
 }
 
+// HistoryParse executes target history parse
 func HistoryParse(currentTarget target.Target) (string, error) {
 	var (
 		slice        []string
@@ -113,4 +129,46 @@ func HistoryParse(currentTarget target.Target) (string, error) {
 	}
 
 	return fmt.Sprintln(os.Args[0], targetString, strings.Join(slice, " ")), nil
+}
+
+// Run does the actual work of the command.
+func (o *HistoryWriteOptions) Run(f util.Factory) error {
+	// keep unset target history
+	//nolint
+	if o.cmd.CalledAs() == "view" || o.cmd.CalledAs() == "history" {
+
+		return nil
+	}
+
+	manager, err := f.Manager()
+	if err != nil {
+		return err
+	}
+
+	currentTarget, err := manager.CurrentTarget()
+	if err != nil {
+		return fmt.Errorf("failed to get current target: %w", err)
+	}
+
+	s, err := HistoryParse(currentTarget)
+
+	if err != nil {
+		return err
+	}
+
+	return HistoryWrite(o.path, s)
+}
+
+// Complete adapts from the command line args to the data required.
+func (o *HistoryWriteOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+	o.cmd = cmd
+	o.path = filepath.Join(f.GardenHomeDir(), historyFile)
+
+	return nil
+}
+
+// Complete adapts from the command line args to the data required.
+func (o *HistoryOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+	o.path = filepath.Join(f.GardenHomeDir(), historyFile)
+	return nil
 }

@@ -1,19 +1,23 @@
-## gardenctl target history
+## gardenctl history-env fish
 
-Print the target history
+Generate a script that fuzzy search the target history for fish
 
 ### Synopsis
 
-Print the target history
+Generate a script that fuzzy search the target history for fish.
+
+To load the fuzzy search the target history script in your current shell session:
+$ eval (gardenctl history-env fish)
+
 
 ```
-gardenctl target history [flags]
+gardenctl history-env fish [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for history
+  -h, --help   help for fish
 ```
 
 ### Options inherited from parent commands
@@ -42,5 +46,5 @@ gardenctl target history [flags]
 
 ### SEE ALSO
 
-* [gardenctl target](gardenctl_target.md)	 - Set scope for next operations, using subcommands or pattern
+* [gardenctl history-env](gardenctl_history-env.md)	 - Fuzzy search the target history
 

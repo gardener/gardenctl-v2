@@ -64,7 +64,7 @@ var _ = Describe("history Command", func() {
 		It("should succeed print history parse", func() {
 			string, err := cmdtarget.HistoryParse(currentTarget)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string).Should((Equal("target --garden mygarden --project myproject --shoot myshoot")))
+			Expect(string).Should((ContainSubstring("target --garden mygarden --project myproject --shoot myshoot")))
 		})
 	})
 })

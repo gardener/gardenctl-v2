@@ -9,7 +9,7 @@ alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval "$(gardenctl kubectl-env {{.shell}})"'
 alias {{.prefix}}p='eval "$(gardenctl provider-env {{.shell}})"'
 alias {{.prefix}}cv='gardenctl config view -o yaml'
-alias {{.prefix}}hh="gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal --color 'fg:#bbccdd,fg+:#ddeeff,bg:#334455,hl+:#ffaf5f,preview-bg:#223345,border:#778899' | {{.shell}}"
+alias {{.prefix}}hh="gardenctl history-env {{.shell}}"
 {{if not .noCompletion -}}
 source <(gardenctl completion {{.shell}})
 complete -o default -F __start_gardenctl {{.prefix}}
@@ -30,7 +30,7 @@ alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval "$(gardenctl kubectl-env {{.shell}})"'
 alias {{.prefix}}p='eval "$(gardenctl provider-env {{.shell}})"'
 alias {{.prefix}}cv='gardenctl config view -o yaml'
-alias {{.prefix}}hh="gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal --color 'fg:#bbccdd,fg+:#ddeeff,bg:#334455,hl+:#ffaf5f,preview-bg:#223345,border:#778899' | {{.shell}}"
+alias {{.prefix}}hh="gardenctl history-env {{.shell}}"
 {{if not .noCompletion -}}
 if (( $+commands[gardenctl] )); then
   if [ -d "$ZSH_CACHE_DIR/completions" ] && (($fpath[(Ie)$ZSH_CACHE_DIR/completions])); then
@@ -63,7 +63,7 @@ alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval (gardenctl kubectl-env {{.shell}})'
 alias {{.prefix}}p='eval (gardenctl provider-env {{.shell}})'
 alias {{.prefix}}cv='gardenctl config view -o yaml'
-alias {{.prefix}}hh="gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal --color 'fg:#bbccdd,fg+:#ddeeff,bg:#334455,hl+:#ffaf5f,preview-bg:#223345,border:#778899' | {{.shell}}"
+alias {{.prefix}}hh="gardenctl history-env {{.shell}}"
 {{if not .noCompletion -}}
 gardenctl completion {{.shell}} | source
 complete -c {{.prefix}} -w gardenctl
@@ -102,10 +102,10 @@ function Gardenctl-Config-View {
   gardenctl config view -o yaml
 }
 Set-Alias -Name {{.prefix}}cv -Value Gardenctl-Config-View -Option AllScope -Force
-function Gardenctl-Target-History {
-  Invoke-Expression -Command "gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal --color 'fg:#bbccdd,fg+:#ddeeff,bg:#334455,hl+:#ffaf5f,preview-bg:#223345,border:#778899'" | Invoke-Expression 
+function Gardenctl-HistoryEnv {
+  gardenctl history-env {{.shell}} | Out-String | Invoke-Expression
 }
-Set-Alias -Name {{.prefix}}hh -Value Gardenctl-Target-History -Option AllScope -Force
+Set-Alias -Name {{.prefix}}hh -Value Gardenctl-HistoryEnv -Option AllScope -Force
 {{if not .noCompletion -}}
 function Gardenctl-Completion-Powershell {
   $s = (gardenctl completion {{.shell}})

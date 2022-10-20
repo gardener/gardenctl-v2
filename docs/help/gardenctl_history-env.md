@@ -1,19 +1,24 @@
-## gardenctl target history
+## gardenctl history-env
 
-Print the target history
+Fuzzy search the target history
 
 ### Synopsis
 
-Print the target history
+Fuzzy search the target history
+		
+The fuzzy finder must be installed.
+Please refer to the installation instructions of the 3rd party tools:
+* fuzzy finder -https://github.com/junegunn/fzf,
 
-```
-gardenctl target history [flags]
-```
+Generate a script that fuzzy search the target history for the specified shell.
+See each sub-command's help for details on how to use the generated script.
+		
+
 
 ### Options
 
 ```
-  -h, --help   help for history
+  -h, --help   help for history-env
 ```
 
 ### Options inherited from parent commands
@@ -42,5 +47,9 @@ gardenctl target history [flags]
 
 ### SEE ALSO
 
-* [gardenctl target](gardenctl_target.md)	 - Set scope for next operations, using subcommands or pattern
+* [gardenctl](gardenctl.md)	 - Gardenctl is a utility to interact with Gardener installations
+* [gardenctl history-env bash](gardenctl_history-env_bash.md)	 - Generate a script that fuzzy search the target history for bash
+* [gardenctl history-env fish](gardenctl_history-env_fish.md)	 - Generate a script that fuzzy search the target history for fish
+* [gardenctl history-env powershell](gardenctl_history-env_powershell.md)	 - Generate a script that fuzzy search the target history for powershell
+* [gardenctl history-env zsh](gardenctl_history-env_zsh.md)	 - Generate a script that fuzzy search the target history for zsh
 

@@ -72,7 +72,7 @@ alias gtc-='gardenctl target unset control-plane'
 alias gk='eval "$(gardenctl kubectl-env bash)"'
 alias gp='eval "$(gardenctl provider-env bash)"'
 alias gcv='gardenctl config view -o yaml'
-alias ghh="gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal --color 'fg:#bbccdd,fg+:#ddeeff,bg:#334455,hl+:#ffaf5f,preview-bg:#223345,border:#778899' | bash"
+alias ghh="gardenctl history-env bash"
 source <(gardenctl completion bash)
 complete -o default -F __start_gardenctl g
 gk
@@ -92,7 +92,7 @@ alias gtc-='gardenctl target unset control-plane'
 alias gk='eval "$(gardenctl kubectl-env zsh)"'
 alias gp='eval "$(gardenctl provider-env zsh)"'
 alias gcv='gardenctl config view -o yaml'
-alias ghh="gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal --color 'fg:#bbccdd,fg+:#ddeeff,bg:#334455,hl+:#ffaf5f,preview-bg:#223345,border:#778899' | zsh"
+alias ghh="gardenctl history-env zsh"
 if (( $+commands[gardenctl] )); then
   if [ -d "$ZSH_CACHE_DIR/completions" ] && (($fpath[(Ie)$ZSH_CACHE_DIR/completions])); then
     GCTL_COMPLETION_FILE="$ZSH_CACHE_DIR/completions/_gardenctl"
@@ -124,7 +124,7 @@ alias gtc-='gardenctl target unset control-plane'
 alias gk='eval (gardenctl kubectl-env fish)'
 alias gp='eval (gardenctl provider-env fish)'
 alias gcv='gardenctl config view -o yaml'
-alias ghh="gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal --color 'fg:#bbccdd,fg+:#ddeeff,bg:#334455,hl+:#ffaf5f,preview-bg:#223345,border:#778899' | fish"
+alias ghh="gardenctl history-env fish"
 gardenctl completion fish | source
 complete -c g -w gardenctl
 gk
@@ -162,10 +162,10 @@ function Gardenctl-Config-View {
   gardenctl config view -o yaml
 }
 Set-Alias -Name gcv -Value Gardenctl-Config-View -Option AllScope -Force
-function Gardenctl-Target-History {
-  Invoke-Expression -Command "gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal --color 'fg:#bbccdd,fg+:#ddeeff,bg:#334455,hl+:#ffaf5f,preview-bg:#223345,border:#778899'" | Invoke-Expression 
+function Gardenctl-HistoryEnv {
+  gardenctl history-env powershell | Out-String | Invoke-Expression
 }
-Set-Alias -Name ghh -Value Gardenctl-Target-History -Option AllScope -Force
+Set-Alias -Name ghh -Value Gardenctl-HistoryEnv -Option AllScope -Force
 function Gardenctl-Completion-Powershell {
   $s = (gardenctl completion powershell)
   @(

@@ -1,0 +1,15 @@
+{{define "bash"}}
+gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal  | bash
+{{template "usage-hint" .__meta}}{{end}}
+
+{{define "zsh"}}
+gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal  | zsh
+{{template "usage-hint" .__meta}}{{end}}
+
+{{define "fish"}}
+gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal  | zsh
+{{template "usage-hint" .__meta}}{{end}}
+
+{{define "powershell"}}
+gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal  | powershell | Invoke-Expression 
+{{template "usage-hint" .__meta}}{{end}}

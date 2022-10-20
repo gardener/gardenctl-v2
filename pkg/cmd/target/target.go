@@ -27,6 +27,7 @@ import (
 // NewCmdTarget returns a new target command.
 func NewCmdTarget(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	o := NewTargetOptions(ioStreams)
+	h := NewHistoryWriteOptions(ioStreams)
 	cmd := &cobra.Command{
 		Use:   "target",
 		Short: "Set scope for next operations, using subcommands or pattern",
@@ -38,7 +39,8 @@ gardenctl target shoot my-shoot
 
 # Target shoot control-plane using values that match a pattern defined for a specific garden
 gardenctl target value/that/matches/pattern --control-plane`,
-		RunE: base.WrapRunE(o, f),
+		RunE:               base.WrapRunE(o, f),
+		PersistentPostRunE: base.WrapRunE(h, f),
 	}
 
 	cmd.AddCommand(NewCmdTargetGarden(f, ioStreams))
@@ -248,18 +250,6 @@ func (o *TargetOptions) Run(f util.Factory) error {
 		if os.Getenv("KUBECONFIG") != filepath.Join(manager.SessionDir(), "kubeconfig.yaml") {
 			fmt.Fprintf(o.IOStreams.Out, "%s The KUBECONFIG environment variable does not point to the current target of gardenctl. Run `gardenctl kubectl-env --help` on how to configure the KUBECONFIG environment variable accordingly\n", color.YellowString("WARN"))
 		}
-	}
-
-	// HistoryParse return history string
-	s, err := HistoryParse(currentTarget)
-
-	if err != nil {
-		return err
-	}
-	// HistoryWrite executes history file write
-	err = HistoryWrite(strings.Join([]string{f.GardenHomeDir(), historyFile}, "/"), s)
-	if err != nil {
-		return err
 	}
 
 	return nil

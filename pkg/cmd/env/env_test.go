@@ -89,4 +89,23 @@ var _ = Describe("Env Commands", func() {
 			}
 		})
 	})
+
+	Describe("given a HistoryEnv instance", func() {
+		BeforeEach(func() {
+			cmd = env.NewCmdHistoryEnv(factory, streams)
+		})
+
+		It("should have Use, Flags and SubCommands", func() {
+			Expect(cmd.Use).To(Equal("history-env"))
+			Expect(cmd.Aliases).To(HaveLen(2))
+			Expect(cmd.Aliases).To(Equal([]string{"history", "target-history"}))
+			Expect(cmd.Flag("output")).To(BeNil())
+			subCmds := cmd.Commands()
+			Expect(len(subCmds)).To(Equal(4))
+			for _, c := range subCmds {
+				s := env.Shell(c.Name())
+				Expect(s).To(BeElementOf(env.ValidShells))
+			}
+		})
+	})
 })

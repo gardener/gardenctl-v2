@@ -112,3 +112,44 @@ The generated script points the KUBECONFIG environment variable to the currently
 
 	return cmd
 }
+
+// NewCmdHistoryEnv returns a new history-env command.
+func NewCmdHistoryEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+	o := &options{
+		Options: base.Options{
+			IOStreams: ioStreams,
+		},
+		ProviderType: "history",
+	}
+	runE := base.WrapRunE(o, f)
+	cmd := &cobra.Command{
+		Use:   "history-env",
+		Short: "Fuzzy search the target history",
+		Long: `Fuzzy search the target history
+		
+The fuzzy finder must be installed.
+Please refer to the installation instructions of the 3rd party tools:
+* fuzzy finder -https://github.com/junegunn/fzf,
+
+Generate a script that fuzzy search the target history for the specified shell.
+See each sub-command's help for details on how to use the generated script.
+		
+`,
+		Aliases:            []string{"history", "target-history"},
+		DisableFlagParsing: true,
+	}
+
+	for _, s := range validShells {
+		cmd.AddCommand(&cobra.Command{
+			Use:   string(s),
+			Short: fmt.Sprintf("Generate a script that fuzzy search the target history for %s", s),
+			Long: fmt.Sprintf("Generate a script that fuzzy search the target history for %s.\n\n"+
+				"To load the fuzzy search the target history script in your current shell session:\n%s\n",
+				s, s.Prompt(runtime.GOOS)+s.EvalCommand(fmt.Sprintf("%s %s %s", "gardenctl", cmd.Use, s)),
+			),
+			RunE: runE,
+		})
+	}
+
+	return cmd
+}

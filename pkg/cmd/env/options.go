@@ -71,6 +71,11 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 		if err := o.Template.ParseFiles(filename); err != nil {
 			return err
 		}
+	case "history":
+		filename := filepath.Join(o.GardenDir, "templates", "history.tmpl")
+		if err := o.Template.ParseFiles(filename); err != nil {
+			return err
+		}
 	}
 
 	manager, err := f.Manager()
@@ -137,6 +142,8 @@ func (o *options) Run(f util.Factory) error {
 		}
 
 		return o.runKubernetes(ctx, manager)
+	case "history":
+		return o.runHistory(ctx, manager)
 	default:
 		if o.Target.GardenName() == "" {
 			return target.ErrNoGardenTargeted
@@ -232,6 +239,14 @@ func (o *options) run(ctx context.Context, manager target.Manager) error {
 	}
 
 	return execTmpl(o, shoot, secret, cloudProfile, messages)
+}
+
+func (o *options) runHistory(ctx context.Context, manager target.Manager) error {
+	data := map[string]interface{}{
+		"__meta": generateMetadata(o),
+	}
+
+	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
 }
 
 func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile, messages ac.AccessRestrictionMessages) error {
