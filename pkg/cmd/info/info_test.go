@@ -6,8 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package info_test
 
 import (
-	"fmt"
-
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	cmdinfo "github.com/gardener/gardenctl-v2/pkg/cmd/info"
@@ -110,7 +108,7 @@ var _ = Describe("Info Command", func() {
 			cmd := cmdinfo.NewCmdInfo(factory, o)
 
 			Expect(cmd.RunE(cmd, nil)).To(Succeed())
-			Expect(out.String()).To(Equal(fmt.Sprintf("Garden: mygarden\nSeed                                Total                    Active                    Hibernated                    Allocatable                    Capacity\n----                                -----                    ------                    ----------                    -----------                    --------\n----                                -----                    ------                    ----------                    -----------                    --------\nTOTAL                               3                        2                         0                             -                              -\nUnscheduled                         1\nUnscheduled List                    brokenShoot\n\n")))
+			Expect(out.String()).To(Equal("Garden: mygarden\nSeed                                Total                    Active                    Hibernated                    Allocatable                    Capacity\n----                                -----                    ------                    ----------                    -----------                    --------\n----                                -----                    ------                    ----------                    -----------                    --------\nTOTAL                               3                        2                         0                             -                              -\nUnscheduled                         1\nUnscheduled List                    brokenShoot\n\n"))
 		})
 	})
 })

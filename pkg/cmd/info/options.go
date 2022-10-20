@@ -17,8 +17,7 @@ import (
 )
 
 // InfoOptions is a struct to support Info command
-// nolint
-type options struct {
+type Options struct {
 	base.Options
 	// Allocatable is the seed allocatable
 	Allocatable int64
@@ -26,9 +25,9 @@ type options struct {
 	Capacity int64
 }
 
-// NewInfoOptions returns initialized InfoOptions
-func NewInfoOptions(ioStreams util.IOStreams) *options {
-	return &options{
+// NewInfoOptions returns initialized Options
+func NewInfoOptions(ioStreams util.IOStreams) *Options {
+	return &Options{
 		Options: base.Options{
 			IOStreams: ioStreams,
 		},
@@ -36,7 +35,7 @@ func NewInfoOptions(ioStreams util.IOStreams) *options {
 }
 
 // Run does the actual work of the command
-func (o *options) Run(f util.Factory) error {
+func (o *Options) Run(f util.Factory) error {
 	manager, err := f.Manager()
 	if err != nil {
 		return err
@@ -69,7 +68,7 @@ func (o *options) Run(f util.Factory) error {
 		totalShootsCountPerSeed      = make(map[string]int)
 		hibernatedShootsCountPerSeed = make(map[string]int)
 		unscheduledList              = make([]string, 0)
-		infoOptions                  = make(map[string]options)
+		infoOptions                  = make(map[string]Options)
 		valAllocatable               int64
 		valCapacity                  int64
 	)
@@ -90,7 +89,7 @@ func (o *options) Run(f util.Factory) error {
 			return fmt.Errorf("capacity conversion is not possible")
 		}
 
-		infoOptions[seed.Name] = options{Allocatable: valAllocatable, Capacity: valCapacity}
+		infoOptions[seed.Name] = Options{Allocatable: valAllocatable, Capacity: valCapacity}
 	}
 
 	for _, shoot := range shootList.Items {

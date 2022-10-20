@@ -14,7 +14,7 @@ import (
 )
 
 // NewCmdInfo returns a new info command.
-func NewCmdInfo(f util.Factory, o *options) *cobra.Command {
+func NewCmdInfo(f util.Factory, o *Options) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "info",
 		Short: "Get landscape informations and shows the number of shoots per seed, e.g. \"gardenctl info\"",
