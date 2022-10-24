@@ -164,11 +164,12 @@ var _ = Describe("Config", func() {
 	)
 
 	It("should create configuration directories and file", func() {
-		dir, err := os.MkdirTemp("", "garden-*")
+		dir, err := os.MkdirTemp("", "home-*")
 		Expect(err).NotTo(HaveOccurred())
 		defer os.RemoveAll(dir)
 
-		filename := filepath.Join(dir, "./.nonexisting-sub-folder/", "gardenctl-v2.yaml")
+		filename := filepath.Join(dir, ".garden", "gardenctl-v2.yaml")
+
 		cfg = &config.Config{
 			Filename: filename,
 		}
