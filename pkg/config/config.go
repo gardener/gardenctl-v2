@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 
@@ -105,6 +106,13 @@ func (config *Config) SymlinkTargetKubeconfig() bool {
 
 // Save updates a gardenctl config file with the values passed via Config struct
 func (config *Config) Save() error {
+	dir := filepath.Dir(config.Filename)
+
+	err := os.MkdirAll(dir, 0700)
+	if err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
 	f, err := os.OpenFile(config.Filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)

@@ -162,4 +162,17 @@ var _ = Describe("Config", func() {
 		Entry("when LinkKubeconfig is false and envVar is True", pointer.Bool(false), "True", pointer.Bool(true)),
 		Entry("when LinkKubeconfig is false and envVar is False", pointer.Bool(false), "False", pointer.Bool(false)),
 	)
+
+	It("should create configuration directories and file", func() {
+		dir, err := os.MkdirTemp("", "home-*")
+		Expect(err).NotTo(HaveOccurred())
+		defer os.RemoveAll(dir)
+
+		filename := filepath.Join(dir, ".garden", "gardenctl-v2.yaml")
+
+		cfg = &config.Config{
+			Filename: filename,
+		}
+		Expect(cfg.Save()).NotTo(HaveOccurred())
+	})
 })
