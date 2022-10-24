@@ -1,0 +1,10 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "weekly"
+    ignore:
+      # gardener/gardener dictates the k8s dependency
+      - dependency-name: "k8s.io*"
+      - dependency-name: "sigs.k8s.io/controller-runtime"
