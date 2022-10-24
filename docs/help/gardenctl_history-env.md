@@ -1,14 +1,14 @@
 ## gardenctl history-env
 
-Fuzzy search the target history
+Generate a script Fuzzy search the target history
 
 ### Synopsis
 
-Fuzzy search the target history
+Generate a script Fuzzy search the target history
 		
 The fuzzy finder must be installed.
 Please refer to the installation instructions of the 3rd party tools:
-* fuzzy finder -https://github.com/junegunn/fzf,
+* fuzzy finder - https://github.com/junegunn/fzf,
 
 Generate a script that fuzzy search the target history for the specified shell.
 See each sub-command's help for details on how to use the generated script.

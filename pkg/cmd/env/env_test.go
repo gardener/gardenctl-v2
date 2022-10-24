@@ -97,8 +97,6 @@ var _ = Describe("Env Commands", func() {
 
 		It("should have Use, Flags and SubCommands", func() {
 			Expect(cmd.Use).To(Equal("history-env"))
-			Expect(cmd.Aliases).To(HaveLen(2))
-			Expect(cmd.Aliases).To(Equal([]string{"history", "target-history"}))
 			Expect(cmd.Flag("output")).To(BeNil())
 			subCmds := cmd.Commands()
 			Expect(len(subCmds)).To(Equal(4))

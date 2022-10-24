@@ -46,5 +46,5 @@ gardenctl history-env bash [flags]
 
 ### SEE ALSO
 
-* [gardenctl history-env](gardenctl_history-env.md)	 - Fuzzy search the target history
+* [gardenctl history-env](gardenctl_history-env.md)	 - Generate a script Fuzzy search the target history
 

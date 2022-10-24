@@ -124,18 +124,17 @@ func NewCmdHistoryEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	runE := base.WrapRunE(o, f)
 	cmd := &cobra.Command{
 		Use:   "history-env",
-		Short: "Fuzzy search the target history",
-		Long: `Fuzzy search the target history
+		Short: "Generate a script Fuzzy search the target history",
+		Long: `Generate a script Fuzzy search the target history
 		
 The fuzzy finder must be installed.
 Please refer to the installation instructions of the 3rd party tools:
-* fuzzy finder -https://github.com/junegunn/fzf,
+* fuzzy finder - https://github.com/junegunn/fzf,
 
 Generate a script that fuzzy search the target history for the specified shell.
 See each sub-command's help for details on how to use the generated script.
 		
 `,
-		Aliases:            []string{"history", "target-history"},
 		DisableFlagParsing: true,
 	}
 

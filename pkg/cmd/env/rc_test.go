@@ -72,7 +72,7 @@ alias gtc-='gardenctl target unset control-plane'
 alias gk='eval "$(gardenctl kubectl-env bash)"'
 alias gp='eval "$(gardenctl provider-env bash)"'
 alias gcv='gardenctl config view -o yaml'
-alias ghh="gardenctl history-env bash"
+alias ghh='eval "$(gardenctl history-env bash)"'
 source <(gardenctl completion bash)
 complete -o default -F __start_gardenctl g
 gk
@@ -92,7 +92,7 @@ alias gtc-='gardenctl target unset control-plane'
 alias gk='eval "$(gardenctl kubectl-env zsh)"'
 alias gp='eval "$(gardenctl provider-env zsh)"'
 alias gcv='gardenctl config view -o yaml'
-alias ghh="gardenctl history-env zsh"
+alias ghh='eval "$(gardenctl history-env zsh)"'
 if (( $+commands[gardenctl] )); then
   if [ -d "$ZSH_CACHE_DIR/completions" ] && (($fpath[(Ie)$ZSH_CACHE_DIR/completions])); then
     GCTL_COMPLETION_FILE="$ZSH_CACHE_DIR/completions/_gardenctl"
@@ -124,7 +124,7 @@ alias gtc-='gardenctl target unset control-plane'
 alias gk='eval (gardenctl kubectl-env fish)'
 alias gp='eval (gardenctl provider-env fish)'
 alias gcv='gardenctl config view -o yaml'
-alias ghh="gardenctl history-env fish"
+alias ghh='eval "$(gardenctl history-env fish)"'
 gardenctl completion fish | source
 complete -c g -w gardenctl
 gk

@@ -9,7 +9,7 @@ alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval "$(gardenctl kubectl-env {{.shell}})"'
 alias {{.prefix}}p='eval "$(gardenctl provider-env {{.shell}})"'
 alias {{.prefix}}cv='gardenctl config view -o yaml'
-alias {{.prefix}}hh="gardenctl history-env {{.shell}}"
+alias {{.prefix}}hh='eval "$(gardenctl history-env {{.shell}})"'
 {{if not .noCompletion -}}
 source <(gardenctl completion {{.shell}})
 complete -o default -F __start_gardenctl {{.prefix}}
@@ -30,7 +30,7 @@ alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval "$(gardenctl kubectl-env {{.shell}})"'
 alias {{.prefix}}p='eval "$(gardenctl provider-env {{.shell}})"'
 alias {{.prefix}}cv='gardenctl config view -o yaml'
-alias {{.prefix}}hh="gardenctl history-env {{.shell}}"
+alias {{.prefix}}hh='eval "$(gardenctl history-env {{.shell}})"'
 {{if not .noCompletion -}}
 if (( $+commands[gardenctl] )); then
   if [ -d "$ZSH_CACHE_DIR/completions" ] && (($fpath[(Ie)$ZSH_CACHE_DIR/completions])); then
@@ -63,7 +63,7 @@ alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval (gardenctl kubectl-env {{.shell}})'
 alias {{.prefix}}p='eval (gardenctl provider-env {{.shell}})'
 alias {{.prefix}}cv='gardenctl config view -o yaml'
-alias {{.prefix}}hh="gardenctl history-env {{.shell}}"
+alias {{.prefix}}hh='eval "$(gardenctl history-env {{.shell}})"'
 {{if not .noCompletion -}}
 gardenctl completion {{.shell}} | source
 complete -c {{.prefix}} -w gardenctl

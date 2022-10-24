@@ -43,8 +43,8 @@ type HistoryOptions struct {
 // HistoryWriteOptions is a struct to support target history write command
 type HistoryWriteOptions struct {
 	base.Options
-	cmd  *cobra.Command
-	path string
+	calledAs string
+	path     string
 }
 
 // NewHistoryOptions returns initialized HistoryOptions
@@ -67,15 +67,15 @@ func NewHistoryWriteOptions(ioStreams util.IOStreams) *HistoryWriteOptions {
 
 // Run does the actual work of the command.
 func (o *HistoryOptions) Run(f util.Factory) error {
-	if err := HistoryOutput(o.path, o.Options); err != nil {
+	if err := toHistoryOutput(o.path, o.Options); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// HistoryWrite executes history file write
-func HistoryWrite(path string, s string) error {
+// historyWrite executes history file write
+func historyWrite(path string, s string) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
 		return fmt.Errorf("history file open error %s", path)
@@ -89,8 +89,8 @@ func HistoryWrite(path string, s string) error {
 	return nil
 }
 
-// HistoryOutput executes history output
-func HistoryOutput(path string, o base.Options) error {
+// toHistoryOutput executes history output
+func toHistoryOutput(path string, o base.Options) error {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -101,42 +101,40 @@ func HistoryOutput(path string, o base.Options) error {
 	return err
 }
 
-// HistoryParse executes target history parse
-func HistoryParse(currentTarget target.Target) (string, error) {
+// toHistoryParse executes target history parse from current target
+func toHistoryParse(currentTarget target.Target) (string, error) {
 	var (
-		slice        []string
+		flags        []string
 		targetString = "target"
 	)
 
 	if currentTarget.GardenName() != "" {
-		slice = append(slice, "--garden", currentTarget.GardenName())
+		flags = append(flags, "--garden", currentTarget.GardenName())
 	}
 
 	if currentTarget.ProjectName() != "" {
-		slice = append(slice, "--project", currentTarget.ProjectName())
+		flags = append(flags, "--project", currentTarget.ProjectName())
 	}
 
 	if currentTarget.SeedName() != "" {
-		slice = append(slice, "--seed", currentTarget.SeedName())
+		flags = append(flags, "--seed", currentTarget.SeedName())
 	}
 
 	if currentTarget.ShootName() != "" {
-		slice = append(slice, "--shoot", currentTarget.ShootName())
+		flags = append(flags, "--shoot", currentTarget.ShootName())
 	}
 
 	if currentTarget.ControlPlane() {
-		slice = append(slice, "--control-plane")
+		flags = append(flags, "--control-plane")
 	}
 
-	return fmt.Sprintln(os.Args[0], targetString, strings.Join(slice, " ")), nil
+	return fmt.Sprintln(os.Args[0], targetString, strings.Join(flags, " ")), nil
 }
 
 // Run does the actual work of the command.
 func (o *HistoryWriteOptions) Run(f util.Factory) error {
-	// keep unset target history
-	//nolint
-	if o.cmd.CalledAs() == "view" || o.cmd.CalledAs() == "history" {
-
+	// keep gardenctl target unset history
+	if o.calledAs == "view" || o.calledAs == "history" {
 		return nil
 	}
 
@@ -150,18 +148,17 @@ func (o *HistoryWriteOptions) Run(f util.Factory) error {
 		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
-	s, err := HistoryParse(currentTarget)
-
+	toHistoryParse, err := toHistoryParse(currentTarget)
 	if err != nil {
 		return err
 	}
 
-	return HistoryWrite(o.path, s)
+	return historyWrite(o.path, toHistoryParse)
 }
 
 // Complete adapts from the command line args to the data required.
 func (o *HistoryWriteOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	o.cmd = cmd
+	o.calledAs = cmd.CalledAs()
 	o.path = filepath.Join(f.GardenHomeDir(), historyFile)
 
 	return nil
