@@ -16,6 +16,6 @@
 # {{template "eval-cmd" dict "shell" .shell "cmd" (printf "%s -u %s" .commandPath .shell)}}
 {{end}}
 
-{{define "eval-cmd"}}{{if eq .shell "powershell"}}& {{.cmd}} | Invoke-Expression{{else if eq .shell "fish" -}}eval ({{.cmd}}){{else}}eval $({{.cmd}}){{end}}{{end}}
+{{define "eval-cmd"}}{{if eq .shell "powershell"}}& {{.cmd}} | Out-String | Invoke-Expression{{else if eq .shell "fish" -}}eval ({{.cmd}}){{else}}eval $({{.cmd}}){{end}}{{end}}
 
 {{define "printf"}}{{if .format}}printf {{.format | replace "\n" "\\n" | shellEscape}}{{range .arguments}} {{. | shellEscape}}{{end}}{{end}}{{end}}

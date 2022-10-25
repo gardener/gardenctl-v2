@@ -11,5 +11,5 @@ gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --i
 {{template "usage-hint" .__meta}}{{end}}
 
 {{define "powershell"}}
-gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal | powershell | Invoke-Expression 
+gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal | Out-String | Invoke-Expression
 {{template "usage-hint" .__meta}}{{end}}

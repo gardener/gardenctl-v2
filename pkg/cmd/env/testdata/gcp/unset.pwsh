@@ -4,4 +4,4 @@ Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_CORE_PROJECT;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_COMPUTE_REGION;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_CONFIG;
 # Run this command to reset the gcloud configuration for your shell:
-# & gardenctl provider-env -u powershell | Invoke-Expression
+# & gardenctl provider-env -u powershell | Out-String | Invoke-Expression

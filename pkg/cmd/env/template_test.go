@@ -76,7 +76,7 @@ var _ = Describe("Env Commands - Template", func() {
 			Entry("shell is bash", "bash", "eval $(%s)"),
 			Entry("shell is zsh", "zsh", "eval $(%s)"),
 			Entry("shell is fish", "fish", "eval (%s)"),
-			Entry("shell is powershell", "powershell", "& %s | Invoke-Expression"),
+			Entry("shell is powershell", "powershell", "& %s | Out-String | Invoke-Expression"),
 		)
 
 		DescribeTable("executing the usage-hint template",
@@ -189,9 +189,9 @@ $Env:AZURE_SUBSCRIPTION_ID = '%[5]s';
 $Env:AZURE_CONFIG_DIR = '%[6]s';
 az login --service-principal --username "$Env:AZURE_CLIENT_ID" --password "$Env:AZURE_CLIENT_SECRET" --tenant "$Env:AZURE_TENANT_ID";
 az account set --subscription "$Env:AZURE_SUBSCRIPTION_ID";
-printf 'Run the following command to log out and remove access to Azure subscriptions:\n$ & gardenctl provider-env --garden garden --project project --shoot shoot -u %[1]s | Invoke-Expression\n';
+printf 'Run the following command to log out and remove access to Azure subscriptions:\n$ & gardenctl provider-env --garden garden --project project --shoot shoot -u %[1]s | Out-String | Invoke-Expression\n';
 # Run this command to configure az for your shell:
-# & gardenctl provider-env %[1]s | Invoke-Expression
+# & gardenctl provider-env %[1]s | Out-String | Invoke-Expression
 `
 
 		const unsetFormat = `az logout --username "$Env:AZURE_CLIENT_ID";
@@ -201,7 +201,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_TENANT_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_SUBSCRIPTION_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 # Run this command to reset the az configuration for your shell:
-# & gardenctl provider-env -u %[1]s | Invoke-Expression
+# & gardenctl provider-env -u %[1]s | Out-String | Invoke-Expression
 `
 		var (
 			clientID       = "client"
