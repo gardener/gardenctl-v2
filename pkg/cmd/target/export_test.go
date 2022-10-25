@@ -6,4 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 
 package target
 
-var ValidTargetArgsFunction = validTargetArgsFunction
+var (
+	ValidTargetArgsFunction = validTargetArgsFunction
+	ToHistoryOutput         = toHistoryOutput
+	ToHistoryParse          = toHistoryParse
+	HistoryWrite            = historyWrite
+)
