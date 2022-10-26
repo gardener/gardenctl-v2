@@ -101,11 +101,10 @@ func toHistoryOutput(path string, o base.Options) error {
 	return err
 }
 
-// toHistoryParse executes target history parse from current target
-func toHistoryParse(currentTarget target.Target) (string, error) {
+// toCommand executes target history parse from current target
+func toCommand(currentTarget target.Target) (string, error) {
 	var (
-		flags        []string
-		targetString = "target"
+		flags []string
 	)
 
 	if currentTarget.GardenName() != "" {
@@ -128,7 +127,7 @@ func toHistoryParse(currentTarget target.Target) (string, error) {
 		flags = append(flags, "--control-plane")
 	}
 
-	return fmt.Sprintln(os.Args[0], targetString, strings.Join(flags, " ")), nil
+	return fmt.Sprintln(os.Args[0], "target", strings.Join(flags, " ")), nil
 }
 
 // Run does the actual work of the command.
@@ -148,12 +147,12 @@ func (o *HistoryWriteOptions) Run(f util.Factory) error {
 		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
-	toHistoryParse, err := toHistoryParse(currentTarget)
+	toCommand, err := toCommand(currentTarget)
 	if err != nil {
 		return err
 	}
 
-	return historyWrite(o.path, toHistoryParse)
+	return historyWrite(o.path, toCommand)
 }
 
 // Complete adapts from the command line args to the data required.

@@ -9,6 +9,6 @@ package target
 var (
 	ValidTargetArgsFunction = validTargetArgsFunction
 	ToHistoryOutput         = toHistoryOutput
-	ToHistoryParse          = toHistoryParse
+	ToCommand               = toCommand
 	HistoryWrite            = historyWrite
 )

@@ -59,34 +59,30 @@ var _ = Describe("history Command", func() {
 		})
 	})
 
-	Describe("#HistoryWrite", func() {
+	Describe("#HistoryWrite and ToHistoryOutput ", func() {
 		It("should write history file", func() {
 			err := cmdtarget.HistoryWrite(historyPath, "hello")
 			Expect(err).NotTo(HaveOccurred())
 		})
-	})
-
-	Describe("#ToHistoryOutput", func() {
 		It("should print history output", func() {
 			err := cmdtarget.ToHistoryOutput(historyPath, *options)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(out.String()).Should(ContainSubstring("hello"))
 		})
+	})
 
+	Describe("#ToHistoryOutput", func() {
 		It("should print history output from command level", func() {
 			o := cmdtarget.NewHistoryOptions(streams)
-			cmd := cmdtarget.NewCmdTarget(factory, streams)
-			err := o.Complete(factory, cmd, os.Args)
-			Expect(err).NotTo(HaveOccurred())
-			err = o.Run(factory)
-			Expect(err).NotTo(HaveOccurred())
+			cmd := cmdtarget.NewCmdHistory(factory, o)
+			Expect(cmd.RunE(cmd, nil)).To(Succeed())
 			Expect(out.String()).Should(ContainSubstring("target --garden mygarden --project myproject --shoot myshoot"))
 		})
 	})
 
-	Describe("#ToHistoryParse", func() {
+	Describe("#toCommand", func() {
 		It("should succeed execute history parse", func() {
-			string, err := cmdtarget.ToHistoryParse(currentTarget)
+			string, err := cmdtarget.ToCommand(currentTarget)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string).Should((ContainSubstring("target --garden mygarden --project myproject --shoot myshoot")))
 		})
