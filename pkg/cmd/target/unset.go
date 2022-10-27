@@ -18,7 +18,12 @@ import (
 )
 
 // NewCmdUnset returns a new (target) unset command.
-func NewCmdUnset(f util.Factory, o *UnsetOptions) *cobra.Command {
+func NewCmdUnset(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+	o := &UnsetOptions{
+		Options: base.Options{
+			IOStreams: ioStreams,
+		},
+	}
 	cmd := &cobra.Command{
 		Use:   "unset",
 		Short: "Unset target",
@@ -46,15 +51,6 @@ type UnsetOptions struct {
 
 	// Kind is the target kind, for example "garden" or "seed"
 	Kind TargetKind
-}
-
-// NewUnsetOptions returns initialized UnsetOptions
-func NewUnsetOptions(ioStreams util.IOStreams) *UnsetOptions {
-	return &UnsetOptions{
-		Options: base.Options{
-			IOStreams: ioStreams,
-		},
-	}
 }
 
 // Complete adapts from the command line args to the data required.

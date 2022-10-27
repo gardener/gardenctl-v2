@@ -15,7 +15,12 @@ import (
 )
 
 // NewCmdView returns a new target view command.
-func NewCmdView(f util.Factory, o *ViewOptions) *cobra.Command {
+func NewCmdView(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+	o := &ViewOptions{
+		Options: base.Options{
+			IOStreams: ioStreams,
+		},
+	}
 	cmd := &cobra.Command{
 		Use:   "view",
 		Short: "Print the current target",
@@ -55,13 +60,4 @@ func runViewCommand(f util.Factory, opt *ViewOptions) error {
 // ViewOptions is a struct to support view command
 type ViewOptions struct {
 	base.Options
-}
-
-// NewViewOptions returns initialized ViewOptions
-func NewViewOptions(ioStreams util.IOStreams) *ViewOptions {
-	return &ViewOptions{
-		Options: base.Options{
-			IOStreams: ioStreams,
-		},
-	}
 }
