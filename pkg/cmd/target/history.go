@@ -23,7 +23,12 @@ const (
 )
 
 // NewCmdHistory returns a new target history command
-func NewCmdHistory(f util.Factory, o *HistoryOptions) *cobra.Command {
+func NewCmdHistory(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+	o := &HistoryOptions{
+		Options: base.Options{
+			IOStreams: ioStreams,
+		},
+	}
 	cmd := &cobra.Command{
 		Use:   "history",
 		Short: "Print the target history",
@@ -45,15 +50,6 @@ type HistoryWriteOptions struct {
 	base.Options
 	calledAs string
 	path     string
-}
-
-// NewHistoryOptions returns initialized HistoryOptions
-func NewHistoryOptions(ioStreams util.IOStreams) *HistoryOptions {
-	return &HistoryOptions{
-		Options: base.Options{
-			IOStreams: ioStreams,
-		},
-	}
 }
 
 // NewHistoryWriteOptions returns initialized HistoryWriteOptions
@@ -147,12 +143,12 @@ func (o *HistoryWriteOptions) Run(f util.Factory) error {
 		return fmt.Errorf("failed to get current target: %w", err)
 	}
 
-	toCommand, err := toCommand(currentTarget)
+	command, err := toCommand(currentTarget)
 	if err != nil {
 		return err
 	}
 
-	return historyWrite(o.path, toCommand)
+	return historyWrite(o.path, command)
 }
 
 // Complete adapts from the command line args to the data required.

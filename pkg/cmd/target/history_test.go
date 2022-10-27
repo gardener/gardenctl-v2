@@ -73,8 +73,7 @@ var _ = Describe("history Command", func() {
 
 	Describe("#ToHistoryOutput", func() {
 		It("should print history output from command level", func() {
-			o := cmdtarget.NewHistoryOptions(streams)
-			cmd := cmdtarget.NewCmdHistory(factory, o)
+			cmd := cmdtarget.NewCmdHistory(factory, streams)
 			Expect(cmd.RunE(cmd, nil)).To(Succeed())
 			Expect(out.String()).Should(ContainSubstring("target --garden mygarden --project myproject --shoot myshoot"))
 		})
@@ -82,9 +81,9 @@ var _ = Describe("history Command", func() {
 
 	Describe("#toCommand", func() {
 		It("should succeed execute history parse", func() {
-			string, err := cmdtarget.ToCommand(currentTarget)
+			currentTarget, err := cmdtarget.ToCommand(currentTarget)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string).Should((ContainSubstring("target --garden mygarden --project myproject --shoot myshoot")))
+			Expect(currentTarget).Should((ContainSubstring("target --garden mygarden --project myproject --shoot myshoot")))
 		})
 	})
 })

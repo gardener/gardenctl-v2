@@ -51,7 +51,7 @@ gardenctl target value/that/matches/pattern --control-plane`,
 
 	cmd.AddCommand(NewCmdUnset(f, ioStreams))
 	cmd.AddCommand(NewCmdView(f, ioStreams))
-	cmd.AddCommand(NewCmdHistory(f, o.Options))
+	cmd.AddCommand(NewCmdHistory(f, ioStreams))
 	o.AddFlags(cmd.Flags())
 
 	manager, err := f.Manager()

@@ -1,15 +1,15 @@
 {{define "bash"}}
-gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal | bash
+{{template "eval-cmd" dict "shell" .shell "cmd" "gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal"}}
 {{template "usage-hint" .__meta}}{{end}}
 
 {{define "zsh"}}
-gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal | zsh
+{{template "eval-cmd" dict "shell" .shell "cmd" "gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal"}}
 {{template "usage-hint" .__meta}}{{end}}
 
 {{define "fish"}}
-gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal | fish
+{{template "eval-cmd" dict "shell" .shell "cmd" "gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal"}}
 {{template "usage-hint" .__meta}}{{end}}
 
 {{define "powershell"}}
-gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal | Out-String | Invoke-Expression
+{{"gardenctl target history | fzf --tac --no-sort --height 40% --layout reverse --info inline --border --preview 'echo {}' --preview-window up,1,border-horizontal | Out-String | Invoke-Expression" }}
 {{template "usage-hint" .__meta}}{{end}}
