@@ -214,13 +214,11 @@ func completionWrapper(f *util.FactoryImpl, ioStreams util.IOStreams, completer 
 			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-
 		result, err := completer(f.Context(), manager)
 		if err != nil {
 			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-
 		return util.FilterStringsByPrefix(toComplete, result), cobra.ShellCompDirectiveNoFileComp
 	}
 }
