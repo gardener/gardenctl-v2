@@ -115,6 +115,7 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 
 	// add subcommands
 	cmd.AddCommand(cmdssh.NewCmdSSH(f, cmdssh.NewSSHOptions(ioStreams)))
+	cmd.AddCommand(cmdssh.NewCmdSSHPatch(f, ioStreams))
 	cmd.AddCommand(cmdtarget.NewCmdTarget(f, ioStreams))
 	cmd.AddCommand(cmdversion.NewCmdVersion(f, cmdversion.NewVersionOptions(ioStreams)))
 	cmd.AddCommand(cmdconfig.NewCmdConfig(f, ioStreams))
