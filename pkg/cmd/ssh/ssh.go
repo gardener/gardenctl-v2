@@ -8,8 +8,10 @@ package ssh
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/spf13/cobra"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
@@ -43,5 +45,74 @@ func NewCmdSSH(f util.Factory, o *SSHOptions) *cobra.Command {
 	cmd.Flags().DurationVar(&o.WaitTimeout, "wait-timeout", o.WaitTimeout, "Maximum duration to wait for the bastion to become available.")
 	cmd.Flags().BoolVar(&o.KeepBastion, "keep-bastion", o.KeepBastion, "Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)")
 
+	registerCompletionFuncForFlags(cmd, f, o.IOStreams)
+
 	return cmd
+}
+
+func registerCompletionFuncForFlags(cmd *cobra.Command, f util.Factory, ioStreams util.IOStreams) {
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("cidr", completionWrapper(f, ioStreams, cidrFlagCompletionFunc)))
+}
+
+type cobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
+type cobraCompletionFuncWithError func(f util.Factory) ([]string, error)
+
+func completionWrapper(f util.Factory, ioStreams util.IOStreams, completer cobraCompletionFuncWithError) cobraCompletionFunc {
+	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		result, err := completer(f)
+		if err != nil {
+			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		return util.FilterStringsByPrefix(toComplete, result), cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+func cidrFlagCompletionFunc(f util.Factory) ([]string, error) {
+	var addresses []string
+
+	ctx := f.Context()
+
+	publicIPs, err := f.PublicIPs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ip := range publicIPs {
+		cidr := ipToCIDR(ip)
+		addresses = append(addresses, fmt.Sprintf("%s\t<public>", cidr))
+	}
+
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+
+	includeFlags := net.FlagUp
+	excludeFlags := net.FlagLoopback
+
+	for _, iface := range interfaces {
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return nil, err
+		}
+
+		if is(iface, includeFlags) && isNot(iface, excludeFlags) {
+			for _, addr := range addrs {
+				addressComp := fmt.Sprintf("%s\t%s", addr.String(), iface.Name)
+				addresses = append(addresses, addressComp)
+			}
+		}
+	}
+
+	return addresses, nil
+}
+
+func is(i net.Interface, flags net.Flags) bool {
+	return i.Flags&flags != 0
+}
+
+func isNot(i net.Interface, flags net.Flags) bool {
+	return i.Flags&flags == 0
 }
