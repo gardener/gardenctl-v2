@@ -106,15 +106,14 @@ var _ = Describe("Target Unset Command", func() {
 	})
 
 	It("should reject bad options", func() {
-		o := cmdtarget.NewUnsetOptions(streams)
-		cmd := cmdtarget.NewCmdUnset(&util.FactoryImpl{}, o)
+		cmd := cmdtarget.NewCmdUnset(&util.FactoryImpl{}, streams)
 
 		Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
 	})
 
 	It("should be able to unset a targeted garden", func() {
 		// user has already targeted a garden
-		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
+		cmd := cmdtarget.NewCmdUnset(factory, streams)
 
 		Expect(cmd.RunE(cmd, []string{"garden"})).To(Succeed())
 		Expect(out.String()).To(ContainSubstring("Successfully unset targeted garden %q\n", gardenName))
@@ -127,7 +126,7 @@ var _ = Describe("Target Unset Command", func() {
 	It("should be able to unset a targeted project", func() {
 		// user has already targeted a garden and project
 		targetProvider.Target = currentTarget.WithProjectName(projectName)
-		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
+		cmd := cmdtarget.NewCmdUnset(factory, streams)
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"project"})).To(Succeed())
@@ -142,7 +141,7 @@ var _ = Describe("Target Unset Command", func() {
 	It("should be able to unset targeted seed", func() {
 		// user has already targeted a garden and seed
 		targetProvider.Target = currentTarget.WithSeedName(seedName)
-		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
+		cmd := cmdtarget.NewCmdUnset(factory, streams)
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"seed"})).To(Succeed())
@@ -157,7 +156,7 @@ var _ = Describe("Target Unset Command", func() {
 	It("should be able to unset targeted shoot", func() {
 		// user has already targeted a garden, project and shoot
 		targetProvider.Target = currentTarget.WithProjectName(projectName).WithShootName(shootName)
-		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
+		cmd := cmdtarget.NewCmdUnset(factory, streams)
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"shoot"})).To(Succeed())
@@ -174,7 +173,7 @@ var _ = Describe("Target Unset Command", func() {
 	It("should be able to unset targeted control plane", func() {
 		// user has already targeted a garden, project, shoot and control-plane
 		targetProvider.Target = currentTarget.WithProjectName(projectName).WithShootName(shootName).WithControlPlane(true)
-		cmd := cmdtarget.NewCmdUnset(factory, cmdtarget.NewUnsetOptions(streams))
+		cmd := cmdtarget.NewCmdUnset(factory, streams)
 
 		// run command
 		Expect(cmd.RunE(cmd, []string{"control-plane"})).To(Succeed())
@@ -192,19 +191,16 @@ var _ = Describe("Target Unset Command", func() {
 
 var _ = Describe("Target Unset Options", func() {
 	It("should validate", func() {
-		streams, _, _, _ := util.NewTestIOStreams()
-		o := cmdtarget.NewUnsetOptions(streams)
+		o := &cmdtarget.UnsetOptions{}
 		o.Kind = cmdtarget.TargetKindGarden
 
 		Expect(o.Validate()).To(Succeed())
 	})
 
 	It("should reject invalid kinds", func() {
-		streams, _, _, _ := util.NewTestIOStreams()
-		o := cmdtarget.NewUnsetOptions(streams)
+		o := &cmdtarget.UnsetOptions{}
 		o.Kind = "not a kind"
 
-		err := o.Validate()
-		Expect(err).To(MatchError(ContainSubstring("invalid target kind given, must be one of")))
+		Expect(o.Validate()).To(MatchError(ContainSubstring("invalid target kind given, must be one of")))
 	})
 })

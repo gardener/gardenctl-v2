@@ -44,9 +44,7 @@ var _ = Describe("Target View Command", func() {
 
 	It("should print current target information", func() {
 		// user has already targeted a garden, project and shoot
-		o := cmdtarget.NewViewOptions(streams)
-		cmd := cmdtarget.NewCmdView(factory, o)
-
+		cmd := cmdtarget.NewCmdView(factory, streams)
 		Expect(cmd.RunE(cmd, nil)).To(Succeed())
 		Expect(out.String()).To(Equal(fmt.Sprintf("garden:\"%s\", project:\"%s\", shoot:\"%s\"", gardenName, projectName, shootName)))
 	})
@@ -54,8 +52,7 @@ var _ = Describe("Target View Command", func() {
 
 var _ = Describe("Target View Options", func() {
 	It("should validate", func() {
-		streams, _, _, _ := util.NewTestIOStreams()
-		o := cmdtarget.NewViewOptions(streams)
+		o := &cmdtarget.ViewOptions{}
 		Expect(o.Validate()).ToNot(HaveOccurred())
 	})
 })
