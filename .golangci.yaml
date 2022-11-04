@@ -10,6 +10,8 @@ linters:
     - wsl
     - goimports
     - nolintlint
+    - predeclared
+    - unconvert
 linters-settings:
   goimports:
     local-prefixes: github.com/gardener/gardenctl-v2
