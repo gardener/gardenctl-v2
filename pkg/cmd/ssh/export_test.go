@@ -10,6 +10,11 @@ import (
 	"context"
 	"os"
 	"time"
+
+	"k8s.io/client-go/tools/clientcmd/api"
+
+	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
 
 func SetBastionAvailabilityChecker(f func(hostname string, privateKey []byte) error) {
@@ -41,4 +46,31 @@ func SetKeepAliveInterval(d time.Duration) {
 	defer keepAliveIntervalMutex.Unlock()
 
 	keepAliveInterval = d
+}
+
+type TestSSHPatchOptions struct {
+	sshPatchOptions
+	Out     *util.SafeBytesBuffer
+	Streams util.IOStreams
+}
+
+func NewTestSSHPatchOptions() *TestSSHPatchOptions {
+	streams, _, out, _ := util.NewTestIOStreams()
+
+	return &TestSSHPatchOptions{
+		sshPatchOptions: sshPatchOptions{
+			sshBaseOptions: sshBaseOptions{
+				Options: base.Options{
+					IOStreams: streams,
+				},
+			},
+			Utils: &sshPatchUtilsImpl{},
+		},
+		Out:     out,
+		Streams: streams,
+	}
+}
+
+func (o *TestSSHPatchOptions) GetAuthInfo(ctx context.Context) (*api.AuthInfo, error) {
+	return o.getAuthInfo(ctx)
 }

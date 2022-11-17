@@ -10,7 +10,7 @@ import (
 )
 
 func NewCmdSSHPatch(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
-	o := NewSSHPatchOptions(ioStreams)
+	o := newSSHPatchOptions(ioStreams)
 	cmd := &cobra.Command{
 		Use:   "ssh-patch [BASTION_NAME]",
 		Short: "Update a bastion host previously created through the ssh command",
@@ -26,7 +26,7 @@ func NewCmdSSHPatch(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			bastionNames, err := o.getBastionNameCompletions(f, cmd, toComplete)
+			bastionNames, err := o.GetBastionNameCompletions(f, cmd, toComplete)
 			if err != nil {
 				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
 				return nil, cobra.ShellCompDirectiveNoFileComp
@@ -36,7 +36,7 @@ func NewCmdSSHPatch(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringArrayVar(&o.CIDRs, "cidr", o.CIDRs, "CIDRs to allow access to the bastion host; if not given, your system's public IPs (v4 and v6) are auto-detected.")
+	o.AddFlags(cmd.PersistentFlags())
 
 	return cmd
 }

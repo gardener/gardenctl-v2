@@ -8,6 +8,8 @@ package util
 
 import "time"
 
+//go:generate mockgen -destination=./mocks/mock_clock.go -package=mocks github.com/gardener/gardenctl-v2/internal/util Clock
+
 // Clock provides the current time.
 type Clock interface {
 	// Now returns the current time
