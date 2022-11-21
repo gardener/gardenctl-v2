@@ -38,7 +38,7 @@ type Garden struct {
 	Name string `yaml:"identity" json:"identity"`
 	// Alias is a unique identifier of this Garden that can be used as an alternate name to target this Garden
 	// +optional
-	Alias string `yaml:"alias" json:"alias"`
+	Alias string `yaml:"alias,omitempty" json:"alias,omitempty"`
 	// Kubeconfig holds the path for the kubeconfig of the garden cluster
 	Kubeconfig string `yaml:"kubeconfig" json:"kubeconfig"`
 	// Context overrides the current-context of the garden cluster kubeconfig
