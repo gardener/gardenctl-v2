@@ -44,7 +44,7 @@ type FlagCompletors interface {
 	// ProjectNames returns all projects for the currently targeted garden.
 	// The current target must at least point to a garden.
 	ProjectNames(ctx context.Context) ([]string, error)
-	// GardenNames returns all names of configured Gardens.
+	// GardenNames returns all identities and aliases of configured Gardens.
 	GardenNames() ([]string, error)
 }
 
@@ -737,7 +737,7 @@ func (m *managerImpl) ProjectNames(ctx context.Context) ([]string, error) {
 	return names.List(), nil
 }
 
-// GardenNames returns all names of configured Gardens.
+// GardenNames returns all identities and aliases of configured Gardens.
 func (m *managerImpl) GardenNames() ([]string, error) {
 	config := m.Configuration()
 	if config == nil {
@@ -747,6 +747,10 @@ func (m *managerImpl) GardenNames() ([]string, error) {
 	names := sets.NewString()
 	for _, garden := range config.Gardens {
 		names.Insert(garden.Name)
+
+		if garden.Alias != "" {
+			names.Insert(garden.Alias)
+		}
 	}
 
 	return names.List(), nil
