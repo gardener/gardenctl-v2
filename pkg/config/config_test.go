@@ -23,6 +23,8 @@ var _ = Describe("Config", func() {
 	var (
 		clusterIdentity1 = "garden1"
 		clusterIdentity2 = "garden2"
+		clusterAlias1    = "gardenalias1"
+		clusterAlias2    = "gardenalias2"
 		fooIdentity      = "fooGarden"
 		project          = "fooProject"
 		shoot            = "fooShoot"
@@ -34,14 +36,16 @@ var _ = Describe("Config", func() {
 			LinkKubeconfig: pointer.Bool(false),
 			Gardens: []config.Garden{
 				{
-					Name: clusterIdentity1,
+					Name:  clusterIdentity1,
+					Alias: clusterAlias1,
 					Patterns: []string{
 						fmt.Sprintf("^%s/shoot--(?P<project>.+)--(?P<shoot>.+)$", clusterIdentity1),
 						"^shoot--(?P<project>.+)--(?P<shoot>.+)$",
 					},
 				},
 				{
-					Name: clusterIdentity2,
+					Name:  clusterIdentity2,
+					Alias: clusterAlias2,
 					Patterns: []string{
 						fmt.Sprintf("^(%s/)?shoot--(?P<project>.+)--(?P<shoot>.+)$", clusterIdentity2),
 					},
@@ -122,11 +126,14 @@ var _ = Describe("Config", func() {
 			fmt.Sprintf("garden %q is not defined in gardenctl configuration", fooIdentity)),
 	)
 
-	It("should find garden by identity", func() {
-		garden, err := cfg.Garden(clusterIdentity1)
+	DescribeTable("Should find garden by identity and alias", func(name, identityOrAlias string) {
+		garden, err := cfg.Garden(name)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(garden.Name).Should(Equal(clusterIdentity1))
-	})
+		Expect(garden.Name).Should(Equal(identityOrAlias))
+	},
+		Entry("should find garden by identity", clusterIdentity1, clusterIdentity1),
+		Entry("should find garden by alias", clusterAlias2, clusterIdentity2),
+	)
 
 	It("should throw an error if garden not found", func() {
 		_, err := cfg.Garden("foobar")

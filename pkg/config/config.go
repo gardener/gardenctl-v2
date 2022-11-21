@@ -36,6 +36,9 @@ type Config struct {
 type Garden struct {
 	// Name is a unique identifier of this Garden that can be used to target this Garden
 	Name string `yaml:"identity" json:"identity"`
+	// Alias is a unique identifier of this Garden that can be used as an alternate name to target this Garden
+	// +optional
+	Alias string `yaml:"alias" json:"alias"`
 	// Kubeconfig holds the path for the kubeconfig of the garden cluster
 	Kubeconfig string `yaml:"kubeconfig" json:"kubeconfig"`
 	// Context overrides the current-context of the garden cluster kubeconfig
@@ -148,14 +151,29 @@ func (config *Config) GardenNames() []string {
 	return names
 }
 
-// Garden returns a Garden cluster from the list of configured Gardens.
+// Garden returns a Garden cluster by name (identity or alias) from the list of configured Gardens.
 func (config *Config) Garden(name string) (*Garden, error) {
-	i, ok := config.IndexOfGarden(name)
-	if !ok {
+	var gardenConfig *Garden
+
+	for idx := range config.Gardens {
+		cfg := &config.Gardens[idx]
+
+		if name != cfg.Name && name != cfg.Alias {
+			continue
+		}
+
+		if gardenConfig != nil {
+			return nil, fmt.Errorf("identity or alias %q must be unique but was found multiple times in gardenctl configuration", cfg.Name)
+		}
+
+		gardenConfig = cfg
+	}
+
+	if gardenConfig == nil {
 		return nil, fmt.Errorf("garden %q is not defined in gardenctl configuration", name)
 	}
 
-	return &config.Gardens[i], nil
+	return gardenConfig, nil
 }
 
 // ClientConfig returns a deferred loading client config for a configured garden cluster.
