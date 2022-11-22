@@ -99,7 +99,44 @@ func LoadFromFile(filename string) (*Config, error) {
 		config.LinkKubeconfig = &val
 	}
 
+	if err := config.validate(); err != nil {
+		return nil, err
+	}
+
 	return config, nil
+}
+
+// validate checks the config for static errors. It does not check if the kubeconfig file exists.
+func (config *Config) validate() error {
+	seen := make(map[string]bool, len(config.Gardens))
+
+	for i := range config.Gardens {
+		garden := config.Gardens[i]
+
+		if garden.Name == "" {
+			return fmt.Errorf("identity is required for gardens in the gardenctl configuration")
+		}
+
+		if garden.Kubeconfig == "" {
+			return fmt.Errorf("kubeconfig is required for gardens in the gardenctl configuration")
+		}
+
+		if seen[garden.Name] {
+			return fmt.Errorf("identity and alias must be unique but %q was found multiple times in gardenctl configuration", garden.Name)
+		}
+
+		if garden.Alias != "" {
+			if seen[garden.Alias] {
+				return fmt.Errorf("identity and alias must be unique but %q was found multiple times in gardenctl configuration", garden.Alias)
+			}
+
+			seen[garden.Alias] = true
+		}
+
+		seen[garden.Name] = true
+	}
+
+	return nil
 }
 
 // SymlinkTargetKubeconfig indicates if the kubeconfig of the current target should be always symlinked.
@@ -157,16 +194,9 @@ func (config *Config) Garden(name string) (*Garden, error) {
 
 	for idx := range config.Gardens {
 		cfg := &config.Gardens[idx]
-
-		if name != cfg.Name && name != cfg.Alias {
-			continue
+		if name == cfg.Name || name == cfg.Alias {
+			return cfg, nil
 		}
-
-		if gardenConfig != nil {
-			return nil, fmt.Errorf("identity or alias %q must be unique but was found multiple times in gardenctl configuration", cfg.Name)
-		}
-
-		gardenConfig = cfg
 	}
 
 	if gardenConfig == nil {
