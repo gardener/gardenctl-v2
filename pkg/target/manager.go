@@ -132,7 +132,12 @@ func newGardenClient(name string, config *config.Config, provider ClientProvider
 		return nil, err
 	}
 
-	return gardenclient.NewGardenClient(client, name), nil
+	garden, err := config.Garden(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return gardenclient.NewGardenClient(client, garden.Name), nil
 }
 
 // NewManager returns a new manager.
