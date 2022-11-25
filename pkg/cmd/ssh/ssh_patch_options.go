@@ -65,14 +65,10 @@ func (o *sshPatchOptions) getBastion(ctx context.Context) (*gardenoperationsv1al
 		return nil, err
 	}
 
-	if bastion.ObjectMeta.UID == "" {
-		return nil, fmt.Errorf("Bastion '%s' in namespace '%s' not found", o.BastionName, shoot.Namespace)
-	}
-
 	return bastion, nil
 }
 
-func (o *sshPatchOptions) getAuthInfo(ctx context.Context) (*api.AuthInfo, error) {
+func (o *sshPatchOptions) getAuthInfo() (*api.AuthInfo, error) {
 	rawConfig, err := o.clientConfig.RawConfig()
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve raw config: %w", err)
@@ -92,7 +88,7 @@ func (o *sshPatchOptions) getAuthInfo(ctx context.Context) (*api.AuthInfo, error
 }
 
 func (o *sshPatchOptions) getBastionsOfUser(ctx context.Context) ([]*gardenoperationsv1alpha1.Bastion, error) {
-	var bastionOfUser []*gardenoperationsv1alpha1.Bastion
+	var bastionsOfUser []*gardenoperationsv1alpha1.Bastion
 
 	currentUser, err := o.Utils.GetCurrentUser(ctx, o.gardenClient, o.authInfo)
 	if err != nil {
@@ -108,12 +104,12 @@ func (o *sshPatchOptions) getBastionsOfUser(ctx context.Context) ([]*gardenopera
 		bastion := list.Items[i]
 		if createdBy, ok := bastion.Annotations["gardener.cloud/created-by"]; ok {
 			if createdBy == currentUser {
-				bastionOfUser = append(bastionOfUser, &bastion)
+				bastionsOfUser = append(bastionsOfUser, &bastion)
 			}
 		}
 	}
 
-	return bastionOfUser, nil
+	return bastionsOfUser, nil
 }
 
 func (o *sshPatchOptions) patchBastionIngress(ctx context.Context) error {
@@ -159,30 +155,13 @@ func (o *sshPatchOptions) Run(f util.Factory) error {
 	ctx, cancel := context.WithTimeout(f.Context(), 30*time.Second)
 	defer cancel()
 
-	return o.patchBastionIngress(ctx)
-}
-
-func formatDuration(d time.Duration) string {
-	const (
-		hFactor int = 3600
-		mFactor int = 60
-	)
-
-	s := int(d.Seconds())
-	h := s / hFactor
-	s -= h * hFactor
-	m := s / mFactor
-	s -= m * mFactor
-
-	if h > 0 {
-		return fmt.Sprintf("%dh%dm%ds", h, m, s)
+	if err := o.patchBastionIngress(ctx); err != nil {
+		return err
 	}
 
-	if m > 0 {
-		return fmt.Sprintf("%dm%ds", m, s)
-	}
+	fmt.Fprintf(o.IOStreams.Out, "Successfully patched bastion %q\n", o.BastionName)
 
-	return fmt.Sprintf("%ds", s)
+	return nil
 }
 
 func (o *sshPatchOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
@@ -216,9 +195,9 @@ func (o *sshPatchOptions) Complete(f util.Factory, cmd *cobra.Command, args []st
 
 	o.clientConfig = clientConfig
 
-	authInfo, err := o.getAuthInfo(ctx)
+	authInfo, err := o.getAuthInfo()
 	if err != nil {
-		return fmt.Errorf("Could not get current authInfo: %w", err)
+		return fmt.Errorf("could not get current authInfo: %w", err)
 	}
 
 	o.authInfo = authInfo
@@ -227,10 +206,6 @@ func (o *sshPatchOptions) Complete(f util.Factory, cmd *cobra.Command, args []st
 
 	if len(args) > 0 {
 		o.BastionName = args[0]
-	}
-
-	if err != nil {
-		return err
 	}
 
 	if err := o.sshBaseOptions.Complete(f, cmd, args); err != nil {
@@ -243,18 +218,17 @@ func (o *sshPatchOptions) Complete(f util.Factory, cmd *cobra.Command, args []st
 			return err
 		}
 
-		if len(bastions) == 1 {
-			b := bastions[0]
-			name := b.Name
-			age := formatDuration(o.clock.Now().Sub(b.CreationTimestamp.Time))
-			fmt.Fprintf(o.IOStreams.Out, "Auto-selected bastion %q created %s ago targeting shoot \"%s/%s\"\n", name, age, b.Namespace, b.Spec.ShootRef.Name)
-			o.BastionName = b.Name
-			o.Bastion = b
-		} else if len(bastions) == 0 {
-			fmt.Fprint(o.IOStreams.Out, "No bastions were found\n")
-		} else {
-			fmt.Fprint(o.IOStreams.Out, "Multiple bastions were found and the target bastion needs to be explictly defined\n")
+		if len(bastions) == 0 {
+			return errors.New("no bastions found")
+		} else if len(bastions) > 1 {
+			return fmt.Errorf("multiple bastions were found and the target bastion needs to be explicitly defined")
 		}
+
+		o.Bastion = bastions[0]
+		o.BastionName = o.Bastion.Name
+
+		age := o.clock.Now().Sub(o.Bastion.CreationTimestamp.Time).Round(time.Second).String()
+		fmt.Fprintf(o.IOStreams.Out, "Auto-selected bastion %q created %s ago targeting shoot \"%s/%s\"\n", o.BastionName, age, o.Bastion.Namespace, o.Bastion.Spec.ShootRef.Name)
 	} else {
 		bastion, err := o.getBastion(ctx)
 		if err != nil {
@@ -297,9 +271,9 @@ func (o *sshPatchOptions) GetBastionNameCompletions(f util.Factory, cmd *cobra.C
 
 	o.clientConfig = clientConfig
 
-	authInfo, err := o.getAuthInfo(ctx)
+	authInfo, err := o.getAuthInfo()
 	if err != nil {
-		return nil, fmt.Errorf("Could not get current authInfo: %w", err)
+		return nil, fmt.Errorf("could not get current authInfo: %w", err)
 	}
 
 	o.authInfo = authInfo
@@ -315,7 +289,7 @@ func (o *sshPatchOptions) GetBastionNameCompletions(f util.Factory, cmd *cobra.C
 
 	for _, b := range bastions {
 		if strings.HasPrefix(b.Name, toComplete) {
-			age := formatDuration(o.clock.Now().Sub(b.CreationTimestamp.Time))
+			age := o.clock.Now().Sub(b.CreationTimestamp.Time).Round(time.Second).String()
 
 			completion := fmt.Sprintf("%s\t created %s ago targeting shoot \"%s/%s\"", b.Name, age, b.Namespace, b.Spec.ShootRef.Name)
 			completions = append(completions, completion)

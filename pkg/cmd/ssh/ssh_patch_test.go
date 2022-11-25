@@ -449,7 +449,7 @@ var _ = Describe("SSH Patch Command", func() {
 
 		It("getAuthInfo should return the currently active auth info", func() {
 			apiConfig.CurrentContext = "client-cert"
-			resultingAuthInfo, err := options.GetAuthInfo(ctx)
+			resultingAuthInfo, err := options.GetAuthInfo()
 
 			Expect(err).To(BeNil())
 			Expect(resultingAuthInfo).ToNot(BeNil())
@@ -460,7 +460,7 @@ var _ = Describe("SSH Patch Command", func() {
 			// the client config/apiConfig but need to call Complete again to store the new value.
 			Expect(options.Complete(factory, cmd, []string{})).To(BeNil(), "Complete should not error")
 
-			resultingAuthInfo, err = options.GetAuthInfo(ctx)
+			resultingAuthInfo, err = options.GetAuthInfo()
 
 			Expect(err).To(BeNil())
 			Expect(resultingAuthInfo).ToNot(BeNil())

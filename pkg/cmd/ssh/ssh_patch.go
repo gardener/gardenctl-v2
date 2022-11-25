@@ -15,7 +15,7 @@ func NewCmdSSHPatch(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 		Use:   "ssh-patch [BASTION_NAME]",
 		Short: "Update a bastion host previously created through the ssh command",
 		Example: `# Update CIDRs on one of your bastion hosts. You can specify multiple CIDRs.
-		gardenctl ssh-patch cli-xxxxxxxx --cidr 8.8.8.8/20 --cidr dead:beaf::/64
+		gardenctl ssh-patch cli-xxxxxxxx --cidr 10.1.2.3/20 --cidr dead:beaf::/64
 		
 		# You can also omit the CIDR-flag and your system's public IPs (v4 and v6) will be auto-detected.
 		gardenctl ssh-patch cli-xxxxxxxx`,

@@ -71,6 +71,6 @@ func NewTestSSHPatchOptions() *TestSSHPatchOptions {
 	}
 }
 
-func (o *TestSSHPatchOptions) GetAuthInfo(ctx context.Context) (*api.AuthInfo, error) {
-	return o.getAuthInfo(ctx)
+func (o *TestSSHPatchOptions) GetAuthInfo() (*api.AuthInfo, error) {
+	return o.getAuthInfo()
 }
