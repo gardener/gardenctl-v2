@@ -757,17 +757,23 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 			return false, err
 		}
 
-		cond := corev1alpha1helper.GetCondition(bastion.Status.Conditions, operationsv1alpha1.BastionReady)
-
-		if cond == nil || cond.Status != gardencorev1alpha1.ConditionTrue {
-			lastCheckErr = errors.New("bastion does not have BastionReady=true condition")
+		switch cond := corev1alpha1helper.GetCondition(bastion.Status.Conditions, operationsv1alpha1.BastionReady); {
+		case cond == nil:
+			return false, nil
+		case cond.Status != gardencorev1alpha1.ConditionTrue:
+			lastCheckErr = errors.New(cond.Message)
+			fmt.Fprintf(o.IOStreams.ErrOut, "Still waiting: %v\n", lastCheckErr)
+			return false, nil
+		case cond.Status == gardencorev1alpha1.ConditionTrue:
+		default:
+			lastCheckErr = errors.New("unknown issues")
 			fmt.Fprintf(o.IOStreams.ErrOut, "Still waiting: %v\n", lastCheckErr)
 			return false, nil
 		}
 
 		lastCheckErr = bastionAvailabilityChecker(preferredBastionAddress(bastion), privateKeyBytes)
 		if lastCheckErr != nil {
-			fmt.Fprintf(o.IOStreams.ErrOut, "Still waiting: cannot connect to bastion yet: %v\n", lastCheckErr)
+			fmt.Fprintf(o.IOStreams.ErrOut, "Still waiting: %s, waiting to establish an ssh connection with bastion: %v\n", "Bastion is Ready condition", lastCheckErr)
 			return false, nil
 		}
 
