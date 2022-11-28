@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/fatih/color v1.13.0
-	github.com/gardener/gardener v1.59.1
+	github.com/gardener/gardener v1.60.1
 	github.com/gardener/gardener-extension-provider-openstack v1.29.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
@@ -117,8 +117,8 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	istio.io/api v0.0.0-20220512181135-e8ec1e1d89de // indirect
-	istio.io/client-go v1.14.0 // indirect
+	istio.io/api v0.0.0-20221013011440-bc935762d2b9 // indirect
+	istio.io/client-go v1.15.3 // indirect
 	k8s.io/apiextensions-apiserver v0.25.0 // indirect
 	k8s.io/apiserver v0.25.0 // indirect
 	k8s.io/autoscaler v0.0.0-20190805135949-100e91ba756e // indirect

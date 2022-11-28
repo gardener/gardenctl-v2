@@ -148,8 +148,8 @@ github.com/fsnotify/fsnotify v1.6.0 h1:n+5WquG0fcWoWp6xPWfHdbskMCQaFnG6PfBrh1Ky4
 github.com/fsnotify/fsnotify v1.6.0/go.mod h1:sl3t1tCWJFWoRz9R8WJCbQihKKwmorjAbSClcnxKAGw=
 github.com/gardener/etcd-druid v0.12.3 h1:FBpsEe+FrBwJ1a2VhaPlXjZsfIAcHGSsF5DvDOcDnbM=
 github.com/gardener/etcd-druid v0.12.3/go.mod h1:EJF6z4Ghv2FGUe1UzZWOEF1MxCA186fxvjBO44oSJX4=
-github.com/gardener/gardener v1.59.1 h1:tyVrgjz/QkdR9JbtOnxVHQF2wlJemv+eY9pGkTT9wFo=
-github.com/gardener/gardener v1.59.1/go.mod h1:4vopE/Pg4LJud1CRg80rAcp94v83MJIgktlHNcSKO84=
+github.com/gardener/gardener v1.60.1 h1:JL3ljTeXILOlBzgOzZ3+aDVm6yVesIqjlnoXwXma2p0=
+github.com/gardener/gardener v1.60.1/go.mod h1:xkR1xRgI4PzSXWtwVUh/y6tBt5K0QSCR5FjneSKx89w=
 github.com/gardener/gardener-extension-provider-openstack v1.29.0 h1:a9tnnlVC1MHCZVFfNqIAAwsAVLVh13GykJBcHTCRsAg=
 github.com/gardener/gardener-extension-provider-openstack v1.29.0/go.mod h1:El8WnFV6wOIxcNZi33IEcEWPFGVYIxWEksRZGcpYurs=
 github.com/gardener/hvpa-controller v0.3.1 h1:VsOdcKZMcZDlUNVbFY8oqlKrb1GSCdmzPooKT/Tyi+Y=
@@ -1043,10 +1043,10 @@ honnef.co/go/tools v0.0.0-20190523083050-ea95bdfd59fc/go.mod h1:rf3lG4BRIbNafJWh
 honnef.co/go/tools v0.0.1-2019.2.3/go.mod h1:a3bituU0lyd329TUQxRnasdCoJDkEUEAqEt0JzvZhAg=
 honnef.co/go/tools v0.0.1-2020.1.3/go.mod h1:X/FiERA/W4tHapMX5mGpAtMSVEeEUOyHaw9vFzvIQ3k=
 honnef.co/go/tools v0.0.1-2020.1.4/go.mod h1:X/FiERA/W4tHapMX5mGpAtMSVEeEUOyHaw9vFzvIQ3k=
-istio.io/api v0.0.0-20220512181135-e8ec1e1d89de h1:xYxUL/LyuJ5yb0o/d2GXseYjx9HIBpLHLArp2Zd8d+M=
-istio.io/api v0.0.0-20220512181135-e8ec1e1d89de/go.mod h1:00myJeQGWma4Y5pboJ+MM4P2uqEWulKA1duC8kYN5Wo=
-istio.io/client-go v1.14.0 h1:KKXMnxXx3U2866OP8FBYlJhjKdI3yIUQnt8L6hSzDHE=
-istio.io/client-go v1.14.0/go.mod h1:C7K0CKQlvY84yQKkZhxQbD1riqvnsgXJm3jF5GOmzNg=
+istio.io/api v0.0.0-20221013011440-bc935762d2b9 h1:oDY95NgV77atZrCMx7i3XaSPL/OSirRI8jWWsiHA4GI=
+istio.io/api v0.0.0-20221013011440-bc935762d2b9/go.mod h1:hQkF0Q19MCmfOTre/Sg4KvrwwETq45oaFplnBm2p4j8=
+istio.io/client-go v1.15.3 h1:Zyd4ZVYCImWlPs+7yGye//K7l0j4UM06cqmQm5v8JX4=
+istio.io/client-go v1.15.3/go.mod h1:7M4mYZ9o9UVQQEwWihAq//EK9Ak0a/pUfOvP7b3I+XM=
 k8s.io/api v0.0.0-20190409021203-6e4e0e4f393b/go.mod h1:iuAfoD4hCxJ8Onx9kaTIt30j7jUFS00AXQi6QMi99vA=
 k8s.io/api v0.17.0/go.mod h1:npsyOePkeP0CPwyGfXDHxvypiYMJxBWAMpQxCaJ4ZxI=
 k8s.io/api v0.25.0 h1:H+Q4ma2U/ww0iGB78ijZx6DRByPz6/733jIuFpX70e0=
