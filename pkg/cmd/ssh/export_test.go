@@ -11,8 +11,6 @@ import (
 	"os"
 	"time"
 
-	"k8s.io/client-go/tools/clientcmd/api"
-
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
@@ -48,6 +46,16 @@ func SetKeepAliveInterval(d time.Duration) {
 	keepAliveInterval = d
 }
 
+type TestSSHPatchUtils struct {
+	sshPatchUtils
+}
+
+func NewTestSSHPatchUtils() *TestSSHPatchUtils {
+	return &TestSSHPatchUtils{
+		sshPatchUtils: &sshPatchUtilsImpl{},
+	}
+}
+
 type TestSSHPatchOptions struct {
 	sshPatchOptions
 	Out     *util.SafeBytesBuffer
@@ -71,6 +79,14 @@ func NewTestSSHPatchOptions() *TestSSHPatchOptions {
 	}
 }
 
-func (o *TestSSHPatchOptions) GetAuthInfo() (*api.AuthInfo, error) {
-	return o.getAuthInfo()
+type TestSSHPatchCompletions struct {
+	sshPatchCompletions
+}
+
+func NewTestSSHPatchCompletions() *TestSSHPatchCompletions {
+	return &TestSSHPatchCompletions{
+		sshPatchCompletions: sshPatchCompletions{
+			Utils: &sshPatchUtilsImpl{},
+		},
+	}
 }

@@ -24,10 +24,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	gc "github.com/gardener/gardenctl-v2/internal/gardenclient"
 	gcmocks "github.com/gardener/gardenctl-v2/internal/gardenclient/mocks"
+	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
 	sshutilmocks "github.com/gardener/gardenctl-v2/pkg/cmd/ssh/mocks"
@@ -58,7 +61,7 @@ var _ = Describe("SSH Patch Command", func() {
 		testProject            *gardencorev1beta1.Project
 		testSeed               *gardencorev1beta1.Seed
 		testShoot              *gardencorev1beta1.Shoot
-		apiConfig              *api.Config
+		apiConfig              *clientcmdapi.Config
 		bastionDefaultPolicies []gardenoperationsv1alpha1.BastionIngressPolicy
 	)
 
@@ -89,6 +92,10 @@ var _ = Describe("SSH Patch Command", func() {
 				},
 			}
 		}
+		createBastionPtr = func(createdBy, bastionName string) *gardenoperationsv1alpha1.Bastion {
+			b := createBastion(createdBy, bastionName)
+			return &b
+		}
 	)
 
 	// TODO: after migration to ginkgo v2: move to BeforeAll
@@ -115,25 +122,25 @@ var _ = Describe("SSH Patch Command", func() {
 	BeforeEach(func() {
 		now, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
 
-		apiConfig = api.NewConfig()
-		apiConfig.Clusters["cluster"] = &api.Cluster{
+		apiConfig = clientcmdapi.NewConfig()
+		apiConfig.Clusters["cluster"] = &clientcmdapi.Cluster{
 			Server:                "https://kubernetes:6443/",
 			InsecureSkipTLSVerify: true,
 		}
-		apiConfig.Contexts["client-cert"] = &api.Context{
+		apiConfig.Contexts["client-cert"] = &clientcmdapi.Context{
 			AuthInfo:  "client-cert",
 			Namespace: "default",
 			Cluster:   "cluster",
 		}
-		apiConfig.AuthInfos["client-cert"] = &api.AuthInfo{
+		apiConfig.AuthInfos["client-cert"] = &clientcmdapi.AuthInfo{
 			ClientCertificateData: sampleClientCertficate,
 		}
-		apiConfig.Contexts["no-auth"] = &api.Context{
+		apiConfig.Contexts["no-auth"] = &clientcmdapi.Context{
 			AuthInfo:  "no-auth",
 			Namespace: "default",
 			Cluster:   "cluster",
 		}
-		apiConfig.AuthInfos["no-auth"] = &api.AuthInfo{}
+		apiConfig.AuthInfos["no-auth"] = &clientcmdapi.AuthInfo{}
 		apiConfig.CurrentContext = "client-cert"
 
 		testProject = &gardencorev1beta1.Project{
@@ -212,288 +219,337 @@ var _ = Describe("SSH Patch Command", func() {
 		ctrl.Finish()
 	})
 
-	Describe("Validate", func() {
-		var fakeBastion gardenoperationsv1alpha1.Bastion
+	Describe("sshPatchOptions", func() {
+		Describe("Validate", func() {
+			var fakeBastion gardenoperationsv1alpha1.Bastion
 
-		BeforeEach(func() {
-			fakeBastion = createBastion("user", "bastion-name")
+			BeforeEach(func() {
+				fakeBastion = createBastion("user", "bastion-name")
+			})
+
+			It("Should fail when no CIDRs are provided", func() {
+				o := ssh.NewTestSSHPatchOptions()
+				o.BastionName = fakeBastion.Name
+				o.Bastion = &fakeBastion
+				Expect(o.Validate()).NotTo(Succeed())
+			})
+
+			It("Should fail when Bastion is nil", func() {
+				o := ssh.NewTestSSHPatchOptions()
+				o.CIDRs = append(o.CIDRs, "1.1.1.1/16")
+				o.BastionName = fakeBastion.Name
+				Expect(o.Validate()).NotTo(Succeed())
+			})
+
+			It("Should fail when BastionName is nil", func() {
+				o := ssh.NewTestSSHPatchOptions()
+				o.CIDRs = append(o.CIDRs, "1.1.1.1/16")
+				o.Bastion = &fakeBastion
+				Expect(o.Validate()).NotTo(Succeed())
+			})
+
+			It("Should fail when BastionName does not equal Bastion.Name", func() {
+				o := ssh.NewTestSSHPatchOptions()
+				o.CIDRs = append(o.CIDRs, "1.1.1.1/16")
+				o.BastionName = "foo"
+				o.Bastion = &fakeBastion
+				Expect(o.Validate()).NotTo(Succeed())
+			})
 		})
 
-		It("Should fail when no CIDRs are provided", func() {
-			o := ssh.NewTestSSHPatchOptions()
-			o.BastionName = fakeBastion.Name
-			o.Bastion = &fakeBastion
-			Expect(o.Validate()).NotTo(Succeed())
+		Describe("Complete", func() {
+			var sshutil *sshutilmocks.MocksshPatchUtils
+
+			BeforeEach(func() {
+				sshutil = sshutilmocks.NewMocksshPatchUtils(ctrl)
+				sshutil.EXPECT().GetAuthInfo(gomock.Any()).Return(apiConfig.AuthInfos["client-cert"], nil).AnyTimes()
+				sshutil.EXPECT().TargetAsListOption(gomock.Eq(currentTarget)).Return(gc.ProjectFilter{}).AnyTimes()
+			})
+
+			Describe("Auto-completion of the bastion name when it is not provided by user", func() {
+				It("should fail if no bastions created by current user exist", func() {
+					o := ssh.NewTestSSHPatchOptions()
+					cmd := ssh.NewCmdSSHPatch(factory, o.Streams)
+
+					o.Utils = sshutil
+					bastionsOfUser := []gardenoperationsv1alpha1.Bastion{}
+
+					sshutil.EXPECT().GetCurrentUser(isCtx, gomock.Any(), gomock.Any()).Return("user-wo-bastions", nil).Times(1)
+					sshutil.EXPECT().GetBastionsOfUser(isCtx, gomock.Eq("user-wo-bastions"), gomock.Any(), gomock.Any()).Return(bastionsOfUser, nil).Times(1)
+
+					err := o.Complete(factory, cmd, []string{})
+
+					Expect(err).ToNot(BeNil(), "Should return an error")
+					Expect(o.BastionName).To(Equal(""), "Bastion name should not be set in SSHPatchOptions")
+					Expect(err.Error()).To(ContainSubstring("no bastions found"))
+				})
+
+				It("should succeed if exactly one bastion created by current user exists", func() {
+					o := ssh.NewTestSSHPatchOptions()
+					cmd := ssh.NewCmdSSHPatch(factory, o.Streams)
+
+					o.Utils = sshutil
+					bastionsOfUser := []gardenoperationsv1alpha1.Bastion{
+						createBastion("user1", "user1-bastion1"),
+					}
+
+					sshutil.EXPECT().GetCurrentUser(isCtx, gomock.Any(), gomock.Any()).Return("user1", nil).Times(1)
+					sshutil.EXPECT().GetBastionsOfUser(isCtx, gomock.Eq("user1"), gomock.Any(), gomock.Any()).Return(bastionsOfUser, nil).Times(1)
+					clock.EXPECT().Now().Return(now).AnyTimes()
+
+					err := o.Complete(factory, cmd, []string{})
+					out := o.Out.String()
+
+					Expect(out).To(ContainSubstring("Auto-selected bastion"))
+					Expect(err).To(BeNil(), "Should not return an error")
+					Expect(o.BastionName).To(Equal("user1-bastion1"), "Should set bastion name in SSHPatchOptions to the one bastion the user has created")
+					Expect(o.Bastion).ToNot(BeNil())
+				})
+
+				It("should fail if more then one bastion created by current user exists", func() {
+					o := ssh.NewTestSSHPatchOptions()
+					cmd := ssh.NewCmdSSHPatch(factory, o.Streams)
+
+					o.Utils = sshutil
+					bastionsOfUser := []gardenoperationsv1alpha1.Bastion{
+						createBastion("user2", "user2-bastion1"),
+						createBastion("user2", "user2-bastion1"),
+					}
+
+					sshutil.EXPECT().GetCurrentUser(isCtx, gomock.Any(), gomock.Any()).Return("user2", nil).Times(1)
+					sshutil.EXPECT().GetBastionsOfUser(isCtx, gomock.Eq("user2"), gomock.Any(), gomock.Any()).Return(bastionsOfUser, nil).Times(1)
+
+					err := o.Complete(factory, cmd, []string{})
+
+					Expect(err).ToNot(BeNil(), "Should return an error")
+					Expect(o.BastionName).To(Equal(""), "Bastion name should not be set in SSHPatchOptions")
+					Expect(err.Error()).To(ContainSubstring("multiple bastions were found"))
+				})
+			})
+
+			Describe("Bastion for provided bastion name should be loaded", func() {
+				It("should succeed if the bastion with the name provided exists", func() {
+					bastionName := "user1-bastion1"
+					o := ssh.NewTestSSHPatchOptions()
+					cmd := ssh.NewCmdSSHPatch(factory, o.Streams)
+
+					o.Utils = sshutil
+					bastionsOfUser := []gardenoperationsv1alpha1.Bastion{
+						createBastion("user1", "user1-bastion1"),
+					}
+
+					sshutil.EXPECT().GetCurrentUser(isCtx, gomock.Any(), gomock.Any()).Return("user1", nil).Times(1)
+					sshutil.EXPECT().GetBastionsOfUser(isCtx, gomock.Eq("user1"), gomock.Any(), gomock.Any()).Return(bastionsOfUser, nil).Times(1)
+
+					err := o.Complete(factory, cmd, []string{bastionName})
+
+					Expect(err).To(BeNil(), "Should not return an error")
+					Expect(o.BastionName).To(Equal(bastionName), "Should set bastion name in SSHPatchOptions to the value of args[0]")
+					Expect(o.Bastion).ToNot(BeNil())
+				})
+			})
 		})
 
-		It("Should fail when Bastion is nil", func() {
-			o := ssh.NewTestSSHPatchOptions()
-			o.CIDRs = append(o.CIDRs, "1.1.1.1/16")
-			o.BastionName = fakeBastion.Name
-			Expect(o.Validate()).NotTo(Succeed())
-		})
+		Describe("Run", func() {
+			var fakeBastion *gardenoperationsv1alpha1.Bastion
+			var options *ssh.TestSSHPatchOptions
+			var cmd *cobra.Command
 
-		It("Should fail when BastionName is nil", func() {
-			o := ssh.NewTestSSHPatchOptions()
-			o.CIDRs = append(o.CIDRs, "1.1.1.1/16")
-			o.Bastion = &fakeBastion
-			Expect(o.Validate()).NotTo(Succeed())
-		})
+			BeforeEach(func() {
+				sshutil := sshutilmocks.NewMocksshPatchUtils(ctrl)
+				fakeBastion = createBastionPtr("user", "fake-bastion-name")
+				bastionsOfUser := []gardenoperationsv1alpha1.Bastion{
+					*fakeBastion,
+				}
 
-		It("Should fail when BastionName does not equal Bastion.Name", func() {
-			o := ssh.NewTestSSHPatchOptions()
-			o.CIDRs = append(o.CIDRs, "1.1.1.1/16")
-			o.BastionName = "foo"
-			o.Bastion = &fakeBastion
-			Expect(o.Validate()).NotTo(Succeed())
+				sshutil.EXPECT().GetBastionsOfUser(isCtx, gomock.Eq("user"), gomock.Any(), gomock.Any()).Return(bastionsOfUser, nil).Times(1)
+				sshutil.EXPECT().GetAuthInfo(gomock.Any()).Return(apiConfig.AuthInfos["client-cert"], nil).Times(1)
+				sshutil.EXPECT().GetCurrentUser(isCtx, gomock.Any(), gomock.Any()).Return("user", nil).Times(1)
+				sshutil.EXPECT().TargetAsListOption(gomock.Eq(currentTarget)).Return(gc.ProjectFilter{}).AnyTimes()
+
+				options = ssh.NewTestSSHPatchOptions()
+				options.Utils = sshutil
+
+				o := ssh.NewTestSSHPatchOptions()
+				cmd = ssh.NewCmdSSHPatch(factory, o.Streams)
+			})
+
+			It("It should update the bastion ingress policy", func() {
+				options.CIDRs = []string{"8.8.8.8/16"}
+				options.BastionName = fakeBastion.Name
+				options.Bastion = fakeBastion
+
+				gardenClient.EXPECT().PatchBastion(isCtx, gomock.Any(), gomock.Any()).Return(nil).Times(1)
+
+				Expect(options.Complete(factory, cmd, []string{})).To(BeNil(), "Complete should not error")
+
+				err := options.Run(factory)
+				Expect(err).To(BeNil())
+
+				Expect(len(options.Bastion.Spec.Ingress)).To(Equal(1), "Should only have one Ingress policy (had 2)")
+				Expect(options.Bastion.Spec.Ingress[0].IPBlock.CIDR).To(Equal(options.CIDRs[0]))
+			})
 		})
 	})
 
-	Describe("Complete", func() {
-		var fakeBastionList *gardenoperationsv1alpha1.BastionList
-		var sshutil *sshutilmocks.MocksshPatchUtils
-		BeforeEach(func() {
-			fakeBastionList = &gardenoperationsv1alpha1.BastionList{
-				Items: []gardenoperationsv1alpha1.Bastion{
-					createBastion("user1", "user1-bastion1"),
-					createBastion("user2", "user2-bastion1"),
-					createBastion("user2", "user2-bastion2"),
-				},
-			}
+	Describe("sshPatchCompletions", func() {
+		Describe("GetBastionNameCompletions", func() {
+			var bastionsOfUser []gardenoperationsv1alpha1.Bastion
+			var sshutil *sshutilmocks.MocksshPatchUtils
+			BeforeEach(func() {
+				bastionsOfUser = []gardenoperationsv1alpha1.Bastion{
+					createBastion("user", "prefix1-bastion1"),
+					createBastion("user", "prefix1-bastion2"),
+					createBastion("user", "prefix2-bastion1"),
+				}
 
-			sshutil = sshutilmocks.NewMocksshPatchUtils(ctrl)
-		})
-
-		Describe("Auto-completion of the bastion name when it is not provided by user", func() {
-			It("should fail if no bastions created by current user exist", func() {
-				o := ssh.NewTestSSHPatchOptions()
-				cmd := ssh.NewCmdSSHPatch(factory, o.Streams)
-
-				o.Utils = sshutil
-
-				sshutil.EXPECT().GetCurrentUser(isCtx, gomock.Any(), gomock.Any()).Return("user-wo-bastions", nil).Times(1)
-				gardenClient.EXPECT().ListBastions(isCtx, gomock.Any()).Return(fakeBastionList, nil).Times(1)
-
-				err := o.Complete(factory, cmd, []string{})
-				out := o.Out.String()
-
-				Expect(err).To(BeNil(), "Should not return an error")
-				Expect(o.BastionName).To(Equal(""), "bastion name should not be set in SSHPatchOptions")
-				Expect(out).To(ContainSubstring("No bastions were found"))
+				sshutil = sshutilmocks.NewMocksshPatchUtils(ctrl)
+				sshutil.EXPECT().GetAuthInfo(gomock.Any()).Return(apiConfig.AuthInfos["client-cert"], nil).Times(1)
+				sshutil.EXPECT().TargetAsListOption(gomock.Eq(currentTarget)).Return(gc.ProjectFilter{}).AnyTimes()
 			})
 
-			It("should succeed if exactly one bastion created by current user exists", func() {
-				o := ssh.NewTestSSHPatchOptions()
-				cmd := ssh.NewCmdSSHPatch(factory, o.Streams)
+			It("should find bastions of current user with given prefix", func() {
+				streams, _, _, _ := util.NewTestIOStreams()
+				cmd := ssh.NewCmdSSHPatch(factory, streams)
+				c := ssh.NewTestSSHPatchCompletions()
+				c.Utils = sshutil
 
-				o.Utils = sshutil
-
-				sshutil.EXPECT().GetCurrentUser(isCtx, gomock.Any(), gomock.Any()).Return("user1", nil).Times(1)
-				gardenClient.EXPECT().ListBastions(isCtx, gomock.Any()).Return(fakeBastionList, nil).Times(1)
+				sshutil.EXPECT().GetCurrentUser(isCtx, gomock.Any(), gomock.Any()).Return("user", nil).Times(1)
+				sshutil.EXPECT().GetBastionsOfUser(isCtx, gomock.Eq("user"), gomock.Any(), gomock.Any()).Return(bastionsOfUser, nil).Times(1)
 				clock.EXPECT().Now().Return(now).AnyTimes()
 
-				err := o.Complete(factory, cmd, []string{})
-				out := o.Out.String()
-
-				Expect(out).To(ContainSubstring("Auto-selected bastion"))
-				Expect(err).To(BeNil(), "Should not return an error")
-				Expect(o.BastionName).To(Equal("user1-bastion1"), "Should set bastion name in SSHPatchOptions to the one bastion the user has created")
-				Expect(o.Bastion).ToNot(BeNil())
-			})
-
-			It("should fail if more then one bastion created by current user exists", func() {
-				o := ssh.NewTestSSHPatchOptions()
-				cmd := ssh.NewCmdSSHPatch(factory, o.Streams)
-
-				o.Utils = sshutil
-
-				sshutil.EXPECT().GetCurrentUser(isCtx, gomock.Any(), gomock.Any()).Return("user2", nil).Times(1)
-				gardenClient.EXPECT().ListBastions(isCtx, gomock.Any()).Return(fakeBastionList, nil).Times(1)
-
-				err := o.Complete(factory, cmd, []string{})
-				out := o.Out.String()
+				completions, err := c.GetBastionNameCompletions(factory, cmd, "prefix1")
 
 				Expect(err).To(BeNil(), "Should not return an error")
-				Expect(o.BastionName).To(Equal(""), "bastion name should not be set in SSHPatchOptions")
-				Expect(out).To(ContainSubstring("Multiple bastions were found"))
+				Expect(len(completions)).To(Equal(2), "should find two bastions with given prefix")
+				Expect(completions[0]).To(ContainSubstring("prefix1-bastion1\t created 0s ago"))
+				Expect(completions[1]).To(ContainSubstring("prefix1-bastion2\t created 0s ago"))
 			})
-		})
-
-		Describe("Bastion for provided bastion name should be loaded", func() {
-			It("should succeed if the bastion with the name provided exists", func() {
-				bastionName := "user1-bastion1"
-				fakeBastion := createBastion("user1", bastionName)
-				o := ssh.NewTestSSHPatchOptions()
-				cmd := ssh.NewCmdSSHPatch(factory, o.Streams)
-
-				gardenClient.EXPECT().GetBastion(isCtx, gomock.Any(), gomock.Eq(bastionName)).Return(&fakeBastion, nil).Times(1)
-				gardenClient.EXPECT().FindShoot(isCtx, gomock.Any()).Return(testShoot, nil).Times(1)
-
-				err := o.Complete(factory, cmd, []string{bastionName})
-
-				Expect(err).To(BeNil(), "Should not return an error")
-				Expect(o.BastionName).To(Equal(bastionName), "Should set bastion name in SSHPatchOptions to the value of args[0]")
-				Expect(o.Bastion).ToNot(BeNil())
-			})
-		})
-
-		It("The flag completion (suggestion) func should return names of ", func() {
-			o := ssh.NewTestSSHPatchOptions()
-			cmd := ssh.NewCmdSSHPatch(factory, o.Streams)
-
-			o.Utils = sshutil
-
-			sshutil.EXPECT().GetCurrentUser(isCtx, gomock.Any(), gomock.Any()).Return("user2", nil).Times(2)
-			gardenClient.EXPECT().ListBastions(isCtx, gomock.Any()).Return(fakeBastionList, nil).Times(2)
-			clock.EXPECT().Now().Return(now.Add(3728 * time.Second)).Times(2) // 3728s = 1h2m8s
-
-			// Complete sets currentTarget etc. to SSHPatchOptions struct required by getBastionNameCompletions
-			Expect(o.Complete(factory, cmd, []string{})).To(BeNil(), "Complete should not error")
-
-			suggestions, err := o.GetBastionNameCompletions(factory, cmd, "")
-
-			Expect(err).To(BeNil())
-			Expect(suggestions).ToNot(BeNil())
-			Expect(len(suggestions)).To(Equal(2))
-			Expect(suggestions[0]).To(ContainSubstring("user2-bastion1\t created 1h2m8s ago"))
-			Expect(suggestions[1]).To(ContainSubstring("user2-bastion2\t created 1h2m8s ago"))
 		})
 	})
 
-	Describe("Run", func() {
-		var fakeBastion *gardenoperationsv1alpha1.Bastion
-		var cmd *cobra.Command
+	Describe("sshPatchUtils", func() {
+		Describe("GetCurrentUser", func() {
+			var utils *ssh.TestSSHPatchUtils
 
-		BeforeEach(func() {
-			tmp := createBastion("fake-created-by", "fake-bastion-name")
-			fakeBastion = &tmp
-
-			o := ssh.NewTestSSHPatchOptions()
-			cmd = ssh.NewCmdSSHPatch(factory, o.Streams)
-
-			gardenClient.EXPECT().FindShoot(isCtx, gomock.Any()).Return(testShoot, nil).Times(1)
-			gardenClient.EXPECT().GetBastion(isCtx, gomock.Any(), gomock.Eq(fakeBastion.Name)).Return(fakeBastion, nil).Times(1)
-		})
-
-		It("It should update the bastion ingress policy", func() {
-			o := ssh.NewTestSSHPatchOptions()
-			o.CIDRs = []string{"8.8.8.8/16"}
-			o.BastionName = fakeBastion.Name
-			o.Bastion = fakeBastion
-
-			gardenClient.EXPECT().PatchBastion(isCtx, gomock.Any(), gomock.Any()).Return(nil).Times(1)
-
-			// Complete sets currentTarget etc. to SSHPatchOptions struct required by getBastionNameCompletions
-			Expect(o.Complete(factory, cmd, []string{})).To(BeNil(), "Complete should not error")
-
-			err := o.Run(factory)
-			Expect(err).To(BeNil())
-
-			Expect(len(fakeBastion.Spec.Ingress)).To(Equal(1), "Should only have one Ingress policy (had 2)")
-			Expect(fakeBastion.Spec.Ingress[0].IPBlock.CIDR).To(Equal(o.CIDRs[0]))
-		})
-	})
-
-	Describe("GetBastionNameCompletions", func() {
-		var fakeBastionList *gardenoperationsv1alpha1.BastionList
-		var sshutil *sshutilmocks.MocksshPatchUtils
-		BeforeEach(func() {
-			fakeBastionList = &gardenoperationsv1alpha1.BastionList{
-				Items: []gardenoperationsv1alpha1.Bastion{
-					createBastion("user1", "prefix1-bastion1-user1"),
-					createBastion("user2", "prefix1-bastion1-user2"),
-					createBastion("user2", "prefix1-bastion2-user2"),
-					createBastion("user2", "prefix2-bastion1-user2"),
-				},
-			}
-
-			sshutil = sshutilmocks.NewMocksshPatchUtils(ctrl)
-		})
-
-		It("should find bastions of current user with given prefix", func() {
-			o := ssh.NewTestSSHPatchOptions()
-			cmd := ssh.NewCmdSSHPatch(factory, o.Streams)
-
-			o.Utils = sshutil
-
-			sshutil.EXPECT().GetCurrentUser(isCtx, gomock.Any(), gomock.Any()).Return("user2", nil).Times(1)
-			gardenClient.EXPECT().ListBastions(isCtx, gomock.Any()).Return(fakeBastionList, nil).Times(1)
-			clock.EXPECT().Now().Return(now).AnyTimes()
-
-			completions, err := o.GetBastionNameCompletions(factory, cmd, "prefix1")
-
-			Expect(err).To(BeNil(), "Should not return an error")
-			Expect(len(completions)).To(Equal(2), "should find two bastions with given prefix")
-			Expect(completions[0]).To(ContainSubstring("prefix1-bastion1-user2"))
-			Expect(completions[1]).To(ContainSubstring("prefix1-bastion2-user2"))
-		})
-	})
-
-	Describe("getCurrentUser", func() {
-		var options *ssh.TestSSHPatchOptions
-		var cmd *cobra.Command
-
-		BeforeEach(func() {
-			fakeBastion := createBastion("user1", "fake-bastion")
-
-			options = ssh.NewTestSSHPatchOptions()
-			options.BastionName = fakeBastion.Name
-
-			cmd = ssh.NewCmdSSHPatch(factory, options.Streams)
-			gardenClient.EXPECT().GetBastion(isCtx, gomock.Any(), gomock.Eq(fakeBastion.Name)).Return(&fakeBastion, nil).AnyTimes()
-			gardenClient.EXPECT().FindShoot(isCtx, gomock.Any()).Return(testShoot, nil).AnyTimes()
-
-			// Complete sets currentTarget etc. to SSHPatchOptions struct required by getBastionNameCompletions
-			Expect(options.Complete(factory, cmd, []string{})).To(BeNil(), "Complete should not error")
-		})
-
-		It("getAuthInfo should return the currently active auth info", func() {
-			apiConfig.CurrentContext = "client-cert"
-			resultingAuthInfo, err := options.GetAuthInfo()
-
-			Expect(err).To(BeNil())
-			Expect(resultingAuthInfo).ToNot(BeNil())
-			Expect(len(resultingAuthInfo.ClientCertificateData)).ToNot(Equal(0))
-
-			apiConfig.CurrentContext = "no-auth"
-			// clientConfig is not stored as pointer in the SSHPatchOptions struct. So we cannot just modify
-			// the client config/apiConfig but need to call Complete again to store the new value.
-			Expect(options.Complete(factory, cmd, []string{})).To(BeNil(), "Complete should not error")
-
-			resultingAuthInfo, err = options.GetAuthInfo()
-
-			Expect(err).To(BeNil())
-			Expect(resultingAuthInfo).ToNot(BeNil())
-			Expect(len(resultingAuthInfo.ClientCertificateData)).To(Equal(0))
-		})
-
-		It("Should return the user when a Token is used", func() {
-			token := "an-arbitrary-token"
-			user := "an-arbitrary-user"
-
-			reviewResult := &authenticationv1.TokenReview{
-				Status: authenticationv1.TokenReviewStatus{
-					User: authenticationv1.UserInfo{
-						Username: user,
+			BeforeEach(func() {
+				fakeBastionList := &gardenoperationsv1alpha1.BastionList{
+					Items: []gardenoperationsv1alpha1.Bastion{
+						createBastion("client-cn", "fake-bastion"),
 					},
-				},
-			}
-			gardenClient.EXPECT().CreateTokenReview(gomock.Eq(ctx), gomock.Eq(token)).Return(reviewResult, nil).Times(1)
+				}
+				gardenClient.EXPECT().ListBastions(isCtx, gomock.Any()).Return(fakeBastionList, nil).AnyTimes()
 
-			username, err := options.Utils.GetCurrentUser(ctx, gardenClient, &api.AuthInfo{
-				Token: token,
+				utils = ssh.NewTestSSHPatchUtils()
 			})
 
-			Expect(err).To(BeNil())
-			Expect(username).To(Equal(user))
+			It("Should return the user when a Token is used", func() {
+				token := "an-arbitrary-token"
+				user := "an-arbitrary-user"
+
+				reviewResult := &authenticationv1.TokenReview{
+					Status: authenticationv1.TokenReviewStatus{
+						User: authenticationv1.UserInfo{
+							Username: user,
+						},
+					},
+				}
+				gardenClient.EXPECT().CreateTokenReview(gomock.Eq(ctx), gomock.Eq(token)).Return(reviewResult, nil).Times(1)
+
+				username, err := utils.GetCurrentUser(ctx, gardenClient, &clientcmdapi.AuthInfo{
+					Token: token,
+				})
+
+				Expect(err).To(BeNil())
+				Expect(username).To(Equal(user))
+			})
+
+			It("Should return the user when a client certificate is used", func() {
+				username, err := utils.GetCurrentUser(ctx, gardenClient, &clientcmdapi.AuthInfo{
+					ClientCertificateData: sampleClientCertficate,
+				})
+				Expect(err).To(BeNil())
+				Expect(username).To(Equal("client-cn"))
+			})
 		})
 
-		It("Should return the user when a client certificate is used", func() {
-			username, err := options.Utils.GetCurrentUser(ctx, gardenClient, &api.AuthInfo{
-				ClientCertificateData: sampleClientCertficate,
+		Describe("GetAuthInfo", func() {
+			var utils *ssh.TestSSHPatchUtils
+
+			BeforeEach(func() {
+				utils = ssh.NewTestSSHPatchUtils()
 			})
-			Expect(err).To(BeNil())
-			Expect(username).To(Equal("client-cn"))
+
+			It("should return the currently active auth info", func() {
+				apiConfig.CurrentContext = "client-cert"
+				clientConfig := clientcmd.NewDefaultClientConfig(*apiConfig, nil)
+				resultingAuthInfo, err := utils.GetAuthInfo(clientConfig)
+
+				Expect(err).To(BeNil())
+				Expect(resultingAuthInfo).ToNot(BeNil())
+				Expect(len(resultingAuthInfo.ClientCertificateData)).ToNot(Equal(0))
+
+				apiConfig.CurrentContext = "no-auth"
+				clientConfig = clientcmd.NewDefaultClientConfig(*apiConfig, nil)
+				resultingAuthInfo, err = utils.GetAuthInfo(clientConfig)
+
+				Expect(err).To(BeNil())
+				Expect(resultingAuthInfo).ToNot(BeNil())
+				Expect(len(resultingAuthInfo.ClientCertificateData)).To(Equal(0))
+			})
+		})
+
+		Describe("GetBastionsOfUser", func() {
+			var listOption gc.ProjectFilter
+			var fakeBastionList *gardenoperationsv1alpha1.BastionList
+			var sshutil *ssh.TestSSHPatchUtils
+
+			BeforeEach(func() {
+				fakeBastionList = &gardenoperationsv1alpha1.BastionList{
+					Items: []gardenoperationsv1alpha1.Bastion{
+						createBastion("user1", "prefix1-bastion1-user1"),
+						createBastion("user2", "prefix1-bastion1-user2"),
+						createBastion("user2", "prefix1-bastion2-user2"),
+						createBastion("user2", "prefix2-bastion1-user2"),
+					},
+				}
+				listOption = gc.ProjectFilter{}
+
+				sshutil = ssh.NewTestSSHPatchUtils()
+			})
+
+			It("should find bastions of current user", func() {
+				gardenClient.EXPECT().ListBastions(isCtx, gomock.Any()).Return(fakeBastionList, nil).Times(1)
+				completions, err := sshutil.GetBastionsOfUser(ctx, "user1", gardenClient, listOption)
+
+				Expect(err).To(BeNil(), "Should not return an error")
+				Expect(len(completions)).To(Equal(1))
+
+				gardenClient.EXPECT().ListBastions(isCtx, gomock.Any()).Return(fakeBastionList, nil).Times(1)
+				completions, err = sshutil.GetBastionsOfUser(ctx, "user2", gardenClient, listOption)
+
+				Expect(err).To(BeNil(), "Should not return an error")
+				Expect(len(completions)).To(Equal(3))
+			})
+		})
+
+		Describe("TargetAsListOption", func() {
+			var sshutil *ssh.TestSSHPatchUtils
+
+			BeforeEach(func() {
+				sshutil = ssh.NewTestSSHPatchUtils()
+			})
+
+			It("should find bastions of current user", func() {
+				listOption := sshutil.TargetAsListOption(currentTarget)
+				listOptions := &client.ListOptions{}
+
+				listOption.ApplyToList(listOptions)
+
+				selectorStr := listOptions.FieldSelector.String()
+				Expect(selectorStr).To(ContainSubstring("spec.shootRef.name=test-shoot"))
+				Expect(selectorStr).To(ContainSubstring("project=prod1"))
+			})
 		})
 	})
 })

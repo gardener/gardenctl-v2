@@ -11,6 +11,7 @@ import (
 
 func NewCmdSSHPatch(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	o := newSSHPatchOptions(ioStreams)
+
 	cmd := &cobra.Command{
 		Use:   "ssh-patch [BASTION_NAME]",
 		Short: "Update a bastion host previously created through the ssh command",
@@ -26,7 +27,8 @@ func NewCmdSSHPatch(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			bastionNames, err := o.GetBastionNameCompletions(f, cmd, toComplete)
+			c := newSSHPatchCompletions()
+			bastionNames, err := c.GetBastionNameCompletions(f, cmd, toComplete)
 			if err != nil {
 				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
 				return nil, cobra.ShellCompDirectiveNoFileComp

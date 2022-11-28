@@ -8,9 +8,13 @@ import (
 	context "context"
 	reflect "reflect"
 
+	target "github.com/gardener/gardenctl-v2/pkg/target"
+	v1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	gomock "github.com/golang/mock/gomock"
-
+	clientcmd "k8s.io/client-go/tools/clientcmd"
 	api "k8s.io/client-go/tools/clientcmd/api"
+	client "sigs.k8s.io/controller-runtime/pkg/client"
+	
 	gardenclient "github.com/gardener/gardenctl-v2/internal/gardenclient"
 )
 
@@ -37,6 +41,36 @@ func (m *MocksshPatchUtils) EXPECT() *MocksshPatchUtilsMockRecorder {
 	return m.recorder
 }
 
+// GetAuthInfo mocks base method.
+func (m *MocksshPatchUtils) GetAuthInfo(clientConfig clientcmd.ClientConfig) (*api.AuthInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAuthInfo", clientConfig)
+	ret0, _ := ret[0].(*api.AuthInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAuthInfo indicates an expected call of GetAuthInfo.
+func (mr *MocksshPatchUtilsMockRecorder) GetAuthInfo(clientConfig interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAuthInfo", reflect.TypeOf((*MocksshPatchUtils)(nil).GetAuthInfo), clientConfig)
+}
+
+// GetBastionsOfUser mocks base method.
+func (m *MocksshPatchUtils) GetBastionsOfUser(ctx context.Context, user string, gardenClient gardenclient.Client, bastionListOption client.ListOption) ([]v1alpha1.Bastion, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBastionsOfUser", ctx, user, gardenClient, bastionListOption)
+	ret0, _ := ret[0].([]v1alpha1.Bastion)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBastionsOfUser indicates an expected call of GetBastionsOfUser.
+func (mr *MocksshPatchUtilsMockRecorder) GetBastionsOfUser(ctx, user, gardenClient, bastionListOption interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBastionsOfUser", reflect.TypeOf((*MocksshPatchUtils)(nil).GetBastionsOfUser), ctx, user, gardenClient, bastionListOption)
+}
+
 // GetCurrentUser mocks base method.
 func (m *MocksshPatchUtils) GetCurrentUser(ctx context.Context, gardenClient gardenclient.Client, authInfo *api.AuthInfo) (string, error) {
 	m.ctrl.T.Helper()
@@ -50,4 +84,18 @@ func (m *MocksshPatchUtils) GetCurrentUser(ctx context.Context, gardenClient gar
 func (mr *MocksshPatchUtilsMockRecorder) GetCurrentUser(ctx, gardenClient, authInfo interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentUser", reflect.TypeOf((*MocksshPatchUtils)(nil).GetCurrentUser), ctx, gardenClient, authInfo)
+}
+
+// TargetAsListOption mocks base method.
+func (m *MocksshPatchUtils) TargetAsListOption(target target.Target) client.ListOption {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TargetAsListOption", target)
+	ret0, _ := ret[0].(client.ListOption)
+	return ret0
+}
+
+// TargetAsListOption indicates an expected call of TargetAsListOption.
+func (mr *MocksshPatchUtilsMockRecorder) TargetAsListOption(target interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetAsListOption", reflect.TypeOf((*MocksshPatchUtils)(nil).TargetAsListOption), target)
 }

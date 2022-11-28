@@ -189,7 +189,7 @@ func (t *targetImpl) IsEmpty() bool {
 }
 
 func (t *targetImpl) AsListOption() client.ListOption {
-	opt := gardenclient.ShootFilter{}
+	opt := gardenclient.ProjectFilter{}
 
 	if t.ShootName() != "" {
 		opt["metadata.name"] = t.ShootName()
