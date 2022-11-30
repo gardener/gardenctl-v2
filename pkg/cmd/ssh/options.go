@@ -764,8 +764,6 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 			lastCheckErr = errors.New(cond.Message)
 			fmt.Fprintf(o.IOStreams.ErrOut, "Still waiting: %v\n", lastCheckErr)
 			return false, nil
-		case cond.Status == gardencorev1alpha1.ConditionTrue:
-			// leave switch
 		}
 
 		lastCheckErr = bastionAvailabilityChecker(preferredBastionAddress(bastion), privateKeyBytes)
