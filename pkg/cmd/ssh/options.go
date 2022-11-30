@@ -490,7 +490,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 
 	if o.NodeName != "" {
 		node, err := getShootNode(ctx, o, shootClient)
-		if err == nil {
+		if err == nil { //nolint:gocritic // rewrite if-else to switch statement does not make sense as anonymous switch statements should never be cuddled
 			nodeHostname, err = getNodeHostname(node)
 			if err != nil {
 				return err
@@ -579,11 +579,12 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	ingress := bastion.Status.Ingress
 	printAddr := ""
 
-	if ingress.Hostname != "" && ingress.IP != "" {
+	switch {
+	case ingress.Hostname != "" && ingress.IP != "":
 		printAddr = fmt.Sprintf("%s (%s)", ingress.IP, ingress.Hostname)
-	} else if ingress.Hostname != "" {
+	case ingress.Hostname != "":
 		printAddr = ingress.Hostname
-	} else {
+	default:
 		printAddr = ingress.IP
 	}
 

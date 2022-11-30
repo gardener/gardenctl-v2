@@ -74,7 +74,7 @@ type Manager interface {
 	// of a pattern
 	TargetMatchPattern(ctx context.Context, value string) error
 
-	//ClientConfig returns the client config for a target
+	// ClientConfig returns the client config for a target
 	ClientConfig(ctx context.Context, t Target) (clientcmd.ClientConfig, error)
 	// WriteClientConfig creates a kubeconfig file in the session directory of the operating system
 	WriteClientConfig(config clientcmd.ClientConfig) (string, error)

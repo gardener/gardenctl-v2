@@ -64,6 +64,7 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 	o.GardenDir = f.GardenHomeDir()
 	o.Template = newTemplate("helpers")
 
+	//nolint:gocritic // accept singleCaseSwitch to be consistent with rest of the file. Will be resolved once we refactor to have own options for each provider type
 	switch o.ProviderType {
 	case "kubernetes":
 		filename := filepath.Join(o.GardenDir, "templates", "kubernetes.tmpl")

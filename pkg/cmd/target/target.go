@@ -144,16 +144,18 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 	}
 
 	tf := manager.TargetFlags()
+
 	if o.Kind == "" {
-		if tf.ControlPlane() {
+		switch {
+		case tf.ControlPlane():
 			o.Kind = TargetKindControlPlane
-		} else if tf.ShootName() != "" {
+		case tf.ShootName() != "":
 			o.Kind = TargetKindShoot
-		} else if tf.ProjectName() != "" {
+		case tf.ProjectName() != "":
 			o.Kind = TargetKindProject
-		} else if tf.SeedName() != "" {
+		case tf.SeedName() != "":
 			o.Kind = TargetKindSeed
-		} else if tf.GardenName() != "" {
+		case tf.GardenName() != "":
 			o.Kind = TargetKindGarden
 		}
 	}

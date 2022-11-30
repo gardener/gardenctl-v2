@@ -12,6 +12,7 @@ linters:
     - nolintlint
     - predeclared
     - unconvert
+    - gocritic
 linters-settings:
   goimports:
     local-prefixes: github.com/gardener/gardenctl-v2
