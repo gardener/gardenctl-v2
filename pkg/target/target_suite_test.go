@@ -47,11 +47,11 @@ var _ = BeforeSuite(func() {
 	dir, err := os.MkdirTemp("", "garden-*")
 	Expect(err).NotTo(HaveOccurred())
 	sessionDir = filepath.Join(dir, uuid.New().String())
-	Expect(os.MkdirAll(sessionDir, 0700)).To(Succeed())
+	Expect(os.MkdirAll(sessionDir, 0o700)).To(Succeed())
 	gardenHomeDir = dir
 	gardenKubeconfig = filepath.Join(gardenHomeDir, "kubeconfig.yaml")
 	data := createTestKubeconfig(gardenName)
-	Expect(os.WriteFile(gardenKubeconfig, data, 0600)).To(Succeed())
+	Expect(os.WriteFile(gardenKubeconfig, data, 0o600)).To(Succeed())
 }, 60)
 
 var _ = AfterSuite(func() {

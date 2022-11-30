@@ -108,12 +108,12 @@ func (config *Config) SymlinkTargetKubeconfig() bool {
 func (config *Config) Save() error {
 	dir := filepath.Dir(config.Filename)
 
-	err := os.MkdirAll(dir, 0700)
+	err := os.MkdirAll(dir, 0o700)
 	if err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	f, err := os.OpenFile(config.Filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	f, err := os.OpenFile(config.Filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}

@@ -102,7 +102,7 @@ var _ = Describe("Env Commands - Template", func() {
 # Run this command to reset the kubectl configuration for your shell:
 # eval $(gardenctl kubectl-env -u %[1]s)
 `
-		var pathToKubeconfig = "/path/to/.kube/config"
+		pathToKubeconfig := "/path/to/.kube/config"
 
 		BeforeEach(func() {
 			providerType = "kubernetes"
@@ -312,5 +312,4 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 			Expect(t.ParseFiles("invalid")).To(MatchError("embedded template \"invalid\" does not exist"))
 		})
 	})
-
 })

@@ -77,7 +77,8 @@ var _ = BeforeEach(func() {
 				Name:       gardenIdentity2,
 				Kubeconfig: kubeconfig,
 				Patterns:   patterns,
-			}},
+			},
+		},
 	}
 
 	streams, _, out, errOut = util.NewTestIOStreams()

@@ -62,9 +62,7 @@ func (o *UnsetOptions) Complete(_ util.Factory, cmd *cobra.Command, args []strin
 	return nil
 }
 
-var (
-	AllTargetKinds = []TargetKind{TargetKindGarden, TargetKindProject, TargetKindSeed, TargetKindShoot, TargetKindPattern, TargetKindControlPlane}
-)
+var AllTargetKinds = []TargetKind{TargetKindGarden, TargetKindProject, TargetKindSeed, TargetKindShoot, TargetKindPattern, TargetKindControlPlane}
 
 func ValidateKind(kind TargetKind) error {
 	for _, k := range AllTargetKinds {

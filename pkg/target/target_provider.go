@@ -80,7 +80,7 @@ func (p *fsTargetProvider) Read() (Target, error) {
 
 // Write takes a target and saves it permanently.
 func (p *fsTargetProvider) Write(t Target) error {
-	f, err := os.OpenFile(p.targetFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	f, err := os.OpenFile(p.targetFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}

@@ -48,7 +48,7 @@ var _ = AfterSuite(func() {
 func makeTempGardenHomeDir() string {
 	dir, err := os.MkdirTemp("", "garden-*")
 	Expect(err).NotTo(HaveOccurred())
-	Expect(os.Mkdir(filepath.Join(dir, "templates"), 0777)).NotTo(HaveOccurred())
+	Expect(os.Mkdir(filepath.Join(dir, "templates"), 0o777)).NotTo(HaveOccurred())
 
 	return dir
 }
@@ -63,7 +63,7 @@ func readTestFile(filename string) string {
 }
 
 func writeTempFile(filename string, content string) {
-	err := os.WriteFile(filepath.Join(gardenHomeDir, filename), []byte(content), 0777)
+	err := os.WriteFile(filepath.Join(gardenHomeDir, filename), []byte(content), 0o777)
 	Expect(err).NotTo(HaveOccurred())
 }
 

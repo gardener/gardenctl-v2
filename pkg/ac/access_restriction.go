@@ -43,8 +43,10 @@ type AccessRestrictionOption struct {
 // The typical implementation of this function looks like this:
 //
 //	func(messages AccessRestrictionMessages) { message.Render(os.Stdout) }
-type AccessRestrictionHandler func(AccessRestrictionMessages) bool
-type accessRestrictionHandlerContextKey struct{}
+type (
+	AccessRestrictionHandler           func(AccessRestrictionMessages) bool
+	accessRestrictionHandlerContextKey struct{}
+)
 
 // WithAccessRestrictionHandler returns a copy of parent context to which the given AccessRestrictionHandler function has been added.
 func WithAccessRestrictionHandler(ctx context.Context, fn AccessRestrictionHandler) context.Context {
@@ -106,7 +108,7 @@ func (m *AccessRestrictionMessage) messageWidth() int {
 }
 
 func (accessRestriction *AccessRestriction) checkAccessRestriction(matchLabels, annotations map[string]string) *AccessRestrictionMessage {
-	var matches = func(m map[string]string, key string, val bool) bool {
+	matches := func(m map[string]string, key string, val bool) bool {
 		if strVal, ok := m[key]; ok {
 			if boolVal, err := strconv.ParseBool(strVal); err == nil {
 				return boolVal == val

@@ -507,7 +507,7 @@ func (m *managerImpl) WriteClientConfig(config clientcmd.ClientConfig) (string, 
 
 	filename := filepath.Join(m.sessionDirectory, fmt.Sprintf("kubeconfig.%x.yaml", md5.Sum(data)))
 
-	err = os.WriteFile(filename, data, 0600)
+	err = os.WriteFile(filename, data, 0o600)
 	if err != nil {
 		return "", fmt.Errorf("failed to write temporary kubeconfig file to %s: %w", filename, err)
 	}

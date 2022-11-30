@@ -383,7 +383,7 @@ func encodePublicKey(publicKey ssh.PublicKey) []byte {
 }
 
 func writeKeyFile(filename string, content []byte) error {
-	if err := os.WriteFile(filename, content, 0600); err != nil {
+	if err := os.WriteFile(filename, content, 0o600); err != nil {
 		return fmt.Errorf("failed to write %q: %w", filename, err)
 	}
 

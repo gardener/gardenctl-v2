@@ -82,11 +82,9 @@ var _ = Describe("Env Commands - Options", func() {
 		})
 
 		Describe("completing the command options", func() {
-			var (
-				root,
+			var root,
 				parent,
 				child *cobra.Command
-			)
 
 			BeforeEach(func() {
 				root = &cobra.Command{Use: "root"}
@@ -242,7 +240,7 @@ var _ = Describe("Env Commands - Options", func() {
 				})
 
 				Context("because reading kubeconfig fails", func() {
-					var err = errors.New("error")
+					err := errors.New("error")
 
 					BeforeEach(func() {
 						currentTarget = t.WithGardenName("test")
@@ -865,5 +863,4 @@ var _ = Describe("Env Commands - Options", func() {
 		Entry("when provider is gcp", "gcp", "gcloud"),
 		Entry("when provider is kubernetes", "kubernetes", "kubectl"),
 	)
-
 })

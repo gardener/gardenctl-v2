@@ -19,9 +19,7 @@ func TestConfiguration(t *testing.T) {
 	RunSpecs(t, "Config Test Suite")
 }
 
-var (
-	gardenHomeDir string
-)
+var gardenHomeDir string
 
 var _ = BeforeSuite(func() {
 	dir, err := os.MkdirTemp("", "garden-*")

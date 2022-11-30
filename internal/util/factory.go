@@ -87,7 +87,7 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 
 	sessionDirectory := filepath.Join(os.TempDir(), "garden", sid)
 
-	err = os.MkdirAll(sessionDirectory, 0700)
+	err = os.MkdirAll(sessionDirectory, 0o700)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session directory: %w", err)
 	}

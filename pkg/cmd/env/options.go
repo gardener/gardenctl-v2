@@ -384,7 +384,7 @@ func createProviderConfigDir(sessionDir string, providerType string) (string, er
 	cli := getProviderCLI(providerType)
 	configDir := filepath.Join(sessionDir, ".config", cli)
 
-	err := os.MkdirAll(configDir, 0700)
+	err := os.MkdirAll(configDir, 0o700)
 	if err != nil {
 		return "", fmt.Errorf("failed to create %s configuration directory: %w", cli, err)
 	}
