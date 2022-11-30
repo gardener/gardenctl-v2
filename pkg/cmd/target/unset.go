@@ -45,7 +45,7 @@ gardenctl target unset garden`,
 	return cmd
 }
 
-// UnsetOptions is a struct to support unset command
+// UnsetOptions is a struct to support unset command.
 type UnsetOptions struct {
 	base.Options
 
@@ -76,7 +76,7 @@ func ValidateKind(kind TargetKind) error {
 	return fmt.Errorf("invalid target kind given, must be one of %v", AllTargetKinds)
 }
 
-// Validate validates the provided options
+// Validate validates the provided options.
 func (o *UnsetOptions) Validate() error {
 	if err := ValidateKind(o.Kind); err != nil {
 		return err
@@ -85,7 +85,7 @@ func (o *UnsetOptions) Validate() error {
 	return nil
 }
 
-// Run executes the command
+// Run executes the command.
 func (o *UnsetOptions) Run(f util.Factory) error {
 	manager, err := f.Manager()
 	if err != nil {

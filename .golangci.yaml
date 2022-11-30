@@ -13,6 +13,7 @@ linters:
     - predeclared
     - unconvert
     - gocritic
+    - godot
 linters-settings:
   goimports:
     local-prefixes: github.com/gardener/gardenctl-v2

@@ -51,7 +51,7 @@ func Execute() {
 	}
 }
 
-// NewDefaultGardenctlCommand creates the `gardenctl` command with defaults
+// NewDefaultGardenctlCommand creates the `gardenctl` command with defaults.
 func NewDefaultGardenctlCommand() *cobra.Command {
 	factory := util.FactoryImpl{
 		TargetFlags: target.NewTargetFlags("", "", "", "", false),
@@ -61,7 +61,7 @@ func NewDefaultGardenctlCommand() *cobra.Command {
 	return NewGardenctlCommand(&factory, ioStreams)
 }
 
-// NewGardenctlCommand creates the `gardenctl` command
+// NewGardenctlCommand creates the `gardenctl` command.
 func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gardenctl",
@@ -241,7 +241,7 @@ func shootFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]str
 	return util.ShootNamesForTarget(ctx, manager)
 }
 
-// addKlogFlags adds flags from k8s.io/klog
+// addKlogFlags adds flags from k8s.io/klog.
 func addKlogFlags(fs *pflag.FlagSet) {
 	local := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	klog.InitFlags(local)

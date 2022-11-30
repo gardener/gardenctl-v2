@@ -50,7 +50,7 @@ type Factory interface {
 	PublicIPs(context.Context) ([]string, error)
 }
 
-// FactoryImpl implements util.Factory interface
+// FactoryImpl implements util.Factory interface.
 type FactoryImpl struct {
 	// GardenHomeDirectory is the home directory for all gardenctl
 	// related files. While some files can be explicitly loaded from

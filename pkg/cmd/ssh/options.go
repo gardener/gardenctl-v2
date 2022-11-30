@@ -63,7 +63,7 @@ const (
 	SSHPort = 22
 )
 
-// wrappers used for unit tests only
+// wrappers used for unit tests only.
 var (
 	// keepAliveInterval is the interval in which bastions should be given the
 	// keep-alive annotation to prolong their lifetime.
@@ -73,7 +73,7 @@ var (
 	// pollBastionStatusInterval is the time in-between status checks on the bastion object.
 	pollBastionStatusInterval = 5 * time.Second
 
-	// tempFileCreator creates and opens a temporary file
+	// tempFileCreator creates and opens a temporary file.
 	tempFileCreator = func() (*os.File, error) {
 		return os.CreateTemp(os.TempDir(), "gctlv2*")
 	}
@@ -201,7 +201,7 @@ type SSHOptions struct {
 	KeepBastion bool
 }
 
-// NewSSHOptions returns initialized SSHOptions
+// NewSSHOptions returns initialized SSHOptions.
 func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 	return &SSHOptions{
 		Options: base.Options{
@@ -290,7 +290,7 @@ func ipToCIDR(address string) string {
 	return ipnet.String()
 }
 
-// Validate validates the provided SSHOptions
+// Validate validates the provided SSHOptions.
 func (o *SSHOptions) Validate() error {
 	if o.WaitTimeout == 0 {
 		return errors.New("the maximum wait duration must be non-zero")

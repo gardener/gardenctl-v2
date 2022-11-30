@@ -43,7 +43,7 @@ type Options struct {
 
 var _ CommandOptions = &Options{}
 
-// WrapRunE creates a cobra RunE function that has access to the factory
+// WrapRunE creates a cobra RunE function that has access to the factory.
 func WrapRunE(o CommandOptions, f util.Factory) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		if err := o.Complete(f, cmd, args); err != nil {
@@ -58,19 +58,19 @@ func WrapRunE(o CommandOptions, f util.Factory) func(cmd *cobra.Command, args []
 	}
 }
 
-// NewOptions returns initialized Options
+// NewOptions returns initialized Options.
 func NewOptions(ioStreams util.IOStreams) *Options {
 	return &Options{
 		IOStreams: ioStreams,
 	}
 }
 
-// AddFlags adds flags to adjust the output to a cobra command
+// AddFlags adds flags to adjust the output to a cobra command.
 func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&o.Output, "output", "o", o.Output, "One of 'yaml' or 'json'.")
 }
 
-// PrintObject prints an object to IOStreams.out, using o.Output to print in the selected output format
+// PrintObject prints an object to IOStreams.out, using o.Output to print in the selected output format.
 func (o *Options) PrintObject(obj interface{}) error {
 	switch o.Output {
 	case "":

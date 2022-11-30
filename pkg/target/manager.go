@@ -33,7 +33,7 @@ var (
 
 //go:generate mockgen -destination=./mocks/mock_manager.go -package=mocks github.com/gardener/gardenctl-v2/pkg/target Manager
 
-// Manager sets and gets the current target configuration
+// Manager sets and gets the current target configuration.
 type Manager interface {
 	// CurrentTarget contains the current target configuration
 	CurrentTarget() (Target, error)
@@ -116,7 +116,7 @@ func newGardenClient(name string, config *config.Config, provider ClientProvider
 	return gardenclient.NewGardenClient(client, name), nil
 }
 
-// NewManager returns a new manager
+// NewManager returns a new manager.
 func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider ClientProvider, sessionDirectory string) (Manager, error) {
 	return &managerImpl{
 		config:           config,

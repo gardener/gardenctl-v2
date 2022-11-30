@@ -22,7 +22,7 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 )
 
-// Config holds the gardenctl configuration
+// Config holds the gardenctl configuration.
 type Config struct {
 	// Filename is the name of the gardenctl configuration file
 	Filename string `yaml:"-" json:"-"`
@@ -32,7 +32,7 @@ type Config struct {
 	Gardens []Garden `yaml:"gardens" json:"gardens"`
 }
 
-// Garden represents one garden cluster
+// Garden represents one garden cluster.
 type Garden struct {
 	// Name is a unique identifier of this Garden that can be used to target this Garden
 	Name string `yaml:"identity" json:"identity"`
@@ -50,7 +50,7 @@ type Garden struct {
 	AccessRestrictions []ac.AccessRestriction `yaml:"accessRestrictions,omitempty" json:"accessRestrictions,omitempty"`
 }
 
-// LoadFromFile parses a gardenctl config file and returns a Config struct
+// LoadFromFile parses a gardenctl config file and returns a Config struct.
 func LoadFromFile(filename string) (*Config, error) {
 	config := &Config{Filename: filename}
 
@@ -99,12 +99,12 @@ func LoadFromFile(filename string) (*Config, error) {
 	return config, nil
 }
 
-// SymlinkTargetKubeconfig indicates if the kubeconfig of the current target should be always symlinked
+// SymlinkTargetKubeconfig indicates if the kubeconfig of the current target should be always symlinked.
 func (config *Config) SymlinkTargetKubeconfig() bool {
 	return config.LinkKubeconfig == nil || *config.LinkKubeconfig
 }
 
-// Save updates a gardenctl config file with the values passed via Config struct
+// Save updates a gardenctl config file with the values passed via Config struct.
 func (config *Config) Save() error {
 	dir := filepath.Dir(config.Filename)
 
@@ -126,8 +126,8 @@ func (config *Config) Save() error {
 	return nil
 }
 
-// IndexOfGarden returns the index of the Garden with the given name in the configured Gardens slice
-// If no Garden with this name is found it returns -1
+// IndexOfGarden returns the index of the Garden with the given name in the configured Gardens slice.
+// If no Garden with this name is found it returns -1.
 func (config *Config) IndexOfGarden(name string) (int, bool) {
 	for i, g := range config.Gardens {
 		if g.Name == name {
@@ -138,7 +138,7 @@ func (config *Config) IndexOfGarden(name string) (int, bool) {
 	return -1, false
 }
 
-// GardenNames returns a slice containing the names of the configured Gardens
+// GardenNames returns a slice containing the names of the configured Gardens.
 func (config *Config) GardenNames() []string {
 	names := []string{}
 	for _, g := range config.Gardens {
@@ -148,7 +148,7 @@ func (config *Config) GardenNames() []string {
 	return names
 }
 
-// Garden returns a Garden cluster from the list of configured Gardens
+// Garden returns a Garden cluster from the list of configured Gardens.
 func (config *Config) Garden(name string) (*Garden, error) {
 	i, ok := config.IndexOfGarden(name)
 	if !ok {
@@ -158,7 +158,7 @@ func (config *Config) Garden(name string) (*Garden, error) {
 	return &config.Gardens[i], nil
 }
 
-// ClientConfig returns a deferred loading client config for a configured garden cluster
+// ClientConfig returns a deferred loading client config for a configured garden cluster.
 func (config *Config) ClientConfig(name string) (clientcmd.ClientConfig, error) {
 	garden, err := config.Garden(name)
 	if err != nil {
@@ -175,7 +175,7 @@ func (config *Config) ClientConfig(name string) (clientcmd.ClientConfig, error) 
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loader, overrides), nil
 }
 
-// DirectClientConfig returns a directly loaded client config for a configured garden cluster
+// DirectClientConfig returns a directly loaded client config for a configured garden cluster.
 func (config *Config) DirectClientConfig(name string) (clientcmd.ClientConfig, error) {
 	garden, err := config.Garden(name)
 	if err != nil {
@@ -190,7 +190,7 @@ func (config *Config) DirectClientConfig(name string) (clientcmd.ClientConfig, e
 	return clientcmd.NewDefaultClientConfig(*rawConfig, nil), nil
 }
 
-// LoadRawConfig directly loads the raw config from file, validates the content and removes all the irrelevant pieces
+// LoadRawConfig directly loads the raw config from file, validates the content and removes all the irrelevant pieces.
 func (g *Garden) LoadRawConfig() (*clientcmdapi.Config, error) {
 	rawConfig, err := clientcmd.LoadFromFile(g.Kubeconfig)
 	if err != nil {
@@ -215,7 +215,7 @@ func (g *Garden) LoadRawConfig() (*clientcmdapi.Config, error) {
 	return rawConfig, nil
 }
 
-// PatternMatch holds (target) values extracted from a provided string
+// PatternMatch holds (target) values extracted from a provided string.
 type PatternMatch struct {
 	// Garden is the matched Garden
 	Garden string
@@ -227,20 +227,20 @@ type PatternMatch struct {
 	Shoot string
 }
 
-// PatternKey is a key that can be used to identify a value in a pattern
+// PatternKey is a key that can be used to identify a value in a pattern.
 type PatternKey string
 
 const (
-	// PatternKeyProject is used to identify a Project
+	// PatternKeyProject is used to identify a Project.
 	PatternKeyProject = PatternKey("project")
-	// PatternKeyNamespace is used to identify a Project by the namespace it refers to
+	// PatternKeyNamespace is used to identify a Project by the namespace it refers to.
 	PatternKeyNamespace = PatternKey("namespace")
-	// PatternKeyShoot is used to identify a Shoot
+	// PatternKeyShoot is used to identify a Shoot.
 	PatternKeyShoot = PatternKey("shoot")
 )
 
-// MatchPattern matches a string against patterns defined in gardenctl config
-// If matched, the function creates and returns a PatternMatch from the provided target string
+// MatchPattern matches a string against patterns defined in gardenctl config.
+// If matched, the function creates and returns a PatternMatch from the provided target string.
 func (config *Config) MatchPattern(preferredGardenName string, value string) (*PatternMatch, error) {
 	if preferredGardenName != "" {
 		g, err := config.Garden(preferredGardenName)
@@ -285,8 +285,8 @@ func (config *Config) MatchPattern(preferredGardenName string, value string) (*P
 	return patternMatch, nil
 }
 
-// matchPattern matches pattern with provided list of patterns
-// If none of the provided patterns matches the given value no error is returned
+// matchPattern matches pattern with provided list of patterns.
+// If none of the provided patterns matches the given value no error is returned.
 func matchPattern(patterns []string, value string) (*PatternMatch, error) {
 	for _, p := range patterns {
 		r, err := regexp.Compile(p)

@@ -49,7 +49,7 @@ type shootKubeconfigRequest struct {
 	gardenClusterIdentity string
 }
 
-// cluster holds the data to describe and connect to a kubernetes cluster
+// cluster holds the data to describe and connect to a kubernetes cluster.
 type cluster struct {
 	// name is the name of the shoot advertised address, usually "external", "internal" or "unmanaged"
 	name string
@@ -61,7 +61,7 @@ type cluster struct {
 	caCert []byte
 }
 
-// execPluginConfig contains a reference to the garden and shoot cluster
+// execPluginConfig contains a reference to the garden and shoot cluster.
 type execPluginConfig struct {
 	// ShootRef references the shoot cluster
 	ShootRef shootRef `json:"shootRef"`
@@ -70,7 +70,7 @@ type execPluginConfig struct {
 	GardenClusterIdentity string `json:"gardenClusterIdentity"`
 }
 
-// shootRef references the shoot cluster by namespace and name
+// shootRef references the shoot cluster by namespace and name.
 type shootRef struct {
 	// Namespace is the namespace of the shoot cluster
 	Namespace string `json:"namespace"`
@@ -92,7 +92,7 @@ func (e *execPluginConfig) DeepCopyObject() runtime.Object {
 	}
 }
 
-// validate validates the kubeconfig request by ensuring that all required fields are set
+// validate validates the kubeconfig request by ensuring that all required fields are set.
 func (k *shootKubeconfigRequest) validate() error {
 	if len(k.clusters) == 0 {
 		return errors.New("missing clusters")
@@ -127,7 +127,7 @@ func (k *shootKubeconfigRequest) validate() error {
 // by exec'ing the gardenlogin plugin, which fetches a client certificate.
 // If legacy is false, the shoot reference and garden cluster identity is passed via the cluster extensions,
 // which is supported starting with kubectl version v1.20.0.
-// If legacy is true, the shoot reference and garden cluster identity are passed as command line flags to the plugin
+// If legacy is true, the shoot reference and garden cluster identity are passed as command line flags to the plugin.
 func (k *shootKubeconfigRequest) generate(legacy bool) (*clientcmdapi.Config, error) {
 	var extension *execPluginConfig
 

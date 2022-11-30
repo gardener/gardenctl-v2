@@ -17,7 +17,7 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
-// Factory implements util.Factory interface
+// Factory implements util.Factory interface.
 type Factory struct {
 	// ContextImpl is the root context any command should use.
 	ContextImpl context.Context

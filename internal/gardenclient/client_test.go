@@ -269,7 +269,7 @@ var _ = Describe("Client", func() {
 	})
 })
 
-// TODO copied from target_suite_test. Move into a test helper package for better reuse
+// TODO copied from target_suite_test. Move into a test helper package for better reuse.
 func createTestKubeconfig(name string) []byte {
 	config := clientcmdapi.NewConfig()
 	config.Clusters["cluster"] = &clientcmdapi.Cluster{

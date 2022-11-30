@@ -39,7 +39,7 @@ func init() {
 
 //go:generate mockgen -destination=./mocks/mock_client.go -package=mocks github.com/gardener/gardenctl-v2/internal/gardenclient Client
 
-// Client returns a new client with functions to get Gardener and Kubernetes resources
+// Client returns a new client with functions to get Gardener and Kubernetes resources.
 type Client interface {
 	// GetProject returns a Gardener project resource by name
 	GetProject(ctx context.Context, name string) (*gardencorev1beta1.Project, error)
@@ -92,7 +92,7 @@ type clientImpl struct {
 	name string
 }
 
-// NewGardenClient returns a new gardenclient
+// NewGardenClient returns a new gardenclient.
 func NewGardenClient(client client.Client, name string) Client {
 	return &clientImpl{
 		c:    client,
@@ -217,7 +217,7 @@ func (g *clientImpl) ListShoots(ctx context.Context, opts ...client.ListOption) 
 	return shootList, nil
 }
 
-// GetNamespace returns a Kubernetes namespace resource
+// GetNamespace returns a Kubernetes namespace resource.
 func (g *clientImpl) GetNamespace(ctx context.Context, name string) (*corev1.Namespace, error) {
 	namespace := &corev1.Namespace{}
 	key := types.NamespacedName{Name: name}
@@ -229,7 +229,7 @@ func (g *clientImpl) GetNamespace(ctx context.Context, name string) (*corev1.Nam
 	return namespace, nil
 }
 
-// GetSecretBinding returns a Gardener secretbinding resource
+// GetSecretBinding returns a Gardener secretbinding resource.
 func (g *clientImpl) GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error) {
 	secretBinding := &gardencorev1beta1.SecretBinding{}
 	key := types.NamespacedName{Namespace: namespace, Name: name}
@@ -241,7 +241,7 @@ func (g *clientImpl) GetSecretBinding(ctx context.Context, namespace, name strin
 	return secretBinding, nil
 }
 
-// GetSecret returns a Kubernetes secret resource
+// GetSecret returns a Kubernetes secret resource.
 func (g *clientImpl) GetSecret(ctx context.Context, namespace, name string) (*corev1.Secret, error) {
 	secret := &corev1.Secret{}
 	key := types.NamespacedName{Namespace: namespace, Name: name}
@@ -253,7 +253,7 @@ func (g *clientImpl) GetSecret(ctx context.Context, namespace, name string) (*co
 	return secret, nil
 }
 
-// GetConfigMap returns a Gardener configmap resource
+// GetConfigMap returns a Gardener configmap resource.
 func (g *clientImpl) GetConfigMap(ctx context.Context, namespace, name string) (*corev1.ConfigMap, error) {
 	cm := &corev1.ConfigMap{}
 	key := types.NamespacedName{Name: name, Namespace: namespace}
@@ -330,7 +330,7 @@ func (g *clientImpl) GetCloudProfile(ctx context.Context, name string) (*gardenc
 	return cloudProfile, nil
 }
 
-// RuntimeClient returns the underlying Kubernetes runtime client
+// RuntimeClient returns the underlying Kubernetes runtime client.
 func (g *clientImpl) RuntimeClient() client.Client {
 	return g.c
 }

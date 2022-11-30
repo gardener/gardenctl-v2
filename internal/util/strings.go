@@ -45,7 +45,7 @@ func ShellEscape(values ...interface{}) string {
 	return strings.Join(out, " ")
 }
 
-// StripUnsafe remove non-printable characters from the string
+// StripUnsafe remove non-printable characters from the string.
 func StripUnsafe(s string) string {
 	return strings.Map(func(r rune) rune {
 		if unicode.IsPrint(r) {

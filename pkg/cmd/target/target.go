@@ -119,7 +119,7 @@ type TargetOptions struct {
 	TargetName string
 }
 
-// NewTargetOptions returns initialized TargetOptions
+// NewTargetOptions returns initialized TargetOptions.
 func NewTargetOptions(ioStreams util.IOStreams) *TargetOptions {
 	return &TargetOptions{
 		Options: base.Options{
@@ -176,7 +176,7 @@ func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []stri
 	return nil
 }
 
-// Validate validates the provided options
+// Validate validates the provided options.
 func (o *TargetOptions) Validate() error {
 	switch o.Kind {
 	case TargetKindControlPlane:
@@ -190,7 +190,7 @@ func (o *TargetOptions) Validate() error {
 	return nil
 }
 
-// Run executes the command
+// Run executes the command.
 func (o *TargetOptions) Run(f util.Factory) error {
 	manager, err := f.Manager()
 	if err != nil {

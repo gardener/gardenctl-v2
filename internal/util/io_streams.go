@@ -14,7 +14,7 @@ import (
 )
 
 // IOStreams provides the standard names for iostreams. This is useful for embedding and for unit testing.
-// Inconsistent and different names make it hard to read and review code
+// Inconsistent and different names make it hard to read and review code.
 type IOStreams struct {
 	// In think, os.Stdin
 	In io.Reader
@@ -33,7 +33,7 @@ func NewIOStreams() IOStreams {
 	}
 }
 
-// NewTestIOStreams returns a valid IOStreams and in, out, errout buffers for unit tests
+// NewTestIOStreams returns a valid IOStreams and in, out, errout buffers for unit tests.
 func NewTestIOStreams() (IOStreams, *SafeBytesBuffer, *SafeBytesBuffer, *SafeBytesBuffer) {
 	in := &SafeBytesBuffer{}
 	out := &SafeBytesBuffer{}

@@ -56,7 +56,7 @@ func (o *viewOptions) Complete(f util.Factory, cmd *cobra.Command, args []string
 	return nil
 }
 
-// Run executes the command
+// Run executes the command.
 func (o *viewOptions) Run(_ util.Factory) error {
 	return o.PrintObject(o.Configuration)
 }

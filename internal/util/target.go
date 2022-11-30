@@ -120,7 +120,7 @@ func ProjectNamesForTarget(ctx context.Context, manager target.Manager) ([]strin
 	return names.List(), nil
 }
 
-// GardenNames returns all names of configured Gardens
+// GardenNames returns all names of configured Gardens.
 func GardenNames(manager target.Manager) ([]string, error) {
 	config := manager.Configuration()
 	if config == nil {
