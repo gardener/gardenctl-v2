@@ -160,7 +160,7 @@ func getSessionID() (string, error) {
 			return value, nil
 		}
 
-		return "", fmt.Errorf("Environment variable %s must only contain alphanumeric characters, underscore and dash and have a minimum length of 1 and a maximum length of 128", envSessionID)
+		return "", fmt.Errorf("environment variable %s must only contain alphanumeric characters, underscore and dash and have a minimum length of 1 and a maximum length of 128", envSessionID)
 	}
 
 	if value, ok := os.LookupEnv(envTermSessionID); ok {
@@ -170,5 +170,5 @@ func getSessionID() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("Environment variable %s is required. Use \"gardenctl help\" for more information about the requirements of gardenctl", envSessionID)
+	return "", fmt.Errorf("environment variable %s is required. Use \"gardenctl help\" for more information about the requirements of gardenctl", envSessionID)
 }

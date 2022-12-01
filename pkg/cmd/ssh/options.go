@@ -35,7 +35,6 @@ import (
 	"github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
-	cryptossh "golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -311,7 +310,7 @@ func (o *SSHOptions) Validate() error {
 		return fmt.Errorf("invalid SSH public key file: %w", err)
 	}
 
-	if _, _, _, _, err := cryptossh.ParseAuthorizedKey(content); err != nil {
+	if _, _, _, _, err := ssh.ParseAuthorizedKey(content); err != nil {
 		return fmt.Errorf("invalid SSH public key file: %w", err)
 	}
 
@@ -1081,11 +1080,11 @@ func getNodes(ctx context.Context, c client.Client) ([]corev1.Node, error) {
 
 func (o *SSHOptions) checkAccessRestrictions(cfg *config.Config, gardenName string, tf target.TargetFlags, shoot *gardencorev1beta1.Shoot) (bool, error) {
 	if cfg == nil {
-		return false, errors.New("Garden configuration is required")
+		return false, errors.New("garden configuration is required")
 	}
 
 	if tf == nil {
-		return false, errors.New("Target flags are required")
+		return false, errors.New("target flags are required")
 	}
 
 	// handle access restrictions

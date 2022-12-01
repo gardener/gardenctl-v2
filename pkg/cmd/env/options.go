@@ -394,7 +394,7 @@ func createProviderConfigDir(sessionDir string, providerType string) (string, er
 
 func (o *options) checkAccessRestrictions(cfg *config.Config, gardenName string, shoot *gardencorev1beta1.Shoot) (ac.AccessRestrictionMessages, error) {
 	if cfg == nil {
-		return nil, errors.New("Garden configuration is required")
+		return nil, errors.New("garden configuration is required")
 	}
 
 	garden, err := cfg.Garden(gardenName)
