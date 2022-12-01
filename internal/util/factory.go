@@ -59,7 +59,7 @@ type FactoryImpl struct {
 	GardenHomeDirectory string
 
 	// ConfigFile is the location of the gardenctlv2 configuration file.
-	// This can be overriden via a CLI flag and defaults to ~/.garden/gardenctlv2.yaml
+	// This can be overridden via a CLI flag and defaults to ~/.garden/gardenctlv2.yaml
 	// if empty.
 	ConfigFile string
 
