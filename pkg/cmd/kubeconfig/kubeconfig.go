@@ -19,6 +19,7 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/flags"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
@@ -45,6 +46,7 @@ gardenctl kubeconfig --garden my-garden --project my-project`,
 
 	o.PrintFlags.AddFlags(cmd)
 	o.AddFlags(cmd.Flags())
+	flags.AddTargetFlags(cmd, f, ioStreams, cmd.PersistentFlags())
 
 	utilruntime.Must(cmd.RegisterFlagCompletionFunc("output", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return o.PrintFlags.AllowedFormats(), cobra.ShellCompDirectiveNoFileComp

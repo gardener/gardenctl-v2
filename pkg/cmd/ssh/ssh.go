@@ -15,6 +15,7 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/flags"
 )
 
 // NewCmdSSH returns a new ssh command.
@@ -44,6 +45,8 @@ func NewCmdSSH(f util.Factory, o *SSHOptions) *cobra.Command {
 	cmd.Flags().StringVar(&o.SSHPublicKeyFile, "public-key-file", "", "Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.")
 	cmd.Flags().DurationVar(&o.WaitTimeout, "wait-timeout", o.WaitTimeout, "Maximum duration to wait for the bastion to become available.")
 	cmd.Flags().BoolVar(&o.KeepBastion, "keep-bastion", o.KeepBastion, "Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)")
+
+	flags.AddTargetFlags(cmd, f, o.IOStreams, cmd.PersistentFlags())
 
 	registerCompletionFuncForFlags(cmd, f, o.IOStreams)
 

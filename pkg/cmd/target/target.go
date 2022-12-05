@@ -19,6 +19,7 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/flags"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
@@ -49,6 +50,7 @@ gardenctl target value/that/matches/pattern --control-plane`,
 	cmd.AddCommand(NewCmdView(f, ioStreams))
 
 	o.AddFlags(cmd.Flags())
+	flags.AddTargetFlags(cmd, f, ioStreams, cmd.PersistentFlags())
 
 	return cmd
 }

@@ -14,6 +14,7 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/flags"
 )
 
 // NewCmdProviderEnv returns a new provider-env command.
@@ -51,7 +52,10 @@ Please refer to the templates of the already supported cloud providers which can
 here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.`,
 		Aliases: []string{"p-env", "cloud-env"},
 	}
-	o.AddFlags(cmd.PersistentFlags())
+
+	pflags := cmd.PersistentFlags()
+	o.AddFlags(pflags)
+	flags.AddTargetFlags(cmd, f, ioStreams, pflags)
 
 	for _, s := range validShells {
 		cmd.AddCommand(&cobra.Command{
