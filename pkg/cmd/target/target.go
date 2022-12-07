@@ -15,6 +15,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
@@ -50,7 +51,11 @@ gardenctl target value/that/matches/pattern --control-plane`,
 	cmd.AddCommand(NewCmdView(f, ioStreams))
 
 	o.AddFlags(cmd.Flags())
-	flags.AddTargetFlags(cmd, f, ioStreams, cmd.PersistentFlags())
+
+	manager, err := f.Manager()
+	utilruntime.Must(err)
+	manager.TargetFlags().AddFlags(cmd.PersistentFlags())
+	flags.RegisterTargetFlagCompletionFuncs(cmd, f, ioStreams, cmd.PersistentFlags())
 
 	return cmd
 }
@@ -97,13 +102,13 @@ func validTargetArgsFunction(f util.Factory, kind TargetKind) ([]string, error) 
 
 	switch kind {
 	case TargetKindGarden:
-		result, err = target.GardenNames(manager)
+		result, err = manager.GardenNames()
 	case TargetKindProject:
-		result, err = target.ProjectNamesForTarget(ctx, manager)
+		result, err = manager.ProjectNames(ctx)
 	case TargetKindSeed:
-		result, err = target.SeedNamesForTarget(ctx, manager)
+		result, err = manager.SeedNames(ctx)
 	case TargetKindShoot:
-		result, err = target.ShootNamesForTarget(ctx, manager)
+		result, err = manager.ShootNames(ctx)
 	}
 
 	return result, err

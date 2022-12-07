@@ -11,6 +11,7 @@ import (
 	"runtime"
 
 	"github.com/spf13/cobra"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
@@ -55,7 +56,11 @@ here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
 
 	pflags := cmd.PersistentFlags()
 	o.AddFlags(pflags)
-	flags.AddTargetFlags(cmd, f, ioStreams, pflags)
+
+	manager, err := f.Manager()
+	utilruntime.Must(err)
+	manager.TargetFlags().AddFlags(pflags)
+	flags.RegisterTargetFlagCompletionFuncs(cmd, f, ioStreams, pflags)
 
 	for _, s := range validShells {
 		cmd.AddCommand(&cobra.Command{

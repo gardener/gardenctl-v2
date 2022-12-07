@@ -18,16 +18,7 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
-func AddTargetFlags(cmd *cobra.Command, factory util.Factory, ioStreams util.IOStreams, flags *pflag.FlagSet) {
-	manager, err := factory.Manager()
-	utilruntime.Must(err)
-
-	// TODO: the flags are defined in the TargetFlags(Iml) struct. Maybe it makes sense to define those flags here
-	// along with the completions for them. But currently the struct fields are private and hence we could not bind
-	// the fields to the flags. Eventually we could make those exported.
-	tf := manager.TargetFlags()
-	tf.AddFlags(flags)
-
+func RegisterTargetFlagCompletionFuncs(cmd *cobra.Command, factory util.Factory, ioStreams util.IOStreams, flags *pflag.FlagSet) {
 	utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(factory, ioStreams, gardenFlagCompletionFunc)))
 	utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(factory, ioStreams, projectFlagCompletionFunc)))
 	utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(factory, ioStreams, seedFlagCompletionFunc)))
@@ -57,17 +48,17 @@ func completionWrapper(factory util.Factory, ioStreams util.IOStreams, completer
 }
 
 func gardenFlagCompletionFunc(_ context.Context, manager target.Manager) ([]string, error) {
-	return target.GardenNames(manager)
+	return manager.GardenNames()
 }
 
 func projectFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
-	return target.ProjectNamesForTarget(ctx, manager)
+	return manager.ProjectNames(ctx)
 }
 
 func seedFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
-	return target.SeedNamesForTarget(ctx, manager)
+	return manager.SeedNames(ctx)
 }
 
 func shootFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
-	return target.ShootNamesForTarget(ctx, manager)
+	return manager.ShootNames(ctx)
 }

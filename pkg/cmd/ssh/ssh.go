@@ -46,7 +46,10 @@ func NewCmdSSH(f util.Factory, o *SSHOptions) *cobra.Command {
 	cmd.Flags().DurationVar(&o.WaitTimeout, "wait-timeout", o.WaitTimeout, "Maximum duration to wait for the bastion to become available.")
 	cmd.Flags().BoolVar(&o.KeepBastion, "keep-bastion", o.KeepBastion, "Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)")
 
-	flags.AddTargetFlags(cmd, f, o.IOStreams, cmd.PersistentFlags())
+	manager, err := f.Manager()
+	utilruntime.Must(err)
+	manager.TargetFlags().AddFlags(cmd.Flags())
+	flags.RegisterTargetFlagCompletionFuncs(cmd, f, o.IOStreams, cmd.Flags())
 
 	registerCompletionFuncForFlags(cmd, f, o.IOStreams)
 

@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -31,10 +32,28 @@ var (
 	ErrAborted                       = errors.New("operation aborted")
 )
 
+// AutoCompletionsFuncs provides a set of functions that lists suitable values for
+// targeting while taking the current target into account. E.g. ShootNames() would only list
+// shoots in the currently targeted project.
+type AutoCompletionsFuncs interface {
+	// ShootNames returns all shoots for the current target.
+	ShootNames(ctx context.Context) ([]string, error)
+	// SeedNames returns all seeds for the current target.
+	// The current target must at least point to a garden.
+	SeedNames(ctx context.Context) ([]string, error)
+	// ProjectNames returns all projects for the currently targeted garden.
+	// The current target must at least point to a garden.
+	ProjectNames(ctx context.Context) ([]string, error)
+	// GardenNames returns all names of configured Gardens
+	GardenNames() ([]string, error)
+}
+
 //go:generate mockgen -destination=./mocks/mock_manager.go -package=mocks github.com/gardener/gardenctl-v2/pkg/target Manager
 
 // Manager sets and gets the current target configuration.
 type Manager interface {
+	AutoCompletionsFuncs
+
 	// CurrentTarget contains the current target configuration
 	CurrentTarget() (Target, error)
 
@@ -639,6 +658,98 @@ func (m *managerImpl) getTarget(t Target) (Target, error) {
 
 func (m *managerImpl) GardenClient(name string) (gardenclient.Client, error) {
 	return newGardenClient(name, m.config, m.clientProvider)
+}
+
+// ShootNamesForTarget returns all shoots for the current target.
+func (m *managerImpl) ShootNames(ctx context.Context) ([]string, error) {
+	t, err := m.CurrentTarget()
+	if err != nil {
+		return nil, err
+	}
+
+	gardenClient, err := m.GardenClient(t.GardenName())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
+	}
+
+	shootList, err := gardenClient.ListShoots(ctx, t.WithShootName("").AsListOption())
+	if err != nil {
+		return nil, err
+	}
+
+	names := sets.NewString()
+	for _, shoot := range shootList.Items {
+		names.Insert(shoot.Name)
+	}
+
+	return names.List(), nil
+}
+
+// SeedNames returns all seeds for the current target. The
+// target must at least point to a garden.
+func (m *managerImpl) SeedNames(ctx context.Context) ([]string, error) {
+	t, err := m.CurrentTarget()
+	if err != nil {
+		return nil, err
+	}
+
+	gardenClient, err := m.GardenClient(t.GardenName())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
+	}
+
+	seedList, err := gardenClient.ListSeeds(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	names := sets.NewString()
+	for _, seed := range seedList.Items {
+		names.Insert(seed.Name)
+	}
+
+	return names.List(), nil
+}
+
+// ProjectNames returns all projects for the currently targeted garden.
+// target must at least point to a garden.
+func (m *managerImpl) ProjectNames(ctx context.Context) ([]string, error) {
+	t, err := m.CurrentTarget()
+	if err != nil {
+		return nil, err
+	}
+
+	gardenClient, err := m.GardenClient(t.GardenName())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kubernetes client for garden cluster %q: %w", t.GardenName(), err)
+	}
+
+	projectList, err := gardenClient.ListProjects(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	names := sets.NewString()
+	for _, project := range projectList.Items {
+		names.Insert(project.Name)
+	}
+
+	return names.List(), nil
+}
+
+// GardenNames returns all names of configured Gardens
+func (m *managerImpl) GardenNames() ([]string, error) {
+	config := m.Configuration()
+	if config == nil {
+		return nil, errors.New("could not get configuration")
+	}
+
+	names := sets.NewString()
+	for _, garden := range config.Gardens {
+		names.Insert(garden.Name)
+	}
+
+	return names.List(), nil
 }
 
 func writeRawConfig(config clientcmd.ClientConfig) ([]byte, error) {
