@@ -15,6 +15,8 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/env"
+	"github.com/gardener/gardenctl-v2/pkg/target"
+	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
 
 var _ = Describe("Env Commands", func() {
@@ -28,6 +30,13 @@ var _ = Describe("Env Commands", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		factory = utilmocks.NewMockFactory(ctrl)
+
+		manager := targetmocks.NewMockManager(ctrl)
+		factory.EXPECT().Manager().Return(manager, nil).AnyTimes()
+
+		targetFlags := target.NewTargetFlags("", "", "", "", false)
+		manager.EXPECT().TargetFlags().Return(targetFlags).AnyTimes()
+
 		streams = util.IOStreams{}
 	})
 

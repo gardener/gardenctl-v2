@@ -12,6 +12,7 @@ import (
 	// . "github.com/onsi/gomega"
 )
 
+// TODO: write tests for the exported functions (see Describe blocks below)
 var _ = Describe("Target Utilities", func() {
 	// var (
 	// 	testReadyProject   *gardencorev1beta1.Project

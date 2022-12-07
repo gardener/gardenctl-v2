@@ -58,9 +58,6 @@ var _ = Describe("Kubeconfig Command - Options", func() {
 		)
 
 		BeforeEach(func() {
-			streams, _, out, _ = util.NewTestIOStreams()
-			cmd = cmdkubeconfig.NewCmdKubeconfig(factory, streams)
-
 			ctx = context.Background()
 			config = &clientcmd.DirectClientConfig{}
 
@@ -69,9 +66,17 @@ var _ = Describe("Kubeconfig Command - Options", func() {
 
 			manager.EXPECT().CurrentTarget().Return(t, nil)
 			manager.EXPECT().ClientConfig(ctx, t).Return(config, nil)
+
+			targetFlags := target.NewTargetFlags("", "", "", "", false)
+			manager.EXPECT().TargetFlags().Return(targetFlags).AnyTimes()
+
+			streams, _, out, _ = util.NewTestIOStreams()
+			cmd = cmdkubeconfig.NewCmdKubeconfig(factory, streams)
 		})
 
 		It("should execute the kubeconfig subcommand", func() {
+			factory.EXPECT().Manager().Return(manager, nil).Times(2)
+
 			cmd = cmdkubeconfig.NewCmdKubeconfig(factory, streams)
 			cmd.SetArgs([]string{"--output", "yaml"})
 			Expect(cmd.Execute()).To(Succeed())
