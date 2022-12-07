@@ -97,13 +97,13 @@ func validTargetArgsFunction(f util.Factory, kind TargetKind) ([]string, error) 
 
 	switch kind {
 	case TargetKindGarden:
-		result, err = util.GardenNames(manager)
+		result, err = target.GardenNames(manager)
 	case TargetKindProject:
-		result, err = util.ProjectNamesForTarget(ctx, manager)
+		result, err = target.ProjectNamesForTarget(ctx, manager)
 	case TargetKindSeed:
-		result, err = util.SeedNamesForTarget(ctx, manager)
+		result, err = target.SeedNamesForTarget(ctx, manager)
 	case TargetKindShoot:
-		result, err = util.ShootNamesForTarget(ctx, manager)
+		result, err = target.ShootNamesForTarget(ctx, manager)
 	}
 
 	return result, err

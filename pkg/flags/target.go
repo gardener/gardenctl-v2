@@ -18,8 +18,8 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
-func AddTargetFlags(cmd *cobra.Command, f util.Factory, ioStreams util.IOStreams, flags *pflag.FlagSet) {
-	manager, err := f.Manager()
+func AddTargetFlags(cmd *cobra.Command, factory util.Factory, ioStreams util.IOStreams, flags *pflag.FlagSet) {
+	manager, err := factory.Manager()
 	utilruntime.Must(err)
 
 	// TODO: the flags are defined in the TargetFlags(Iml) struct. Maybe it makes sense to define those flags here
@@ -28,10 +28,10 @@ func AddTargetFlags(cmd *cobra.Command, f util.Factory, ioStreams util.IOStreams
 	tf := manager.TargetFlags()
 	tf.AddFlags(flags)
 
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(f, ioStreams, gardenFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(f, ioStreams, projectFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(f, ioStreams, seedFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(f, ioStreams, shootFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(factory, ioStreams, gardenFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(factory, ioStreams, projectFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(factory, ioStreams, seedFlagCompletionFunc)))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(factory, ioStreams, shootFlagCompletionFunc)))
 }
 
 type cobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
@@ -56,19 +56,18 @@ func completionWrapper(factory util.Factory, ioStreams util.IOStreams, completer
 	}
 }
 
-// TODO: util.Gardennames etc. are currently used here and in the package cmd/target. Maybe we can move it out of the util package?
 func gardenFlagCompletionFunc(_ context.Context, manager target.Manager) ([]string, error) {
-	return util.GardenNames(manager)
+	return target.GardenNames(manager)
 }
 
 func projectFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
-	return util.ProjectNamesForTarget(ctx, manager)
+	return target.ProjectNamesForTarget(ctx, manager)
 }
 
 func seedFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
-	return util.SeedNamesForTarget(ctx, manager)
+	return target.SeedNamesForTarget(ctx, manager)
 }
 
 func shootFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
-	return util.ShootNamesForTarget(ctx, manager)
+	return target.ShootNamesForTarget(ctx, manager)
 }

@@ -4,27 +4,25 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package util
+package target
 
 import (
 	"context"
 	"errors"
 	"fmt"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"k8s.io/apimachinery/pkg/util/sets"
-
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
-	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
-// ShootForTarget returns the targeted shoot, if a shoot cluster is targeted and exists otherwise an error.
-func ShootForTarget(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
-	return gardenClient.FindShoot(ctx, t.AsListOption())
-}
+// TODO: check if we really want to pass the manager and always use the current target
+//
+//	In the latter case it would be required that the caller already passes the gardenClient for the
+//	correct garden. So eventually manager + target is also an option?
+//
+// TODO: check if we can somehow group those functions on a struct/interface?
 
-// ShootNamesForTarget returns all possible shoots for a given target.
-func ShootNamesForTarget(ctx context.Context, manager target.Manager) ([]string, error) {
+// ShootNamesForTarget returns all shoots for the current target.
+func ShootNamesForTarget(ctx context.Context, manager Manager) ([]string, error) {
 	t, err := manager.CurrentTarget()
 	if err != nil {
 		return nil, err
@@ -48,19 +46,9 @@ func ShootNamesForTarget(ctx context.Context, manager target.Manager) ([]string,
 	return names.List(), nil
 }
 
-// SeedForTarget returns the targeted seed, if a seed is targeted and exists otherwise an error.
-func SeedForTarget(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Seed, error) {
-	name := t.SeedName()
-	if name == "" {
-		return nil, errors.New("no seed targeted")
-	}
-
-	return gardenClient.GetSeed(ctx, name)
-}
-
-// SeedNamesForTarget returns all possible seeds for a given target. The
+// SeedNamesForTarget returns all seeds for the current target. The
 // target must at least point to a garden.
-func SeedNamesForTarget(ctx context.Context, manager target.Manager) ([]string, error) {
+func SeedNamesForTarget(ctx context.Context, manager Manager) ([]string, error) {
 	t, err := manager.CurrentTarget()
 	if err != nil {
 		return nil, err
@@ -84,19 +72,9 @@ func SeedNamesForTarget(ctx context.Context, manager target.Manager) ([]string, 
 	return names.List(), nil
 }
 
-// ProjectForTarget returns the targeted project, if a project is targeted and exists otherwise an error.
-func ProjectForTarget(ctx context.Context, gardenClient gardenclient.Client, t target.Target) (*gardencorev1beta1.Project, error) {
-	name := t.ProjectName()
-	if name == "" {
-		return nil, errors.New("no project targeted")
-	}
-
-	return gardenClient.GetProject(ctx, name)
-}
-
-// ProjectNamesForTarget returns all projects for the targeted garden.
+// ProjectNamesForTarget returns all projects for the currently targeted garden.
 // target must at least point to a garden.
-func ProjectNamesForTarget(ctx context.Context, manager target.Manager) ([]string, error) {
+func ProjectNamesForTarget(ctx context.Context, manager Manager) ([]string, error) {
 	t, err := manager.CurrentTarget()
 	if err != nil {
 		return nil, err
@@ -121,7 +99,7 @@ func ProjectNamesForTarget(ctx context.Context, manager target.Manager) ([]strin
 }
 
 // GardenNames returns all names of configured Gardens.
-func GardenNames(manager target.Manager) ([]string, error) {
+func GardenNames(manager Manager) ([]string, error) {
 	config := manager.Configuration()
 	if config == nil {
 		return nil, errors.New("could not get configuration")
