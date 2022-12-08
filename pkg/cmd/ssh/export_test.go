@@ -11,8 +11,13 @@ import (
 	"os"
 	"time"
 
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	gardenClient "github.com/gardener/gardenctl-v2/internal/gardenclient"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 func SetBastionAvailabilityChecker(f func(hostname string, privateKey []byte) error) {
@@ -46,13 +51,29 @@ func SetKeepAliveInterval(d time.Duration) {
 	keepAliveInterval = d
 }
 
-type TestSSHPatchUtils struct {
-	sshPatchUtils
+type TestUserBastionListPatcherImpl struct {
+	userBastionListPatcherImpl
 }
 
-func NewTestSSHPatchUtils() *TestSSHPatchUtils {
-	return &TestSSHPatchUtils{
-		sshPatchUtils: &sshPatchUtilsImpl{},
+func (blp *TestUserBastionListPatcherImpl) GetCurrentUser(ctx context.Context, gardenClient gardenClient.Client, authInfo *clientcmdapi.AuthInfo) (string, error) {
+	return blp.getCurrentUser(ctx, gardenClient, authInfo)
+}
+
+func (blp *TestUserBastionListPatcherImpl) TargetAsListOption(target target.Target) client.ListOption {
+	return blp.targetAsListOption(target)
+}
+
+func NewTestUserBastionPatchLister(manager target.Manager) *TestUserBastionListPatcherImpl {
+	target, _ := manager.CurrentTarget()
+	gc, _ := manager.GardenClient(target.GardenName())
+	clientConfig, _ := manager.ClientConfig(context.Background(), target)
+
+	return &TestUserBastionListPatcherImpl{
+		userBastionListPatcherImpl: userBastionListPatcherImpl{
+			gardenClient: gc,
+			target:       target,
+			clientConfig: clientConfig,
+		},
 	}
 }
 
@@ -72,21 +93,13 @@ func NewTestSSHPatchOptions() *TestSSHPatchOptions {
 					IOStreams: streams,
 				},
 			},
-			Utils: &sshPatchUtilsImpl{},
 		},
 		Out:     out,
 		Streams: streams,
 	}
 }
 
-type TestSSHPatchCompletions struct {
-	sshPatchCompletions
-}
-
-func NewTestSSHPatchCompletions() *TestSSHPatchCompletions {
-	return &TestSSHPatchCompletions{
-		sshPatchCompletions: sshPatchCompletions{
-			Utils: &sshPatchUtilsImpl{},
-		},
-	}
+//nolint:revive
+func NewTestSSHPatchCompletions() *sshPatchCompletions {
+	return newSSHPatchCompletions()
 }
