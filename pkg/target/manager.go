@@ -33,8 +33,8 @@ var (
 )
 
 // AutoCompletionsFuncs provides a set of functions that lists suitable values for
-// targeting while taking the current target into account. E.g. ShootNames() would only list
-// shoots in the currently targeted project.
+// targeting while taking the currently targeted garden account.
+// In case the manager gets refactored/split up these functions should stay together.
 type AutoCompletionsFuncs interface {
 	// ShootNames returns all shoots for the current target.
 	ShootNames(ctx context.Context) ([]string, error)
@@ -711,7 +711,7 @@ func (m *managerImpl) SeedNames(ctx context.Context) ([]string, error) {
 	return names.List(), nil
 }
 
-// ProjectNames returns all projects for the currently targeted garden.
+// ProjectNames returns all projects for the currently targeted garden. The
 // target must at least point to a garden.
 func (m *managerImpl) ProjectNames(ctx context.Context) ([]string, error) {
 	t, err := m.CurrentTarget()
