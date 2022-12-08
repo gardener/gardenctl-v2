@@ -39,7 +39,7 @@ type Garden struct {
 	Name string `yaml:"identity" json:"identity"`
 	// Alias is a unique identifier of this Garden that can be used as an alternate name to target this Garden
 	// +optional
-	Alias string `yaml:"alias,omitempty" json:"alias,omitempty"`
+	Alias string `yaml:"name,omitempty" json:"name,omitempty"`
 	// Kubeconfig holds the path for the kubeconfig of the garden cluster
 	Kubeconfig string `yaml:"kubeconfig" json:"kubeconfig"`
 	// Context overrides the current-context of the garden cluster kubeconfig
@@ -105,7 +105,7 @@ func LoadFromFile(filename string) (*Config, error) {
 	return config, nil
 }
 
-// validate checks the config for ambigous definitions and prints a warnings to the user.
+// validate checks the config for ambiguous definitions and prints warnings to the user.
 func (config *Config) validate() {
 	seen := make(map[string]bool, len(config.Gardens))
 
@@ -185,13 +185,19 @@ func (config *Config) GardenNames() []string {
 // of configured Gardens. In case of ambigous names the first match is returned and identity is
 // preferred over alias.
 func (config *Config) Garden(name string) (*Garden, error) {
+	if name == "" {
+		return nil, fmt.Errorf("garden name or alias cannot be empty")
+	}
+
 	var firstMatchByAlias *Garden
 
 	for idx := range config.Gardens {
 		cfg := &config.Gardens[idx]
 		if name == cfg.Name {
 			return cfg, nil
-		} else if firstMatchByAlias == nil && name == cfg.Alias {
+		}
+
+		if firstMatchByAlias == nil && name == cfg.Alias {
 			firstMatchByAlias = cfg
 		}
 	}

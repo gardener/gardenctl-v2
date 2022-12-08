@@ -30,6 +30,7 @@ gardenctl config set-garden my-garden --context garden-context --pattern "^(?:la
 ### Options
 
 ```
+      --alias string          unique alias of this Garden that can be used instead of the name to target this Garden
       --context string        override the current-context of the garden cluster kubeconfig
   -h, --help                  help for set-garden
       --kubeconfig string     path to kubeconfig file for this Garden cluster
