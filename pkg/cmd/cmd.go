@@ -51,7 +51,7 @@ func Execute() {
 	}
 }
 
-// NewDefaultGardenctlCommand creates the `gardenctl` command with defaults
+// NewDefaultGardenctlCommand creates the `gardenctl` command with defaults.
 func NewDefaultGardenctlCommand() *cobra.Command {
 	factory := util.FactoryImpl{
 		TargetFlags: target.NewTargetFlags("", "", "", "", false),
@@ -61,7 +61,7 @@ func NewDefaultGardenctlCommand() *cobra.Command {
 	return NewGardenctlCommand(&factory, ioStreams)
 }
 
-// NewGardenctlCommand creates the `gardenctl` command
+// NewGardenctlCommand creates the `gardenctl` command.
 func NewGardenctlCommand(f *util.FactoryImpl, ioStreams util.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gardenctl",
@@ -203,13 +203,14 @@ func registerCompletionFuncForGlobalFlags(cmd *cobra.Command, f *util.FactoryImp
 	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(f, ioStreams, shootFlagCompletionFunc)))
 }
 
-type cobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
-type cobraCompletionFuncWithError func(ctx context.Context, manager target.Manager) ([]string, error)
+type (
+	cobraCompletionFunc          func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
+	cobraCompletionFuncWithError func(ctx context.Context, manager target.Manager) ([]string, error)
+)
 
 func completionWrapper(f *util.FactoryImpl, ioStreams util.IOStreams, completer cobraCompletionFuncWithError) cobraCompletionFunc {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		manager, err := f.Manager()
-
 		if err != nil {
 			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
 			return nil, cobra.ShellCompDirectiveNoFileComp
@@ -241,7 +242,7 @@ func shootFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]str
 	return util.ShootNamesForTarget(ctx, manager)
 }
 
-// addKlogFlags adds flags from k8s.io/klog
+// addKlogFlags adds flags from k8s.io/klog.
 func addKlogFlags(fs *pflag.FlagSet) {
 	local := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	klog.InitFlags(local)

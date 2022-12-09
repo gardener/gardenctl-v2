@@ -77,7 +77,6 @@ var _ = Describe("Target Provider", func() {
 		Expect(target.SeedName()).To(Equal(t.SeedName()))
 		Expect(target.ShootName()).To(Equal(t.ShootName()))
 		Expect(target.ControlPlane()).To(Equal(t.ControlPlane()))
-
 	})
 })
 

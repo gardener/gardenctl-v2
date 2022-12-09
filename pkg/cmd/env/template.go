@@ -28,7 +28,7 @@ var fsys embed.FS
 
 //go:generate mockgen -destination=./mocks/mock_template.go -package=mocks github.com/gardener/gardenctl-v2/pkg/cmd/env Template
 
-// Template provides an abstraction for go templates
+// Template provides an abstraction for go templates.
 type Template interface {
 	// ParseFiles parses the named files and associates the resulting templates with t.
 	ParseFiles(filenames ...string) error
@@ -79,7 +79,7 @@ func (t *templateImpl) ExecuteTemplate(wr io.Writer, shell string, data interfac
 	return t.delegate.ExecuteTemplate(wr, shell, data)
 }
 
-// Delegate returns the wrapped go template
+// Delegate returns the wrapped go template.
 func (t *templateImpl) Delegate() *template.Template {
 	return t.delegate
 }

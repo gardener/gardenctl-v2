@@ -55,7 +55,7 @@ type targetBuilderImpl struct {
 
 var _ TargetBuilder = &targetBuilderImpl{}
 
-// NewTargetBuilder returns a new target builder
+// NewTargetBuilder returns a new target builder.
 func NewTargetBuilder(config *config.Config, clientProvider ClientProvider) (TargetBuilder, error) {
 	if config == nil {
 		return nil, errors.New("config must not be nil")
@@ -276,7 +276,7 @@ func (b *targetBuilderImpl) validateProject(ctx context.Context, gardenName stri
 	return project, nil
 }
 
-// getProjectNameByNamespace  returns the project name for the given namespace name
+// getProjectNameByNamespace returns the project name for the given namespace name.
 func (b *targetBuilderImpl) getProjectNameByNamespace(ctx context.Context, gardenName string, name string) (string, error) {
 	gardenClient, err := b.getGardenClient(gardenName)
 	if err != nil {

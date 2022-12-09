@@ -35,7 +35,6 @@ import (
 	"github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
-	cryptossh "golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -63,7 +62,7 @@ const (
 	SSHPort = 22
 )
 
-// wrappers used for unit tests only
+// wrappers used for unit tests only.
 var (
 	// keepAliveInterval is the interval in which bastions should be given the
 	// keep-alive annotation to prolong their lifetime.
@@ -73,7 +72,7 @@ var (
 	// pollBastionStatusInterval is the time in-between status checks on the bastion object.
 	pollBastionStatusInterval = 5 * time.Second
 
-	// tempFileCreator creates and opens a temporary file
+	// tempFileCreator creates and opens a temporary file.
 	tempFileCreator = func() (*os.File, error) {
 		return os.CreateTemp(os.TempDir(), "gctlv2*")
 	}
@@ -201,7 +200,7 @@ type SSHOptions struct {
 	KeepBastion bool
 }
 
-// NewSSHOptions returns initialized SSHOptions
+// NewSSHOptions returns initialized SSHOptions.
 func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 	return &SSHOptions{
 		Options: base.Options{
@@ -290,7 +289,7 @@ func ipToCIDR(address string) string {
 	return ipnet.String()
 }
 
-// Validate validates the provided SSHOptions
+// Validate validates the provided SSHOptions.
 func (o *SSHOptions) Validate() error {
 	if o.WaitTimeout == 0 {
 		return errors.New("the maximum wait duration must be non-zero")
@@ -311,7 +310,7 @@ func (o *SSHOptions) Validate() error {
 		return fmt.Errorf("invalid SSH public key file: %w", err)
 	}
 
-	if _, _, _, _, err := cryptossh.ParseAuthorizedKey(content); err != nil {
+	if _, _, _, _, err := ssh.ParseAuthorizedKey(content); err != nil {
 		return fmt.Errorf("invalid SSH public key file: %w", err)
 	}
 
@@ -383,7 +382,7 @@ func encodePublicKey(publicKey ssh.PublicKey) []byte {
 }
 
 func writeKeyFile(filename string, content []byte) error {
-	if err := os.WriteFile(filename, content, 0600); err != nil {
+	if err := os.WriteFile(filename, content, 0o600); err != nil {
 		return fmt.Errorf("failed to write %q: %w", filename, err)
 	}
 
@@ -490,7 +489,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 
 	if o.NodeName != "" {
 		node, err := getShootNode(ctx, o, shootClient)
-		if err == nil {
+		if err == nil { //nolint:gocritic // rewrite if-else to switch statement does not make sense as anonymous switch statements should never be cuddled
 			nodeHostname, err = getNodeHostname(node)
 			if err != nil {
 				return err
@@ -579,11 +578,12 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	ingress := bastion.Status.Ingress
 	printAddr := ""
 
-	if ingress.Hostname != "" && ingress.IP != "" {
+	switch {
+	case ingress.Hostname != "" && ingress.IP != "":
 		printAddr = fmt.Sprintf("%s (%s)", ingress.IP, ingress.Hostname)
-	} else if ingress.Hostname != "" {
+	case ingress.Hostname != "":
 		printAddr = ingress.Hostname
-	} else {
+	default:
 		printAddr = ingress.IP
 	}
 
@@ -1080,11 +1080,11 @@ func getNodes(ctx context.Context, c client.Client) ([]corev1.Node, error) {
 
 func (o *SSHOptions) checkAccessRestrictions(cfg *config.Config, gardenName string, tf target.TargetFlags, shoot *gardencorev1beta1.Shoot) (bool, error) {
 	if cfg == nil {
-		return false, errors.New("Garden configuration is required")
+		return false, errors.New("garden configuration is required")
 	}
 
 	if tf == nil {
-		return false, errors.New("Target flags are required")
+		return false, errors.New("target flags are required")
 	}
 
 	// handle access restrictions

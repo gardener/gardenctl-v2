@@ -5,13 +5,19 @@ run:
     - "zz_generated.*"
 linters:
   enable:
-    - revive
-    - whitespace
-    - wsl
+    - gocritic
+    - godot
+    - gofumpt
     - goimports
+    - misspell
     - nolintlint
     - predeclared
+    - revive
+    - stylecheck
     - unconvert
+    - wastedassign
+    - whitespace
+    - wsl
 linters-settings:
   goimports:
     local-prefixes: github.com/gardener/gardenctl-v2

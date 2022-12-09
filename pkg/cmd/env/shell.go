@@ -10,7 +10,7 @@ import (
 	"fmt"
 )
 
-// Shell represents the type of shell
+// Shell represents the type of shell.
 type Shell string
 
 const (
@@ -22,7 +22,7 @@ const (
 
 var validShells = []Shell{bash, zsh, fish, powershell}
 
-// EvalCommand returns the script that evaluates the given command
+// EvalCommand returns the script that evaluates the given command.
 func (s Shell) EvalCommand(cmd string) string {
 	var format string
 
@@ -39,7 +39,7 @@ func (s Shell) EvalCommand(cmd string) string {
 	return fmt.Sprintf(format, cmd)
 }
 
-// Prompt returns the typical prompt for a given os
+// Prompt returns the typical prompt for a given os.
 func (s Shell) Prompt(goos string) string {
 	switch s {
 	case powershell:
@@ -53,7 +53,7 @@ func (s Shell) Prompt(goos string) string {
 	}
 }
 
-// Validate checks if the shell is valid
+// Validate checks if the shell is valid.
 func (s Shell) Validate() error {
 	for _, shell := range validShells {
 		if s == shell {

@@ -53,7 +53,7 @@ gardenctl kubeconfig --garden my-garden --project my-project`,
 	return cmd
 }
 
-// options is a struct to support kubeconfig command
+// options is a struct to support kubeconfig command.
 type options struct {
 	base.Options
 
@@ -76,7 +76,7 @@ type options struct {
 	RawConfig *clientcmdapi.Config
 }
 
-// newOptions returns initialized options
+// newOptions returns initialized options.
 func newOptions(ioStreams util.IOStreams) *options {
 	return &options{
 		Options: base.Options{

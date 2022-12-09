@@ -123,7 +123,6 @@ var _ = Describe("AccessRestriction", func() {
 
 	Describe("Handling an access restriction message", func() {
 		It("should add and get a handler function from the context", func() {
-
 			message := &ac.AccessRestrictionMessage{}
 			messages := ac.AccessRestrictionMessages{message}
 			ctx := ac.WithAccessRestrictionHandler(context.Background(), func(messages ac.AccessRestrictionMessages) bool {

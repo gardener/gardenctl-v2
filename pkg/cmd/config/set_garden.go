@@ -87,7 +87,7 @@ func (o *setGardenOptions) Complete(f util.Factory, cmd *cobra.Command, args []s
 	return nil
 }
 
-// Validate validates the provided options
+// Validate validates the provided options.
 func (o *setGardenOptions) Validate() error {
 	if o.Name == "" {
 		return errors.New("garden identity is required")
@@ -100,7 +100,7 @@ func (o *setGardenOptions) Validate() error {
 	return nil
 }
 
-// AddFlags adds flags to adjust the output to a cobra command
+// AddFlags adds flags to adjust the output to a cobra command.
 func (o *setGardenOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.Var(&o.KubeconfigFlag, "kubeconfig", "path to kubeconfig file for this Garden cluster")
 	flags.Var(&o.ContextFlag, "context", "override the current-context of the garden cluster kubeconfig")
@@ -111,7 +111,7 @@ Note that if you set this flag it will overwrite the pattern list in the config 
 You may specify any number of extra patterns.`)
 }
 
-// Run executes the command
+// Run executes the command.
 func (o *setGardenOptions) Run(_ util.Factory) error {
 	garden, err := o.Configuration.Garden(o.Name)
 	if err == nil {

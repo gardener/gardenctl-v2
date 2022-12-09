@@ -45,11 +45,12 @@ var _ = Describe("Config", func() {
 					Patterns: []string{
 						fmt.Sprintf("^(%s/)?shoot--(?P<project>.+)--(?P<shoot>.+)$", clusterIdentity2),
 					},
-				}},
+				},
+			},
 		}
 	})
 
-	var patternValue = func(prefix string) string {
+	patternValue := func(prefix string) string {
 		value := fmt.Sprintf("shoot--%s--%s", project, shoot)
 
 		if prefix != "" {
@@ -125,7 +126,6 @@ var _ = Describe("Config", func() {
 		garden, err := cfg.Garden(clusterIdentity1)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(garden.Name).Should(Equal(clusterIdentity1))
-
 	})
 
 	It("should throw an error if garden not found", func() {

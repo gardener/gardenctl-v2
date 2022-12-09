@@ -57,7 +57,7 @@ func runViewCommand(f util.Factory, opt *ViewOptions) error {
 	return opt.PrintObject(currentTarget)
 }
 
-// ViewOptions is a struct to support view command
+// ViewOptions is a struct to support view command.
 type ViewOptions struct {
 	base.Options
 }

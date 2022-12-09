@@ -50,7 +50,7 @@ type Factory interface {
 	PublicIPs(context.Context) ([]string, error)
 }
 
-// FactoryImpl implements util.Factory interface
+// FactoryImpl implements util.Factory interface.
 type FactoryImpl struct {
 	// GardenHomeDirectory is the home directory for all gardenctl
 	// related files. While some files can be explicitly loaded from
@@ -59,7 +59,7 @@ type FactoryImpl struct {
 	GardenHomeDirectory string
 
 	// ConfigFile is the location of the gardenctlv2 configuration file.
-	// This can be overriden via a CLI flag and defaults to ~/.garden/gardenctlv2.yaml
+	// This can be overridden via a CLI flag and defaults to ~/.garden/gardenctlv2.yaml
 	// if empty.
 	ConfigFile string
 
@@ -87,7 +87,7 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 
 	sessionDirectory := filepath.Join(os.TempDir(), "garden", sid)
 
-	err = os.MkdirAll(sessionDirectory, 0700)
+	err = os.MkdirAll(sessionDirectory, 0o700)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session directory: %w", err)
 	}
@@ -160,7 +160,7 @@ func getSessionID() (string, error) {
 			return value, nil
 		}
 
-		return "", fmt.Errorf("Environment variable %s must only contain alphanumeric characters, underscore and dash and have a minimum length of 1 and a maximum length of 128", envSessionID)
+		return "", fmt.Errorf("environment variable %s must only contain alphanumeric characters, underscore and dash and have a minimum length of 1 and a maximum length of 128", envSessionID)
 	}
 
 	if value, ok := os.LookupEnv(envTermSessionID); ok {
@@ -170,5 +170,5 @@ func getSessionID() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("Environment variable %s is required. Use \"gardenctl help\" for more information about the requirements of gardenctl", envSessionID)
+	return "", fmt.Errorf("environment variable %s is required. Use \"gardenctl help\" for more information about the requirements of gardenctl", envSessionID)
 }

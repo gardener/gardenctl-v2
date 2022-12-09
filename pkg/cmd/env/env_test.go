@@ -36,7 +36,6 @@ var _ = Describe("Env Commands", func() {
 	})
 
 	Describe("given a ProviderEnv instance", func() {
-
 		BeforeEach(func() {
 			cmd = env.NewCmdProviderEnv(factory, streams)
 		})
@@ -57,7 +56,6 @@ var _ = Describe("Env Commands", func() {
 				Expect(s).To(BeElementOf(env.ValidShells))
 			}
 		})
-
 	})
 
 	Describe("given a KubectlEnv instance", func() {

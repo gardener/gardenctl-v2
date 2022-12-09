@@ -54,8 +54,10 @@ func registerCompletionFuncForFlags(cmd *cobra.Command, f util.Factory, ioStream
 	utilruntime.Must(cmd.RegisterFlagCompletionFunc("cidr", completionWrapper(f, ioStreams, cidrFlagCompletionFunc)))
 }
 
-type cobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
-type cobraCompletionFuncWithError func(f util.Factory) ([]string, error)
+type (
+	cobraCompletionFunc          func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
+	cobraCompletionFuncWithError func(f util.Factory) ([]string, error)
+)
 
 func completionWrapper(f util.Factory, ioStreams util.IOStreams, completer cobraCompletionFuncWithError) cobraCompletionFunc {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

@@ -33,7 +33,7 @@ var (
 
 //go:generate mockgen -destination=./mocks/mock_manager.go -package=mocks github.com/gardener/gardenctl-v2/pkg/target Manager
 
-// Manager sets and gets the current target configuration
+// Manager sets and gets the current target configuration.
 type Manager interface {
 	// CurrentTarget contains the current target configuration
 	CurrentTarget() (Target, error)
@@ -74,7 +74,7 @@ type Manager interface {
 	// of a pattern
 	TargetMatchPattern(ctx context.Context, value string) error
 
-	//ClientConfig returns the client config for a target
+	// ClientConfig returns the client config for a target
 	ClientConfig(ctx context.Context, t Target) (clientcmd.ClientConfig, error)
 	// WriteClientConfig creates a kubeconfig file in the session directory of the operating system
 	WriteClientConfig(config clientcmd.ClientConfig) (string, error)
@@ -116,7 +116,7 @@ func newGardenClient(name string, config *config.Config, provider ClientProvider
 	return gardenclient.NewGardenClient(client, name), nil
 }
 
-// NewManager returns a new manager
+// NewManager returns a new manager.
 func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider ClientProvider, sessionDirectory string) (Manager, error) {
 	return &managerImpl{
 		config:           config,
@@ -507,7 +507,7 @@ func (m *managerImpl) WriteClientConfig(config clientcmd.ClientConfig) (string, 
 
 	filename := filepath.Join(m.sessionDirectory, fmt.Sprintf("kubeconfig.%x.yaml", md5.Sum(data)))
 
-	err = os.WriteFile(filename, data, 0600)
+	err = os.WriteFile(filename, data, 0o600)
 	if err != nil {
 		return "", fmt.Errorf("failed to write temporary kubeconfig file to %s: %w", filename, err)
 	}

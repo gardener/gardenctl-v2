@@ -211,7 +211,7 @@ users:
 				})
 
 				Context("when an error occurs during PrintObject", func() {
-					var err = errors.New("error")
+					err := errors.New("error")
 
 					It("should fail with an error", func() {
 						options.PrintObject = func(_ runtime.Object, _ io.Writer) error {

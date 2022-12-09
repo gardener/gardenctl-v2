@@ -17,7 +17,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
-// AccessRestriction is used to define an access restriction
+// AccessRestriction is used to define an access restriction.
 type AccessRestriction struct {
 	// Key is the identifier of an access restriction
 	Key string `yaml:"key,omitempty" json:"key,omitempty"`
@@ -29,7 +29,7 @@ type AccessRestriction struct {
 	Options []AccessRestrictionOption `yaml:"options,omitempty" json:"options,omitempty"`
 }
 
-// AccessRestrictionOption is used to define an access restriction option
+// AccessRestrictionOption is used to define an access restriction option.
 type AccessRestrictionOption struct {
 	// Key is the identifier of an access restriction option
 	Key string `yaml:"key,omitempty" json:"key,omitempty"`
@@ -43,8 +43,10 @@ type AccessRestrictionOption struct {
 // The typical implementation of this function looks like this:
 //
 //	func(messages AccessRestrictionMessages) { message.Render(os.Stdout) }
-type AccessRestrictionHandler func(AccessRestrictionMessages) bool
-type accessRestrictionHandlerContextKey struct{}
+type (
+	AccessRestrictionHandler           func(AccessRestrictionMessages) bool
+	accessRestrictionHandlerContextKey struct{}
+)
 
 // WithAccessRestrictionHandler returns a copy of parent context to which the given AccessRestrictionHandler function has been added.
 func WithAccessRestrictionHandler(ctx context.Context, fn AccessRestrictionHandler) context.Context {
@@ -62,7 +64,7 @@ func AccessRestrictionHandlerFromContext(ctx context.Context) AccessRestrictionH
 	return nil
 }
 
-// NewAccessRestrictionHandler create an access restriction handler function
+// NewAccessRestrictionHandler create an access restriction handler function.
 func NewAccessRestrictionHandler(r io.Reader, w io.Writer, askForConfirmation bool) AccessRestrictionHandler {
 	return func(messages AccessRestrictionMessages) bool {
 		if len(messages) == 0 {
@@ -106,7 +108,7 @@ func (m *AccessRestrictionMessage) messageWidth() int {
 }
 
 func (accessRestriction *AccessRestriction) checkAccessRestriction(matchLabels, annotations map[string]string) *AccessRestrictionMessage {
-	var matches = func(m map[string]string, key string, val bool) bool {
+	matches := func(m map[string]string, key string, val bool) bool {
 		if strVal, ok := m[key]; ok {
 			if boolVal, err := strconv.ParseBool(strVal); err == nil {
 				return boolVal == val
@@ -158,7 +160,7 @@ type AccessRestrictionMessage struct {
 	Items  []string
 }
 
-// AccessRestrictionMessages is a list of access restriction messages
+// AccessRestrictionMessages is a list of access restriction messages.
 type AccessRestrictionMessages []*AccessRestrictionMessage
 
 type pos int
@@ -215,7 +217,7 @@ func (p pos) print(text string, width int) string {
 	return strings.Join(results, "\n")
 }
 
-// Render displays the access restriction messages
+// Render displays the access restriction messages.
 func (messages AccessRestrictionMessages) Render(w io.Writer) {
 	title := " Access Restriction"
 	if len(messages) > 1 {
@@ -245,7 +247,7 @@ func (messages AccessRestrictionMessages) Render(w io.Writer) {
 	fmt.Fprintln(w, footer.print("", width))
 }
 
-// Confirm  asks for confirmation to continue
+// Confirm  asks for confirmation to continue.
 func (messages AccessRestrictionMessages) Confirm(r io.Reader, w io.Writer) bool {
 	reader := bufio.NewReader(r)
 

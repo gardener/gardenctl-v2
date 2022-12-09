@@ -61,7 +61,7 @@ func (o *deleteGardenOptions) Complete(f util.Factory, cmd *cobra.Command, args 
 	return nil
 }
 
-// Validate validates the provided options
+// Validate validates the provided options.
 func (o *deleteGardenOptions) Validate() error {
 	if o.Name == "" {
 		return errors.New("garden identity is required")
@@ -70,7 +70,7 @@ func (o *deleteGardenOptions) Validate() error {
 	return nil
 }
 
-// Run executes the command
+// Run executes the command.
 func (o *deleteGardenOptions) Run(_ util.Factory) error {
 	i, ok := o.Configuration.IndexOfGarden(o.Name)
 	if !ok {
