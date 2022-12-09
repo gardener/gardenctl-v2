@@ -1,4 +1,4 @@
-package ssh
+package sshpatch
 
 import (
 	"context"
@@ -14,10 +14,11 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
 )
 
-type sshPatchOptions struct {
-	sshBaseOptions
+type options struct {
+	ssh.BaseOptions
 
 	// Bastion is the Bastion corresponding to the provided BastionName
 	Bastion *gardenoperationsv1alpha1.Bastion
@@ -26,9 +27,9 @@ type sshPatchOptions struct {
 	bastionPatcher bastionPatcher
 }
 
-func newSSHPatchOptions(ioStreams util.IOStreams) *sshPatchOptions {
-	return &sshPatchOptions{
-		sshBaseOptions: sshBaseOptions{
+func newOptions(ioStreams util.IOStreams) *options {
+	return &options{
+		BaseOptions: ssh.BaseOptions{
 			Options: base.Options{
 				IOStreams: ioStreams,
 			},
@@ -36,7 +37,7 @@ func newSSHPatchOptions(ioStreams util.IOStreams) *sshPatchOptions {
 	}
 }
 
-func (o *sshPatchOptions) patchBastionIngress(ctx context.Context) error {
+func (o *options) patchBastionIngress(ctx context.Context) error {
 	var policies []gardenoperationsv1alpha1.BastionIngressPolicy
 
 	oldBastion := o.Bastion.DeepCopy()
@@ -80,7 +81,7 @@ func (o *sshPatchOptions) patchBastionIngress(ctx context.Context) error {
 	return nil
 }
 
-func (o *sshPatchOptions) Run(f util.Factory) error {
+func (o *options) Run(f util.Factory) error {
 	ctx, cancel := context.WithTimeout(f.Context(), 30*time.Second)
 	defer cancel()
 
@@ -94,7 +95,7 @@ func (o *sshPatchOptions) Run(f util.Factory) error {
 	return nil
 }
 
-func (o *sshPatchOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(f.Context(), 30*time.Second)
 	defer cancel()
 
@@ -110,7 +111,7 @@ func (o *sshPatchOptions) Complete(f util.Factory, cmd *cobra.Command, args []st
 
 	o.bastionPatcher = bastionListPatcher
 
-	if err := o.sshBaseOptions.Complete(f, cmd, args); err != nil {
+	if err := o.BaseOptions.Complete(f, cmd, args); err != nil {
 		return err
 	}
 
@@ -150,8 +151,8 @@ func (o *sshPatchOptions) Complete(f util.Factory, cmd *cobra.Command, args []st
 	return nil
 }
 
-func (o *sshPatchOptions) Validate() error {
-	if err := o.sshBaseOptions.Validate(); err != nil {
+func (o *options) Validate() error {
+	if err := o.BaseOptions.Validate(); err != nil {
 		return err
 	}
 
@@ -162,6 +163,6 @@ func (o *sshPatchOptions) Validate() error {
 	return nil
 }
 
-func (o *sshPatchOptions) AddFlags(flags *pflag.FlagSet) {
+func (o *options) AddFlags(flags *pflag.FlagSet) {
 	flags.StringArrayVar(&o.CIDRs, "cidr", o.CIDRs, "CIDRs to allow access to the bastion host; if not given, your system's public IPs (v4 and v6) are auto-detected.")
 }

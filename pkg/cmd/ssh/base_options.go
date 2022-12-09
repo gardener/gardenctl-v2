@@ -14,8 +14,8 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
 
-// sshBaseOptions is a struct used by all ssh related commands
-type sshBaseOptions struct {
+// BaseOptions is a struct used by all ssh related commands
+type BaseOptions struct {
 	base.Options
 
 	// CIDRs is a list of IP address ranges to be allowed for accessing the
@@ -28,9 +28,9 @@ type sshBaseOptions struct {
 	AutoDetected bool
 }
 
-func (o *sshBaseOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+func (o *BaseOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
 	if len(o.CIDRs) == 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		ctx, cancel := context.WithTimeout(f.Context(), 60*time.Second)
 		defer cancel()
 
 		publicIPs, err := f.PublicIPs(ctx)
@@ -57,7 +57,7 @@ func (o *sshBaseOptions) Complete(f util.Factory, cmd *cobra.Command, args []str
 	return nil
 }
 
-func (o *sshBaseOptions) Validate() error {
+func (o *BaseOptions) Validate() error {
 	if len(o.CIDRs) == 0 {
 		return errors.New("must at least specify a single CIDR to allow access to the bastion")
 	}

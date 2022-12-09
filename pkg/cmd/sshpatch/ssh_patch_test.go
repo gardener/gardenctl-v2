@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package ssh_test
+package sshpatch_test
 
 import (
 	"context"
@@ -30,7 +30,7 @@ import (
 	gcmocks "github.com/gardener/gardenctl-v2/internal/gardenclient/mocks"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/sshpatch"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
@@ -222,13 +222,13 @@ var _ = Describe("SSH Patch Command", func() {
 			})
 
 			It("Should fail when no CIDRs are provided", func() {
-				o := ssh.NewTestSSHPatchOptions()
+				o := sshpatch.NewTestOptions()
 				o.Bastion = &fakeBastion
 				Expect(o.Validate()).NotTo(Succeed())
 			})
 
 			It("Should fail when Bastion is nil", func() {
-				o := ssh.NewTestSSHPatchOptions()
+				o := sshpatch.NewTestOptions()
 				o.CIDRs = append(o.CIDRs, "1.1.1.1/16")
 				Expect(o.Validate()).NotTo(Succeed())
 			})
@@ -237,8 +237,8 @@ var _ = Describe("SSH Patch Command", func() {
 		Describe("Complete", func() {
 			Describe("Auto-completion of the bastion name when it is not provided by user", func() {
 				It("should fail if no bastions created by current user exist", func() {
-					o := ssh.NewTestSSHPatchOptions()
-					cmd := ssh.NewCmdSSHPatch(factory, o.Streams)
+					o := sshpatch.NewTestOptions()
+					cmd := sshpatch.NewCmdSSHPatch(factory, o.Streams)
 
 					fakeBastionList := &gardenoperationsv1alpha1.BastionList{
 						Items: []gardenoperationsv1alpha1.Bastion{
@@ -256,8 +256,8 @@ var _ = Describe("SSH Patch Command", func() {
 				})
 
 				It("should succeed if exactly one bastion created by current user exists", func() {
-					o := ssh.NewTestSSHPatchOptions()
-					cmd := ssh.NewCmdSSHPatch(factory, o.Streams)
+					o := sshpatch.NewTestOptions()
+					cmd := sshpatch.NewCmdSSHPatch(factory, o.Streams)
 
 					fakeBastionList := &gardenoperationsv1alpha1.BastionList{
 						Items: []gardenoperationsv1alpha1.Bastion{
@@ -280,8 +280,8 @@ var _ = Describe("SSH Patch Command", func() {
 				})
 
 				It("should fail if more then one bastion created by current user exists", func() {
-					o := ssh.NewTestSSHPatchOptions()
-					cmd := ssh.NewCmdSSHPatch(factory, o.Streams)
+					o := sshpatch.NewTestOptions()
+					cmd := sshpatch.NewCmdSSHPatch(factory, o.Streams)
 
 					fakeBastionList := &gardenoperationsv1alpha1.BastionList{
 						Items: []gardenoperationsv1alpha1.Bastion{
@@ -304,8 +304,8 @@ var _ = Describe("SSH Patch Command", func() {
 			Describe("Bastion for provided bastion name should be loaded", func() {
 				It("should succeed if the bastion with the name provided exists", func() {
 					bastionName := defaultUserName + "-bastion1"
-					o := ssh.NewTestSSHPatchOptions()
-					cmd := ssh.NewCmdSSHPatch(factory, o.Streams)
+					o := sshpatch.NewTestOptions()
+					cmd := sshpatch.NewCmdSSHPatch(factory, o.Streams)
 
 					fakeBastionList := &gardenoperationsv1alpha1.BastionList{
 						Items: []gardenoperationsv1alpha1.Bastion{
@@ -327,7 +327,7 @@ var _ = Describe("SSH Patch Command", func() {
 		})
 
 		Describe("Run", func() {
-			var options *ssh.TestSSHPatchOptions
+			var options *sshpatch.TestOptions
 			var cmd *cobra.Command
 			var isBastion gomock.Matcher
 
@@ -342,10 +342,10 @@ var _ = Describe("SSH Patch Command", func() {
 				// bastionType := reflect.TypeOf((*gardenoperationsv1alpha1.Bastion)(nil)).Elem()
 				isBastion = gomock.AssignableToTypeOf(&fakeBastion)
 
-				options = ssh.NewTestSSHPatchOptions()
+				options = sshpatch.NewTestOptions()
 
-				o := ssh.NewTestSSHPatchOptions()
-				cmd = ssh.NewCmdSSHPatch(factory, o.Streams)
+				o := sshpatch.NewTestOptions()
+				cmd = sshpatch.NewCmdSSHPatch(factory, o.Streams)
 
 				gardenClient.EXPECT().ListBastions(isCtx, gomock.Any()).Return(fakeBastionList, nil).Times(1)
 				clock.EXPECT().Now().Return(now).Times(1)
@@ -372,8 +372,8 @@ var _ = Describe("SSH Patch Command", func() {
 			It("should find bastions of current user with given prefix", func() {
 				prefix := "prefix1"
 				streams, _, _, _ := util.NewTestIOStreams()
-				cmd := ssh.NewCmdSSHPatch(factory, streams)
-				c := ssh.NewTestSSHPatchCompletions()
+				cmd := sshpatch.NewCmdSSHPatch(factory, streams)
+				c := sshpatch.NewTestCompletions()
 
 				fakeBastionList := &gardenoperationsv1alpha1.BastionList{
 					Items: []gardenoperationsv1alpha1.Bastion{
@@ -400,7 +400,7 @@ var _ = Describe("SSH Patch Command", func() {
 
 	Describe("bastionListPatcher", func() {
 		Describe("CurrentUser", func() {
-			var patchLister *ssh.TestUserBastionListPatcherImpl
+			var patchLister *sshpatch.TestUserBastionListPatcherImpl
 
 			BeforeEach(func() {
 				fakeBastionList := &gardenoperationsv1alpha1.BastionList{
@@ -410,7 +410,7 @@ var _ = Describe("SSH Patch Command", func() {
 				}
 				gardenClient.EXPECT().ListBastions(isCtx, gomock.Any()).Return(fakeBastionList, nil).AnyTimes()
 
-				patchLister = ssh.NewTestUserBastionPatchLister(manager)
+				patchLister = sshpatch.NewTestUserBastionPatchLister(manager)
 			})
 
 			It("Should return the user when a Token is used", func() {

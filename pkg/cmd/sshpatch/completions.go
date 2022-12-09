@@ -1,4 +1,4 @@
-package ssh
+package sshpatch
 
 import (
 	"context"
@@ -11,13 +11,13 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 )
 
-type sshPatchCompletions struct{}
+type completions struct{}
 
-func newSSHPatchCompletions() *sshPatchCompletions {
-	return &sshPatchCompletions{}
+func newCompletions() *completions {
+	return &completions{}
 }
 
-func (c *sshPatchCompletions) GetBastionNameCompletions(f util.Factory, cmd *cobra.Command, prefix string) ([]string, error) {
+func (c *completions) GetBastionNameCompletions(f util.Factory, cmd *cobra.Command, prefix string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(f.Context(), 30*time.Second)
 	defer cancel()
 

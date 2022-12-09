@@ -1,4 +1,4 @@
-package ssh
+package sshpatch
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 )
 
 func NewCmdSSHPatch(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
-	o := newSSHPatchOptions(ioStreams)
+	o := newOptions(ioStreams)
 
 	cmd := &cobra.Command{
 		Use:   "ssh-patch [BASTION_NAME]",
@@ -27,7 +27,7 @@ func NewCmdSSHPatch(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			c := newSSHPatchCompletions()
+			c := newCompletions()
 			bastionNames, err := c.GetBastionNameCompletions(f, cmd, toComplete)
 			if err != nil {
 				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
