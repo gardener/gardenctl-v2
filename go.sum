@@ -150,8 +150,8 @@ github.com/gardener/etcd-druid v0.12.3 h1:FBpsEe+FrBwJ1a2VhaPlXjZsfIAcHGSsF5DvDO
 github.com/gardener/etcd-druid v0.12.3/go.mod h1:EJF6z4Ghv2FGUe1UzZWOEF1MxCA186fxvjBO44oSJX4=
 github.com/gardener/gardener v1.60.2 h1:IvESyzO+zgPw34mlZvaSHwSB22zhf/bBtftF3XJVjDo=
 github.com/gardener/gardener v1.60.2/go.mod h1:xkR1xRgI4PzSXWtwVUh/y6tBt5K0QSCR5FjneSKx89w=
-github.com/gardener/gardener-extension-provider-openstack v1.30.2 h1:2Uz43DfkppmaYie6slXOzI4uLBDRQCOtClsnjp/HNpY=
-github.com/gardener/gardener-extension-provider-openstack v1.30.2/go.mod h1:9tNpsfsxsByqNXz2YxD4HQVXbFi80+bFZSBMGBJjUCQ=
+github.com/gardener/gardener-extension-provider-openstack v1.30.3 h1:AAfzhW//umlSjJ7yqTOoSTAuzd7VKetiBR9Hmh+//IE=
+github.com/gardener/gardener-extension-provider-openstack v1.30.3/go.mod h1:9tNpsfsxsByqNXz2YxD4HQVXbFi80+bFZSBMGBJjUCQ=
 github.com/gardener/hvpa-controller v0.3.1 h1:VsOdcKZMcZDlUNVbFY8oqlKrb1GSCdmzPooKT/Tyi+Y=
 github.com/gardener/hvpa-controller v0.3.1/go.mod h1:rjsb3BPKJFMluudZ8/bhCCDQfFCF/0Um+rzXQI/MmfI=
 github.com/getkin/kin-openapi v0.76.0/go.mod h1:660oXbgy5JFMKreazJaQTw7o+X00qeSyhcnluiMv+Xg=
