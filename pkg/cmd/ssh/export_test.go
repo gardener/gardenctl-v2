@@ -11,10 +11,6 @@ import (
 	"os"
 	"time"
 
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	gardenClient "github.com/gardener/gardenctl-v2/internal/gardenclient"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -53,14 +49,6 @@ func SetKeepAliveInterval(d time.Duration) {
 
 type TestUserBastionListPatcherImpl struct {
 	userBastionListPatcherImpl
-}
-
-func (blp *TestUserBastionListPatcherImpl) GetCurrentUser(ctx context.Context, gardenClient gardenClient.Client, authInfo *clientcmdapi.AuthInfo) (string, error) {
-	return blp.getCurrentUser(ctx, gardenClient, authInfo)
-}
-
-func (blp *TestUserBastionListPatcherImpl) TargetAsListOption(target target.Target) client.ListOption {
-	return blp.targetAsListOption(target)
 }
 
 func NewTestUserBastionPatchLister(manager target.Manager) *TestUserBastionListPatcherImpl {

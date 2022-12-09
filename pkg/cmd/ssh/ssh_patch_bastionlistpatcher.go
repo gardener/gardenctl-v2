@@ -15,7 +15,6 @@ import (
 	clientauthentication "k8s.io/client-go/pkg/apis/clientauthentication"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gardenClient "github.com/gardener/gardenctl-v2/internal/gardenclient"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -73,22 +72,47 @@ func newUserBastionListPatcher(ctx context.Context, manager target.Manager) (bas
 }
 
 func (u *userBastionListPatcherImpl) List(ctx context.Context) ([]gardenoperationsv1alpha1.Bastion, error) {
-	authInfo, err := u.getAuthInfo(u.clientConfig)
+	authInfo, err := u.AuthInfo(u.clientConfig)
 	if err != nil {
 		return nil, fmt.Errorf("could not get authInfo: %w", err)
 	}
 
-	user, err := u.getCurrentUser(ctx, u.gardenClient, authInfo)
+	user, err := u.CurrentUser(ctx, u.gardenClient, authInfo)
 	if err != nil {
 		return nil, fmt.Errorf("could not get current user: %w", err)
 	}
 
-	listOption := u.targetAsListOption(u.target)
+	listOption := gardenClient.ProjectFilter{}
 
-	return u.getBastionsOfUser(ctx, user, u.gardenClient, listOption)
+	if u.target.ShootName() != "" {
+		listOption["spec.shootRef.name"] = u.target.ShootName()
+	}
+
+	if u.target.ProjectName() != "" {
+		listOption["project"] = u.target.ProjectName()
+	} else if u.target.SeedName() != "" {
+		listOption[gardencore.ShootSeedName] = u.target.SeedName()
+	}
+
+	var bastionsOfUser []gardenoperationsv1alpha1.Bastion
+
+	list, err := u.gardenClient.ListBastions(ctx, listOption)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, bastion := range list.Items {
+		if createdBy, ok := bastion.Annotations["gardener.cloud/created-by"]; ok {
+			if createdBy == user {
+				bastionsOfUser = append(bastionsOfUser, bastion)
+			}
+		}
+	}
+
+	return bastionsOfUser, nil
 }
 
-func (u *userBastionListPatcherImpl) getCurrentUser(ctx context.Context, gardenClient gardenClient.Client, authInfo *clientcmdapi.AuthInfo) (string, error) {
+func (u *userBastionListPatcherImpl) CurrentUser(ctx context.Context, gardenClient gardenClient.Client, authInfo *clientcmdapi.AuthInfo) (string, error) {
 	baseDir, err := clientcmdapi.MakeAbs(path.Dir(authInfo.LocationOfOrigin), "")
 	if err != nil {
 		return "", fmt.Errorf("Could not parse location of kubeconfig origin")
@@ -162,7 +186,7 @@ func (u *userBastionListPatcherImpl) getCurrentUser(ctx context.Context, gardenC
 	return "", fmt.Errorf("Could not detect current user")
 }
 
-func (u *userBastionListPatcherImpl) getAuthInfo(clientConfig clientcmd.ClientConfig) (*clientcmdapi.AuthInfo, error) {
+func (u *userBastionListPatcherImpl) AuthInfo(clientConfig clientcmd.ClientConfig) (*clientcmdapi.AuthInfo, error) {
 	rawConfig, err := clientConfig.RawConfig()
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve raw config: %w", err)
@@ -179,43 +203,6 @@ func (u *userBastionListPatcherImpl) getAuthInfo(clientConfig clientcmd.ClientCo
 	}
 
 	return authInfo, nil
-}
-
-func (u *userBastionListPatcherImpl) getBastionsOfUser(ctx context.Context, user string, gardenClient gardenClient.Client, bastionListOption client.ListOption) ([]gardenoperationsv1alpha1.Bastion, error) {
-	var bastionsOfUser []gardenoperationsv1alpha1.Bastion
-
-	list, err := gardenClient.ListBastions(ctx, bastionListOption)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, bastion := range list.Items {
-		// bastion := list.Items[i]
-		if createdBy, ok := bastion.Annotations["gardener.cloud/created-by"]; ok {
-			if createdBy == user {
-				bastionsOfUser = append(bastionsOfUser, bastion)
-			}
-		}
-	}
-
-	return bastionsOfUser, nil
-}
-
-// targetAsListOption is similiar to target.Target.AsListOption but for bastions.
-func (u *userBastionListPatcherImpl) targetAsListOption(target target.Target) client.ListOption {
-	opt := gardenClient.ProjectFilter{}
-
-	if target.ShootName() != "" {
-		opt["spec.shootRef.name"] = target.ShootName()
-	}
-
-	if target.ProjectName() != "" {
-		opt["project"] = target.ProjectName()
-	} else if target.SeedName() != "" {
-		opt[gardencore.ShootSeedName] = target.SeedName()
-	}
-
-	return opt
 }
 
 func (u *userBastionListPatcherImpl) Patch(ctx context.Context, newBastion, oldBastion *gardenoperationsv1alpha1.Bastion) error {

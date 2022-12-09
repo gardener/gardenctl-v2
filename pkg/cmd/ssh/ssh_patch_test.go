@@ -8,7 +8,6 @@ package ssh_test
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"time"
 
@@ -27,7 +26,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gcmocks "github.com/gardener/gardenctl-v2/internal/gardenclient/mocks"
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -401,7 +399,7 @@ var _ = Describe("SSH Patch Command", func() {
 	})
 
 	Describe("bastionListPatcher", func() {
-		Describe("GetCurrentUser", func() {
+		Describe("CurrentUser", func() {
 			var patchLister *ssh.TestUserBastionListPatcherImpl
 
 			BeforeEach(func() {
@@ -428,7 +426,7 @@ var _ = Describe("SSH Patch Command", func() {
 				}
 				gardenClient.EXPECT().CreateTokenReview(gomock.Eq(ctx), gomock.Eq(token)).Return(reviewResult, nil).Times(1)
 
-				username, err := patchLister.GetCurrentUser(ctx, gardenClient, &clientcmdapi.AuthInfo{
+				username, err := patchLister.CurrentUser(ctx, gardenClient, &clientcmdapi.AuthInfo{
 					Token: token,
 				})
 
@@ -437,31 +435,11 @@ var _ = Describe("SSH Patch Command", func() {
 			})
 
 			It("Should return the user when a client certificate is used", func() {
-				username, err := patchLister.GetCurrentUser(ctx, gardenClient, &clientcmdapi.AuthInfo{
+				username, err := patchLister.CurrentUser(ctx, gardenClient, &clientcmdapi.AuthInfo{
 					ClientCertificateData: sampleClientCertficate,
 				})
 				Expect(err).To(BeNil())
 				Expect(username).To(Equal(defaultUserName))
-			})
-		})
-
-		Describe("targetAsListOption", func() {
-			var patchLister *ssh.TestUserBastionListPatcherImpl
-
-			BeforeEach(func() {
-				patchLister = ssh.NewTestUserBastionPatchLister(manager)
-			})
-
-			It("should find bastions of current user", func() {
-				target := target.NewTarget(gardenName, testProject.Name, testSeed.Name, testShoot.Name)
-				listOption := patchLister.TargetAsListOption(target)
-				listOptions := &client.ListOptions{}
-
-				listOption.ApplyToList(listOptions)
-
-				selectorStr := listOptions.FieldSelector.String()
-				Expect(selectorStr).To(ContainSubstring(fmt.Sprintf("spec.shootRef.name=%s", testShoot.Name)))
-				Expect(selectorStr).To(ContainSubstring(fmt.Sprintf("project=%s", testProject.Name)))
 			})
 		})
 	})
