@@ -768,7 +768,7 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 
 		lastCheckErr = bastionAvailabilityChecker(preferredBastionAddress(bastion), privateKeyBytes)
 		if lastCheckErr != nil {
-			fmt.Fprintf(o.IOStreams.ErrOut, "Still waiting: Bastion is ready, waiting to establish an ssh connection with bastion: %v\n", lastCheckErr)
+			fmt.Fprintf(o.IOStreams.ErrOut, "Still waiting: Bastion is ready, however cannot connect to bastion yet: %v\n", lastCheckErr)
 			return false, nil
 		}
 
