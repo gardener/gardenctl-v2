@@ -189,7 +189,7 @@ func initConfig(f *util.FactoryImpl) {
 	f.GardenHomeDirectory = home
 }
 
-// addKlogFlags adds flags from k8s.io/klog
+// addKlogFlags adds flags from k8s.io/klog.
 func addKlogFlags(fs *pflag.FlagSet) {
 	local := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	klog.InitFlags(local)

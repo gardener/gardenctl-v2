@@ -25,13 +25,14 @@ func RegisterTargetFlagCompletionFuncs(cmd *cobra.Command, factory util.Factory,
 	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(factory, ioStreams, shootFlagCompletionFunc)))
 }
 
-type cobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
-type cobraCompletionFuncWithError func(ctx context.Context, manager target.Manager) ([]string, error)
+type (
+	cobraCompletionFunc          func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
+	cobraCompletionFuncWithError func(ctx context.Context, manager target.Manager) ([]string, error)
+)
 
 func completionWrapper(factory util.Factory, ioStreams util.IOStreams, completionFunc cobraCompletionFuncWithError) cobraCompletionFunc {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		manager, err := factory.Manager()
-
 		if err != nil {
 			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
 			return nil, cobra.ShellCompDirectiveNoFileComp

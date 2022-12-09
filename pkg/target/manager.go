@@ -737,7 +737,7 @@ func (m *managerImpl) ProjectNames(ctx context.Context) ([]string, error) {
 	return names.List(), nil
 }
 
-// GardenNames returns all names of configured Gardens
+// GardenNames returns all names of configured Gardens.
 func (m *managerImpl) GardenNames() ([]string, error) {
 	config := m.Configuration()
 	if config == nil {
