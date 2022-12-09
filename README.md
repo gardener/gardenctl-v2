@@ -28,7 +28,11 @@ Attention `brew` users: `gardenctl-v2` uses the same binary name as the legacy `
 
 ### Install from Github Release
 
-If you install via GitHub releases, you need to put the `gardenctl` binary on your path. The other install methods do this for you.
+If you install via GitHub releases, you need to 
+- put the `gardenctl` binary on your path 
+- and [install gardenlogin](https://github.com/gardener/gardenlogin#installation). 
+
+The other install methods do this for you.
 
 ```bash
 # Example for macOS
