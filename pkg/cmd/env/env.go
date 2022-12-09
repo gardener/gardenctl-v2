@@ -54,13 +54,13 @@ here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
 		Aliases: []string{"p-env", "cloud-env"},
 	}
 
-	pflags := cmd.PersistentFlags()
-	o.AddFlags(pflags)
+	persistentFlags := cmd.PersistentFlags()
+	o.AddFlags(persistentFlags)
 
 	manager, err := f.Manager()
 	utilruntime.Must(err)
-	manager.TargetFlags().AddFlags(pflags)
-	flags.RegisterTargetFlagCompletionFuncs(cmd, f, ioStreams, pflags)
+	manager.TargetFlags().AddFlags(persistentFlags)
+	flags.RegisterTargetFlagCompletionFuncs(cmd, f, ioStreams, persistentFlags)
 
 	for _, s := range validShells {
 		cmd.AddCommand(&cobra.Command{

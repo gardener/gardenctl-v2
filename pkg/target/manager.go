@@ -32,11 +32,11 @@ var (
 	ErrAborted                       = errors.New("operation aborted")
 )
 
-// AutoCompletionsFuncs provides a set of functions that lists suitable values for
+// FlagCompletors provides a set of functions that lists suitable completion values for
 // targeting while taking the currently targeted garden account.
-// In case the manager gets refactored/split up these functions should stay together.
-type AutoCompletionsFuncs interface {
+type FlagCompletors interface {
 	// ShootNames returns all shoots for the current target.
+	// The current target must at least point to a garden.
 	ShootNames(ctx context.Context) ([]string, error)
 	// SeedNames returns all seeds for the current target.
 	// The current target must at least point to a garden.
@@ -44,7 +44,7 @@ type AutoCompletionsFuncs interface {
 	// ProjectNames returns all projects for the currently targeted garden.
 	// The current target must at least point to a garden.
 	ProjectNames(ctx context.Context) ([]string, error)
-	// GardenNames returns all names of configured Gardens
+	// GardenNames returns all names of configured Gardens.
 	GardenNames() ([]string, error)
 }
 
@@ -52,7 +52,7 @@ type AutoCompletionsFuncs interface {
 
 // Manager sets and gets the current target configuration.
 type Manager interface {
-	AutoCompletionsFuncs
+	FlagCompletors
 
 	// CurrentTarget contains the current target configuration
 	CurrentTarget() (Target, error)

@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener contributors
+SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and Gardener contributors
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -28,7 +28,7 @@ func RegisterTargetFlagCompletionFuncs(cmd *cobra.Command, factory util.Factory,
 type cobraCompletionFunc func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
 type cobraCompletionFuncWithError func(ctx context.Context, manager target.Manager) ([]string, error)
 
-func completionWrapper(factory util.Factory, ioStreams util.IOStreams, completerFunc cobraCompletionFuncWithError) cobraCompletionFunc {
+func completionWrapper(factory util.Factory, ioStreams util.IOStreams, completionFunc cobraCompletionFuncWithError) cobraCompletionFunc {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		manager, err := factory.Manager()
 
@@ -37,7 +37,7 @@ func completionWrapper(factory util.Factory, ioStreams util.IOStreams, completer
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
-		result, err := completerFunc(factory.Context(), manager)
+		result, err := completionFunc(factory.Context(), manager)
 		if err != nil {
 			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
 			return nil, cobra.ShellCompDirectiveNoFileComp

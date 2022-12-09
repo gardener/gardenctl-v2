@@ -613,9 +613,7 @@ var _ = Describe("Target Manager", func() {
 		})
 	})
 
-	Context("AutoCompletionsFuncs", func() {
-		// var clientConfig clientcmd.ClientConfig
-
+	Context("FlagCompletors", func() {
 		BeforeEach(func() {
 			cfg = &config.Config{
 				LinkKubeconfig: pointer.Bool(false),
