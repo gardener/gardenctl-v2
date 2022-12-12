@@ -11,19 +11,13 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 )
 
-type completions struct{}
-
-func newCompletions() *completions {
-	return &completions{}
-}
-
-func (c *completions) GetBastionNameCompletions(f util.Factory, cmd *cobra.Command, prefix string) ([]string, error) {
+func GetBastionNameCompletions(f util.Factory, cmd *cobra.Command, prefix string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(f.Context(), 30*time.Second)
 	defer cancel()
 
 	manager, err := f.Manager()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get manager: %w", err)
+		return nil, fmt.Errorf("failed to get manager: %w", err)
 	}
 
 	userBastionLister, err := newUserBastionListPatcher(ctx, manager)

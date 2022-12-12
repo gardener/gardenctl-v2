@@ -16,10 +16,10 @@ func NewCmdSSHPatch(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 		Use:   "ssh-patch [BASTION_NAME]",
 		Short: "Update a bastion host previously created through the ssh command",
 		Example: `# Update CIDRs on one of your bastion hosts. You can specify multiple CIDRs.
-		gardenctl ssh-patch cli-xxxxxxxx --cidr 10.1.2.3/20 --cidr dead:beaf::/64
-		
-		# You can also omit the CIDR-flag and your system's public IPs (v4 and v6) will be auto-detected.
-		gardenctl ssh-patch cli-xxxxxxxx`,
+gardenctl ssh-patch cli-xxxxxxxx --cidr 10.1.2.3/20 --cidr dead:beaf::/64
+
+# You can also omit the CIDR-flag and your system's public IPs (v4 and v6) will be auto-detected.
+gardenctl ssh-patch cli-xxxxxxxx`,
 		Args: cobra.RangeArgs(0, 1),
 		RunE: base.WrapRunE(o, f),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -27,8 +27,7 @@ func NewCmdSSHPatch(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			c := newCompletions()
-			bastionNames, err := c.GetBastionNameCompletions(f, cmd, toComplete)
+			bastionNames, err := GetBastionNameCompletions(f, cmd, toComplete)
 			if err != nil {
 				fmt.Fprintln(o.IOStreams.ErrOut, err.Error())
 				return nil, cobra.ShellCompDirectiveNoFileComp

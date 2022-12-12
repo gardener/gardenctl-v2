@@ -18,7 +18,7 @@ import (
 )
 
 type options struct {
-	ssh.BaseOptions
+	ssh.AccessConfig
 
 	// Bastion is the Bastion corresponding to the provided BastionName
 	Bastion *gardenoperationsv1alpha1.Bastion
@@ -29,7 +29,7 @@ type options struct {
 
 func newOptions(ioStreams util.IOStreams) *options {
 	return &options{
-		BaseOptions: ssh.BaseOptions{
+		AccessConfig: ssh.AccessConfig{
 			Options: base.Options{
 				IOStreams: ioStreams,
 			},
@@ -75,7 +75,7 @@ func (o *options) patchBastionIngress(ctx context.Context) error {
 
 	err := o.bastionPatcher.Patch(ctx, o.Bastion, oldBastion)
 	if err != nil {
-		return fmt.Errorf("Failed to patch bastion ingress: %w", err)
+		return fmt.Errorf("failed to patch bastion ingress: %w", err)
 	}
 
 	return nil
@@ -111,7 +111,7 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 
 	o.bastionPatcher = bastionListPatcher
 
-	if err := o.BaseOptions.Complete(f, cmd, args); err != nil {
+	if err := o.AccessConfig.Complete(f, cmd, args); err != nil {
 		return err
 	}
 
@@ -144,7 +144,7 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 		}
 
 		if o.Bastion == nil {
-			return fmt.Errorf("Bastion %q for current user not found", o.Bastion.Name)
+			return fmt.Errorf("bastion %q for current user not found", o.Bastion.Name)
 		}
 	}
 
@@ -152,12 +152,12 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 }
 
 func (o *options) Validate() error {
-	if err := o.BaseOptions.Validate(); err != nil {
+	if err := o.AccessConfig.Validate(); err != nil {
 		return err
 	}
 
 	if o.Bastion == nil {
-		return fmt.Errorf("Bastion is required")
+		return fmt.Errorf("bastion is required")
 	}
 
 	return nil

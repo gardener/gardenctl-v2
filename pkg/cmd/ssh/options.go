@@ -156,7 +156,7 @@ var (
 //
 //nolint:revive
 type SSHOptions struct {
-	BaseOptions
+	AccessConfig
 	// Interactive can be used to toggle between gardenctl just
 	// providing the bastion host while keeping it alive (non-interactive),
 	// or gardenctl opening the SSH connection itself (interactive). For
@@ -193,7 +193,7 @@ type SSHOptions struct {
 // NewSSHOptions returns initialized SSHOptions.
 func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 	return &SSHOptions{
-		BaseOptions: BaseOptions{
+		AccessConfig: AccessConfig{
 			Options: base.Options{
 				IOStreams: ioStreams,
 			},
@@ -206,7 +206,7 @@ func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 
 // Complete adapts from the command line args to the data required.
 func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	if err := o.BaseOptions.Complete(f, cmd, args); err != nil {
+	if err := o.AccessConfig.Complete(f, cmd, args); err != nil {
 		return err
 	}
 

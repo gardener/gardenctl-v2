@@ -238,7 +238,7 @@ var _ = Describe("SSH Patch Command", func() {
 			Describe("Auto-completion of the bastion name when it is not provided by user", func() {
 				It("should fail if no bastions created by current user exist", func() {
 					o := sshpatch.NewTestOptions()
-					cmd := sshpatch.NewCmdSSHPatch(factory, o.Streams)
+					cmd := sshpatch.NewCmdSSHPatch(factory, o.IOStreams)
 
 					fakeBastionList := &gardenoperationsv1alpha1.BastionList{
 						Items: []gardenoperationsv1alpha1.Bastion{
@@ -257,7 +257,7 @@ var _ = Describe("SSH Patch Command", func() {
 
 				It("should succeed if exactly one bastion created by current user exists", func() {
 					o := sshpatch.NewTestOptions()
-					cmd := sshpatch.NewCmdSSHPatch(factory, o.Streams)
+					cmd := sshpatch.NewCmdSSHPatch(factory, o.IOStreams)
 
 					fakeBastionList := &gardenoperationsv1alpha1.BastionList{
 						Items: []gardenoperationsv1alpha1.Bastion{
@@ -281,7 +281,7 @@ var _ = Describe("SSH Patch Command", func() {
 
 				It("should fail if more then one bastion created by current user exists", func() {
 					o := sshpatch.NewTestOptions()
-					cmd := sshpatch.NewCmdSSHPatch(factory, o.Streams)
+					cmd := sshpatch.NewCmdSSHPatch(factory, o.IOStreams)
 
 					fakeBastionList := &gardenoperationsv1alpha1.BastionList{
 						Items: []gardenoperationsv1alpha1.Bastion{
@@ -305,7 +305,7 @@ var _ = Describe("SSH Patch Command", func() {
 				It("should succeed if the bastion with the name provided exists", func() {
 					bastionName := defaultUserName + "-bastion1"
 					o := sshpatch.NewTestOptions()
-					cmd := sshpatch.NewCmdSSHPatch(factory, o.Streams)
+					cmd := sshpatch.NewCmdSSHPatch(factory, o.IOStreams)
 
 					fakeBastionList := &gardenoperationsv1alpha1.BastionList{
 						Items: []gardenoperationsv1alpha1.Bastion{
@@ -345,7 +345,7 @@ var _ = Describe("SSH Patch Command", func() {
 				options = sshpatch.NewTestOptions()
 
 				o := sshpatch.NewTestOptions()
-				cmd = sshpatch.NewCmdSSHPatch(factory, o.Streams)
+				cmd = sshpatch.NewCmdSSHPatch(factory, o.IOStreams)
 
 				gardenClient.EXPECT().ListBastions(isCtx, gomock.Any()).Return(fakeBastionList, nil).Times(1)
 				clock.EXPECT().Now().Return(now).Times(1)
@@ -373,7 +373,6 @@ var _ = Describe("SSH Patch Command", func() {
 				prefix := "prefix1"
 				streams, _, _, _ := util.NewTestIOStreams()
 				cmd := sshpatch.NewCmdSSHPatch(factory, streams)
-				c := sshpatch.NewTestCompletions()
 
 				fakeBastionList := &gardenoperationsv1alpha1.BastionList{
 					Items: []gardenoperationsv1alpha1.Bastion{
@@ -388,7 +387,7 @@ var _ = Describe("SSH Patch Command", func() {
 
 				clock.EXPECT().Now().Return(now).AnyTimes()
 
-				completions, err := c.GetBastionNameCompletions(factory, cmd, prefix)
+				completions, err := sshpatch.GetBastionNameCompletions(factory, cmd, prefix)
 
 				Expect(err).To(BeNil(), "Should not return an error")
 				Expect(len(completions)).To(Equal(2), "should find two bastions with given prefix")

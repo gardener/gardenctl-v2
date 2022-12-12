@@ -35,8 +35,7 @@ func NewTestUserBastionPatchLister(manager target.Manager) *TestUserBastionListP
 
 type TestOptions struct {
 	options
-	Out     *util.SafeBytesBuffer
-	Streams util.IOStreams
+	Out *util.SafeBytesBuffer
 }
 
 func NewTestOptions() *TestOptions {
@@ -44,18 +43,12 @@ func NewTestOptions() *TestOptions {
 
 	return &TestOptions{
 		options: options{
-			BaseOptions: ssh.BaseOptions{
+			AccessConfig: ssh.AccessConfig{
 				Options: base.Options{
 					IOStreams: streams,
 				},
 			},
 		},
-		Out:     out,
-		Streams: streams,
+		Out: out,
 	}
-}
-
-//nolint:revive
-func NewTestCompletions() *completions {
-	return newCompletions()
 }

@@ -45,7 +45,7 @@ type userBastionListPatcherImpl struct {
 var _ bastionListPatcher = &userBastionListPatcherImpl{}
 
 // newUserBastionListPatcher creates a new bastionListPatcher which only lists bastions
-// of the current user
+// of the current user.
 func newUserBastionListPatcher(ctx context.Context, manager target.Manager) (bastionListPatcher, error) {
 	currentTarget, err := manager.CurrentTarget()
 	if err != nil {
@@ -115,26 +115,30 @@ func (u *userBastionListPatcherImpl) List(ctx context.Context) ([]gardenoperatio
 func (u *userBastionListPatcherImpl) CurrentUser(ctx context.Context, gardenClient gardenClient.Client, authInfo *clientcmdapi.AuthInfo) (string, error) {
 	baseDir, err := clientcmdapi.MakeAbs(path.Dir(authInfo.LocationOfOrigin), "")
 	if err != nil {
-		return "", fmt.Errorf("Could not parse location of kubeconfig origin")
+		return "", fmt.Errorf("could not parse location of kubeconfig origin")
 	}
 
-	if len(authInfo.ClientCertificateData) == 0 && len(authInfo.ClientCertificate) > 0 {
+	switch {
+	case len(authInfo.ClientCertificateData) == 0 && len(authInfo.ClientCertificate) > 0:
 		err := clientcmdapi.FlattenContent(&authInfo.ClientCertificate, &authInfo.ClientCertificateData, baseDir)
 		if err != nil {
 			return "", err
 		}
-	} else if len(authInfo.Token) == 0 && len(authInfo.TokenFile) > 0 {
-		var tmpValue = []byte{}
+	case len(authInfo.Token) == 0 && len(authInfo.TokenFile) > 0:
+		tmpValue := []byte{}
+
 		err := clientcmdapi.FlattenContent(&authInfo.TokenFile, &tmpValue, baseDir)
 		if err != nil {
 			return "", err
 		}
+
 		authInfo.Token = string(tmpValue)
-	} else if authInfo.Exec != nil && len(authInfo.Exec.Command) > 0 {
+	case authInfo.Exec != nil && len(authInfo.Exec.Command) > 0:
 		// The command originates from the users kubeconfig and is also executed when using kubectl.
 		// So it should be safe to execute it here as well.
-		execCmd := exec.Command(authInfo.Exec.Command, authInfo.Exec.Args...)
 		var out bytes.Buffer
+
+		execCmd := exec.Command(authInfo.Exec.Command, authInfo.Exec.Args...)
 		execCmd.Stdout = &out
 
 		err := execCmd.Run()
@@ -143,6 +147,7 @@ func (u *userBastionListPatcherImpl) CurrentUser(ctx context.Context, gardenClie
 		}
 
 		var execCredential clientauthentication.ExecCredential
+
 		err = json.Unmarshal(out.Bytes(), &execCredential)
 		if err != nil {
 			return "", err
@@ -158,7 +163,7 @@ func (u *userBastionListPatcherImpl) CurrentUser(ctx context.Context, gardenClie
 	if len(authInfo.ClientCertificateData) > 0 {
 		block, _ := pem.Decode(authInfo.ClientCertificateData) // does not return an error, just nil
 		if block == nil {
-			return "", fmt.Errorf("Could not decode PEM certificate")
+			return "", fmt.Errorf("could not decode PEM certificate")
 		}
 
 		cert, err := x509.ParseCertificate(block.Bytes)
@@ -183,7 +188,7 @@ func (u *userBastionListPatcherImpl) CurrentUser(ctx context.Context, gardenClie
 		}
 	}
 
-	return "", fmt.Errorf("Could not detect current user")
+	return "", fmt.Errorf("could not detect current user")
 }
 
 func (u *userBastionListPatcherImpl) AuthInfo(clientConfig clientcmd.ClientConfig) (*clientcmdapi.AuthInfo, error) {
