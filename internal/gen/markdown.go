@@ -10,12 +10,17 @@ import (
 	"log"
 	"os"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra/doc"
 
 	"github.com/gardener/gardenctl-v2/pkg/cmd"
 )
 
 func main() {
+	if _, ok := os.LookupEnv("GCTL_SESSION_ID"); !ok {
+		os.Setenv("GCTL_SESSION_ID", uuid.NewString())
+	}
+
 	gardenctl := cmd.NewDefaultGardenctlCommand()
 	gardenctl.DisableAutoGenTag = true
 

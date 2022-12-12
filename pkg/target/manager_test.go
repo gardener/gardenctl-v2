@@ -612,4 +612,105 @@ var _ = Describe("Target Manager", func() {
 			})
 		})
 	})
+
+	Context("FlagCompletors", func() {
+		BeforeEach(func() {
+			cfg = &config.Config{
+				LinkKubeconfig: pointer.Bool(false),
+				Gardens: []config.Garden{
+					{
+						Name:       "garden1",
+						Kubeconfig: gardenKubeconfig,
+					},
+					{
+						Name:       "garden2",
+						Kubeconfig: gardenKubeconfig,
+					},
+					{
+						Name:       gardenName,
+						Kubeconfig: gardenKubeconfig,
+					},
+				},
+			}
+		})
+
+		Describe("List garden names", func() {
+			It("should return the list of gardens from the configuration file", func() {
+				t := target.NewTarget("", "", "", "")
+				manager, _ := createTestManager(t, cfg, clientProvider)
+				gardenNames, err := manager.GardenNames()
+
+				Expect(err).To(Succeed(), "GardenNames should not error")
+				Expect(gardenNames).To(HaveLen(3))
+				Expect(gardenNames[0]).To(Equal(cfg.Gardens[0].Name))
+				Expect(gardenNames[1]).To(Equal(cfg.Gardens[1].Name))
+				Expect(gardenNames[2]).To(Equal(cfg.Gardens[2].Name))
+			})
+		})
+
+		Describe("List project names", func() {
+			It("should return the list of projects for the current garden", func() {
+				t := target.NewTarget(gardenName, "", "", "")
+				manager, _ := createTestManager(t, cfg, clientProvider)
+				projectNames, err := manager.ProjectNames(ctx)
+
+				Expect(err).To(Succeed())
+				Expect(projectNames).To(HaveLen(3))
+				Expect(projectNames[0]).To(Equal(prod1Project.Name))
+			})
+
+			It("should fail if no garden is targeted", func() {
+				t := target.NewTarget("", "", "", "")
+				manager, _ := createTestManager(t, cfg, clientProvider)
+				projectNames, err := manager.ProjectNames(ctx)
+
+				Expect(err).ToNot(Succeed())
+				Expect(projectNames).To(BeNil())
+			})
+		})
+
+		Describe("List seed names", func() {
+			It("should return the list of seeds for the current garden", func() {
+				t := target.NewTarget(gardenName, "", "", "")
+				manager, _ := createTestManager(t, cfg, clientProvider)
+				seedNames, err := manager.SeedNames(ctx)
+
+				Expect(err).To(Succeed())
+				Expect(seedNames).To(HaveLen(1))
+				Expect(seedNames[0]).To(Equal(seed.Name))
+			})
+
+			It("should fail if no garden is targeted", func() {
+				t := target.NewTarget("", "", "", "")
+				manager, _ := createTestManager(t, cfg, clientProvider)
+				seedNames, err := manager.SeedNames(ctx)
+
+				Expect(err).ToNot(Succeed())
+				Expect(seedNames).To(BeNil())
+			})
+		})
+
+		Describe("List shoot names", func() {
+			It("should return the list of shoots for the current garden", func() {
+				t := target.NewTarget(gardenName, "", "", "")
+				manager, _ := createTestManager(t, cfg, clientProvider)
+				shootNames, err := manager.ShootNames(ctx)
+
+				Expect(err).To(Succeed())
+				Expect(shootNames).To(HaveLen(3))
+				Expect(shootNames[0]).To(Equal(prod1AmbiguousShoot.Name))
+				Expect(shootNames[1]).To(Equal(prod1GoldenShoot.Name))
+				Expect(shootNames[2]).To(Equal(prod1PendingShoot.Name))
+			})
+
+			It("should fail if no garden is targeted", func() {
+				t := target.NewTarget("", "", "", "")
+				manager, _ := createTestManager(t, cfg, clientProvider)
+				shootNames, err := manager.ShootNames(ctx)
+
+				Expect(err).ToNot(Succeed())
+				Expect(shootNames).To(BeNil())
+			})
+		})
+	})
 })

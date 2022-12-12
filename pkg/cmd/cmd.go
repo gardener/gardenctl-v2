@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package cmd
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -17,7 +16,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 
@@ -115,11 +113,6 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 	// the reason the user chose to specify an explicit config file).
 	flags.StringVar(&f.ConfigFile, "config", "", fmt.Sprintf("config file (default is %s)", filepath.Join("~", gardenHomeFolder, configName+"."+configExtension)))
 
-	// allow to temporarily re-target a different cluster
-	f.TargetFlags.AddFlags(flags)
-
-	registerCompletionFuncForGlobalFlags(cmd, f, ioStreams)
-
 	// add subcommands
 	cmd.AddCommand(cmdssh.NewCmdSSH(f, cmdssh.NewSSHOptions(ioStreams)))
 	cmd.AddCommand(cmdtarget.NewCmdTarget(f, ioStreams))
@@ -194,52 +187,6 @@ func initConfig(f *util.FactoryImpl) {
 	}
 
 	f.GardenHomeDirectory = home
-}
-
-func registerCompletionFuncForGlobalFlags(cmd *cobra.Command, f *util.FactoryImpl, ioStreams util.IOStreams) {
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(f, ioStreams, gardenFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(f, ioStreams, projectFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(f, ioStreams, seedFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(f, ioStreams, shootFlagCompletionFunc)))
-}
-
-type (
-	cobraCompletionFunc          func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
-	cobraCompletionFuncWithError func(ctx context.Context, manager target.Manager) ([]string, error)
-)
-
-func completionWrapper(f *util.FactoryImpl, ioStreams util.IOStreams, completer cobraCompletionFuncWithError) cobraCompletionFunc {
-	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		manager, err := f.Manager()
-		if err != nil {
-			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-
-		result, err := completer(f.Context(), manager)
-		if err != nil {
-			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-
-		return util.FilterStringsByPrefix(toComplete, result), cobra.ShellCompDirectiveNoFileComp
-	}
-}
-
-func gardenFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
-	return util.GardenNames(manager)
-}
-
-func projectFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
-	return util.ProjectNamesForTarget(ctx, manager)
-}
-
-func seedFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
-	return util.SeedNamesForTarget(ctx, manager)
-}
-
-func shootFlagCompletionFunc(ctx context.Context, manager target.Manager) ([]string, error) {
-	return util.ShootNamesForTarget(ctx, manager)
 }
 
 // addKlogFlags adds flags from k8s.io/klog.

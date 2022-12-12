@@ -11,7 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
-
+	
 	gardenclient "github.com/gardener/gardenctl-v2/internal/gardenclient"
 	config "github.com/gardener/gardenctl-v2/pkg/config"
 	target "github.com/gardener/gardenctl-v2/pkg/target"
@@ -99,6 +99,36 @@ func (mr *MockManagerMockRecorder) GardenClient(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GardenClient", reflect.TypeOf((*MockManager)(nil).GardenClient), arg0)
 }
 
+// GardenNames mocks base method.
+func (m *MockManager) GardenNames() ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GardenNames")
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GardenNames indicates an expected call of GardenNames.
+func (mr *MockManagerMockRecorder) GardenNames() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GardenNames", reflect.TypeOf((*MockManager)(nil).GardenNames))
+}
+
+// ProjectNames mocks base method.
+func (m *MockManager) ProjectNames(arg0 context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ProjectNames", arg0)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ProjectNames indicates an expected call of ProjectNames.
+func (mr *MockManagerMockRecorder) ProjectNames(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProjectNames", reflect.TypeOf((*MockManager)(nil).ProjectNames), arg0)
+}
+
 // SeedClient mocks base method.
 func (m *MockManager) SeedClient(arg0 context.Context, arg1 target.Target) (client.Client, error) {
 	m.ctrl.T.Helper()
@@ -112,6 +142,21 @@ func (m *MockManager) SeedClient(arg0 context.Context, arg1 target.Target) (clie
 func (mr *MockManagerMockRecorder) SeedClient(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SeedClient", reflect.TypeOf((*MockManager)(nil).SeedClient), arg0, arg1)
+}
+
+// SeedNames mocks base method.
+func (m *MockManager) SeedNames(arg0 context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SeedNames", arg0)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SeedNames indicates an expected call of SeedNames.
+func (mr *MockManagerMockRecorder) SeedNames(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SeedNames", reflect.TypeOf((*MockManager)(nil).SeedNames), arg0)
 }
 
 // SessionDir mocks base method.
@@ -141,6 +186,21 @@ func (m *MockManager) ShootClient(arg0 context.Context, arg1 target.Target) (cli
 func (mr *MockManagerMockRecorder) ShootClient(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShootClient", reflect.TypeOf((*MockManager)(nil).ShootClient), arg0, arg1)
+}
+
+// ShootNames mocks base method.
+func (m *MockManager) ShootNames(arg0 context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ShootNames", arg0)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ShootNames indicates an expected call of ShootNames.
+func (mr *MockManagerMockRecorder) ShootNames(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShootNames", reflect.TypeOf((*MockManager)(nil).ShootNames), arg0)
 }
 
 // TargetControlPlane mocks base method.

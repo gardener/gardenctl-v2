@@ -11,9 +11,11 @@ import (
 	"runtime"
 
 	"github.com/spf13/cobra"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/flags"
 )
 
 // NewCmdProviderEnv returns a new provider-env command.
@@ -51,7 +53,14 @@ Please refer to the templates of the already supported cloud providers which can
 here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.`,
 		Aliases: []string{"p-env", "cloud-env"},
 	}
-	o.AddFlags(cmd.PersistentFlags())
+
+	persistentFlags := cmd.PersistentFlags()
+	o.AddFlags(persistentFlags)
+
+	manager, err := f.Manager()
+	utilruntime.Must(err)
+	manager.TargetFlags().AddFlags(persistentFlags)
+	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, persistentFlags)
 
 	for _, s := range validShells {
 		cmd.AddCommand(&cobra.Command{

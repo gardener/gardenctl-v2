@@ -11,11 +11,3 @@ const (
 	EnvSessionID     = envPrefix + "_SESSION_ID"
 	ConfigName       = configName
 )
-
-var (
-	ShootFlagCompletionFunc   = shootFlagCompletionFunc
-	SeedFlagCompletionFunc    = seedFlagCompletionFunc
-	ProjectFlagCompletionFunc = projectFlagCompletionFunc
-	GardenFlagCompletionFunc  = gardenFlagCompletionFunc
-	CompletionWrapper         = completionWrapper
-)
