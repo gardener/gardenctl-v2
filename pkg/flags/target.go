@@ -18,7 +18,7 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
-func RegisterTargetFlagCompletionFuncs(cmd *cobra.Command, factory util.Factory, ioStreams util.IOStreams, flags *pflag.FlagSet) {
+func RegisterCompletionFuncsForTargetFlags(cmd *cobra.Command, factory util.Factory, ioStreams util.IOStreams, flags *pflag.FlagSet) {
 	utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(factory, ioStreams, gardenFlagCompletionFunc)))
 	utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(factory, ioStreams, projectFlagCompletionFunc)))
 	utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(factory, ioStreams, seedFlagCompletionFunc)))

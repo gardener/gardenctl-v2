@@ -49,7 +49,7 @@ func NewCmdSSH(f util.Factory, o *SSHOptions) *cobra.Command {
 	manager, err := f.Manager()
 	utilruntime.Must(err)
 	manager.TargetFlags().AddFlags(cmd.Flags())
-	flags.RegisterTargetFlagCompletionFuncs(cmd, f, o.IOStreams, cmd.Flags())
+	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, o.IOStreams, cmd.Flags())
 
 	registerCompletionFuncForFlags(cmd, f, o.IOStreams)
 

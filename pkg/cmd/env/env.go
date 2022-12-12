@@ -60,7 +60,7 @@ here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
 	manager, err := f.Manager()
 	utilruntime.Must(err)
 	manager.TargetFlags().AddFlags(persistentFlags)
-	flags.RegisterTargetFlagCompletionFuncs(cmd, f, ioStreams, persistentFlags)
+	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, persistentFlags)
 
 	for _, s := range validShells {
 		cmd.AddCommand(&cobra.Command{

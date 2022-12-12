@@ -51,7 +51,7 @@ gardenctl kubeconfig --garden my-garden --project my-project`,
 	manager, err := f.Manager()
 	utilruntime.Must(err)
 	manager.TargetFlags().AddFlags(cmd.Flags())
-	flags.RegisterTargetFlagCompletionFuncs(cmd, f, ioStreams, cmd.Flags())
+	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, cmd.Flags())
 
 	utilruntime.Must(cmd.RegisterFlagCompletionFunc("output", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return o.PrintFlags.AllowedFormats(), cobra.ShellCompDirectiveNoFileComp
