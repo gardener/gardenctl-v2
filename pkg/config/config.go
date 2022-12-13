@@ -18,6 +18,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/klog/v2"
 
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 )
@@ -36,6 +37,9 @@ type Config struct {
 type Garden struct {
 	// Name is a unique identifier of this Garden that can be used to target this Garden
 	Name string `yaml:"identity" json:"identity"`
+	// Alias is a unique identifier of this Garden that can be used as an alternate name to target this Garden
+	// +optional
+	Alias string `yaml:"name,omitempty" json:"name,omitempty"`
 	// Kubeconfig holds the path for the kubeconfig of the garden cluster
 	Kubeconfig string `yaml:"kubeconfig" json:"kubeconfig"`
 	// Context overrides the current-context of the garden cluster kubeconfig
@@ -96,7 +100,36 @@ func LoadFromFile(filename string) (*Config, error) {
 		config.LinkKubeconfig = &val
 	}
 
+	config.validate()
+
 	return config, nil
+}
+
+// validate checks the config for ambiguous definitions and prints warnings to the user.
+func (config *Config) validate() {
+	seen := make(map[string]bool, len(config.Gardens))
+
+	for i := range config.Gardens {
+		garden := config.Gardens[i]
+
+		if logged, ok := seen[garden.Name]; ok && !logged {
+			klog.Warningf("identity and alias should be unique but %q was found multiple times in gardenctl configuration", garden.Name)
+
+			seen[garden.Name] = true
+		} else if !ok {
+			seen[garden.Name] = false
+		}
+
+		if garden.Alias != "" && garden.Alias != garden.Name {
+			if logged, ok := seen[garden.Alias]; ok && !logged {
+				klog.Warningf("identity and alias should be unique but %q was found multiple times in gardenctl configuration", garden.Alias)
+
+				seen[garden.Alias] = true
+			} else if !ok {
+				seen[garden.Alias] = false
+			}
+		}
+	}
 }
 
 // SymlinkTargetKubeconfig indicates if the kubeconfig of the current target should be always symlinked.
@@ -148,14 +181,32 @@ func (config *Config) GardenNames() []string {
 	return names
 }
 
-// Garden returns a Garden cluster from the list of configured Gardens.
+// Garden returns the matching Garden cluster by name (identity or alias) from the list
+// of configured Gardens. In case of ambigous names the first match is returned and identity is
+// preferred over alias.
 func (config *Config) Garden(name string) (*Garden, error) {
-	i, ok := config.IndexOfGarden(name)
-	if !ok {
-		return nil, fmt.Errorf("garden %q is not defined in gardenctl configuration", name)
+	if name == "" {
+		return nil, fmt.Errorf("garden name or alias cannot be empty")
 	}
 
-	return &config.Gardens[i], nil
+	var firstMatchByAlias *Garden
+
+	for idx := range config.Gardens {
+		cfg := &config.Gardens[idx]
+		if name == cfg.Name {
+			return cfg, nil
+		}
+
+		if firstMatchByAlias == nil && name == cfg.Alias {
+			firstMatchByAlias = cfg
+		}
+	}
+
+	if firstMatchByAlias != nil {
+		return firstMatchByAlias, nil
+	}
+
+	return nil, fmt.Errorf("garden %q is not defined in gardenctl configuration", name)
 }
 
 // ClientConfig returns a deferred loading client config for a configured garden cluster.

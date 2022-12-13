@@ -59,6 +59,9 @@ type setGardenOptions struct {
 	Configuration *config.Config
 	// Name is a unique name of this Garden that can be used to target this Garden
 	Name string
+	// Alias is a unique alias of this Garden that can be used to target this Garden
+	// +optional
+	Alias flag.StringFlag
 	// KubeconfigFlag is the path to the kubeconfig file of the Garden cluster
 	KubeconfigFlag flag.StringFlag
 	// ContextFlag Overrides the current-context of the garden cluster kubeconfig
@@ -104,6 +107,7 @@ func (o *setGardenOptions) Validate() error {
 func (o *setGardenOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.Var(&o.KubeconfigFlag, "kubeconfig", "path to kubeconfig file for this Garden cluster")
 	flags.Var(&o.ContextFlag, "context", "override the current-context of the garden cluster kubeconfig")
+	flags.Var(&o.Alias, "alias", "unique alias of this Garden that can be used instead of the name to target this Garden")
 	flags.StringArrayVar(&o.Patterns, "pattern", nil, `define regex match patterns for this garden for custom input formats for targeting.
 Use named capturing groups to match target values.
 Supported capturing groups: project, namespace, shoot.
@@ -123,6 +127,10 @@ func (o *setGardenOptions) Run(_ util.Factory) error {
 			garden.Context = o.ContextFlag.Value()
 		}
 
+		if o.Alias.Provided() {
+			garden.Alias = o.Alias.Value()
+		}
+
 		if o.Patterns != nil {
 			firstPattern := o.Patterns[0]
 			if len(firstPattern) > 0 {
@@ -136,6 +144,7 @@ func (o *setGardenOptions) Run(_ util.Factory) error {
 			Name:       o.Name,
 			Kubeconfig: o.KubeconfigFlag.Value(),
 			Context:    o.ContextFlag.Value(),
+			Alias:      o.Alias.Value(),
 			Patterns:   o.Patterns,
 		})
 	}

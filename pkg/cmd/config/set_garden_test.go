@@ -29,7 +29,7 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 			Expect(cmd.Use).To(Equal("set-garden"))
 			Expect(cmd.ValidArgsFunction).NotTo(BeNil())
 			Expect(cmd.ValidArgs).To(BeNil())
-			assertAllFlagNames(cmd.Flags(), "context", "kubeconfig", "pattern")
+			assertAllFlagNames(cmd.Flags(), "alias", "context", "kubeconfig", "pattern")
 		})
 	})
 
