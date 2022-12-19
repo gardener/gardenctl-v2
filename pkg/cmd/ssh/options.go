@@ -156,8 +156,7 @@ var (
 //
 //nolint:revive
 type SSHOptions struct {
-	base.Options
-
+	AccessConfig
 	// Interactive can be used to toggle between gardenctl just
 	// providing the bastion host while keeping it alive (non-interactive),
 	// or gardenctl opening the SSH connection itself (interactive). For
@@ -168,15 +167,6 @@ type SSHOptions struct {
 	// connect to. If this is left empty, gardenctl will only establish the
 	// bastion host, but leave it up to the user to SSH themselves.
 	NodeName string
-
-	// CIDRs is a list of IP address ranges to be allowed for accessing the
-	// created Bastion host. If not given, gardenctl will attempt to
-	// auto-detect the user's IP and allow only it (i.e. use a /32 netmask).
-	CIDRs []string
-
-	// AutoDetected indicates if the public IPs of the user were automatically detected.
-	// AutoDetected is false in case the CIDRs were provided via flags.
-	AutoDetected bool
 
 	// SSHPublicKeyFile is the full path to the file containing the user's
 	// public SSH key. If not given, gardenctl will create a new temporary keypair.
@@ -203,8 +193,10 @@ type SSHOptions struct {
 // NewSSHOptions returns initialized SSHOptions.
 func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 	return &SSHOptions{
-		Options: base.Options{
-			IOStreams: ioStreams,
+		AccessConfig: AccessConfig{
+			Options: base.Options{
+				IOStreams: ioStreams,
+			},
 		},
 		Interactive: true,
 		WaitTimeout: 10 * time.Minute,
@@ -214,29 +206,8 @@ func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 
 // Complete adapts from the command line args to the data required.
 func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	if len(o.CIDRs) == 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-		defer cancel()
-
-		publicIPs, err := f.PublicIPs(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to determine your system's public IP addresses: %w", err)
-		}
-
-		cidrs := []string{}
-		for _, ip := range publicIPs {
-			cidrs = append(cidrs, ipToCIDR(ip))
-		}
-
-		name := "CIDR"
-		if len(cidrs) != 1 {
-			name = "CIDRs"
-		}
-
-		fmt.Fprintf(o.IOStreams.Out, "Auto-detected your system's %s as %s\n", name, strings.Join(cidrs, ", "))
-
-		o.CIDRs = cidrs
-		o.AutoDetected = true
+	if err := o.AccessConfig.Complete(f, cmd, args); err != nil {
+		return err
 	}
 
 	if len(o.SSHPublicKeyFile) == 0 {

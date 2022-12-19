@@ -15,7 +15,9 @@ import (
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardenoperationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
+	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,6 +81,14 @@ type Client interface {
 	GetConfigMap(ctx context.Context, namespace, name string) (*corev1.ConfigMap, error)
 	// GetShootOfManagedSeed returns shoot of seed using ManagedSeed resource, nil if not a managed seed
 	GetShootOfManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.Shoot, error)
+
+	// ListBastions returns all Gardener bastion resources, filtered by a list option
+	ListBastions(ctx context.Context, opts ...client.ListOption) (*gardenoperationsv1alpha1.BastionList, error)
+	// PatchBastion patches an existing bastion to match newBastion using the merge patch strategy
+	PatchBastion(ctx context.Context, newBastion, oldBastion *gardenoperationsv1alpha1.Bastion) error
+
+	// Creates a token review for a user with token authentication
+	CreateTokenReview(ctx context.Context, token string) (*authenticationv1.TokenReview, error)
 
 	// RuntimeClient returns the underlying kubernetes runtime client
 	// TODO: Remove this when we switched all APIs to the new gardenclient
@@ -282,6 +292,38 @@ func (g *clientImpl) GetShootOfManagedSeed(ctx context.Context, name string) (*s
 	return managedSeed.Spec.Shoot, nil
 }
 
+func (g *clientImpl) ListBastions(ctx context.Context, opts ...client.ListOption) (*gardenoperationsv1alpha1.BastionList, error) {
+	bastionList := &gardenoperationsv1alpha1.BastionList{}
+
+	if err := g.resolveListOptions(ctx, opts...); err != nil {
+		return nil, err
+	}
+
+	if err := g.c.List(ctx, bastionList, opts...); err != nil {
+		return nil, fmt.Errorf("failed to list bastions with list options %q: %w", opts, err)
+	}
+
+	return bastionList, nil
+}
+
+func (g *clientImpl) PatchBastion(ctx context.Context, newBastion, oldBastion *gardenoperationsv1alpha1.Bastion) error {
+	return g.c.Patch(ctx, newBastion, client.MergeFrom(oldBastion))
+}
+
+func (g *clientImpl) CreateTokenReview(ctx context.Context, token string) (*authenticationv1.TokenReview, error) {
+	tokenReview := &authenticationv1.TokenReview{
+		Spec: authenticationv1.TokenReviewSpec{
+			Token: token,
+		},
+	}
+
+	if err := g.c.Create(ctx, tokenReview); err != nil {
+		return nil, fmt.Errorf("failed to create token review: %w", err)
+	}
+
+	return tokenReview, nil
+}
+
 func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clientcmd.ClientConfig, error) {
 	if shoot, err := g.GetShootOfManagedSeed(ctx, name); err != nil {
 		return nil, err
@@ -371,8 +413,8 @@ func (cp CloudProfile) GetOpenstackProviderConfig() (*openstackv1alpha1.CloudPro
 	return cloudProfileConfig, nil
 }
 
-// ShootFilter restricts the list operation to the given where condition.
-type ShootFilter fields.Set
+// ProjectFilter restricts the list operation to the given where condition.
+type ProjectFilter fields.Set
 
 type resolver interface {
 	resolve(context.Context, Client) error
@@ -383,9 +425,9 @@ type listOptionResolver interface {
 	resolver
 }
 
-var _ listOptionResolver = &ShootFilter{}
+var _ listOptionResolver = &ProjectFilter{}
 
-func (w ShootFilter) ApplyToList(opts *client.ListOptions) {
+func (w ProjectFilter) ApplyToList(opts *client.ListOptions) {
 	m := fields.Set{}
 
 	for key, value := range w {
@@ -402,7 +444,7 @@ func (w ShootFilter) ApplyToList(opts *client.ListOptions) {
 	}
 }
 
-func (w ShootFilter) resolve(ctx context.Context, g Client) error {
+func (w ProjectFilter) resolve(ctx context.Context, g Client) error {
 	if name, ok := w["project"]; ok {
 		delete(w, "project")
 

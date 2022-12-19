@@ -51,6 +51,7 @@ type Garden struct {
 	// +optional
 	Patterns []string `yaml:"patterns,omitempty" json:"patterns,omitempty"`
 	// AccessRestrictions is a list of access restriction definitions
+	// +optional
 	AccessRestrictions []ac.AccessRestriction `yaml:"accessRestrictions,omitempty" json:"accessRestrictions,omitempty"`
 }
 
