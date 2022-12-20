@@ -43,10 +43,9 @@ func NewTestOptions() *TestOptions {
 
 	return &TestOptions{
 		options: options{
-			AccessConfig: ssh.AccessConfig{
-				Options: base.Options{
-					IOStreams: streams,
-				},
+			AccessConfig: ssh.AccessConfig{},
+			Options: base.Options{
+				IOStreams: streams,
 			},
 		},
 		Out: out,

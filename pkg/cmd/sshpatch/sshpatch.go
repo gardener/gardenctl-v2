@@ -1,12 +1,21 @@
+/*
+SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and Gardener contributors
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
 package sshpatch
 
 import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
+	"github.com/gardener/gardenctl-v2/pkg/flags"
 )
 
 func NewCmdSSHPatch(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
@@ -37,7 +46,14 @@ gardenctl ssh-patch cli-xxxxxxxx`,
 		},
 	}
 
-	o.AddFlags(cmd.PersistentFlags())
+	o.AccessConfig.AddFlags(cmd.Flags())
+
+	ssh.RegisterCompletionFuncsForAccessConfigFlags(cmd, f, o.IOStreams, cmd.Flags())
+
+	manager, err := f.Manager()
+	utilruntime.Must(err)
+	manager.TargetFlags().AddFlags(cmd.Flags())
+	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, o.IOStreams, cmd.Flags())
 
 	return cmd
 }
