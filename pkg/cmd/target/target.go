@@ -54,8 +54,8 @@ gardenctl target value/that/matches/pattern --control-plane`,
 
 	manager, err := f.Manager()
 	utilruntime.Must(err)
-	manager.TargetFlags().AddFlags(cmd.PersistentFlags())
-	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, cmd.PersistentFlags())
+	manager.TargetFlags().AddFlags(cmd.Flags())
+	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, cmd.Flags())
 
 	return cmd
 }

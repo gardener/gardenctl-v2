@@ -8,9 +8,11 @@ package target
 
 import (
 	"github.com/spf13/cobra"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/flags"
 )
 
 // NewCmdTargetSeed returns a new target seed command.
@@ -35,6 +37,11 @@ gardenctl target seed my-seed --garden my-garden`,
 	}
 
 	o.AddFlags(cmd.Flags())
+
+	manager, err := f.Manager()
+	utilruntime.Must(err)
+	manager.TargetFlags().AddGardenFlag(cmd.Flags())
+	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, cmd.Flags())
 
 	return cmd
 }

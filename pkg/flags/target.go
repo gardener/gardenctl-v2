@@ -18,11 +18,25 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
+// RegisterCompletionFuncsForTargetFlags registers the completion functions to a given cobra command
+// for the target flags (--garden, --project, --seed and --shoot). Each completion function is only
+// registered if the flag has been previously added to the provided flag set.
 func RegisterCompletionFuncsForTargetFlags(cmd *cobra.Command, factory util.Factory, ioStreams util.IOStreams, flags *pflag.FlagSet) {
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(factory, ioStreams, gardenFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(factory, ioStreams, projectFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(factory, ioStreams, seedFlagCompletionFunc)))
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(factory, ioStreams, shootFlagCompletionFunc)))
+	if cmd.Flag("garden") != nil {
+		utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(factory, ioStreams, gardenFlagCompletionFunc)))
+	}
+
+	if cmd.Flag("project") != nil {
+		utilruntime.Must(cmd.RegisterFlagCompletionFunc("project", completionWrapper(factory, ioStreams, projectFlagCompletionFunc)))
+	}
+
+	if cmd.Flag("seed") != nil {
+		utilruntime.Must(cmd.RegisterFlagCompletionFunc("seed", completionWrapper(factory, ioStreams, seedFlagCompletionFunc)))
+	}
+
+	if cmd.Flag("shoot") != nil {
+		utilruntime.Must(cmd.RegisterFlagCompletionFunc("shoot", completionWrapper(factory, ioStreams, shootFlagCompletionFunc)))
+	}
 }
 
 type (

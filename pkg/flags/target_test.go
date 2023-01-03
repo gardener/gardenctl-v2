@@ -312,7 +312,7 @@ var _ = Describe("Target flags", func() {
 				args := []string{
 					fmt.Sprintf("--shoot=%s", shootName),
 					"target",
-					"view",
+					"control-plane",
 				}
 
 				cmd := cmd.NewGardenctlCommand(factory, streams)
