@@ -33,7 +33,7 @@ type AccessConfig struct {
 	AutoDetected bool
 }
 
-func (o *AccessConfig) Complete(f util.Factory, cmd *cobra.Command, args []string, ioStreams util.IOStreams) error {
+func (o *AccessConfig) Complete(f util.Factory, _ *cobra.Command, _ []string, ioStreams util.IOStreams) error {
 	if len(o.CIDRs) == 0 {
 		ctx, cancel := context.WithTimeout(f.Context(), 60*time.Second)
 		defer cancel()
