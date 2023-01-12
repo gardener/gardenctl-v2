@@ -1,3 +1,9 @@
+/*
+SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and Gardener contributors
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
 package sshpatch
 
 import (
@@ -9,7 +15,6 @@ import (
 
 	gardenoperationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	networkingv1 "k8s.io/api/networking/v1"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -18,6 +23,7 @@ import (
 )
 
 type options struct {
+	base.Options
 	ssh.AccessConfig
 
 	// Bastion is the Bastion corresponding to the provided BastionName
@@ -29,10 +35,9 @@ type options struct {
 
 func newOptions(ioStreams util.IOStreams) *options {
 	return &options{
-		AccessConfig: ssh.AccessConfig{
-			Options: base.Options{
-				IOStreams: ioStreams,
-			},
+		AccessConfig: ssh.AccessConfig{},
+		Options: base.Options{
+			IOStreams: ioStreams,
 		},
 	}
 }
@@ -111,7 +116,7 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 
 	o.bastionPatcher = bastionListPatcher
 
-	if err := o.AccessConfig.Complete(f, cmd, args); err != nil {
+	if err := o.AccessConfig.Complete(f, cmd, args, o.Options.IOStreams); err != nil {
 		return err
 	}
 
@@ -152,6 +157,10 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 }
 
 func (o *options) Validate() error {
+	if err := o.Options.Validate(); err != nil {
+		return err
+	}
+
 	if err := o.AccessConfig.Validate(); err != nil {
 		return err
 	}
@@ -161,8 +170,4 @@ func (o *options) Validate() error {
 	}
 
 	return nil
-}
-
-func (o *options) AddFlags(flags *pflag.FlagSet) {
-	flags.StringArrayVar(&o.CIDRs, "cidr", o.CIDRs, "CIDRs to allow access to the bastion host; if not given, your system's public IPs (v4 and v6) are auto-detected.")
 }

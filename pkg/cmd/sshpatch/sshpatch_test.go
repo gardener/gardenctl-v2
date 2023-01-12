@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener contributors
+SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and Gardener contributors
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -195,6 +195,7 @@ var _ = Describe("SSH Patch Command", func() {
 			return clientcmdConfig, nil
 		}).AnyTimes()
 		manager.EXPECT().CurrentTarget().Return(currentTarget, nil).AnyTimes()
+		manager.EXPECT().TargetFlags().Return(target.NewTargetFlags("", "", "", "", false)).AnyTimes()
 		manager.EXPECT().GardenClient(gomock.Eq(gardenName)).Return(gardenClient, nil).AnyTimes()
 
 		ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)

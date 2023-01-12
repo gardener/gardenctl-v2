@@ -34,6 +34,7 @@ import (
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
 	"github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	corev1 "k8s.io/api/core/v1"
@@ -156,6 +157,7 @@ var (
 //
 //nolint:revive
 type SSHOptions struct {
+	base.Options
 	AccessConfig
 	// Interactive can be used to toggle between gardenctl just
 	// providing the bastion host while keeping it alive (non-interactive),
@@ -193,10 +195,9 @@ type SSHOptions struct {
 // NewSSHOptions returns initialized SSHOptions.
 func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 	return &SSHOptions{
-		AccessConfig: AccessConfig{
-			Options: base.Options{
-				IOStreams: ioStreams,
-			},
+		AccessConfig: AccessConfig{},
+		Options: base.Options{
+			IOStreams: ioStreams,
 		},
 		Interactive: true,
 		WaitTimeout: 10 * time.Minute,
@@ -204,9 +205,16 @@ func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 	}
 }
 
+func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
+	flagSet.BoolVar(&o.Interactive, "interactive", o.Interactive, "Open an SSH connection instead of just providing the bastion host (only if NODE_NAME is provided).")
+	flagSet.StringVar(&o.SSHPublicKeyFile, "public-key-file", "", "Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.")
+	flagSet.DurationVar(&o.WaitTimeout, "wait-timeout", o.WaitTimeout, "Maximum duration to wait for the bastion to become available.")
+	flagSet.BoolVar(&o.KeepBastion, "keep-bastion", o.KeepBastion, "Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)")
+}
+
 // Complete adapts from the command line args to the data required.
 func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	if err := o.AccessConfig.Complete(f, cmd, args); err != nil {
+	if err := o.AccessConfig.Complete(f, cmd, args, o.Options.IOStreams); err != nil {
 		return err
 	}
 
@@ -262,18 +270,16 @@ func ipToCIDR(address string) string {
 
 // Validate validates the provided SSHOptions.
 func (o *SSHOptions) Validate() error {
+	if err := o.Options.Validate(); err != nil {
+		return err
+	}
+
+	if err := o.AccessConfig.Validate(); err != nil {
+		return err
+	}
+
 	if o.WaitTimeout == 0 {
 		return errors.New("the maximum wait duration must be non-zero")
-	}
-
-	if len(o.CIDRs) == 0 {
-		return errors.New("must at least specify a single CIDR to allow access to the bastion")
-	}
-
-	for _, cidr := range o.CIDRs {
-		if _, _, err := net.ParseCIDR(cidr); err != nil {
-			return fmt.Errorf("CIDR %q is invalid: %w", cidr, err)
-		}
 	}
 
 	content, err := os.ReadFile(o.SSHPublicKeyFile)

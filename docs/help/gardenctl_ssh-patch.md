@@ -20,7 +20,12 @@ gardenctl ssh-patch cli-xxxxxxxx
 
 ```
       --cidr stringArray   CIDRs to allow access to the bastion host; if not given, your system's public IPs (v4 and v6) are auto-detected.
+      --control-plane      target control plane of shoot, use together with shoot argument
+      --garden string      target the given garden cluster
   -h, --help               help for ssh-patch
+      --project string     target the given project
+      --seed string        target the given seed cluster
+      --shoot string       target the given shoot cluster
 ```
 
 ### Options inherited from parent commands
