@@ -44,7 +44,6 @@ var _ = Describe("history Command", func() {
 	JustBeforeEach(func() {
 		targetProvider = internalfake.NewFakeTargetProvider(currentTarget)
 		factory = internalfake.NewFakeFactory(nil, nil, nil, targetProvider)
-
 	})
 
 	AfterSuite(func() {

@@ -22,7 +22,7 @@ const (
 	historyFile = "history"
 )
 
-// NewCmdHistory returns a new target history command
+// NewCmdHistory returns a new target history command.
 func NewCmdHistory(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	o := &HistoryOptions{
 		Options: base.Options{
@@ -39,20 +39,20 @@ func NewCmdHistory(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	return cmd
 }
 
-// HistoryOptions is a struct to support target history command
+// HistoryOptions is a struct to support target history command.
 type HistoryOptions struct {
 	base.Options
 	path string
 }
 
-// HistoryWriteOptions is a struct to support target history write command
+// HistoryWriteOptions is a struct to support target history write command.
 type HistoryWriteOptions struct {
 	base.Options
 	calledAs string
 	path     string
 }
 
-// NewHistoryWriteOptions returns initialized HistoryWriteOptions
+// NewHistoryWriteOptions returns initialized HistoryWriteOptions.
 func NewHistoryWriteOptions(ioStreams util.IOStreams) *HistoryWriteOptions {
 	return &HistoryWriteOptions{
 		Options: base.Options{
@@ -70,9 +70,9 @@ func (o *HistoryOptions) Run(f util.Factory) error {
 	return nil
 }
 
-// historyWrite executes history file write
+// historyWrite executes history file write.
 func historyWrite(path string, s string) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o666)
 	if err != nil {
 		return fmt.Errorf("history file open error %s", path)
 	}
@@ -85,7 +85,7 @@ func historyWrite(path string, s string) error {
 	return nil
 }
 
-// toHistoryOutput executes history output
+// toHistoryOutput executes history output.
 func toHistoryOutput(path string, o base.Options) error {
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -97,11 +97,9 @@ func toHistoryOutput(path string, o base.Options) error {
 	return err
 }
 
-// toCommand executes target history parse from current target
+// toCommand executes target history parse from current target.
 func toCommand(currentTarget target.Target) (string, error) {
-	var (
-		flags []string
-	)
+	var flags []string
 
 	if currentTarget.GardenName() != "" {
 		flags = append(flags, "--garden", currentTarget.GardenName())
