@@ -16,7 +16,7 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 )
 
-// InfoOptions is a struct to support Info command
+// InfoOptions is a struct to support Info command.
 type Options struct {
 	base.Options
 	// Allocatable is the seed allocatable
@@ -25,7 +25,7 @@ type Options struct {
 	Capacity int64
 }
 
-// NewInfoOptions returns initialized Options
+// NewInfoOptions returns initialized Options.
 func NewInfoOptions(ioStreams util.IOStreams) *Options {
 	return &Options{
 		Options: base.Options{
@@ -34,7 +34,7 @@ func NewInfoOptions(ioStreams util.IOStreams) *Options {
 	}
 }
 
-// Run does the actual work of the command
+// Run does the actual work of the command.
 func (o *Options) Run(f util.Factory) error {
 	manager, err := f.Manager()
 	if err != nil {
@@ -46,7 +46,7 @@ func (o *Options) Run(f util.Factory) error {
 		return err
 	}
 
-	// create client for the garden cluster
+	// create client for the garden cluster.
 	gardenClient, err := manager.GardenClient(infoTarget.GardenName())
 	if err != nil {
 		return err
