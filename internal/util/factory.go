@@ -48,6 +48,9 @@ type Factory interface {
 	// returned slice can contain IPv6, IPv4 or both, in no particular
 	// order.
 	PublicIPs(context.Context) ([]string, error)
+	// TargetFlags returns the TargetFlags to which the cobra flags are bound allowing the user to
+	// override the target configuration stored on the filesystem.
+	TargetFlags() target.TargetFlags
 }
 
 // FactoryImpl implements util.Factory interface.
@@ -63,12 +66,18 @@ type FactoryImpl struct {
 	// if empty.
 	ConfigFile string
 
-	// TargetFlags can be used to completely override the target configuration
+	// targetFlags can be used to completely override the target configuration
 	// stored on the filesystem via a CLI flags.
-	TargetFlags target.TargetFlags
+	targetFlags target.TargetFlags
 }
 
 var _ Factory = &FactoryImpl{}
+
+func NewFactory() *FactoryImpl {
+	return &FactoryImpl{
+		targetFlags: target.NewTargetFlags("", "", "", "", false),
+	}
+}
 
 func (f *FactoryImpl) Context() context.Context {
 	return context.Background()
@@ -92,7 +101,7 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 		return nil, fmt.Errorf("failed to create session directory: %w", err)
 	}
 
-	targetProvider := target.NewTargetProvider(filepath.Join(sessionDirectory, "target.yaml"), f.TargetFlags)
+	targetProvider := target.NewTargetProvider(filepath.Join(sessionDirectory, "target.yaml"), f.targetFlags)
 	clientProvider := target.NewClientProvider()
 
 	return target.NewManager(cfg, targetProvider, clientProvider, sessionDirectory)
@@ -123,6 +132,10 @@ func (f *FactoryImpl) PublicIPs(ctx context.Context) ([]string, error) {
 	}
 
 	return addresses, nil
+}
+
+func (f *FactoryImpl) TargetFlags() target.TargetFlags {
+	return f.targetFlags
 }
 
 func callIPify(ctx context.Context, domain string) (*net.IP, error) {

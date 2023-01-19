@@ -26,18 +26,15 @@ var _ = Describe("Gardenctl command", func() {
 	)
 
 	var (
-		gardenName  string
-		streams     util.IOStreams
-		out         *util.SafeBytesBuffer
-		targetFlags target.TargetFlags
+		gardenName string
+		streams    util.IOStreams
+		out        *util.SafeBytesBuffer
 	)
 
 	BeforeEach(func() {
 		gardenName = cfg.Gardens[0].Name
 
 		streams, _, out, _ = util.NewTestIOStreams()
-
-		targetFlags = target.NewTargetFlags("", "", "", "", false)
 
 		targetProvider := target.NewTargetProvider(filepath.Join(sessionDir, "target.yaml"), nil)
 		Expect(targetProvider.Write(target.NewTarget(gardenName, projectName, "", shootName))).To(Succeed())
@@ -47,10 +44,7 @@ var _ = Describe("Gardenctl command", func() {
 		var factory *util.FactoryImpl
 
 		BeforeEach(func() {
-			factory = &util.FactoryImpl{
-				TargetFlags: targetFlags,
-				ConfigFile:  configFile,
-			}
+			factory = util.NewFactory()
 		})
 
 		Context("when running the completion command", func() {
@@ -74,7 +68,7 @@ var _ = Describe("Gardenctl command", func() {
 
 				// check target flags
 				tf := manager.TargetFlags()
-				Expect(tf).To(BeIdenticalTo(factory.TargetFlags))
+				Expect(tf).To(BeIdenticalTo(factory.TargetFlags()))
 
 				// check current target values
 				current, err := manager.CurrentTarget()

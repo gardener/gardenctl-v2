@@ -30,6 +30,7 @@ type Factory struct {
 	Config             *config.Config
 	ClientProviderImpl target.ClientProvider
 	TargetProviderImpl target.TargetProvider
+	TargetFlagsImpl    target.TargetFlags
 
 	// Override the clock implementation. Will use a real clock if not set.
 	ClockImpl util.Clock
@@ -58,11 +59,14 @@ func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider target.
 		clock = &util.RealClock{}
 	}
 
+	targetFlags := target.NewTargetFlags("", "", "", "", false)
+
 	return &Factory{
 		Config:             cfg,
 		ClockImpl:          clock,
 		ClientProviderImpl: clientProvider,
 		TargetProviderImpl: targetProvider,
+		TargetFlagsImpl:    targetFlags,
 	}
 }
 
@@ -94,4 +98,8 @@ func (f *Factory) Clock() util.Clock {
 
 func (f *Factory) PublicIPs(ctx context.Context) ([]string, error) {
 	return []string{"192.0.2.42", "2001:db8::8a2e:370:7334"}, nil
+}
+
+func (f *Factory) TargetFlags() target.TargetFlags {
+	return f.TargetFlagsImpl
 }
