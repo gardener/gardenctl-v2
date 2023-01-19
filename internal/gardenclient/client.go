@@ -15,7 +15,7 @@ import (
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	gardenoperationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
+	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -83,9 +83,9 @@ type Client interface {
 	GetShootOfManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.Shoot, error)
 
 	// ListBastions returns all Gardener bastion resources, filtered by a list option
-	ListBastions(ctx context.Context, opts ...client.ListOption) (*gardenoperationsv1alpha1.BastionList, error)
+	ListBastions(ctx context.Context, opts ...client.ListOption) (*operationsv1alpha1.BastionList, error)
 	// PatchBastion patches an existing bastion to match newBastion using the merge patch strategy
-	PatchBastion(ctx context.Context, newBastion, oldBastion *gardenoperationsv1alpha1.Bastion) error
+	PatchBastion(ctx context.Context, newBastion, oldBastion *operationsv1alpha1.Bastion) error
 
 	// Creates a token review for a user with token authentication
 	CreateTokenReview(ctx context.Context, token string) (*authenticationv1.TokenReview, error)
@@ -292,8 +292,8 @@ func (g *clientImpl) GetShootOfManagedSeed(ctx context.Context, name string) (*s
 	return managedSeed.Spec.Shoot, nil
 }
 
-func (g *clientImpl) ListBastions(ctx context.Context, opts ...client.ListOption) (*gardenoperationsv1alpha1.BastionList, error) {
-	bastionList := &gardenoperationsv1alpha1.BastionList{}
+func (g *clientImpl) ListBastions(ctx context.Context, opts ...client.ListOption) (*operationsv1alpha1.BastionList, error) {
+	bastionList := &operationsv1alpha1.BastionList{}
 
 	if err := g.resolveListOptions(ctx, opts...); err != nil {
 		return nil, err
@@ -306,7 +306,7 @@ func (g *clientImpl) ListBastions(ctx context.Context, opts ...client.ListOption
 	return bastionList, nil
 }
 
-func (g *clientImpl) PatchBastion(ctx context.Context, newBastion, oldBastion *gardenoperationsv1alpha1.Bastion) error {
+func (g *clientImpl) PatchBastion(ctx context.Context, newBastion, oldBastion *operationsv1alpha1.Bastion) error {
 	return g.c.Patch(ctx, newBastion, client.MergeFrom(oldBastion))
 }
 

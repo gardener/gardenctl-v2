@@ -13,7 +13,7 @@ import (
 	"net"
 	"time"
 
-	gardenoperationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
+	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	"github.com/spf13/cobra"
 	networkingv1 "k8s.io/api/networking/v1"
 
@@ -27,7 +27,7 @@ type options struct {
 	ssh.AccessConfig
 
 	// Bastion is the Bastion corresponding to the provided BastionName
-	Bastion *gardenoperationsv1alpha1.Bastion
+	Bastion *operationsv1alpha1.Bastion
 
 	// bastionPatcher lists bastions created by the current user
 	bastionPatcher bastionPatcher
@@ -43,7 +43,7 @@ func newOptions(ioStreams util.IOStreams) *options {
 }
 
 func (o *options) patchBastionIngress(ctx context.Context) error {
-	var policies []gardenoperationsv1alpha1.BastionIngressPolicy
+	var policies []operationsv1alpha1.BastionIngressPolicy
 
 	oldBastion := o.Bastion.DeepCopy()
 
@@ -65,7 +65,7 @@ func (o *options) patchBastionIngress(ctx context.Context) error {
 			}
 		}
 
-		policies = append(policies, gardenoperationsv1alpha1.BastionIngressPolicy{
+		policies = append(policies, operationsv1alpha1.BastionIngressPolicy{
 			IPBlock: networkingv1.IPBlock{
 				CIDR: cidr,
 			},

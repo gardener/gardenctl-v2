@@ -11,7 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
-	
+
 	gardenclient "github.com/gardener/gardenctl-v2/internal/gardenclient"
 	config "github.com/gardener/gardenctl-v2/pkg/config"
 	target "github.com/gardener/gardenctl-v2/pkg/target"

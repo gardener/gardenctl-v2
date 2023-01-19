@@ -12,7 +12,7 @@ import (
 	"time"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	gardenoperationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
+	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	gardensecrets "github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -60,15 +60,15 @@ var _ = Describe("SSH Patch Command", func() {
 		testSeed               *gardencorev1beta1.Seed
 		testShoot              *gardencorev1beta1.Shoot
 		apiConfig              *clientcmdapi.Config
-		bastionDefaultPolicies []gardenoperationsv1alpha1.BastionIngressPolicy
+		bastionDefaultPolicies []operationsv1alpha1.BastionIngressPolicy
 	)
 
 	// helpers
 	var (
 		ctxType       = reflect.TypeOf((*context.Context)(nil)).Elem()
 		isCtx         = gomock.AssignableToTypeOf(ctxType)
-		createBastion = func(createdBy, bastionName string) gardenoperationsv1alpha1.Bastion {
-			return gardenoperationsv1alpha1.Bastion{
+		createBastion = func(createdBy, bastionName string) operationsv1alpha1.Bastion {
+			return operationsv1alpha1.Bastion{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      bastionName,
 					Namespace: testShoot.Namespace,
@@ -80,7 +80,7 @@ var _ = Describe("SSH Patch Command", func() {
 						Time: now,
 					},
 				},
-				Spec: gardenoperationsv1alpha1.BastionSpec{
+				Spec: operationsv1alpha1.BastionSpec{
 					ShootRef: corev1.LocalObjectReference{
 						Name: testShoot.Name,
 					},
@@ -173,7 +173,7 @@ var _ = Describe("SSH Patch Command", func() {
 			},
 		}
 
-		bastionDefaultPolicies = []gardenoperationsv1alpha1.BastionIngressPolicy{{
+		bastionDefaultPolicies = []operationsv1alpha1.BastionIngressPolicy{{
 			IPBlock: networkingv1.IPBlock{
 				CIDR: "1.1.1.1/16",
 			},
@@ -216,7 +216,7 @@ var _ = Describe("SSH Patch Command", func() {
 
 	Describe("sshPatchOptions", func() {
 		Describe("Validate", func() {
-			var fakeBastion gardenoperationsv1alpha1.Bastion
+			var fakeBastion operationsv1alpha1.Bastion
 
 			BeforeEach(func() {
 				fakeBastion = createBastion("user", "bastion-name")
@@ -241,8 +241,8 @@ var _ = Describe("SSH Patch Command", func() {
 					o := sshpatch.NewTestOptions()
 					cmd := sshpatch.NewCmdSSHPatch(factory, o.IOStreams)
 
-					fakeBastionList := &gardenoperationsv1alpha1.BastionList{
-						Items: []gardenoperationsv1alpha1.Bastion{
+					fakeBastionList := &operationsv1alpha1.BastionList{
+						Items: []operationsv1alpha1.Bastion{
 							createBastion("other-user", "other-user-bastion1"),
 							createBastion("other-user", "other-user-bastion2"),
 						},
@@ -260,8 +260,8 @@ var _ = Describe("SSH Patch Command", func() {
 					o := sshpatch.NewTestOptions()
 					cmd := sshpatch.NewCmdSSHPatch(factory, o.IOStreams)
 
-					fakeBastionList := &gardenoperationsv1alpha1.BastionList{
-						Items: []gardenoperationsv1alpha1.Bastion{
+					fakeBastionList := &operationsv1alpha1.BastionList{
+						Items: []operationsv1alpha1.Bastion{
 							createBastion(defaultUserName, defaultUserName+"-bastion1"),
 							createBastion("other-user", "other-user-bastion1"),
 							createBastion("other-user", "other-user-bastion2"),
@@ -284,8 +284,8 @@ var _ = Describe("SSH Patch Command", func() {
 					o := sshpatch.NewTestOptions()
 					cmd := sshpatch.NewCmdSSHPatch(factory, o.IOStreams)
 
-					fakeBastionList := &gardenoperationsv1alpha1.BastionList{
-						Items: []gardenoperationsv1alpha1.Bastion{
+					fakeBastionList := &operationsv1alpha1.BastionList{
+						Items: []operationsv1alpha1.Bastion{
 							createBastion(defaultUserName, defaultUserName+"-bastion1"),
 							createBastion(defaultUserName, defaultUserName+"-bastion2"),
 							createBastion("other-user", "other-user-bastion1"),
@@ -308,8 +308,8 @@ var _ = Describe("SSH Patch Command", func() {
 					o := sshpatch.NewTestOptions()
 					cmd := sshpatch.NewCmdSSHPatch(factory, o.IOStreams)
 
-					fakeBastionList := &gardenoperationsv1alpha1.BastionList{
-						Items: []gardenoperationsv1alpha1.Bastion{
+					fakeBastionList := &operationsv1alpha1.BastionList{
+						Items: []operationsv1alpha1.Bastion{
 							createBastion(defaultUserName, defaultUserName+"-bastion1"),
 							createBastion(defaultUserName, defaultUserName+"-bastion2"),
 							createBastion("other-user", "other-user-bastion1"),
@@ -334,8 +334,8 @@ var _ = Describe("SSH Patch Command", func() {
 
 			BeforeEach(func() {
 				fakeBastion := createBastion(defaultUserName, defaultUserName+"-bastion1")
-				fakeBastionList := &gardenoperationsv1alpha1.BastionList{
-					Items: []gardenoperationsv1alpha1.Bastion{
+				fakeBastionList := &operationsv1alpha1.BastionList{
+					Items: []operationsv1alpha1.Bastion{
 						fakeBastion,
 					},
 				}
@@ -375,8 +375,8 @@ var _ = Describe("SSH Patch Command", func() {
 				streams, _, _, _ := util.NewTestIOStreams()
 				cmd := sshpatch.NewCmdSSHPatch(factory, streams)
 
-				fakeBastionList := &gardenoperationsv1alpha1.BastionList{
-					Items: []gardenoperationsv1alpha1.Bastion{
+				fakeBastionList := &operationsv1alpha1.BastionList{
+					Items: []operationsv1alpha1.Bastion{
 						createBastion(defaultUserName, prefix+"-bastion1"),
 						createBastion(defaultUserName, prefix+"-bastion2"),
 						createBastion(defaultUserName, "prefix2-bastion1"),
@@ -403,8 +403,8 @@ var _ = Describe("SSH Patch Command", func() {
 			var patchLister *sshpatch.TestUserBastionListPatcherImpl
 
 			BeforeEach(func() {
-				fakeBastionList := &gardenoperationsv1alpha1.BastionList{
-					Items: []gardenoperationsv1alpha1.Bastion{
+				fakeBastionList := &operationsv1alpha1.BastionList{
+					Items: []operationsv1alpha1.Bastion{
 						createBastion("client-cn", "fake-bastion"),
 					},
 				}

@@ -17,7 +17,7 @@ import (
 	"path"
 
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
-	gardenoperationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
+	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	clientauthentication "k8s.io/client-go/pkg/apis/clientauthentication"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -28,12 +28,12 @@ import (
 
 type bastionLister interface {
 	// List lists all bastions for the current target
-	List(ctx context.Context) ([]gardenoperationsv1alpha1.Bastion, error)
+	List(ctx context.Context) ([]operationsv1alpha1.Bastion, error)
 }
 
 type bastionPatcher interface {
 	// Patch patches an existing bastion
-	Patch(ctx context.Context, oldBastion, newBastion *gardenoperationsv1alpha1.Bastion) error
+	Patch(ctx context.Context, oldBastion, newBastion *operationsv1alpha1.Bastion) error
 }
 
 //go:generate mockgen -source=./ssh_patch_userbastionlister.go -destination=./mocks/mock_ssh_patch_userbastionlister.go -package=mocks github.com/gardener/gardenctl-v2/pkg/cmd/ssh bastionListPatcher
@@ -77,7 +77,7 @@ func newUserBastionListPatcher(ctx context.Context, manager target.Manager) (bas
 	}, nil
 }
 
-func (u *userBastionListPatcherImpl) List(ctx context.Context) ([]gardenoperationsv1alpha1.Bastion, error) {
+func (u *userBastionListPatcherImpl) List(ctx context.Context) ([]operationsv1alpha1.Bastion, error) {
 	authInfo, err := u.AuthInfo(u.clientConfig)
 	if err != nil {
 		return nil, fmt.Errorf("could not get authInfo: %w", err)
@@ -100,7 +100,7 @@ func (u *userBastionListPatcherImpl) List(ctx context.Context) ([]gardenoperatio
 		listOption[gardencore.ShootSeedName] = u.target.SeedName()
 	}
 
-	var bastionsOfUser []gardenoperationsv1alpha1.Bastion
+	var bastionsOfUser []operationsv1alpha1.Bastion
 
 	list, err := u.gardenClient.ListBastions(ctx, listOption)
 	if err != nil {
@@ -216,6 +216,6 @@ func (u *userBastionListPatcherImpl) AuthInfo(clientConfig clientcmd.ClientConfi
 	return authInfo, nil
 }
 
-func (u *userBastionListPatcherImpl) Patch(ctx context.Context, newBastion, oldBastion *gardenoperationsv1alpha1.Bastion) error {
+func (u *userBastionListPatcherImpl) Patch(ctx context.Context, newBastion, oldBastion *operationsv1alpha1.Bastion) error {
 	return u.gardenClient.PatchBastion(ctx, newBastion, oldBastion)
 }
