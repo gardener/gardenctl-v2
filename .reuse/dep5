@@ -9,9 +9,18 @@ Source: https://github.com/gardener/gardenctl-v2
 Files:
   .ci/*
   .github/*
+  docs/*
   logo/*
+  *.tmpl
+  */mocks/*.go
+  pkg/cmd/env/testdata/*/*.fish
+  pkg/cmd/env/testdata/*/*.bash
+  pkg/cmd/env/testdata/*/*.pwsh
+  pkg/cmd/env/testdata/gcp/serviceaccount.json
   .dockerignore
+  .gimps.yaml
   .gitignore
+  .golangci.yaml
   CODEOWNERS
   go.mod
   go.sum
