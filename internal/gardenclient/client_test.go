@@ -208,11 +208,11 @@ var _ = Describe("Client", func() {
 
 				Expect(rawConfig.AuthInfos).To(HaveLen(1))
 				authInfo := rawConfig.AuthInfos[context.AuthInfo]
-				Expect(authInfo.Exec.Command).To(Equal("kubectl"))
+				Expect(authInfo.Exec.Command).To(Equal("kubectl-gardenlogin"))
 				Expect(authInfo.Exec.Args).To(Equal([]string{
-					"gardenlogin",
 					"get-client-certificate",
 				}))
+				Expect(authInfo.Exec.InstallHint).ToNot(BeEmpty())
 			})
 
 			Context("legacy kubeconfig", func() {
@@ -239,9 +239,8 @@ var _ = Describe("Client", func() {
 
 					Expect(rawConfig.AuthInfos).To(HaveLen(1))
 					authInfo := rawConfig.AuthInfos[context.AuthInfo]
-					Expect(authInfo.Exec.Command).To(Equal("kubectl"))
+					Expect(authInfo.Exec.Command).To(Equal("kubectl-gardenlogin"))
 					Expect(authInfo.Exec.Args).To(Equal([]string{
-						"gardenlogin",
 						"get-client-certificate",
 						fmt.Sprintf("--name=%s", shootName),
 						fmt.Sprintf("--namespace=%s", namespace),
