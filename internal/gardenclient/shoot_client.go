@@ -132,7 +132,6 @@ func (k *shootKubeconfigRequest) generate(legacy bool) (*clientcmdapi.Config, er
 	var extension *execPluginConfig
 
 	args := []string{
-		"gardenlogin",
 		"get-client-certificate",
 	}
 
@@ -157,11 +156,11 @@ func (k *shootKubeconfigRequest) generate(legacy bool) (*clientcmdapi.Config, er
 
 	authInfo := clientcmdapi.NewAuthInfo()
 	authInfo.Exec = &clientcmdapi.ExecConfig{
-		Command:            "kubectl",
+		Command:            "kubectl-gardenlogin",
 		Args:               args,
 		Env:                nil,
 		APIVersion:         clientauthenticationv1beta1.SchemeGroupVersion.String(),
-		InstallHint:        "",
+		InstallHint:        "Follow the instructions on https://github.com/gardener/gardenlogin#installation to install gardenlogin",
 		ProvideClusterInfo: true,
 
 		// gardenlogin kubectl auth plugin does not require stdin itself,
