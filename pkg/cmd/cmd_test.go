@@ -44,7 +44,7 @@ var _ = Describe("Gardenctl command", func() {
 		var factory *util.FactoryImpl
 
 		BeforeEach(func() {
-			factory = util.NewFactory()
+			factory = util.NewFactoryImpl()
 		})
 
 		Context("when running the completion command", func() {

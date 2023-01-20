@@ -73,7 +73,7 @@ type FactoryImpl struct {
 
 var _ Factory = &FactoryImpl{}
 
-func NewFactory() *FactoryImpl {
+func NewFactoryImpl() *FactoryImpl {
 	return &FactoryImpl{
 		targetFlags: target.NewTargetFlags("", "", "", "", false),
 	}

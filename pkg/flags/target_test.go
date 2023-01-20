@@ -260,7 +260,7 @@ var _ = Describe("Target flags", func() {
 		var factory *util.FactoryImpl
 
 		BeforeEach(func() {
-			factory = util.NewFactory()
+			factory = util.NewFactoryImpl()
 		})
 
 		Context("when wrapping completion functions", func() {
