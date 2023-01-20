@@ -8,10 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-
 	util "github.com/gardener/gardenctl-v2/internal/util"
 	target "github.com/gardener/gardenctl-v2/pkg/target"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockFactory is a mock of Factory interface.
@@ -107,4 +106,18 @@ func (m *MockFactory) PublicIPs(arg0 context.Context) ([]string, error) {
 func (mr *MockFactoryMockRecorder) PublicIPs(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublicIPs", reflect.TypeOf((*MockFactory)(nil).PublicIPs), arg0)
+}
+
+// TargetFlags mocks base method.
+func (m *MockFactory) TargetFlags() target.TargetFlags {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TargetFlags")
+	ret0, _ := ret[0].(target.TargetFlags)
+	return ret0
+}
+
+// TargetFlags indicates an expected call of TargetFlags.
+func (mr *MockFactoryMockRecorder) TargetFlags() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetFlags", reflect.TypeOf((*MockFactory)(nil).TargetFlags))
 }

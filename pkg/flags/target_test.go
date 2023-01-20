@@ -43,7 +43,6 @@ var _ = Describe("Target flags", func() {
 		gardenName2 string
 		streams     util.IOStreams
 		errOut      *util.SafeBytesBuffer
-		targetFlags target.TargetFlags
 	)
 
 	BeforeEach(func() {
@@ -51,8 +50,6 @@ var _ = Describe("Target flags", func() {
 		gardenName2 = cfg.Gardens[1].Name
 
 		streams, _, _, errOut = util.NewTestIOStreams()
-
-		targetFlags = target.NewTargetFlags("", "", "", "", false)
 
 		targetProvider := target.NewTargetProvider(filepath.Join(sessionDir, "target.yaml"), nil)
 		Expect(targetProvider.Write(target.NewTarget(gardenName1, projectName, "", shootName))).To(Succeed())
@@ -263,10 +260,7 @@ var _ = Describe("Target flags", func() {
 		var factory *util.FactoryImpl
 
 		BeforeEach(func() {
-			factory = &util.FactoryImpl{
-				TargetFlags: targetFlags,
-				ConfigFile:  configFile,
-			}
+			factory = util.NewFactoryImpl()
 		})
 
 		Context("when wrapping completion functions", func() {
@@ -312,7 +306,7 @@ var _ = Describe("Target flags", func() {
 				args := []string{
 					fmt.Sprintf("--shoot=%s", shootName),
 					"target",
-					"view",
+					"control-plane",
 				}
 
 				cmd := cmd.NewGardenctlCommand(factory, streams)
@@ -327,7 +321,7 @@ var _ = Describe("Target flags", func() {
 
 				// check target flags values
 				tf := manager.TargetFlags()
-				Expect(tf).To(BeIdenticalTo(factory.TargetFlags))
+				Expect(tf).To(BeIdenticalTo(factory.TargetFlags()))
 				Expect(tf.GardenName()).To(BeEmpty())
 				Expect(tf.ProjectName()).To(BeEmpty())
 				Expect(tf.SeedName()).To(BeEmpty())

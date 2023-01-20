@@ -27,8 +27,20 @@ type TargetFlags interface {
 	ShootName() string
 	// ControlPlane returns the value that is tied to the corresponding cobra flag.
 	ControlPlane() bool
-	// AddFlags binds target configuration flags to a given flagset
+
+	// AddFlags binds all target configuration flags to a given flagset
 	AddFlags(flags *pflag.FlagSet)
+	// AddGardenFlag adds the garden flag to the provided flag set
+	AddGardenFlag(flags *pflag.FlagSet)
+	// AddProjectFlag adds the project flag to the provided flag set
+	AddProjectFlag(flags *pflag.FlagSet)
+	// AddSeedFlag adds the seed flag to the provided flag set
+	AddSeedFlag(flags *pflag.FlagSet)
+	// AddShootFlag adds the shoot flag to the provided flag set
+	AddShootFlag(flags *pflag.FlagSet)
+	// AddControlPlaneFlag adds the control-plane flag to the provided flag set
+	AddControlPlaneFlag(flags *pflag.FlagSet)
+
 	// ToTarget converts the flags to a target
 	ToTarget() Target
 	// IsTargetValid returns true if the set of given CLI flags is enough
@@ -80,10 +92,30 @@ func (tf *targetFlagsImpl) ControlPlane() bool {
 }
 
 func (tf *targetFlagsImpl) AddFlags(flags *pflag.FlagSet) {
+	tf.AddGardenFlag(flags)
+	tf.AddProjectFlag(flags)
+	tf.AddSeedFlag(flags)
+	tf.AddShootFlag(flags)
+	tf.AddControlPlaneFlag(flags)
+}
+
+func (tf *targetFlagsImpl) AddGardenFlag(flags *pflag.FlagSet) {
 	flags.StringVar(&tf.gardenName, "garden", "", "target the given garden cluster")
+}
+
+func (tf *targetFlagsImpl) AddProjectFlag(flags *pflag.FlagSet) {
 	flags.StringVar(&tf.projectName, "project", "", "target the given project")
+}
+
+func (tf *targetFlagsImpl) AddSeedFlag(flags *pflag.FlagSet) {
 	flags.StringVar(&tf.seedName, "seed", "", "target the given seed cluster")
+}
+
+func (tf *targetFlagsImpl) AddShootFlag(flags *pflag.FlagSet) {
 	flags.StringVar(&tf.shootName, "shoot", "", "target the given shoot cluster")
+}
+
+func (tf *targetFlagsImpl) AddControlPlaneFlag(flags *pflag.FlagSet) {
 	flags.BoolVar(&tf.controlPlane, "control-plane", tf.controlPlane, "target control plane of shoot, use together with shoot argument")
 }
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/flags"
 )
 
 // NewCmdTargetControlPlane returns a new target control plane command.
@@ -35,6 +36,12 @@ gardenctl target control-plane --garden my-garden --project my-project --shoot m
 	}
 
 	o.AddFlags(cmd.Flags())
+
+	f.TargetFlags().AddGardenFlag(cmd.Flags())
+	f.TargetFlags().AddProjectFlag(cmd.Flags())
+	f.TargetFlags().AddShootFlag(cmd.Flags())
+	f.TargetFlags().AddSeedFlag(cmd.Flags())
+	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, cmd.Flags())
 
 	return cmd
 }

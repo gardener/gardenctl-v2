@@ -27,7 +27,6 @@ import (
 	cmdsshpatch "github.com/gardener/gardenctl-v2/pkg/cmd/sshpatch"
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	cmdversion "github.com/gardener/gardenctl-v2/pkg/cmd/version"
-	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 const (
@@ -52,12 +51,10 @@ func Execute() {
 
 // NewDefaultGardenctlCommand creates the `gardenctl` command with defaults.
 func NewDefaultGardenctlCommand() *cobra.Command {
-	factory := util.FactoryImpl{
-		TargetFlags: target.NewTargetFlags("", "", "", "", false),
-	}
+	factory := util.NewFactoryImpl()
 	ioStreams := util.NewIOStreams()
 
-	return NewGardenctlCommand(&factory, ioStreams)
+	return NewGardenctlCommand(factory, ioStreams)
 }
 
 // NewGardenctlCommand creates the `gardenctl` command.

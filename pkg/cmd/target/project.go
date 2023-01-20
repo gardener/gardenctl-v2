@@ -11,6 +11,7 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/flags"
 )
 
 // NewCmdTargetProject returns a new target project command.
@@ -35,6 +36,9 @@ gardenctl target project my-project --garden my-garden`,
 	}
 
 	o.AddFlags(cmd.Flags())
+
+	f.TargetFlags().AddGardenFlag(cmd.Flags())
+	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, cmd.Flags())
 
 	return cmd
 }
