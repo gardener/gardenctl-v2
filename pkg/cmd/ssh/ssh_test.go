@@ -282,7 +282,7 @@ var _ = Describe("SSH Command", func() {
 
 		It("should reject bad options", func() {
 			o := ssh.NewSSHOptions(streams)
-			cmd := ssh.NewCmdSSH(&util.FactoryImpl{}, o)
+			cmd := ssh.NewCmdSSH(util.NewFactoryImpl(), o)
 
 			Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
 		})

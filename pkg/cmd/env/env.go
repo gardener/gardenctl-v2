@@ -11,7 +11,6 @@ import (
 	"runtime"
 
 	"github.com/spf13/cobra"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
@@ -57,9 +56,7 @@ here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
 	persistentFlags := cmd.PersistentFlags()
 	o.AddFlags(persistentFlags)
 
-	manager, err := f.Manager()
-	utilruntime.Must(err)
-	manager.TargetFlags().AddFlags(persistentFlags)
+	f.TargetFlags().AddFlags(persistentFlags)
 	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, persistentFlags)
 
 	for _, s := range validShells {
