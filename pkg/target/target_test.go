@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package target_test
 
 import (
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/gardener/gardenctl-v2/pkg/target"
