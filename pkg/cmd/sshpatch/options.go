@@ -94,7 +94,6 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	// fmt.Fprintf(o.sshBaseOptions.Options.IOStreams.Out, "Successfully patched bastion %q\n", o.BastionName) // TODO: check lint error
 	fmt.Fprintf(o.IOStreams.Out, "Successfully patched bastion %q\n", o.Bastion.Name)
 
 	return nil
