@@ -5,7 +5,8 @@ on:
       - v*
     branches:
       - master
-  pull_request: ~
+  pull_request:
+  merge_group:
 permissions:
   contents: read
 jobs:
