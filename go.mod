@@ -7,7 +7,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/fatih/color v1.14.1
 	github.com/gardener/gardener v1.61.3
-	github.com/gardener/gardener-extension-provider-openstack v1.30.3
+	github.com/gardener/gardener-extension-provider-openstack v1.31.4
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/mitchellh/go-homedir v1.1.0
