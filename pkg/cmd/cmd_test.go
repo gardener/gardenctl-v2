@@ -90,7 +90,7 @@ var _ = Describe("Gardenctl command", func() {
 
 		BeforeEach(func() {
 			sessionID = os.Getenv("GCTL_SESSION_ID")
-			termSessionID = os.Getenv("GCTL_SESSION_ID")
+			termSessionID = os.Getenv("TERM_SESSION_ID")
 
 			Expect(os.Unsetenv("GCTL_SESSION_ID")).To(Succeed())
 			Expect(os.Unsetenv("TERM_SESSION_ID")).To(Succeed())
