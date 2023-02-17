@@ -188,6 +188,8 @@ var _ = Describe("SSH Patch Command", func() {
 		ctrl = gomock.NewController(GinkgoT())
 		gardenClient = gcmocks.NewMockClient(ctrl)
 
+		targetFlags := target.NewTargetFlags("", "", "", "", false)
+
 		manager = targetmocks.NewMockManager(ctrl)
 		manager.EXPECT().ClientConfig(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, _ target.Target) (clientcmd.ClientConfig, error) {
 			// DoAndReturn allows us to modify the apiConfig within the testcase
@@ -195,7 +197,6 @@ var _ = Describe("SSH Patch Command", func() {
 			return clientcmdConfig, nil
 		}).AnyTimes()
 		manager.EXPECT().CurrentTarget().Return(currentTarget, nil).AnyTimes()
-		manager.EXPECT().TargetFlags().Return(target.NewTargetFlags("", "", "", "", false)).AnyTimes()
 		manager.EXPECT().GardenClient(gomock.Eq(gardenName)).Return(gardenClient, nil).AnyTimes()
 
 		ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
@@ -203,6 +204,7 @@ var _ = Describe("SSH Patch Command", func() {
 
 		factory = utilmocks.NewMockFactory(ctrl)
 		factory.EXPECT().Manager().Return(manager, nil).AnyTimes()
+		factory.EXPECT().TargetFlags().Return(targetFlags).AnyTimes()
 		factory.EXPECT().Context().Return(ctx).AnyTimes()
 		factory.EXPECT().Clock().Return(clock).AnyTimes()
 		fakeIPs := []string{"192.0.2.42", "2001:db8::8a2e:370:7334"}

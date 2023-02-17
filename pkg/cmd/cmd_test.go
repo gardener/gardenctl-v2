@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cmd_test
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -78,6 +79,37 @@ var _ = Describe("Gardenctl command", func() {
 				Expect(current.SeedName()).To(BeEmpty())
 				Expect(current.ShootName()).To(Equal(shootName))
 			})
+		})
+	})
+
+	Context("when running the help command", func() {
+		var (
+			sessionID     string
+			termSessionID string
+		)
+
+		BeforeEach(func() {
+			sessionID = os.Getenv("GCTL_SESSION_ID")
+			termSessionID = os.Getenv("TERM_SESSION_ID")
+
+			Expect(os.Unsetenv("GCTL_SESSION_ID")).To(Succeed())
+			Expect(os.Unsetenv("TERM_SESSION_ID")).To(Succeed())
+		})
+
+		AfterEach(func() {
+			// restore env variables
+			Expect(os.Setenv("GCTL_SESSION_ID", sessionID)).To(Succeed())
+			Expect(os.Setenv("TERM_SESSION_ID", termSessionID)).To(Succeed())
+		})
+
+		It("should succeed without session IDs", func() {
+			args := []string{
+				"help",
+			}
+
+			cmd := cmd.NewGardenctlCommand(util.NewFactoryImpl(), streams)
+			cmd.SetArgs(args)
+			Expect(cmd.Execute()).To(Succeed())
 		})
 	})
 })

@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
@@ -50,9 +49,7 @@ gardenctl ssh-patch cli-xxxxxxxx`,
 
 	ssh.RegisterCompletionFuncsForAccessConfigFlags(cmd, f, o.IOStreams, cmd.Flags())
 
-	manager, err := f.Manager()
-	utilruntime.Must(err)
-	manager.TargetFlags().AddFlags(cmd.Flags())
+	f.TargetFlags().AddFlags(cmd.Flags())
 	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, o.IOStreams, cmd.Flags())
 
 	return cmd
