@@ -14,7 +14,7 @@ import (
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/google/uuid"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -52,12 +52,12 @@ var _ = BeforeSuite(func() {
 	gardenKubeconfig = filepath.Join(gardenHomeDir, "kubeconfig.yaml")
 	data := createTestKubeconfig(gardenName)
 	Expect(os.WriteFile(gardenKubeconfig, data, 0o600)).To(Succeed())
-}, 60)
+})
 
 var _ = AfterSuite(func() {
 	cancel()
 	Expect(os.RemoveAll(gardenHomeDir)).To(Succeed())
-}, 5)
+})
 
 func createTestKubeconfig(name string) []byte {
 	config := clientcmdapi.NewConfig()

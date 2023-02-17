@@ -8,7 +8,7 @@ package target_test
 import (
 	"fmt"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
