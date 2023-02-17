@@ -35,6 +35,7 @@ var _ = Describe("Env Commands", func() {
 		factory.EXPECT().Manager().Return(manager, nil).AnyTimes()
 
 		targetFlags := target.NewTargetFlags("", "", "", "", false)
+		factory.EXPECT().TargetFlags().Return(targetFlags).AnyTimes()
 		manager.EXPECT().TargetFlags().Return(targetFlags).AnyTimes()
 
 		streams = util.IOStreams{}
