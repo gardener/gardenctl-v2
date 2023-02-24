@@ -112,6 +112,10 @@ func (w *clientWrapper) Scheme() *runtime.Scheme {
 	return w.delegate.Scheme()
 }
 
+func (w *clientWrapper) SubResource(subResource string) client.SubResourceClient {
+	return w.delegate.SubResource(subResource)
+}
+
 func (w *clientWrapper) RESTMapper() meta.RESTMapper {
 	return w.delegate.RESTMapper()
 }

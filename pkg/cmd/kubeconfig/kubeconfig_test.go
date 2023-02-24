@@ -162,7 +162,7 @@ users: null
 
 				Context("json format", func() {
 					BeforeEach(func() {
-						options.PrintFlags.OutputFormat = pointer.StringPtr("json")
+						options.PrintFlags.OutputFormat = pointer.String("json")
 					})
 
 					It("should return the kubeconfig ", func() {
