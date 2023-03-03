@@ -8,6 +8,7 @@ package ssh_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -464,6 +465,26 @@ var _ = Describe("SSH Command", func() {
 			bastion := &operationsv1alpha1.Bastion{}
 			Expect(gardenClient.Get(ctx, key, bastion)).To(Succeed())
 			Expect(bastion.Annotations).To(HaveKeyWithValue(corev1beta1constants.GardenerOperation, corev1beta1constants.GardenerOperationKeepalive))
+		})
+
+		It("should skip the availability check", func() {
+			options := ssh.NewSSHOptions(streams)
+			options.SkipAvailabilityCheck = true
+
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			ssh.SetBastionAvailabilityChecker(func(hostname string, privateKey []byte) error {
+				err := errors.New("this function should not be executed as of SkipAvailabilityCheck = true")
+				Fail(err.Error())
+				return err
+			})
+
+			// simulate an external controller processing the bastion and proving a successful status
+			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
+
+			Expect(cmd.RunE(cmd, nil)).To(Succeed())
+
+			Expect(out.String()).To(ContainSubstring("Bastion is ready, skipping availability check"))
 		})
 	})
 
