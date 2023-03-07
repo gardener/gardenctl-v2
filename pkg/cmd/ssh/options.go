@@ -750,7 +750,7 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 		}
 
 		if o.SkipAvailabilityCheck {
-			fmt.Fprintf(o.IOStreams.Out, "Bastion is ready, skipping availability check")
+			fmt.Fprintln(o.IOStreams.Out, "Bastion is ready, skipping availability check")
 			return true, nil
 		}
 
