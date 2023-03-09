@@ -16,6 +16,7 @@ import (
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	"github.com/spf13/cobra"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/klog/v2"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
@@ -43,6 +44,8 @@ func newOptions(ioStreams util.IOStreams) *options {
 }
 
 func (o *options) patchBastionIngress(ctx context.Context) error {
+	logger := klog.FromContext(ctx)
+
 	var policies []operationsv1alpha1.BastionIngressPolicy
 
 	oldBastion := o.Bastion.DeepCopy()
@@ -59,7 +62,7 @@ func (o *options) patchBastionIngress(ctx context.Context) error {
 					return fmt.Errorf("GCP only supports IPv4: %s", cidr)
 				}
 
-				fmt.Fprintf(o.IOStreams.Out, "GCP only supports IPv4, skipped CIDR: %s\n", cidr)
+				logger.Info("GCP only supports IPv4, skipped CIDR", "cidr", cidr)
 
 				continue // skip
 			}
@@ -103,6 +106,8 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 	ctx, cancel := context.WithTimeout(f.Context(), 30*time.Second)
 	defer cancel()
 
+	logger := klog.FromContext(ctx)
+
 	manager, err := f.Manager()
 	if err != nil {
 		return err
@@ -115,7 +120,7 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 
 	o.bastionPatcher = bastionListPatcher
 
-	if err := o.AccessConfig.Complete(f, cmd, args, o.Options.IOStreams); err != nil {
+	if err := o.AccessConfig.Complete(f, cmd, args); err != nil {
 		return err
 	}
 
@@ -136,7 +141,7 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 		o.Bastion = &bastions[0]
 
 		age := f.Clock().Now().Sub(o.Bastion.CreationTimestamp.Time).Round(time.Second).String()
-		fmt.Fprintf(o.IOStreams.Out, "Auto-selected bastion %q created %s ago targeting shoot \"%s/%s\"\n", o.Bastion.Name, age, o.Bastion.Namespace, o.Bastion.Spec.ShootRef.Name)
+		logger.Info("Auto-selected bastion", "bastion", klog.KObj(o.Bastion), "age", age, "shoot", klog.KRef(o.Bastion.Namespace, o.Bastion.Spec.ShootRef.Name))
 	} else {
 		bastionName := args[0]
 

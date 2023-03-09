@@ -14,7 +14,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -45,6 +44,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/cli-runtime/pkg/printers"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -220,7 +220,7 @@ func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 
 // Complete adapts from the command line args to the data required.
 func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
-	if err := o.AccessConfig.Complete(f, cmd, args, o.Options.IOStreams); err != nil {
+	if err := o.AccessConfig.Complete(f, cmd, args); err != nil {
 		return err
 	}
 
@@ -398,6 +398,9 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return err
 	}
 
+	ctx := f.Context()
+	logger := klog.FromContext(ctx)
+
 	// sshTarget is the target used for the run method
 	sshTarget, err := manager.CurrentTarget()
 	if err != nil {
@@ -411,7 +414,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	}
 
 	if sshTarget.ShootName() == "" && sshTarget.SeedName() != "" {
-		if shoot, err := gardenClient.GetShootOfManagedSeed(f.Context(), sshTarget.SeedName()); err != nil {
+		if shoot, err := gardenClient.GetShootOfManagedSeed(ctx, sshTarget.SeedName()); err != nil {
 			if apierrors.IsNotFound(err) {
 				return fmt.Errorf("cannot ssh to non-managed seeds: %w", err)
 			}
@@ -426,10 +429,10 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return target.ErrNoShootTargeted
 	}
 
-	printTargetInformation(o.IOStreams.Out, sshTarget)
+	printTargetInformation(logger, sshTarget)
 
 	// fetch targeted shoot (ctx is cancellable to stop the keep alive goroutine later)
-	ctx, cancel := context.WithCancel(f.Context())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	shoot, err := gardenClient.FindShoot(ctx, sshTarget.AsListOption())
@@ -478,7 +481,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 				return err
 			}
 		} else if apierrors.IsNotFound(err) {
-			fmt.Fprintf(o.IOStreams.Out, "Node with name %q not found. Wrong name provided or this node did not yet join the cluster, continuing anyways: %v\n", o.NodeName, err)
+			logger.Error(err, "Node not found. Wrong name provided or this node did not yet join the cluster, continuing anyways", "nodeName", o.NodeName)
 			nodeHostname = o.NodeName
 		} else {
 			return fmt.Errorf("failed to determine hostname for node: %w", err)
@@ -486,7 +489,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	}
 
 	// prepare Bastion resource
-	policies, err := o.bastionIngressPolicies(shoot.Spec.Provider.Type)
+	policies, err := o.bastionIngressPolicies(logger, shoot.Spec.Provider.Type)
 	if err != nil {
 		return fmt.Errorf("failed to get bastion ingress policies: %w", err)
 	}
@@ -527,30 +530,30 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		// simply close the channel and "trigger" all who wait for it.
 		close(signalChan)
 
-		fmt.Fprintln(o.IOStreams.Out, "Caught signal, cancelling...")
+		logger.Info("Caught signal, cancelling...")
 		cancel()
 	}()
 
 	// do not use `ctx`, as it might be cancelled already when running the cleanup
 	defer cleanup(f.Context(), o, gardenClient.RuntimeClient(), bastion, nodePrivateKeyFiles)
 
-	fmt.Fprintf(o.IOStreams.Out, "Creating bastion %s…\n", bastion.Name)
+	logger.Info("Creating bastion", "bastion", klog.KObj(bastion))
 
 	if err := gardenClient.RuntimeClient().Create(ctx, bastion); err != nil {
 		return fmt.Errorf("failed to create bastion: %w", err)
 	}
 
 	// continuously keep the bastion alive by renewing its annotation
-	go keepBastionAlive(ctx, gardenClient.RuntimeClient(), bastion.DeepCopy(), o.IOStreams.ErrOut)
+	go keepBastionAlive(ctx, gardenClient.RuntimeClient(), bastion.DeepCopy())
 
-	fmt.Fprintf(o.IOStreams.Out, "Waiting up to %v for bastion to be ready…\n", o.WaitTimeout)
+	logger.Info("Waiting for bastion to be ready…", "waitTimeout", o.WaitTimeout)
 
 	err = waitForBastion(ctx, o, gardenClient.RuntimeClient(), bastion)
 
 	if err == wait.ErrWaitTimeout {
-		fmt.Fprintln(o.IOStreams.Out, "Timed out waiting for the bastion to be ready.")
+		logger.Info("Timed out waiting for the bastion to be ready.")
 	} else if err != nil {
-		fmt.Fprintf(o.IOStreams.Out, "An error occurred while waiting: %v\n", err)
+		logger.Error(err, "An error occurred while waiting for the bastion to be ready.")
 	}
 
 	if err != nil {
@@ -570,7 +573,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		printAddr = ingress.IP
 	}
 
-	fmt.Fprintf(o.IOStreams.Out, "Bastion host became available at %s.\n", printAddr)
+	logger.Info("Bastion host became available.", "address", printAddr)
 
 	if nodeHostname != "" && o.Interactive {
 		err = remoteShell(ctx, o, bastion, nodeHostname, nodePrivateKeyFiles)
@@ -578,12 +581,12 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		err = waitForSignal(ctx, o, shootClient, bastion, nodeHostname, nodePrivateKeyFiles, ctx.Done())
 	}
 
-	fmt.Fprintln(o.IOStreams.Out, "Exiting…")
+	logger.V(4).Info("Exiting…")
 
 	return err
 }
 
-func (o *SSHOptions) bastionIngressPolicies(providerType string) ([]operationsv1alpha1.BastionIngressPolicy, error) {
+func (o *SSHOptions) bastionIngressPolicies(logger klog.Logger, providerType string) ([]operationsv1alpha1.BastionIngressPolicy, error) {
 	var policies []operationsv1alpha1.BastionIngressPolicy
 
 	for _, cidr := range o.CIDRs {
@@ -598,7 +601,7 @@ func (o *SSHOptions) bastionIngressPolicies(providerType string) ([]operationsv1
 					return nil, fmt.Errorf("GCP only supports IPv4: %s", cidr)
 				}
 
-				fmt.Fprintf(o.IOStreams.Out, "GCP only supports IPv4, skipped CIDR: %s\n", cidr)
+				logger.Info("GCP only supports IPv4, skipped CIDR: %s\n", cidr)
 
 				continue // skip
 			}
@@ -618,7 +621,7 @@ func (o *SSHOptions) bastionIngressPolicies(providerType string) ([]operationsv1
 	return policies, nil
 }
 
-func printTargetInformation(out io.Writer, t target.Target) {
+func printTargetInformation(logger klog.Logger, t target.Target) {
 	var step string
 
 	if t.ProjectName() != "" {
@@ -627,24 +630,27 @@ func printTargetInformation(out io.Writer, t target.Target) {
 		step = t.SeedName()
 	}
 
-	fmt.Fprintf(out, "Preparing SSH access to %s/%s on %s…\n", step, t.ShootName(), t.GardenName())
+	target := fmt.Sprintf("%s/%s", step, t.ShootName()) // klog.KRef() does not really fit as it expects a namespace
+	logger.Info("Preparing SSH access", "target", target, "garden", t.GardenName())
 }
 
 func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string) {
+	logger := klog.FromContext(ctx)
+
 	if !o.KeepBastion {
-		fmt.Fprintf(o.IOStreams.Out, "Deleting bastion %s…\n", bastion.Name)
+		logger.Info("Deleting bastion", "bastion", klog.KObj(bastion))
 
 		if err := gardenClient.Delete(ctx, bastion); client.IgnoreNotFound(err) != nil {
-			fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete bastion: %v", err)
+			logger.Error(err, "Failed to delete bastion.")
 		}
 
 		if o.generatedSSHKeys {
 			if err := os.Remove(o.SSHPublicKeyFile); err != nil {
-				fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete SSH public key file %q: %v\n", o.SSHPublicKeyFile, err)
+				logger.Error(err, "Failed to delete SSH public key file", "path", o.SSHPublicKeyFile)
 			}
 
 			if err := os.Remove(o.SSHPrivateKeyFile); err != nil {
-				fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete SSH private key file %q: %v\n", o.SSHPrivateKeyFile, err)
+				logger.Error(err, "Failed to delete SSH private key file", "path", o.SSHPrivateKeyFile)
 			}
 		}
 
@@ -653,17 +659,17 @@ func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bas
 		// command we provided to connect to the shoot nodes
 		for _, filename := range nodePrivateKeyFiles {
 			if err := os.Remove(filename); err != nil {
-				fmt.Fprintf(o.IOStreams.ErrOut, "Failed to delete node private key %q: %v\n", filename, err)
+				logger.Error(err, "Failed to delete node private key", "path", filename)
 			}
 		}
 	} else {
-		fmt.Fprintf(o.IOStreams.Out, "Keeping bastion %s in namespace %s.\n", bastion.Name, bastion.Namespace)
+		logger.Info("Keeping bastion", klog.KObj(bastion))
 
 		if o.generatedSSHKeys {
-			fmt.Fprintf(o.IOStreams.Out, "The SSH keypair for the bastion is stored at %s (public key) and %s (private key).\n", o.SSHPublicKeyFile, o.SSHPrivateKeyFile)
+			logger.Info("The SSH keypair for the bastion remain on disk", "publicKeyPath", o.SSHPublicKeyFile, "privateKeyPath", o.SSHPrivateKeyFile)
 		}
 
-		fmt.Fprintf(o.IOStreams.Out, "The private SSH keys for shoot nodes are stored at %s.\n", strings.Join(nodePrivateKeyFiles, ", "))
+		logger.Info("The private SSH keys for shoot nodes remain on disk", "paths", nodePrivateKeyFiles)
 	}
 }
 
@@ -726,6 +732,8 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 		err             error
 	)
 
+	logger := klog.FromContext(ctx)
+
 	if o.SSHPrivateKeyFile != "" {
 		privateKeyBytes, err = os.ReadFile(o.SSHPrivateKeyFile)
 		if err != nil {
@@ -745,7 +753,7 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 			return false, nil
 		case cond.Status != gardencorev1alpha1.ConditionTrue:
 			lastCheckErr = errors.New(cond.Message)
-			fmt.Fprintf(o.IOStreams.ErrOut, "Still waiting: %v\n", lastCheckErr)
+			logger.Error(lastCheckErr, "Still waiting")
 			return false, nil
 		}
 
@@ -756,7 +764,7 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 
 		lastCheckErr = bastionAvailabilityChecker(preferredBastionAddress(bastion), privateKeyBytes)
 		if lastCheckErr != nil {
-			fmt.Fprintf(o.IOStreams.ErrOut, "Still waiting: Bastion is ready, however cannot connect to bastion yet: %v\n", lastCheckErr)
+			logger.Error(lastCheckErr, "Still waiting for bastion to accept SSH connection")
 			return false, nil
 		}
 
@@ -959,7 +967,9 @@ func getKeepAliveInterval() time.Duration {
 	return keepAliveInterval
 }
 
-func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, stderr io.Writer) {
+func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *operationsv1alpha1.Bastion) {
+	logger := klog.FromContext(ctx)
+
 	ticker := time.NewTicker(getKeepAliveInterval())
 	defer ticker.Stop()
 
@@ -976,7 +986,7 @@ func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *
 			bastion.Annotations = map[string]string{}
 
 			if err := gardenClient.Get(ctx, key, bastion); err != nil {
-				fmt.Fprintf(stderr, "Failed to keep bastion alive: %v\n", err)
+				logger.Error(err, "Failed to keep bastion alive.")
 			}
 
 			// add the keepalive annotation
@@ -989,7 +999,7 @@ func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *
 			bastion.Annotations[corev1beta1constants.GardenerOperation] = corev1beta1constants.GardenerOperationKeepalive
 
 			if err := gardenClient.Patch(ctx, bastion, client.MergeFrom(oldBastion)); err != nil {
-				fmt.Fprintf(stderr, "Failed to keep bastion alive: %v\n", err)
+				logger.Error(err, "Failed to keep bastion alive.")
 			}
 		}
 	}
@@ -1082,7 +1092,7 @@ func (o *SSHOptions) checkAccessRestrictions(cfg *config.Config, gardenName stri
 	}
 
 	askForConfirmation := tf.ShootName() != ""
-	handler := ac.NewAccessRestrictionHandler(o.IOStreams.In, o.IOStreams.Out, askForConfirmation)
+	handler := ac.NewAccessRestrictionHandler(o.IOStreams.In, o.IOStreams.ErrOut, askForConfirmation) // do not write access restriction to stdout, otherwise it would break the output format
 
 	return handler(ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)), nil
 }

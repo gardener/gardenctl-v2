@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/klog/v2"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 )
@@ -33,9 +34,12 @@ type AccessConfig struct {
 	AutoDetected bool
 }
 
-func (o *AccessConfig) Complete(f util.Factory, _ *cobra.Command, _ []string, ioStreams util.IOStreams) error {
+func (o *AccessConfig) Complete(f util.Factory, _ *cobra.Command, _ []string) error {
+	ctx := f.Context()
+	logger := klog.FromContext(ctx)
+
 	if len(o.CIDRs) == 0 {
-		ctx, cancel := context.WithTimeout(f.Context(), 60*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 		defer cancel()
 
 		publicIPs, err := f.PublicIPs(ctx)
@@ -48,12 +52,7 @@ func (o *AccessConfig) Complete(f util.Factory, _ *cobra.Command, _ []string, io
 			cidrs = append(cidrs, ipToCIDR(ip))
 		}
 
-		name := "CIDR"
-		if len(cidrs) != 1 {
-			name = "CIDRs"
-		}
-
-		fmt.Fprintf(ioStreams.Out, "Auto-detected your system's %s as %s\n", name, strings.Join(cidrs, ", "))
+		logger.Info("Auto-detected your system's CIDR(s)", "cidr", strings.Join(cidrs, ", "))
 
 		o.CIDRs = cidrs
 		o.AutoDetected = true
@@ -85,11 +84,14 @@ type (
 	cobraCompletionFuncWithError func(f util.Factory) ([]string, error)
 )
 
-func completionWrapper(f util.Factory, ioStreams util.IOStreams, completer cobraCompletionFuncWithError) cobraCompletionFunc {
+func completionWrapper(f util.Factory, completer cobraCompletionFuncWithError) cobraCompletionFunc {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ctx := f.Context()
+		logger := klog.FromContext(ctx)
+
 		result, err := completer(f)
 		if err != nil {
-			fmt.Fprintf(ioStreams.ErrOut, "%v\n", err)
+			logger.Error(err, "failed to complete")
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
@@ -97,8 +99,8 @@ func completionWrapper(f util.Factory, ioStreams util.IOStreams, completer cobra
 	}
 }
 
-func RegisterCompletionFuncsForAccessConfigFlags(cmd *cobra.Command, factory util.Factory, ioStreams util.IOStreams, flags *pflag.FlagSet) {
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("cidr", completionWrapper(factory, ioStreams, cidrFlagCompletionFunc)))
+func RegisterCompletionFuncsForAccessConfigFlags(cmd *cobra.Command, factory util.Factory) {
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("cidr", completionWrapper(factory, cidrFlagCompletionFunc)))
 }
 
 func cidrFlagCompletionFunc(f util.Factory) ([]string, error) {

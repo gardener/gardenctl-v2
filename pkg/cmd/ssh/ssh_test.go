@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -115,9 +116,14 @@ var _ = Describe("SSH Command", func() {
 		gardenClient       client.Client
 		shootClient        client.Client
 		nodePrivateKeyFile string
+		logs               *util.SafeBytesBuffer
 	)
 
 	BeforeEach(func() {
+		logs = &util.SafeBytesBuffer{}
+		klog.SetOutput(logs)
+		klog.LogToStderr(false) // must set to false, otherwise klog will log to os.stderr instead of to our buffer
+
 		// all fake bastions are always immediately available
 		ssh.SetBastionAvailabilityChecker(func(hostname string, privateKey []byte) error {
 			return nil
@@ -299,9 +305,9 @@ var _ = Describe("SSH Command", func() {
 			Expect(cmd.RunE(cmd, nil)).To(Succeed())
 
 			// assert the output
-			Expect(out.String()).To(ContainSubstring(bastionName))
-			Expect(out.String()).To(ContainSubstring(bastionHostname))
-			Expect(out.String()).To(ContainSubstring(bastionIP))
+			Expect(logs).To(ContainSubstring(bastionName))
+			Expect(logs).To(ContainSubstring(bastionHostname))
+			Expect(out).To(ContainSubstring(bastionIP))
 
 			// assert that the bastion has been cleaned up
 			key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
@@ -351,9 +357,9 @@ var _ = Describe("SSH Command", func() {
 
 			// assert output
 			Expect(executedCommands).To(Equal(1))
-			Expect(out.String()).To(ContainSubstring(bastionName))
-			Expect(out.String()).To(ContainSubstring(bastionHostname))
-			Expect(out.String()).To(ContainSubstring(bastionIP))
+			Expect(logs).To(ContainSubstring(bastionName))
+			Expect(logs).To(ContainSubstring(bastionHostname))
+			Expect(out).To(ContainSubstring(bastionIP))
 
 			// assert that the bastion has been cleaned up
 			key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
@@ -405,10 +411,10 @@ var _ = Describe("SSH Command", func() {
 
 			// assert output
 			Expect(executedCommands).To(Equal(1))
-			Expect(out.String()).To(ContainSubstring(bastionName))
-			Expect(out.String()).To(ContainSubstring(bastionHostname))
-			Expect(out.String()).To(ContainSubstring(bastionIP))
-			Expect(out.String()).To(ContainSubstring("node did not yet join the cluster"))
+			Expect(logs).To(ContainSubstring(bastionName))
+			Expect(logs).To(ContainSubstring(bastionHostname))
+			Expect(out).To(ContainSubstring(bastionIP))
+			Expect(logs).To(ContainSubstring("node did not yet join the cluster"))
 
 			// assert that the bastion has been cleaned up
 			key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}

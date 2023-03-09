@@ -25,6 +25,7 @@ import (
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 
 	gcmocks "github.com/gardener/gardenctl-v2/internal/gardenclient/mocks"
@@ -61,6 +62,7 @@ var _ = Describe("SSH Patch Command", func() {
 		testShoot              *gardencorev1beta1.Shoot
 		apiConfig              *clientcmdapi.Config
 		bastionDefaultPolicies []operationsv1alpha1.BastionIngressPolicy
+		logs                   *util.SafeBytesBuffer
 	)
 
 	// helpers
@@ -114,6 +116,10 @@ var _ = Describe("SSH Patch Command", func() {
 	}()
 
 	BeforeEach(func() {
+		logs = &util.SafeBytesBuffer{}
+		klog.SetOutput(logs)
+		klog.LogToStderr(false) // must set to false, otherwise klog will log to os.stderr instead of to our buffer
+
 		now, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
 
 		apiConfig = clientcmdapi.NewConfig()
@@ -274,9 +280,8 @@ var _ = Describe("SSH Patch Command", func() {
 					clock.EXPECT().Now().Return(now).AnyTimes()
 
 					err := o.Complete(factory, cmd, []string{})
-					out := o.Out.String()
 
-					Expect(out).To(ContainSubstring("Auto-selected bastion"))
+					Expect(logs).To(ContainSubstring("Auto-selected bastion"))
 					Expect(err).To(BeNil(), "Should not return an error")
 					Expect(o.Bastion).ToNot(BeNil())
 					Expect(o.Bastion.Name).To(Equal(defaultUserName+"-bastion1"), "Should set bastion name in SSHPatchOptions to the one bastion the user has created")

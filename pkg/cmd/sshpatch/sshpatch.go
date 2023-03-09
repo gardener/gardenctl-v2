@@ -47,7 +47,7 @@ gardenctl ssh-patch cli-xxxxxxxx`,
 
 	o.AccessConfig.AddFlags(cmd.Flags())
 
-	ssh.RegisterCompletionFuncsForAccessConfigFlags(cmd, f, o.IOStreams, cmd.Flags())
+	ssh.RegisterCompletionFuncsForAccessConfigFlags(cmd, f)
 
 	f.TargetFlags().AddFlags(cmd.Flags())
 	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, o.IOStreams, cmd.Flags())
