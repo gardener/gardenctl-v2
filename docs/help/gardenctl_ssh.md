@@ -9,17 +9,18 @@ gardenctl ssh [NODE_NAME] [flags]
 ### Options
 
 ```
-      --cidr stringArray         CIDRs to allow access to the bastion host; if not given, your system's public IPs (v4 and v6) are auto-detected.
-      --control-plane            target control plane of shoot, use together with shoot argument
-      --garden string            target the given garden cluster
-  -h, --help                     help for ssh
-      --interactive              Open an SSH connection instead of just providing the bastion host (only if NODE_NAME is provided). (default true)
-      --keep-bastion             Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)
-      --project string           target the given project
-      --public-key-file string   Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.
-      --seed string              target the given seed cluster
-      --shoot string             target the given shoot cluster
-      --wait-timeout duration    Maximum duration to wait for the bastion to become available. (default 10m0s)
+      --cidr stringArray          CIDRs to allow access to the bastion host; if not given, your system's public IPs (v4 and v6) are auto-detected.
+      --control-plane             target control plane of shoot, use together with shoot argument
+      --garden string             target the given garden cluster
+  -h, --help                      help for ssh
+      --interactive               Open an SSH connection instead of just providing the bastion host (only if NODE_NAME is provided). (default true)
+      --keep-bastion              Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)
+      --project string            target the given project
+      --public-key-file string    Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.
+      --seed string               target the given seed cluster
+      --shoot string              target the given shoot cluster
+      --skip-availability-check   Skip checking for SSH bastion host availability.
+      --wait-timeout duration     Maximum duration to wait for the bastion to become available. (default 10m0s)
 ```
 
 ### Options inherited from parent commands

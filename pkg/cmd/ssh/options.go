@@ -190,6 +190,10 @@ type SSHOptions struct {
 	// bastion once it exits. By default it deletes it, but we allow the user to
 	// keep it for debugging purposes.
 	KeepBastion bool
+
+	// SkipAvailabilityCheck determines whether to check for the availability of
+	// the bastion host.
+	SkipAvailabilityCheck bool
 }
 
 // NewSSHOptions returns initialized SSHOptions.
@@ -199,9 +203,10 @@ func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 		Options: base.Options{
 			IOStreams: ioStreams,
 		},
-		Interactive: true,
-		WaitTimeout: 10 * time.Minute,
-		KeepBastion: false,
+		Interactive:           true,
+		WaitTimeout:           10 * time.Minute,
+		KeepBastion:           false,
+		SkipAvailabilityCheck: false,
 	}
 }
 
@@ -210,6 +215,7 @@ func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 	flagSet.StringVar(&o.SSHPublicKeyFile, "public-key-file", "", "Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.")
 	flagSet.DurationVar(&o.WaitTimeout, "wait-timeout", o.WaitTimeout, "Maximum duration to wait for the bastion to become available.")
 	flagSet.BoolVar(&o.KeepBastion, "keep-bastion", o.KeepBastion, "Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)")
+	flagSet.BoolVar(&o.SkipAvailabilityCheck, "skip-availability-check", o.SkipAvailabilityCheck, "Skip checking for SSH bastion host availability.")
 }
 
 // Complete adapts from the command line args to the data required.
@@ -741,6 +747,11 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 			lastCheckErr = errors.New(cond.Message)
 			fmt.Fprintf(o.IOStreams.ErrOut, "Still waiting: %v\n", lastCheckErr)
 			return false, nil
+		}
+
+		if o.SkipAvailabilityCheck {
+			fmt.Fprintln(o.IOStreams.Out, "Bastion is ready, skipping availability check")
+			return true, nil
 		}
 
 		lastCheckErr = bastionAvailabilityChecker(preferredBastionAddress(bastion), privateKeyBytes)
