@@ -15,6 +15,7 @@ gardenctl ssh [NODE_NAME] [flags]
   -h, --help                      help for ssh
       --interactive               Open an SSH connection instead of just providing the bastion host (only if NODE_NAME is provided). (default true)
       --keep-bastion              Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)
+      --no-keepalive              Exit after the bastion host became available without keeping the bastion alive or establishing an SSH connection. Note that this flag requires the flags --interactive=false and --keep-bastion to be set
       --project string            target the given project
       --public-key-file string    Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.
       --seed string               target the given seed cluster
