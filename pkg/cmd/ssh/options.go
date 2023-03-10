@@ -291,6 +291,12 @@ type SSHOptions struct {
 	// SkipAvailabilityCheck determines whether to check for the availability of
 	// the bastion host.
 	SkipAvailabilityCheck bool
+
+	// NoKeepalive controls if the command should exit after the bastion becomes available.
+	// If this option is true, no SSH connection will be established and the bastion will
+	// not be kept alive after it became available.
+	// This option can only be used if KeepBastion is set to true and Interactive is set to false.
+	NoKeepalive bool
 }
 
 // NewSSHOptions returns initialized SSHOptions.
@@ -304,6 +310,7 @@ func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 		WaitTimeout:           10 * time.Minute,
 		KeepBastion:           false,
 		SkipAvailabilityCheck: false,
+		NoKeepalive:           false,
 	}
 }
 
@@ -313,6 +320,7 @@ func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 	flagSet.DurationVar(&o.WaitTimeout, "wait-timeout", o.WaitTimeout, "Maximum duration to wait for the bastion to become available.")
 	flagSet.BoolVar(&o.KeepBastion, "keep-bastion", o.KeepBastion, "Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)")
 	flagSet.BoolVar(&o.SkipAvailabilityCheck, "skip-availability-check", o.SkipAvailabilityCheck, "Skip checking for SSH bastion host availability.")
+	flagSet.BoolVar(&o.NoKeepalive, "no-keepalive", o.NoKeepalive, "Exit after the bastion host became available without keeping the bastion alive or establishing an SSH connection. Note that this flag requires the flags --interactive=false and --keep-bastion to be set")
 }
 
 // Complete adapts from the command line args to the data required.
@@ -383,6 +391,16 @@ func (o *SSHOptions) Validate() error {
 
 	if o.WaitTimeout == 0 {
 		return errors.New("the maximum wait duration must be non-zero")
+	}
+
+	if o.NoKeepalive {
+		if o.Interactive {
+			return errors.New("set --interactive=false when disabling keepalive")
+		}
+
+		if !o.KeepBastion {
+			return errors.New("set --keep-bastion when disabling keepalive")
+		}
 	}
 
 	content, err := os.ReadFile(o.SSHPublicKeyFile)
@@ -672,15 +690,15 @@ func (o *SSHOptions) Run(f util.Factory) error {
 
 	logger.Info("Bastion host became available.", "address", printAddr)
 
-	if nodeHostname != "" && o.Interactive {
-		err = remoteShell(ctx, o, bastion, nodeHostname, nodePrivateKeyFiles)
-	} else {
-		err = waitForSignal(ctx, o, shootClient, bastion, nodeHostname, nodePrivateKeyFiles, ctx.Done())
+	if o.NoKeepalive {
+		return nil
 	}
 
-	logger.V(4).Info("Exiting…")
+	if nodeHostname == "" || !o.Interactive {
+		return waitForSignal(ctx, o, shootClient, bastion, nodeHostname, nodePrivateKeyFiles, ctx.Done())
+	}
 
-	return err
+	return remoteShell(ctx, o, bastion, nodeHostname, nodePrivateKeyFiles)
 }
 
 func (o *SSHOptions) bastionIngressPolicies(logger klog.Logger, providerType string) ([]operationsv1alpha1.BastionIngressPolicy, error) {
