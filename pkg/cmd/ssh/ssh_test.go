@@ -523,7 +523,7 @@ var _ = Describe("SSH Command", func() {
 
 			Expect(cmd.RunE(cmd, nil)).To(Succeed())
 
-			Expect(out.String()).To(ContainSubstring("Bastion is ready, skipping availability check"))
+			Expect(logs).To(ContainSubstring("Bastion is ready, skipping availability check"))
 		})
 	})
 

@@ -698,7 +698,7 @@ func (o *SSHOptions) bastionIngressPolicies(logger klog.Logger, providerType str
 					return nil, fmt.Errorf("GCP only supports IPv4: %s", cidr)
 				}
 
-				logger.Info("GCP only supports IPv4, skipped CIDR: %s\n", cidr)
+				logger.Info("GCP only supports IPv4, skipped CIDR: %s\n", "cidr", cidr)
 
 				continue // skip
 			}
@@ -760,7 +760,7 @@ func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bas
 			}
 		}
 	} else {
-		logger.Info("Keeping bastion", klog.KObj(bastion))
+		logger.Info("Keeping bastion", "bastion", klog.KObj(bastion))
 
 		if o.generatedSSHKeys {
 			logger.Info("The SSH keypair for the bastion remain on disk", "publicKeyPath", o.SSHPublicKeyFile, "privateKeyPath", o.SSHPrivateKeyFile)
@@ -855,7 +855,7 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 		}
 
 		if o.SkipAvailabilityCheck {
-			fmt.Fprintln(o.IOStreams.Out, "Bastion is ready, skipping availability check")
+			logger.Info("Bastion is ready, skipping availability check")
 			return true, nil
 		}
 
