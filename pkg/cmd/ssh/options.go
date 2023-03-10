@@ -151,6 +151,7 @@ var (
 
 		return cmd.Run()
 	}
+
 	// waitForSignal informs the user about their SSHOptions and keeps the
 	// bastion alive until gardenctl exits.
 	waitForSignal = func(ctx context.Context, o *SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string, signalChan <-chan struct{}) error {
