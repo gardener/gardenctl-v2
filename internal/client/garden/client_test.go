@@ -19,6 +19,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clientauthenticationv1 "k8s.io/client-go/pkg/apis/clientauthentication/v1"
+	clientauthenticationv1beta1 "k8s.io/client-go/pkg/apis/clientauthentication/v1beta1"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -235,6 +237,7 @@ var _ = Describe("Client", func() {
 
 				Expect(rawConfig.AuthInfos).To(HaveLen(1))
 				authInfo := rawConfig.AuthInfos[context.AuthInfo]
+				Expect(authInfo.Exec.APIVersion).To(Equal(clientauthenticationv1.SchemeGroupVersion.String()))
 				Expect(authInfo.Exec.Command).To(Equal("kubectl-gardenlogin"))
 				Expect(authInfo.Exec.Args).To(Equal([]string{
 					"get-client-certificate",
@@ -248,7 +251,7 @@ var _ = Describe("Client", func() {
 					testShoot1.Spec.Kubernetes.Version = k8sVersionLegacy
 				})
 
-				It("should create legacy kubeconfig configMap", func() {
+				It("should create legacy kubeconfig", func() {
 					clientConfig, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName)
 					Expect(err).NotTo(HaveOccurred())
 
@@ -266,6 +269,7 @@ var _ = Describe("Client", func() {
 
 					Expect(rawConfig.AuthInfos).To(HaveLen(1))
 					authInfo := rawConfig.AuthInfos[context.AuthInfo]
+					Expect(authInfo.Exec.APIVersion).To(Equal(clientauthenticationv1beta1.SchemeGroupVersion.String()))
 					Expect(authInfo.Exec.Command).To(Equal("kubectl-gardenlogin"))
 					Expect(authInfo.Exec.Args).To(Equal([]string{
 						"get-client-certificate",

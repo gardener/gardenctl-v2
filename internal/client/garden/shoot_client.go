@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	clientauthenticationv1 "k8s.io/client-go/pkg/apis/clientauthentication/v1"
 	clientauthenticationv1beta1 "k8s.io/client-go/pkg/apis/clientauthentication/v1beta1"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -135,6 +136,8 @@ func (k *shootKubeconfigRequest) generate(legacy bool) (*clientcmdapi.Config, er
 		"get-client-certificate",
 	}
 
+	apiVersion := clientauthenticationv1.SchemeGroupVersion.String()
+
 	if legacy {
 		args = append(
 			args,
@@ -142,6 +145,7 @@ func (k *shootKubeconfigRequest) generate(legacy bool) (*clientcmdapi.Config, er
 			fmt.Sprintf("--namespace=%s", k.namespace),
 			fmt.Sprintf("--garden-cluster-identity=%s", k.gardenClusterIdentity),
 		)
+		apiVersion = clientauthenticationv1beta1.SchemeGroupVersion.String()
 	} else {
 		extension = &execPluginConfig{
 			ShootRef: shootRef{
@@ -159,7 +163,7 @@ func (k *shootKubeconfigRequest) generate(legacy bool) (*clientcmdapi.Config, er
 		Command:            "kubectl-gardenlogin",
 		Args:               args,
 		Env:                nil,
-		APIVersion:         clientauthenticationv1beta1.SchemeGroupVersion.String(),
+		APIVersion:         apiVersion,
 		InstallHint:        "Follow the instructions on https://github.com/gardener/gardenlogin#installation to install gardenlogin",
 		ProvideClusterInfo: true,
 
