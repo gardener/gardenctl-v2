@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/sprig/v3 v3.2.3
-	github.com/fatih/color v1.14.1
+	github.com/fatih/color v1.15.0
 	github.com/gardener/gardener v1.61.3
 	github.com/gardener/gardener-extension-provider-openstack v1.31.4
 	github.com/golang/mock v1.6.0
