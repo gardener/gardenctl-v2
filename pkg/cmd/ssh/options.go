@@ -735,10 +735,10 @@ func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bas
 	logger := klog.FromContext(ctx)
 
 	if !o.KeepBastion {
-		logger.Info("Deleting bastion", "bastion", klog.KObj(bastion))
+		logger.Info("Cleaning up")
 
 		if err := gardenClient.Delete(ctx, bastion); client.IgnoreNotFound(err) != nil {
-			logger.Error(err, "Failed to delete bastion.")
+			logger.Error(err, "Failed to delete bastion.", "bastion", klog.KObj(bastion))
 		}
 
 		if o.generatedSSHKeys {
