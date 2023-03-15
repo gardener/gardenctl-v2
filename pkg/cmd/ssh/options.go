@@ -151,6 +151,103 @@ var (
 
 		return cmd.Run()
 	}
+	// waitForSignal informs the user about their SSHOptions and keeps the
+	// bastion alive until gardenctl exits.
+	waitForSignal = func(ctx context.Context, o *SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string, signalChan <-chan struct{}) error {
+		if nodeHostname == "" {
+			nodeHostname = "IP_OR_HOSTNAME"
+
+			nodes, err := getNodes(ctx, shootClient)
+			if err != nil {
+				return fmt.Errorf("failed to list shoot cluster nodes: %w", err)
+			}
+
+			table := &metav1beta1.Table{
+				ColumnDefinitions: []metav1.TableColumnDefinition{
+					{
+						Name:   "Node Name",
+						Type:   "string",
+						Format: "name",
+					},
+					{
+						Name: "Status",
+						Type: "string",
+					},
+					{
+						Name: "IP",
+						Type: "string",
+					},
+					{
+						Name: "Hostname",
+						Type: "string",
+					},
+				},
+				Rows: []metav1.TableRow{},
+			}
+
+			for _, node := range nodes {
+				ip := ""
+				hostname := ""
+				status := "Ready"
+
+				if !isNodeReady(node) {
+					status = "Not Ready"
+				}
+
+				for _, addr := range node.Status.Addresses {
+					switch addr.Type {
+					case corev1.NodeInternalIP:
+						ip = addr.Address
+
+					case corev1.NodeInternalDNS:
+						hostname = addr.Address
+
+					// internal names have priority, as we jump via a bastion host,
+					// but in case the cloud provider does not offer internal IPs,
+					// we fallback to external values
+
+					case corev1.NodeExternalIP:
+						if ip == "" {
+							ip = addr.Address
+						}
+
+					case corev1.NodeExternalDNS:
+						if hostname == "" {
+							hostname = addr.Address
+						}
+					}
+				}
+
+				table.Rows = append(table.Rows, metav1.TableRow{
+					Cells: []interface{}{node.Name, status, ip, hostname},
+				})
+			}
+
+			fmt.Fprintln(o.IOStreams.Out, "The shoot cluster has the following nodes:")
+			fmt.Fprintln(o.IOStreams.Out, "")
+
+			printer := printers.NewTablePrinter(printers.PrintOptions{})
+			if err := printer.PrintObj(table, o.IOStreams.Out); err != nil {
+				return fmt.Errorf("failed to output node table: %w", err)
+			}
+
+			fmt.Fprintln(o.IOStreams.Out, "")
+		}
+
+		bastionAddr := preferredBastionAddress(bastion)
+		connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFiles, nodeHostname)
+
+		fmt.Fprintln(o.IOStreams.Out, "Connect to shoot nodes by using the bastion as a proxy/jump host, for example:")
+		fmt.Fprintln(o.IOStreams.Out, "")
+		fmt.Fprintln(o.IOStreams.Out, connectCmd)
+		fmt.Fprintln(o.IOStreams.Out, "")
+
+		fmt.Fprintln(o.IOStreams.Out, "Press Ctrl-C to stop gardenctl, after which the bastion will be removed.")
+
+		<-signalChan
+
+		return nil
+	}
 )
 
 // SSHOptions is a struct to support ssh command
@@ -821,104 +918,6 @@ func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1
 	args = append(args, fmt.Sprintf("%s@%s", SSHNodeUsername, nodeHostname))
 
 	return execCommand(ctx, "ssh", args, o)
-}
-
-// waitForSignal informs the user about their SSHOptions and keeps the
-// bastion alive until gardenctl exits.
-func waitForSignal(ctx context.Context, o *SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string, signalChan <-chan struct{}) error {
-	if nodeHostname == "" {
-		nodeHostname = "IP_OR_HOSTNAME"
-
-		nodes, err := getNodes(ctx, shootClient)
-		if err != nil {
-			return fmt.Errorf("failed to list shoot cluster nodes: %w", err)
-		}
-
-		table := &metav1beta1.Table{
-			ColumnDefinitions: []metav1.TableColumnDefinition{
-				{
-					Name:   "Node Name",
-					Type:   "string",
-					Format: "name",
-				},
-				{
-					Name: "Status",
-					Type: "string",
-				},
-				{
-					Name: "IP",
-					Type: "string",
-				},
-				{
-					Name: "Hostname",
-					Type: "string",
-				},
-			},
-			Rows: []metav1.TableRow{},
-		}
-
-		for _, node := range nodes {
-			ip := ""
-			hostname := ""
-			status := "Ready"
-
-			if !isNodeReady(node) {
-				status = "Not Ready"
-			}
-
-			for _, addr := range node.Status.Addresses {
-				switch addr.Type {
-				case corev1.NodeInternalIP:
-					ip = addr.Address
-
-				case corev1.NodeInternalDNS:
-					hostname = addr.Address
-
-				// internal names have priority, as we jump via a bastion host,
-				// but in case the cloud provider does not offer internal IPs,
-				// we fallback to external values
-
-				case corev1.NodeExternalIP:
-					if ip == "" {
-						ip = addr.Address
-					}
-
-				case corev1.NodeExternalDNS:
-					if hostname == "" {
-						hostname = addr.Address
-					}
-				}
-			}
-
-			table.Rows = append(table.Rows, metav1.TableRow{
-				Cells: []interface{}{node.Name, status, ip, hostname},
-			})
-		}
-
-		fmt.Fprintln(o.IOStreams.Out, "The shoot cluster has the following nodes:")
-		fmt.Fprintln(o.IOStreams.Out, "")
-
-		printer := printers.NewTablePrinter(printers.PrintOptions{})
-		if err := printer.PrintObj(table, o.IOStreams.Out); err != nil {
-			return fmt.Errorf("failed to output node table: %w", err)
-		}
-
-		fmt.Fprintln(o.IOStreams.Out, "")
-	}
-
-	bastionAddr := preferredBastionAddress(bastion)
-	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFiles, nodeHostname)
-
-	fmt.Fprintln(o.IOStreams.Out, "Connect to shoot nodes by using the bastion as a proxy/jump host, for example:")
-	fmt.Fprintln(o.IOStreams.Out, "")
-	fmt.Fprintln(o.IOStreams.Out, connectCmd)
-	fmt.Fprintln(o.IOStreams.Out, "")
-
-	fmt.Fprintln(o.IOStreams.Out, "Press Ctrl-C to stop gardenctl, after which the bastion will be removed.")
-
-	<-signalChan
-
-	return nil
 }
 
 func isNodeReady(node corev1.Node) bool {

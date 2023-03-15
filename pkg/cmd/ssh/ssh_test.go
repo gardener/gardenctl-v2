@@ -473,6 +473,39 @@ var _ = Describe("SSH Command", func() {
 			Expect(bastion.Annotations).To(HaveKeyWithValue(corev1beta1constants.GardenerOperation, corev1beta1constants.GardenerOperationKeepalive))
 		})
 
+		It("should stop keepalive when bastion is deleted ", func() {
+			options := ssh.NewSSHOptions(streams)
+			options.KeepBastion = true // we need to assert its annotations later
+
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			// simulate an external controller processing the bastion and proving a successful status
+			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
+
+			// end the test after a couple of seconds (enough seconds for the keep-alive
+			// goroutine to do its thing)
+			ssh.SetKeepAliveInterval(100 * time.Millisecond)
+			signalChan := make(chan os.Signal, 1)
+			ssh.SetCreateSignalChannel(func() chan os.Signal {
+				return signalChan
+			})
+
+			// Once the waitForSignal function is called we delete the bastion
+			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string, signalChan <-chan struct{}) error {
+				By("deleting bastion")
+				Expect(gardenClient.Delete(ctx, bastion)).To(Succeed())
+
+				<-signalChan
+
+				return nil
+			})
+
+			// let the magic happen
+			Expect(cmd.RunE(cmd, nil)).To(Succeed())
+
+			Expect(logs.String()).To(ContainSubstring("Can't keep bastion alive. Bastion is already gone."))
+		})
+
 		It("should skip the availability check", func() {
 			options := ssh.NewSSHOptions(streams)
 			options.SkipAvailabilityCheck = true
