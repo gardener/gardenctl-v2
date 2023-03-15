@@ -544,7 +544,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	}
 
 	// continuously keep the bastion alive by renewing its annotation
-	go keepBastionAlive(ctx, gardenClient.RuntimeClient(), bastion.DeepCopy())
+	go keepBastionAlive(ctx, cancel, gardenClient.RuntimeClient(), bastion.DeepCopy())
 
 	logger.Info("Waiting for bastion to be ready…", "waitTimeout", o.WaitTimeout)
 
@@ -967,8 +967,8 @@ func getKeepAliveInterval() time.Duration {
 	return keepAliveInterval
 }
 
-func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *operationsv1alpha1.Bastion) {
-	logger := klog.FromContext(ctx)
+func keepBastionAlive(ctx context.Context, cancel context.CancelFunc, gardenClient client.Client, bastion *operationsv1alpha1.Bastion) {
+	logger := klog.FromContext(ctx).WithValues("bastion", klog.KObj(bastion))
 
 	ticker := time.NewTicker(getKeepAliveInterval())
 	defer ticker.Stop()
@@ -986,6 +986,13 @@ func keepBastionAlive(ctx context.Context, gardenClient client.Client, bastion *
 			bastion.Annotations = map[string]string{}
 
 			if err := gardenClient.Get(ctx, key, bastion); err != nil {
+				if apierrors.IsNotFound(err) {
+					logger.Error(err, "Can't keep bastion alive. Bastion is already gone.")
+					cancel()
+
+					return
+				}
+
 				logger.Error(err, "Failed to keep bastion alive.")
 			}
 
