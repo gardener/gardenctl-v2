@@ -13,7 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"gopkg.in/yaml.v3"
+	"sigs.k8s.io/yaml"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 )
@@ -75,15 +75,12 @@ func (o *Options) PrintObject(obj interface{}) error {
 		fmt.Fprintf(o.IOStreams.Out, "%v", obj)
 
 	case "yaml":
-		yamlEncoder := yaml.NewEncoder(o.IOStreams.Out)
-		defer yamlEncoder.Close()
-
-		yamlEncoder.SetIndent(2)
-
-		err := yamlEncoder.Encode(&obj)
+		marshalled, err := yaml.Marshal(&obj)
 		if err != nil {
 			return err
 		}
+
+		fmt.Fprintln(o.IOStreams.Out, string(marshalled))
 	case "json":
 		marshalled, err := json.MarshalIndent(&obj, "", "  ")
 		if err != nil {
