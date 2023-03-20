@@ -270,12 +270,12 @@ type SSHOptions struct {
 
 	// SSHPublicKeyFile is the full path to the file containing the user's
 	// public SSH key. If not given, gardenctl will create a new temporary keypair.
-	SSHPublicKeyFile string
+	SSHPublicKeyFile PublicKeyFile
 
 	// SSHPrivateKeyFile is the full path to the file containing the user's
 	// private SSH key. This is only set if no key was given and a temporary keypair
 	// was generated. Otherwise gardenctl relies on the user's SSH agent.
-	SSHPrivateKeyFile string
+	SSHPrivateKeyFile PrivateKeyFile
 
 	// generatedSSHKeys is true if the public and private SSH keys have been generated
 	// instead of being provided by the user. This will then be used for the cleanup.
@@ -317,7 +317,7 @@ func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 
 func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 	flagSet.BoolVar(&o.Interactive, "interactive", o.Interactive, "Open an SSH connection instead of just providing the bastion host (only if NODE_NAME is provided).")
-	flagSet.StringVar(&o.SSHPublicKeyFile, "public-key-file", "", "Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.")
+	flagSet.Var(&o.SSHPublicKeyFile, "public-key-file", "Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.")
 	flagSet.DurationVar(&o.WaitTimeout, "wait-timeout", o.WaitTimeout, "Maximum duration to wait for the bastion to become available.")
 	flagSet.BoolVar(&o.KeepBastion, "keep-bastion", o.KeepBastion, "Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)")
 	flagSet.BoolVar(&o.SkipAvailabilityCheck, "skip-availability-check", o.SkipAvailabilityCheck, "Skip checking for SSH bastion host availability.")
@@ -404,7 +404,7 @@ func (o *SSHOptions) Validate() error {
 		}
 	}
 
-	content, err := os.ReadFile(o.SSHPublicKeyFile)
+	content, err := os.ReadFile(o.SSHPublicKeyFile.String())
 	if err != nil {
 		return fmt.Errorf("invalid SSH public key file: %w", err)
 	}
@@ -416,7 +416,7 @@ func (o *SSHOptions) Validate() error {
 	return nil
 }
 
-func createSSHKeypair(tempDir string, keyName string) (string, string, error) {
+func createSSHKeypair(tempDir string, keyName string) (PrivateKeyFile, PublicKeyFile, error) {
 	if keyName == "" {
 		id, err := utils.GenerateRandomString(8)
 		if err != nil {
@@ -440,17 +440,17 @@ func createSSHKeypair(tempDir string, keyName string) (string, string, error) {
 		tempDir = os.TempDir()
 	}
 
-	privateKeyFile := filepath.Join(tempDir, keyName)
-	if err := writeKeyFile(privateKeyFile, encodePrivateKey(privateKey)); err != nil {
+	sshPrivateKeyFile := PrivateKeyFile(filepath.Join(tempDir, keyName))
+	if err := writeKeyFile(sshPrivateKeyFile.String(), encodePrivateKey(privateKey)); err != nil {
 		return "", "", fmt.Errorf("failed to write private key: %w", err)
 	}
 
-	publicKeyFile := filepath.Join(tempDir, fmt.Sprintf("%s.pub", keyName))
-	if err := writeKeyFile(publicKeyFile, encodePublicKey(publicKey)); err != nil {
+	sshPublicKeyFile := PublicKeyFile(filepath.Join(tempDir, fmt.Sprintf("%s.pub", keyName)))
+	if err := writeKeyFile(sshPublicKeyFile.String(), encodePublicKey(publicKey)); err != nil {
 		return "", "", fmt.Errorf("failed to write public key: %w", err)
 	}
 
-	return privateKeyFile, publicKeyFile, nil
+	return sshPrivateKeyFile, sshPublicKeyFile, nil
 }
 
 func createSSHPrivateKey() (*rsa.PrivateKey, error) {
@@ -610,7 +610,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return fmt.Errorf("failed to get bastion ingress policies: %w", err)
 	}
 
-	sshPublicKey, err := os.ReadFile(o.SSHPublicKeyFile)
+	sshPublicKey, err := os.ReadFile(o.SSHPublicKeyFile.String())
 	if err != nil {
 		return fmt.Errorf("failed to read SSH public key: %w", err)
 	}
@@ -761,11 +761,11 @@ func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bas
 		}
 
 		if o.generatedSSHKeys {
-			if err := os.Remove(o.SSHPublicKeyFile); err != nil {
+			if err := os.Remove(o.SSHPublicKeyFile.String()); err != nil {
 				logger.Error(err, "Failed to delete SSH public key file", "path", o.SSHPublicKeyFile)
 			}
 
-			if err := os.Remove(o.SSHPrivateKeyFile); err != nil {
+			if err := os.Remove(o.SSHPrivateKeyFile.String()); err != nil {
 				logger.Error(err, "Failed to delete SSH private key file", "path", o.SSHPrivateKeyFile)
 			}
 		}
@@ -851,7 +851,7 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 	logger := klog.FromContext(ctx)
 
 	if o.SSHPrivateKeyFile != "" {
-		privateKeyBytes, err = os.ReadFile(o.SSHPrivateKeyFile)
+		privateKeyBytes, err = os.ReadFile(o.SSHPrivateKeyFile.String())
 		if err != nil {
 			return fmt.Errorf("failed to read SSH private key from %q: %w", o.SSHPrivateKeyFile, err)
 		}
@@ -905,7 +905,7 @@ func getShootNode(ctx context.Context, o *SSHOptions, shootClient client.Client)
 
 func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string) error {
 	bastionAddr := preferredBastionAddress(bastion)
-	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFiles, nodeHostname)
+	connectCmd := sshCommandLine(o.SSHPrivateKeyFile, bastionAddr, nodePrivateKeyFiles, nodeHostname)
 
 	fmt.Fprintln(o.IOStreams.Out, "You can open additional SSH sessions using the command below:")
 	fmt.Fprintln(o.IOStreams.Out, "")
@@ -949,10 +949,10 @@ func isNodeReady(node corev1.Node) bool {
 	return false
 }
 
-func sshCommandLine(o *SSHOptions, bastionAddr string, nodePrivateKeyFiles []string, nodeName string) string {
+func sshCommandLine(sshPrivateKeyFile PrivateKeyFile, bastionAddr string, nodePrivateKeyFiles []string, nodeName string) string {
 	proxyPrivateKeyFlag := ""
-	if o.SSHPrivateKeyFile != "" {
-		proxyPrivateKeyFlag = fmt.Sprintf(" -o IdentitiesOnly=yes -i %s", o.SSHPrivateKeyFile)
+	if sshPrivateKeyFile != "" {
+		proxyPrivateKeyFlag = fmt.Sprintf(" -o IdentitiesOnly=yes -i %s", sshPrivateKeyFile)
 	}
 
 	proxyCmd := fmt.Sprintf(

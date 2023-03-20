@@ -316,10 +316,10 @@ var _ = Describe("SSH Command", func() {
 			Expect(gardenClient.Get(ctx, key, bastion)).NotTo(Succeed())
 
 			// assert that no temporary SSH keypair remained on disk
-			_, err := os.Stat(options.SSHPublicKeyFile)
+			_, err := os.Stat(options.SSHPublicKeyFile.String())
 			Expect(err).To(HaveOccurred())
 
-			_, err = os.Stat(options.SSHPrivateKeyFile)
+			_, err = os.Stat(options.SSHPrivateKeyFile.String())
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -368,10 +368,10 @@ var _ = Describe("SSH Command", func() {
 			Expect(gardenClient.Get(ctx, key, bastion)).NotTo(Succeed())
 
 			// assert that no temporary SSH keypair remained on disk
-			_, err := os.Stat(options.SSHPublicKeyFile)
+			_, err := os.Stat(options.SSHPublicKeyFile.String())
 			Expect(err).To(HaveOccurred())
 
-			_, err = os.Stat(options.SSHPrivateKeyFile)
+			_, err = os.Stat(options.SSHPrivateKeyFile.String())
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -423,10 +423,10 @@ var _ = Describe("SSH Command", func() {
 			Expect(gardenClient.Get(ctx, key, bastion)).NotTo(Succeed())
 
 			// assert that no temporary SSH keypair remained on disk
-			_, err := os.Stat(options.SSHPublicKeyFile)
+			_, err := os.Stat(options.SSHPublicKeyFile.String())
 			Expect(err).To(HaveOccurred())
 
-			_, err = os.Stat(options.SSHPrivateKeyFile)
+			_, err = os.Stat(options.SSHPrivateKeyFile.String())
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -656,7 +656,7 @@ var _ = Describe("SSH Options", func() {
 	})
 
 	It("should require a valid public SSH key file", func() {
-		Expect(os.WriteFile(publicSSHKeyFile, []byte("not a key"), 0o644)).To(Succeed())
+		Expect(os.WriteFile(publicSSHKeyFile.String(), []byte("not a key"), 0o644)).To(Succeed())
 
 		o := ssh.NewSSHOptions(streams)
 		o.CIDRs = []string{"8.8.8.8/32"}
