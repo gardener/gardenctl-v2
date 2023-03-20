@@ -305,9 +305,9 @@ var _ = Describe("SSH Command", func() {
 			Expect(cmd.RunE(cmd, nil)).To(Succeed())
 
 			// assert the output
-			Expect(logs).To(ContainSubstring(bastionName))
-			Expect(logs).To(ContainSubstring(bastionHostname))
-			Expect(out).To(ContainSubstring(bastionIP))
+			Expect(logs.String()).To(ContainSubstring(bastionName))
+			Expect(logs.String()).To(ContainSubstring(bastionHostname))
+			Expect(out.String()).To(ContainSubstring(bastionIP))
 
 			// assert that the bastion has been cleaned up
 			key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
@@ -357,9 +357,9 @@ var _ = Describe("SSH Command", func() {
 
 			// assert output
 			Expect(executedCommands).To(Equal(1))
-			Expect(logs).To(ContainSubstring(bastionName))
-			Expect(logs).To(ContainSubstring(bastionHostname))
-			Expect(out).To(ContainSubstring(bastionIP))
+			Expect(logs.String()).To(ContainSubstring(bastionName))
+			Expect(logs.String()).To(ContainSubstring(bastionHostname))
+			Expect(out.String()).To(ContainSubstring(bastionIP))
 
 			// assert that the bastion has been cleaned up
 			key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
@@ -411,10 +411,10 @@ var _ = Describe("SSH Command", func() {
 
 			// assert output
 			Expect(executedCommands).To(Equal(1))
-			Expect(logs).To(ContainSubstring(bastionName))
-			Expect(logs).To(ContainSubstring(bastionHostname))
-			Expect(out).To(ContainSubstring(bastionIP))
-			Expect(logs).To(ContainSubstring("node did not yet join the cluster"))
+			Expect(logs.String()).To(ContainSubstring(bastionName))
+			Expect(logs.String()).To(ContainSubstring(bastionHostname))
+			Expect(out.String()).To(ContainSubstring(bastionIP))
+			Expect(logs.String()).To(ContainSubstring("node did not yet join the cluster"))
 
 			// assert that the bastion has been cleaned up
 			key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
@@ -523,7 +523,7 @@ var _ = Describe("SSH Command", func() {
 
 			Expect(cmd.RunE(cmd, nil)).To(Succeed())
 
-			Expect(logs).To(ContainSubstring("Bastion is ready, skipping availability check"))
+			Expect(logs.String()).To(ContainSubstring("Bastion is ready, skipping availability check"))
 		})
 
 		It("should not keep alive the bastion", func() {
@@ -550,7 +550,7 @@ var _ = Describe("SSH Command", func() {
 
 			Expect(cmd.RunE(cmd, nil)).To(Succeed())
 
-			Expect(logs).To(ContainSubstring("Bastion host became available."))
+			Expect(logs.String()).To(ContainSubstring("Bastion host became available."))
 		})
 	})
 
