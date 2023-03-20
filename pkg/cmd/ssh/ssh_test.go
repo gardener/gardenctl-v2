@@ -523,7 +523,34 @@ var _ = Describe("SSH Command", func() {
 
 			Expect(cmd.RunE(cmd, nil)).To(Succeed())
 
-			Expect(out.String()).To(ContainSubstring("Bastion is ready, skipping availability check"))
+			Expect(logs).To(ContainSubstring("Bastion is ready, skipping availability check"))
+		})
+
+		It("should not keep alive the bastion", func() {
+			options := ssh.NewSSHOptions(streams)
+			options.NoKeepalive = true
+			options.KeepBastion = true
+			options.Interactive = false
+
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string, signalChan <-chan struct{}) error {
+				err := errors.New("this function should not be executed as of NoKeepalive = true")
+				Fail(err.Error())
+				return err
+			})
+			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, o *ssh.SSHOptions) error {
+				err := errors.New("this function should not be executed as of NoKeepalive = true")
+				Fail(err.Error())
+				return err
+			})
+
+			// simulate an external controller processing the bastion and proving a successful status
+			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
+
+			Expect(cmd.RunE(cmd, nil)).To(Succeed())
+
+			Expect(logs).To(ContainSubstring("Bastion host became available."))
 		})
 	})
 
@@ -596,6 +623,28 @@ var _ = Describe("SSH Options", func() {
 		o.WaitTimeout = 0
 
 		Expect(o.Validate()).NotTo(Succeed())
+	})
+
+	Context("no-keepalive", func() {
+		It("should require non-interactive mode", func() {
+			o := ssh.NewSSHOptions(streams)
+			o.NoKeepalive = true
+			o.KeepBastion = true
+
+			o.Interactive = true
+
+			Expect(o.Validate()).NotTo(Succeed())
+		})
+
+		It("should require keep bastion", func() {
+			o := ssh.NewSSHOptions(streams)
+			o.NoKeepalive = true
+			o.Interactive = false
+
+			o.KeepBastion = false
+
+			Expect(o.Validate()).NotTo(Succeed())
+		})
 	})
 
 	It("should require a public SSH key file", func() {
