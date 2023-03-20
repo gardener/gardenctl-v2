@@ -587,7 +587,8 @@ var _ = Describe("SSH Command", func() {
 var _ = Describe("SSH Options", func() {
 	var (
 		streams          util.IOStreams
-		publicSSHKeyFile string
+		publicSSHKeyFile ssh.PublicKeyFile
+		o                *ssh.SSHOptions
 	)
 
 	BeforeEach(func() {
@@ -601,46 +602,46 @@ var _ = Describe("SSH Options", func() {
 		_, err = io.WriteString(tmpFile, "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDouNkxsNuApuKVIfgL6Yz3Ep+DqX84Yde9DArwLBSWgLnl/pH9AbbcDcAmdB2CPVXAATo4qxK7xprvyyZp52SQRCcAZpAy4D6gAWwAG3OfzrRbxRiB5pQDaaWATSzNbLtoy0ecVwFeTJe2w71q+wxbI7tfxbvo9XbXIN4I0cQy2KLICzkYkQmygGnHztv1Mvi338+sgcG7Gwq2tdSyggDaAggwDIuT39S4/L7QpR27tWH79J4Ls8tTHud2eRbkOcF98vXlQAIzb6w8iHBXylOjMM/oODwoA7V4mtRL9o13AoocvZSsD1UvfOjGxDHuLrCfFXN+/rEw0hEiYo0cnj7F")
 		Expect(err).NotTo(HaveOccurred())
 
-		publicSSHKeyFile = tmpFile.Name()
+		publicSSHKeyFile = ssh.PublicKeyFile(tmpFile.Name())
+
+		o = ssh.NewSSHOptions(streams)
+		o.CIDRs = []string{"8.8.8.8/32"}
+		o.SSHPublicKeyFile = publicSSHKeyFile
 	})
 
 	AfterEach(func() {
-		Expect(os.Remove(publicSSHKeyFile)).To(Succeed())
+		Expect(os.Remove(publicSSHKeyFile.String())).To(Succeed())
 	})
 
 	It("should validate", func() {
-		o := ssh.NewSSHOptions(streams)
-		o.CIDRs = []string{"8.8.8.8/32"}
-		o.SSHPublicKeyFile = publicSSHKeyFile
-
 		Expect(o.Validate()).To(Succeed())
 	})
 
 	It("should require a non-zero wait time", func() {
-		o := ssh.NewSSHOptions(streams)
-		o.CIDRs = []string{"8.8.8.8/32"}
-		o.SSHPublicKeyFile = publicSSHKeyFile
 		o.WaitTimeout = 0
 
 		Expect(o.Validate()).NotTo(Succeed())
 	})
 
 	Context("no-keepalive", func() {
-		It("should require non-interactive mode", func() {
-			o := ssh.NewSSHOptions(streams)
+		BeforeEach(func() {
 			o.NoKeepalive = true
-			o.KeepBastion = true
 
+			o.KeepBastion = true
+			o.Interactive = false
+		})
+
+		It("should validate", func() {
+			Expect(o.Validate()).Should(Succeed())
+		})
+
+		It("should require non-interactive mode", func() {
 			o.Interactive = true
 
 			Expect(o.Validate()).NotTo(Succeed())
 		})
 
 		It("should require keep bastion", func() {
-			o := ssh.NewSSHOptions(streams)
-			o.NoKeepalive = true
-			o.Interactive = false
-
 			o.KeepBastion = false
 
 			Expect(o.Validate()).NotTo(Succeed())
