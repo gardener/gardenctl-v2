@@ -665,17 +665,12 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	logger.Info("Waiting for bastion to be ready…", "waitTimeout", o.WaitTimeout)
 
 	err = waitForBastion(ctx, o, gardenClient.RuntimeClient(), bastion)
-
 	if err == wait.ErrWaitTimeout {
-		logger.Info("Timed out waiting for the bastion to be ready.")
+		return errors.New("timed out waiting for the bastion to be ready")
 	} else if err != nil {
-		logger.Error(err, "An error occurred while waiting for the bastion to be ready.")
+		return fmt.Errorf("an error occurred while waiting for the bastion to be ready: %w", err)
 	}
 
-	if err != nil {
-		// actual error has already been printed
-		return errors.New("precondition failed")
-	}
 
 	ingress := bastion.Status.Ingress
 	printAddr := ""
