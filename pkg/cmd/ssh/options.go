@@ -671,20 +671,10 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return fmt.Errorf("an error occurred while waiting for the bastion to be ready: %w", err)
 	}
 
+	logger.Info("Bastion host became available.", "address", toAdress(bastion.Status.Ingress).String())
 
-	ingress := bastion.Status.Ingress
-	printAddr := ""
 
-	switch {
-	case ingress.Hostname != "" && ingress.IP != "":
-		printAddr = fmt.Sprintf("%s (%s)", ingress.IP, ingress.Hostname)
-	case ingress.Hostname != "":
-		printAddr = ingress.Hostname
-	default:
-		printAddr = ingress.IP
-	}
 
-	logger.Info("Bastion host became available.", "address", printAddr)
 
 	if o.NoKeepalive {
 		return nil

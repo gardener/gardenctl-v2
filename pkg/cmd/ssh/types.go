@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/pflag"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type PublicKeyFile string
@@ -39,4 +40,33 @@ var _ fmt.Stringer = (*PrivateKeyFile)(nil)
 
 func (s *PrivateKeyFile) String() string {
 	return string(*s)
+}
+
+// Address holds information about an IP address and hostname.
+type Address struct {
+	Hostname string `json:"hostname"`
+	IP       string `json:"ip"`
+}
+
+var _ fmt.Stringer = &Address{}
+func toAdress(ingress *corev1.LoadBalancerIngress) *Address {
+	if ingress == nil {
+		return nil
+	}
+
+	return &Address{
+		Hostname: ingress.Hostname,
+		IP:       ingress.IP,
+	}
+}
+
+func (a *Address) String() string {
+	switch {
+	case a.Hostname != "" && a.IP != "":
+		return fmt.Sprintf("%s (%s)", a.IP, a.Hostname)
+	case a.Hostname != "":
+		return a.Hostname
+	default:
+		return a.IP
+	}
 }
