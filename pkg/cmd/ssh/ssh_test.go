@@ -8,6 +8,7 @@ package ssh_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -491,13 +492,15 @@ var _ = Describe("SSH Command", func() {
 			})
 
 			// Once the waitForSignal function is called we delete the bastion
-			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string, signalChan <-chan struct{}) error {
+			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, signalChan <-chan struct{}) {
 				By("deleting bastion")
+				bastion := &operationsv1alpha1.Bastion{}
+				key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
+				Expect(gardenClient.Get(ctx, key, bastion)).To(Succeed())
+
 				Expect(gardenClient.Delete(ctx, bastion)).To(Succeed())
 
 				<-signalChan
-
-				return nil
 			})
 
 			// let the magic happen
@@ -534,10 +537,8 @@ var _ = Describe("SSH Command", func() {
 
 			cmd := ssh.NewCmdSSH(factory, options)
 
-			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string, signalChan <-chan struct{}) error {
-				err := errors.New("this function should not be executed as of NoKeepalive = true")
-				Fail(err.Error())
-				return err
+			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, signalChan <-chan struct{}) {
+				Fail("this function should not be executed as of NoKeepalive = true")
 			})
 			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, o *ssh.SSHOptions) error {
 				err := errors.New("this function should not be executed as of NoKeepalive = true")
@@ -551,6 +552,39 @@ var _ = Describe("SSH Command", func() {
 			Expect(cmd.RunE(cmd, nil)).To(Succeed())
 
 			Expect(logs.String()).To(ContainSubstring("Bastion host became available."))
+		})
+
+		It("should output as json", func() {
+			options := ssh.NewSSHOptions(streams)
+			options.NoKeepalive = true
+			options.KeepBastion = true
+			options.Interactive = false
+
+			options.Output = "json"
+
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, signalChan <-chan struct{}) {
+				Fail("this function should not be executed as of NoKeepalive = true")
+			})
+			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, o *ssh.SSHOptions) error {
+				err := errors.New("this function should not be executed as of NoKeepalive = true")
+				Fail(err.Error())
+				return err
+			})
+
+			// simulate an external controller processing the bastion and proving a successful status
+			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
+
+			Expect(cmd.RunE(cmd, nil)).To(Succeed())
+
+			var info ssh.ConnectInformation
+			Expect(json.Unmarshal([]byte(out.String()), &info)).To(Succeed())
+			Expect(info.Bastion.Name).To(Equal(bastionName))
+			Expect(info.Bastion.PreferredAddress).To(Equal("0.0.0.0"))
+			Expect(info.Bastion.SSHPrivateKeyFile).To(Equal(options.SSHPrivateKeyFile))
+			Expect(info.Bastion.SSHPublicKeyFile).To(Equal(options.SSHPublicKeyFile))
+			Expect(info.NodePrivateKeyFiles).NotTo(BeEmpty())
 		})
 	})
 
@@ -648,6 +682,23 @@ var _ = Describe("SSH Options", func() {
 		})
 	})
 
+	Describe("output flag not empty", func() {
+		BeforeEach(func() {
+			o.Output = "yaml" // or json - does not matter
+
+			o.Interactive = false
+		})
+
+		It("should validate", func() {
+			Expect(o.Validate()).Should(Succeed())
+		})
+
+		It("should require non-interactive mode", func() {
+			o.Interactive = true
+
+			Expect(o.Validate()).NotTo(Succeed())
+		})
+	})
 	It("should require a public SSH key file", func() {
 		o := ssh.NewSSHOptions(streams)
 		o.CIDRs = []string{"8.8.8.8/32"}

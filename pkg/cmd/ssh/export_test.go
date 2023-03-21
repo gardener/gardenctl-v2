@@ -10,9 +10,6 @@ import (
 	"context"
 	"os"
 	"time"
-
-	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func SetBastionAvailabilityChecker(f func(hostname string, privateKey []byte) error) {
@@ -46,6 +43,6 @@ func SetKeepAliveInterval(d time.Duration) {
 	keepAliveInterval = d
 }
 
-func SetWaitForSignal(f func(ctx context.Context, o *SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string, signalChan <-chan struct{}) error) {
+func SetWaitForSignal(f func(ctx context.Context, o *SSHOptions, signalChan <-chan struct{})) {
 	waitForSignal = f
 }

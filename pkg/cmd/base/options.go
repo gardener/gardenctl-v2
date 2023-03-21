@@ -72,8 +72,11 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 func (o *Options) PrintObject(obj interface{}) error {
 	switch o.Output {
 	case "":
-		fmt.Fprintf(o.IOStreams.Out, "%v", obj)
-
+		if _, ok := obj.(fmt.Stringer); ok {
+			fmt.Fprintf(o.IOStreams.Out, "%s", obj)
+		} else {
+			fmt.Fprintf(o.IOStreams.Out, "%v", obj)
+		}
 	case "yaml":
 		marshalled, err := yaml.Marshal(&obj)
 		if err != nil {
