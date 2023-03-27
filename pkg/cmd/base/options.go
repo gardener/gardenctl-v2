@@ -18,7 +18,7 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 )
 
-//go:generate mockgen -destination=./mocks/mock_options.go -package=mocks github.com/gardener/gardenctl-v2/pkg/cmd/base CommandOptions
+//go:generate mockgen -destination=./mocks/mock_options.go -package=mocks github.com/gardener/gardenctl-v2/pkg/cmd/base Runnable
 
 // Runnable is the base interface for command options.
 type Runnable interface {
