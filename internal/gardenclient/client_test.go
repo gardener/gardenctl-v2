@@ -15,15 +15,32 @@ import (
 	"github.com/gardener/gardener/pkg/utils/secrets"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 )
+
+type createInterceptingClient struct {
+	client.Client
+	createInterceptor func(context.Context, client.Object, ...client.CreateOption) error
+}
+
+func (cic createInterceptingClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	if cic.createInterceptor != nil {
+		err := cic.createInterceptor(ctx, obj, opts...)
+		if err != nil {
+			return err
+		}
+	}
+
+	return cic.Client.Create(ctx, obj, opts...)
+}
 
 var _ = Describe("Client", func() {
 	const (
@@ -64,6 +81,7 @@ var _ = Describe("Client", func() {
 				},
 			}
 			gardenClient = gardenclient.NewGardenClient(
+				nil,
 				fake.NewClientWithObjects(oidcSecret, loginSecret),
 				gardenName,
 			)
@@ -105,6 +123,7 @@ var _ = Describe("Client", func() {
 				},
 			}
 			gardenClient = gardenclient.NewGardenClient(
+				nil,
 				fake.NewClientWithObjects(managedSeed),
 				gardenName,
 			)
@@ -181,6 +200,7 @@ var _ = Describe("Client", func() {
 		Context("good case", func() {
 			JustBeforeEach(func() {
 				gardenClient = gardenclient.NewGardenClient(
+					nil,
 					fake.NewClientWithObjects(testShoot1, caSecret),
 					gardenName,
 				)
@@ -188,6 +208,7 @@ var _ = Describe("Client", func() {
 
 			It("it should return the client config", func() {
 				gardenClient = gardenclient.NewGardenClient(
+					nil,
 					fake.NewClientWithObjects(testShoot1, caSecret),
 					gardenName,
 				)
@@ -259,6 +280,7 @@ var _ = Describe("Client", func() {
 		Context("when the ca-cluster secret does not exist", func() {
 			BeforeEach(func() {
 				gardenClient = gardenclient.NewGardenClient(
+					nil,
 					fake.NewClientWithObjects(testShoot1),
 					gardenName,
 				)
@@ -272,5 +294,60 @@ var _ = Describe("Client", func() {
 			})
 		})
 	})
-})
 
+	Describe("CurrentUser", func() {
+		It("Should return the user when a token is used", func() {
+			user := "an-arbitrary-user"
+
+			config := fake.NewTokenConfig("garden")
+
+			cic := createInterceptingClient{
+				Client: fake.NewClientWithObjects(),
+				createInterceptor: func(ctx context.Context, object client.Object, option ...client.CreateOption) error {
+					if tr, ok := object.(*authenticationv1.TokenReview); ok { // patch the TokenReview
+						tr.ObjectMeta.Name = "foo" // must be set or else the fake client will error because no name was provided
+						tr.Status.Authenticated = true
+						tr.Status.User = authenticationv1.UserInfo{
+							Username: user,
+						}
+					}
+
+					return nil
+				},
+			}
+
+			gardenClient = gardenclient.NewGardenClient(
+				clientcmd.NewDefaultClientConfig(*config, nil),
+				cic,
+				gardenName,
+			)
+
+			username, err := gardenClient.CurrentUser(ctx)
+
+			Expect(err).To(BeNil())
+			Expect(username).To(Equal(user))
+		})
+
+		It("Should return the user when a client certificate is used", func() {
+			userCN := "client-cn"
+
+			caCert, err := fake.NewCaCert()
+			Expect(err).NotTo(HaveOccurred())
+
+			generatedClientCert, err := fake.NewClientCert(caCert, userCN, nil)
+			Expect(err).NotTo(HaveOccurred())
+
+			config := fake.NewCertConfig("client-cert", generatedClientCert.CertificatePEM)
+
+			gardenClient = gardenclient.NewGardenClient(
+				clientcmd.NewDefaultClientConfig(*config, nil),
+				nil, // no client needed for this test
+				gardenName,
+			)
+
+			username, err := gardenClient.CurrentUser(ctx)
+			Expect(err).To(BeNil())
+			Expect(username).To(Equal(userCN))
+		})
+	})
+})

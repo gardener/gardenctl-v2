@@ -13,18 +13,13 @@ import (
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
-	gardensecrets "github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
-	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apiserver/pkg/authentication/user"
-	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 
@@ -38,11 +33,10 @@ import (
 
 var _ = Describe("SSH Patch Command", func() {
 	const (
-		gardenName           = "mygarden"
-		gardenKubeconfigFile = "/not/a/real/kubeconfig"
-		seedName             = "test-seed"
-		shootName            = "test-shoot"
-		defaultUserName      = "client-cn"
+		gardenName      = "mygarden"
+		seedName        = "test-seed"
+		shootName       = "test-shoot"
+		defaultUserName = "client-cn"
 	)
 
 	// populated in top level BeforeEach
@@ -56,11 +50,9 @@ var _ = Describe("SSH Patch Command", func() {
 		ctx                    context.Context
 		cancel                 context.CancelFunc
 		currentTarget          target.Target
-		sampleClientCertficate []byte
 		testProject            *gardencorev1beta1.Project
 		testSeed               *gardencorev1beta1.Seed
 		testShoot              *gardencorev1beta1.Shoot
-		apiConfig              *clientcmdapi.Config
 		bastionDefaultPolicies []operationsv1alpha1.BastionIngressPolicy
 		logs                   *util.SafeBytesBuffer
 	)
@@ -94,54 +86,12 @@ var _ = Describe("SSH Patch Command", func() {
 		}
 	)
 
-	// TODO: after migration to ginkgo v2: move to BeforeAll
-	func() {
-		// only run it once and not in BeforeEach as it is an expensive operation
-		caCertCSC := &gardensecrets.CertificateSecretConfig{
-			Name:       "issuer-name",
-			CommonName: "issuer-cn",
-			CertType:   gardensecrets.CACert,
-		}
-		caCert, _ := caCertCSC.GenerateCertificate()
-
-		csc := &gardensecrets.CertificateSecretConfig{
-			Name:         "client-name",
-			CommonName:   defaultUserName,
-			Organization: []string{user.SystemPrivilegedGroup},
-			CertType:     gardensecrets.ClientCert,
-			SigningCA:    caCert,
-		}
-		generatedClientCert, _ := csc.GenerateCertificate()
-		sampleClientCertficate = generatedClientCert.CertificatePEM
-	}()
-
 	BeforeEach(func() {
 		logs = &util.SafeBytesBuffer{}
 		klog.SetOutput(logs)
 		klog.LogToStderr(false) // must set to false, otherwise klog will log to os.stderr instead of to our buffer
 
 		now, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
-
-		apiConfig = clientcmdapi.NewConfig()
-		apiConfig.Clusters["cluster"] = &clientcmdapi.Cluster{
-			Server:                "https://kubernetes:6443/",
-			InsecureSkipTLSVerify: true,
-		}
-		apiConfig.Contexts["client-cert"] = &clientcmdapi.Context{
-			AuthInfo:  "client-cert",
-			Namespace: "default",
-			Cluster:   "cluster",
-		}
-		apiConfig.AuthInfos["client-cert"] = &clientcmdapi.AuthInfo{
-			ClientCertificateData: sampleClientCertficate,
-		}
-		apiConfig.Contexts["no-auth"] = &clientcmdapi.Context{
-			AuthInfo:  "no-auth",
-			Namespace: "default",
-			Cluster:   "cluster",
-		}
-		apiConfig.AuthInfos["no-auth"] = &clientcmdapi.AuthInfo{}
-		apiConfig.CurrentContext = "client-cert"
 
 		testProject = &gardencorev1beta1.Project{
 			ObjectMeta: metav1.ObjectMeta{
@@ -192,16 +142,13 @@ var _ = Describe("SSH Patch Command", func() {
 		currentTarget = target.NewTarget(gardenName, testProject.Name, testSeed.Name, testShoot.Name)
 
 		ctrl = gomock.NewController(GinkgoT())
+
 		gardenClient = gcmocks.NewMockClient(ctrl)
+		gardenClient.EXPECT().CurrentUser(gomock.Any()).Return(defaultUserName, nil).AnyTimes()
 
 		targetFlags := target.NewTargetFlags("", "", "", "", false)
 
 		manager = targetmocks.NewMockManager(ctrl)
-		manager.EXPECT().ClientConfig(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, _ target.Target) (clientcmd.ClientConfig, error) {
-			// DoAndReturn allows us to modify the apiConfig within the testcase
-			clientcmdConfig := clientcmd.NewDefaultClientConfig(*apiConfig, nil)
-			return clientcmdConfig, nil
-		}).AnyTimes()
 		manager.EXPECT().CurrentTarget().Return(currentTarget, nil).AnyTimes()
 		manager.EXPECT().GardenClient(gomock.Eq(gardenName)).Return(gardenClient, nil).AnyTimes()
 
@@ -401,52 +348,6 @@ var _ = Describe("SSH Patch Command", func() {
 				Expect(len(completions)).To(Equal(2), "should find two bastions with given prefix")
 				Expect(completions[0]).To(ContainSubstring(prefix + "-bastion1\t created 0s ago"))
 				Expect(completions[1]).To(ContainSubstring(prefix + "-bastion2\t created 0s ago"))
-			})
-		})
-	})
-
-	Describe("bastionListPatcher", func() {
-		Describe("CurrentUser", func() {
-			var patchLister *sshpatch.TestUserBastionListPatcherImpl
-
-			BeforeEach(func() {
-				fakeBastionList := &operationsv1alpha1.BastionList{
-					Items: []operationsv1alpha1.Bastion{
-						createBastion("client-cn", "fake-bastion"),
-					},
-				}
-				gardenClient.EXPECT().ListBastions(isCtx, gomock.Any()).Return(fakeBastionList, nil).AnyTimes()
-
-				patchLister = sshpatch.NewTestUserBastionPatchLister(manager)
-			})
-
-			It("Should return the user when a Token is used", func() {
-				token := "an-arbitrary-token"
-				user := "an-arbitrary-user"
-
-				reviewResult := &authenticationv1.TokenReview{
-					Status: authenticationv1.TokenReviewStatus{
-						User: authenticationv1.UserInfo{
-							Username: user,
-						},
-					},
-				}
-				gardenClient.EXPECT().CreateTokenReview(gomock.Eq(ctx), gomock.Eq(token)).Return(reviewResult, nil).Times(1)
-
-				username, err := patchLister.CurrentUser(ctx, gardenClient, &clientcmdapi.AuthInfo{
-					Token: token,
-				})
-
-				Expect(err).To(BeNil())
-				Expect(username).To(Equal(user))
-			})
-
-			It("Should return the user when a client certificate is used", func() {
-				username, err := patchLister.CurrentUser(ctx, gardenClient, &clientcmdapi.AuthInfo{
-					ClientCertificateData: sampleClientCertficate,
-				})
-				Expect(err).To(BeNil())
-				Expect(username).To(Equal(defaultUserName))
 			})
 		})
 	})
