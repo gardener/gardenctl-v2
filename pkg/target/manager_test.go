@@ -146,13 +146,16 @@ var _ = Describe("Target Manager", func() {
 			},
 		}
 
+		testSeedKubeconfig, err := fake.NewConfigData("test-seed")
+		Expect(err).ToNot(HaveOccurred())
+
 		seedKubeconfigSecret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-seed.login",
 				Namespace: "garden",
 			},
 			Data: map[string][]byte{
-				"kubeconfig": createTestKubeconfig("test-seed"),
+				"kubeconfig": testSeedKubeconfig,
 			},
 		}
 

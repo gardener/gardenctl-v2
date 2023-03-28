@@ -38,13 +38,20 @@ var _ = Describe("Client", func() {
 	Describe("GetSeedClientConfig", func() {
 		BeforeEach(func() {
 			ctx = context.Background()
+
+			seed1Kubeconfig, err := fake.NewConfigData("seed-1")
+			Expect(err).NotTo(HaveOccurred())
+
+			seed2Kubeconfig, err := fake.NewConfigData("seed-2")
+			Expect(err).NotTo(HaveOccurred())
+
 			oidcSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "seed-1.oidc",
 					Namespace: "garden",
 				},
 				Data: map[string][]byte{
-					"kubeconfig": createTestKubeconfig("seed-1"),
+					"kubeconfig": seed1Kubeconfig,
 				},
 			}
 			loginSecret := &corev1.Secret{
@@ -53,7 +60,7 @@ var _ = Describe("Client", func() {
 					Namespace: "garden",
 				},
 				Data: map[string][]byte{
-					"kubeconfig": createTestKubeconfig("seed-2"),
+					"kubeconfig": seed2Kubeconfig,
 				},
 			}
 			gardenClient = gardenclient.NewGardenClient(
@@ -267,24 +274,3 @@ var _ = Describe("Client", func() {
 	})
 })
 
-// TODO copied from target_suite_test. Move into a test helper package for better reuse.
-func createTestKubeconfig(name string) []byte {
-	config := clientcmdapi.NewConfig()
-	config.Clusters["cluster"] = &clientcmdapi.Cluster{
-		Server:                "https://kubernetes:6443/",
-		InsecureSkipTLSVerify: true,
-	}
-	config.AuthInfos["user"] = &clientcmdapi.AuthInfo{
-		Token: "token",
-	}
-	config.Contexts[name] = &clientcmdapi.Context{
-		Namespace: "default",
-		AuthInfo:  "user",
-		Cluster:   "cluster",
-	}
-	config.CurrentContext = name
-	data, err := clientcmd.Write(*config)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-	return data
-}
