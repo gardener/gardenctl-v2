@@ -122,7 +122,7 @@ bar:
 		var (
 			ctrl        *gomock.Controller
 			mockFactory *utilmocks.MockFactory
-			mockOptions *basemocks.MockCommandOptions
+			mockOptions *basemocks.MockRunnable
 			runE        func(cmd *cobra.Command, args []string) error
 			cmd         *cobra.Command
 			args        []string
@@ -131,7 +131,7 @@ bar:
 
 		BeforeEach(func() {
 			ctrl = gomock.NewController(GinkgoT())
-			mockOptions = basemocks.NewMockCommandOptions(ctrl)
+			mockOptions = basemocks.NewMockRunnable(ctrl)
 			mockFactory = utilmocks.NewMockFactory(ctrl)
 			cmd = &cobra.Command{}
 			args = []string{"foo", "bar"}

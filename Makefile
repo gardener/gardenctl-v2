@@ -11,6 +11,13 @@ endif
 
 export LD_FLAGS=$(shell ./hack/get-build-ld-flags.sh)
 
+#########################################
+# Tools                                 #
+#########################################
+
+TOOLS_DIR := hack/tools
+include hack/tools.mk
+
 ##@ General
 
 # The help target prints out all targets with their descriptions organized
@@ -54,6 +61,10 @@ go-test: ## Run go tests.
 .PHONY: gen-markdown
 gen-markdown: ## Check that the generated markdown is up-to-date
 	go run ./internal/gen/markdown.go
+
+.PHONY: generate-sequential
+generate-sequential: gen-markdown $(MOCKGEN)
+	@hack/generate.sh ./pkg/... ./internal/...
 
 ##@ Build
 
