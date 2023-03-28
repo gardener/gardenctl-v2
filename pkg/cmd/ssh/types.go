@@ -58,7 +58,7 @@ type ConnectInformation struct {
 	NodeHostname string `json:"nodeHostname,omitempty"`
 
 	// NodePrivateKeyFiles is a list of file paths containing the private SSH keys for the worker nodes.
-	NodePrivateKeyFiles []string `json:"nodePrivateKeyFiles"`
+	NodePrivateKeyFiles []PrivateKeyFile `json:"nodePrivateKeyFiles"`
 
 	// Nodes is a list of Node objects containing information about the worker nodes.
 	Nodes []Node `json:"nodes"`
@@ -100,7 +100,7 @@ type Address struct {
 
 var _ fmt.Stringer = &Address{}
 
-func NewConnectInformation(bastion *operationsv1alpha1.Bastion, nodeHostname string, sshPublicKeyFile PublicKeyFile, sshPrivateKeyFile PrivateKeyFile, nodePrivateKeyFiles []string, nodes []corev1.Node) (*ConnectInformation, error) {
+func NewConnectInformation(bastion *operationsv1alpha1.Bastion, nodeHostname string, sshPublicKeyFile PublicKeyFile, sshPrivateKeyFile PrivateKeyFile, nodePrivateKeyFiles []PrivateKeyFile, nodes []corev1.Node) (*ConnectInformation, error) {
 	var nodeList []Node
 
 	for _, node := range nodes {

@@ -498,7 +498,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	}
 
 	// save the keys into temporary files that we try to clean up when exiting
-	nodePrivateKeyFiles := []string{}
+	var nodePrivateKeyFiles []PrivateKeyFile
 
 	for _, pk := range nodePrivateKeys {
 		filename, err := writeToTemporaryFile(pk)
@@ -506,7 +506,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 			return err
 		}
 
-		nodePrivateKeyFiles = append(nodePrivateKeyFiles, filename)
+		nodePrivateKeyFiles = append(nodePrivateKeyFiles, PrivateKeyFile(filename))
 	}
 
 	shootClient, err := manager.ShootClient(ctx, sshTarget)
@@ -678,7 +678,7 @@ func printTargetInformation(logger klog.Logger, t target.Target) {
 	logger.Info("Preparing SSH access", "target", target, "garden", t.GardenName())
 }
 
-func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string) {
+func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []PrivateKeyFile) {
 	logger := klog.FromContext(ctx)
 
 	if !o.KeepBastion {
@@ -702,7 +702,7 @@ func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bas
 		// these files remaining, the user would not be able to use the SSH
 		// command we provided to connect to the shoot nodes
 		for _, filename := range nodePrivateKeyFiles {
-			if err := os.Remove(filename); err != nil {
+			if err := os.Remove(filename.String()); err != nil {
 				logger.Error(err, "Failed to delete node private key", "path", filename)
 			}
 		}
@@ -831,7 +831,7 @@ func getShootNode(ctx context.Context, o *SSHOptions, shootClient client.Client)
 	return node, nil
 }
 
-func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string) error {
+func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []PrivateKeyFile) error {
 	bastionAddr := preferredBastionAddress(bastion)
 	connectCmd := sshCommandLine(o.SSHPrivateKeyFile, bastionAddr, nodePrivateKeyFiles, nodeHostname)
 
@@ -859,7 +859,7 @@ func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1
 	}
 
 	for _, file := range nodePrivateKeyFiles {
-		args = append(args, "-i", file)
+		args = append(args, "-i", file.String())
 	}
 
 	args = append(args, fmt.Sprintf("%s@%s", SSHNodeUsername, nodeHostname))
@@ -867,7 +867,7 @@ func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1
 	return execCommand(ctx, "ssh", args, o)
 }
 
-func sshCommandLine(sshPrivateKeyFile PrivateKeyFile, bastionAddr string, nodePrivateKeyFiles []string, nodeName string) string {
+func sshCommandLine(sshPrivateKeyFile PrivateKeyFile, bastionAddr string, nodePrivateKeyFiles []PrivateKeyFile, nodeName string) string {
 	proxyPrivateKeyFlag := ""
 	if sshPrivateKeyFile != "" {
 		proxyPrivateKeyFlag = fmt.Sprintf(" -o IdentitiesOnly=yes -i %s", sshPrivateKeyFile)
