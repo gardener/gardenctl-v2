@@ -36,7 +36,6 @@ type bastionPatcher interface {
 	Patch(ctx context.Context, oldBastion, newBastion *operationsv1alpha1.Bastion) error
 }
 
-//go:generate mockgen -source=./ssh_patch_userbastionlister.go -destination=./mocks/mock_ssh_patch_userbastionlister.go -package=mocks github.com/gardener/gardenctl-v2/pkg/cmd/ssh bastionListPatcher
 type bastionListPatcher interface {
 	bastionPatcher
 	bastionLister
