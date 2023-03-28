@@ -20,23 +20,23 @@ import (
 // AccessRestriction is used to define an access restriction.
 type AccessRestriction struct {
 	// Key is the identifier of an access restriction
-	Key string `yaml:"key,omitempty" json:"key,omitempty"`
+	Key string `json:"key,omitempty"`
 	// NotifyIf controls which value the annotation must have for a notification to be sent
-	NotifyIf bool `yaml:"notifyIf,omitempty" json:"notifyIf,omitempty"`
+	NotifyIf bool `json:"notifyIf,omitempty"`
 	// Msg is the notification text that is sent
-	Msg string `yaml:"msg,omitempty" json:"msg,omitempty"`
+	Msg string `json:"msg,omitempty"`
 	// Options is a list of access restriction options
-	Options []AccessRestrictionOption `yaml:"options,omitempty" json:"options,omitempty"`
+	Options []AccessRestrictionOption `json:"options,omitempty"`
 }
 
 // AccessRestrictionOption is used to define an access restriction option.
 type AccessRestrictionOption struct {
 	// Key is the identifier of an access restriction option
-	Key string `yaml:"key,omitempty" json:"key,omitempty"`
+	Key string `json:"key,omitempty"`
 	// NotifyIf controls which value the annotation must have for a notification to be sent
-	NotifyIf bool `yaml:"notifyIf,omitempty" json:"notifyIf,omitempty"`
+	NotifyIf bool `json:"notifyIf,omitempty"`
 	// Msg is the notification text that is sent
-	Msg string `yaml:"msg,omitempty" json:"msg,omitempty"`
+	Msg string `json:"msg,omitempty"`
 }
 
 // AccessRestrictionHandler is a function that should display a single AccessRestrictionMessage to the user.

@@ -63,11 +63,11 @@ type Target interface {
 }
 
 type targetImpl struct {
-	Garden           string `yaml:"garden,omitempty" json:"garden,omitempty"`
-	Project          string `yaml:"project,omitempty" json:"project,omitempty"`
-	Seed             string `yaml:"seed,omitempty" json:"seed,omitempty"`
-	Shoot            string `yaml:"shoot,omitempty" json:"shoot,omitempty"`
-	ControlPlaneFlag bool   `yaml:"controlPlane,omitempty" json:"controlPlane,omitempty"`
+	Garden           string `json:"garden,omitempty"`
+	Project          string `json:"project,omitempty"`
+	Seed             string `json:"seed,omitempty"`
+	Shoot            string `json:"shoot,omitempty"`
+	ControlPlaneFlag bool   `json:"controlPlane,omitempty"`
 }
 
 var _ Target = &targetImpl{}
