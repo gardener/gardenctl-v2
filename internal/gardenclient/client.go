@@ -7,9 +7,15 @@ SPDX-License-Identifier: Apache-2.0
 package gardenclient
 
 import (
+	"bytes"
 	"context"
+	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"os/exec"
+	"path"
 
 	openstackinstall "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/install"
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
@@ -26,7 +32,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/pkg/apis/clientauthentication"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -87,8 +95,7 @@ type Client interface {
 	// PatchBastion patches an existing bastion to match newBastion using the merge patch strategy
 	PatchBastion(ctx context.Context, newBastion, oldBastion *operationsv1alpha1.Bastion) error
 
-	// Creates a token review for a user with token authentication
-	CreateTokenReview(ctx context.Context, token string) (*authenticationv1.TokenReview, error)
+	CurrentUser(ctx context.Context) (string, error)
 
 	// RuntimeClient returns the underlying kubernetes runtime client
 	// TODO: Remove this when we switched all APIs to the new gardenclient
@@ -96,6 +103,8 @@ type Client interface {
 }
 
 type clientImpl struct {
+	config clientcmd.ClientConfig
+
 	c client.Client
 
 	// name is a unique identifier of this Garden client
@@ -103,10 +112,11 @@ type clientImpl struct {
 }
 
 // NewGardenClient returns a new gardenclient.
-func NewGardenClient(client client.Client, name string) Client {
+func NewGardenClient(config clientcmd.ClientConfig, client client.Client, name string) Client {
 	return &clientImpl{
-		c:    client,
-		name: name,
+		config: config,
+		c:      client,
+		name:   name,
 	}
 }
 
@@ -310,18 +320,106 @@ func (g *clientImpl) PatchBastion(ctx context.Context, newBastion, oldBastion *o
 	return g.c.Patch(ctx, newBastion, client.MergeFrom(oldBastion))
 }
 
-func (g *clientImpl) CreateTokenReview(ctx context.Context, token string) (*authenticationv1.TokenReview, error) {
-	tokenReview := &authenticationv1.TokenReview{
-		Spec: authenticationv1.TokenReviewSpec{
-			Token: token,
-		},
+func (g *clientImpl) CurrentUser(ctx context.Context) (string, error) {
+	rawConfig, err := g.config.RawConfig()
+	if err != nil {
+		return "", fmt.Errorf("could not retrieve raw config: %w", err)
 	}
 
-	if err := g.c.Create(ctx, tokenReview); err != nil {
-		return nil, fmt.Errorf("failed to create token review: %w", err)
+	currentContext, ok := rawConfig.Contexts[rawConfig.CurrentContext]
+	if !ok {
+		return "", fmt.Errorf("no context found for current context %s", rawConfig.CurrentContext)
 	}
 
-	return tokenReview, nil
+	authInfo, ok := rawConfig.AuthInfos[currentContext.AuthInfo]
+	if !ok {
+		return "", fmt.Errorf("no auth info found with name %s", currentContext.AuthInfo)
+	}
+
+	baseDir, err := clientcmdapi.MakeAbs(path.Dir(authInfo.LocationOfOrigin), "")
+	if err != nil {
+		return "", fmt.Errorf("could not parse location of kubeconfig origin: %v", err)
+	}
+
+	switch {
+	case len(authInfo.ClientCertificateData) == 0 && len(authInfo.ClientCertificate) > 0:
+		err := clientcmdapi.FlattenContent(&authInfo.ClientCertificate, &authInfo.ClientCertificateData, baseDir)
+		if err != nil {
+			return "", err
+		}
+	case len(authInfo.Token) == 0 && len(authInfo.TokenFile) > 0:
+		var tmpValue []byte
+
+		err := clientcmdapi.FlattenContent(&authInfo.TokenFile, &tmpValue, baseDir)
+		if err != nil {
+			return "", err
+		}
+
+		authInfo.Token = string(tmpValue)
+	case authInfo.Exec != nil && len(authInfo.Exec.Command) > 0:
+		// The command originates from the users kubeconfig and is also executed when using kubectl.
+		// So it should be safe to execute it here as well.
+		var out bytes.Buffer
+
+		execCmd := exec.Command(authInfo.Exec.Command, authInfo.Exec.Args...)
+		execCmd.Stdout = &out
+
+		err := execCmd.Run()
+		if err != nil {
+			return "", err
+		}
+
+		var execCredential clientauthentication.ExecCredential
+
+		err = json.Unmarshal(out.Bytes(), &execCredential)
+		if err != nil {
+			return "", err
+		}
+
+		if token := execCredential.Status.Token; len(token) > 0 {
+			authInfo.Token = token
+		} else if cert := execCredential.Status.ClientCertificateData; len(cert) > 0 {
+			authInfo.ClientCertificateData = []byte(cert)
+		}
+	}
+
+	if len(authInfo.ClientCertificateData) > 0 {
+		block, _ := pem.Decode(authInfo.ClientCertificateData) // does not return an error, just nil
+		if block == nil {
+			return "", fmt.Errorf("could not decode PEM certificate")
+		}
+
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return "", err
+		}
+
+		user := cert.Subject.CommonName
+		if len(user) > 0 {
+			return user, nil
+		}
+	}
+
+	if len(authInfo.Token) > 0 {
+		tokenReview := &authenticationv1.TokenReview{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+			},
+			Spec: authenticationv1.TokenReviewSpec{
+				Token: authInfo.Token,
+			},
+		}
+
+		if err := g.c.Create(ctx, tokenReview); err != nil {
+			return "", err
+		}
+
+		if user := tokenReview.Status.User.Username; user != "" {
+			return user, nil
+		}
+	}
+
+	return "", fmt.Errorf("could not detect current user")
 }
 
 func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clientcmd.ClientConfig, error) {

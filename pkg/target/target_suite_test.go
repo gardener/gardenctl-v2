@@ -18,8 +18,8 @@ import (
 	. "github.com/onsi/gomega"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+
+	"github.com/gardener/gardenctl-v2/internal/fake"
 )
 
 func init() {
@@ -50,7 +50,8 @@ var _ = BeforeSuite(func() {
 	Expect(os.MkdirAll(sessionDir, 0o700)).To(Succeed())
 	gardenHomeDir = dir
 	gardenKubeconfig = filepath.Join(gardenHomeDir, "kubeconfig.yaml")
-	data := createTestKubeconfig(gardenName)
+	data, err := fake.NewConfigData(gardenName)
+	Expect(err).NotTo(HaveOccurred())
 	Expect(os.WriteFile(gardenKubeconfig, data, 0o600)).To(Succeed())
 })
 
@@ -58,24 +59,3 @@ var _ = AfterSuite(func() {
 	cancel()
 	Expect(os.RemoveAll(gardenHomeDir)).To(Succeed())
 })
-
-func createTestKubeconfig(name string) []byte {
-	config := clientcmdapi.NewConfig()
-	config.Clusters["cluster"] = &clientcmdapi.Cluster{
-		Server:                "https://kubernetes:6443/",
-		InsecureSkipTLSVerify: true,
-	}
-	config.AuthInfos["user"] = &clientcmdapi.AuthInfo{
-		Token: "token",
-	}
-	config.Contexts[name] = &clientcmdapi.Context{
-		Namespace: "default",
-		AuthInfo:  "user",
-		Cluster:   "cluster",
-	}
-	config.CurrentContext = name
-	data, err := clientcmd.Write(*config)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-	return data
-}

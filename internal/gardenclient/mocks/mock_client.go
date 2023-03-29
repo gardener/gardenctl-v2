@@ -12,8 +12,7 @@ import (
 	v1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	v1alpha10 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	gomock "github.com/golang/mock/gomock"
-	v1 "k8s.io/api/authentication/v1"
-	v10 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -41,19 +40,19 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 	return m.recorder
 }
 
-// CreateTokenReview mocks base method.
-func (m *MockClient) CreateTokenReview(arg0 context.Context, arg1 string) (*v1.TokenReview, error) {
+// CurrentUser mocks base method.
+func (m *MockClient) CurrentUser(arg0 context.Context) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateTokenReview", arg0, arg1)
-	ret0, _ := ret[0].(*v1.TokenReview)
+	ret := m.ctrl.Call(m, "CurrentUser", arg0)
+	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// CreateTokenReview indicates an expected call of CreateTokenReview.
-func (mr *MockClientMockRecorder) CreateTokenReview(arg0, arg1 interface{}) *gomock.Call {
+// CurrentUser indicates an expected call of CurrentUser.
+func (mr *MockClientMockRecorder) CurrentUser(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTokenReview", reflect.TypeOf((*MockClient)(nil).CreateTokenReview), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentUser", reflect.TypeOf((*MockClient)(nil).CurrentUser), arg0)
 }
 
 // FindShoot mocks base method.
@@ -76,21 +75,6 @@ func (mr *MockClientMockRecorder) FindShoot(arg0 interface{}, arg1 ...interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindShoot", reflect.TypeOf((*MockClient)(nil).FindShoot), varargs...)
 }
 
-// GetBastion mocks base method.
-func (m *MockClient) GetBastion(arg0 context.Context, arg1, arg2 string) (*v1alpha1.Bastion, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBastion", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*v1alpha1.Bastion)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetBastion indicates an expected call of GetBastion.
-func (mr *MockClientMockRecorder) GetBastion(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBastion", reflect.TypeOf((*MockClient)(nil).GetBastion), arg0, arg1, arg2)
-}
-
 // GetCloudProfile mocks base method.
 func (m *MockClient) GetCloudProfile(arg0 context.Context, arg1 string) (*v1beta1.CloudProfile, error) {
 	m.ctrl.T.Helper()
@@ -107,10 +91,10 @@ func (mr *MockClientMockRecorder) GetCloudProfile(arg0, arg1 interface{}) *gomoc
 }
 
 // GetConfigMap mocks base method.
-func (m *MockClient) GetConfigMap(arg0 context.Context, arg1, arg2 string) (*v10.ConfigMap, error) {
+func (m *MockClient) GetConfigMap(arg0 context.Context, arg1, arg2 string) (*v1.ConfigMap, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetConfigMap", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*v10.ConfigMap)
+	ret0, _ := ret[0].(*v1.ConfigMap)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -122,10 +106,10 @@ func (mr *MockClientMockRecorder) GetConfigMap(arg0, arg1, arg2 interface{}) *go
 }
 
 // GetNamespace mocks base method.
-func (m *MockClient) GetNamespace(arg0 context.Context, arg1 string) (*v10.Namespace, error) {
+func (m *MockClient) GetNamespace(arg0 context.Context, arg1 string) (*v1.Namespace, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNamespace", arg0, arg1)
-	ret0, _ := ret[0].(*v10.Namespace)
+	ret0, _ := ret[0].(*v1.Namespace)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -167,10 +151,10 @@ func (mr *MockClientMockRecorder) GetProjectByNamespace(arg0, arg1 interface{}) 
 }
 
 // GetSecret mocks base method.
-func (m *MockClient) GetSecret(arg0 context.Context, arg1, arg2 string) (*v10.Secret, error) {
+func (m *MockClient) GetSecret(arg0 context.Context, arg1, arg2 string) (*v1.Secret, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSecret", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*v10.Secret)
+	ret0, _ := ret[0].(*v1.Secret)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
