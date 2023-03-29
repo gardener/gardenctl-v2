@@ -20,6 +20,7 @@ import (
 
 var _ = Describe("Config", func() {
 	var (
+		gardenHomeDir    string
 		clusterIdentity1 = "garden1"
 		clusterIdentity2 = "garden2"
 		clusterAlias1    = "gardenalias1"
@@ -31,6 +32,10 @@ var _ = Describe("Config", func() {
 	)
 
 	BeforeEach(func() {
+		dir, err := os.MkdirTemp("", "garden-*")
+		Expect(err).NotTo(HaveOccurred())
+		gardenHomeDir = dir
+
 		cfg = &config.Config{
 			LinkKubeconfig: pointer.Bool(false),
 			Gardens: []config.Garden{
@@ -51,6 +56,10 @@ var _ = Describe("Config", func() {
 				},
 			},
 		}
+	})
+
+	AfterEach(func() {
+		Expect(os.RemoveAll(gardenHomeDir)).To(Succeed())
 	})
 
 	patternValue := func(prefix string) string {
@@ -180,5 +189,34 @@ var _ = Describe("Config", func() {
 			Filename: filename,
 		}
 		Expect(cfg.Save()).NotTo(HaveOccurred())
+	})
+
+	Describe("#LoadFromFile", func() {
+		It("should succeed when file does not exist", func() {
+			filename := filepath.Join(gardenHomeDir, "gardenctl-v2.yaml")
+			cfg = &config.Config{
+				Filename: filename,
+			}
+
+			cfg, err := config.LoadFromFile(filename)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.Filename).To(Equal(filename))
+			Expect(cfg.Gardens).To(BeNil())
+		})
+
+		It("should succeed when file is empty", func() {
+			filename := filepath.Join(gardenHomeDir, "gardenctl-v2.yaml")
+			_, err := os.Create(filename)
+			Expect(err).NotTo(HaveOccurred())
+
+			cfg = &config.Config{
+				Filename: filename,
+			}
+
+			cfg, err := config.LoadFromFile(filename)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.Filename).To(Equal(filename))
+			Expect(cfg.Gardens).To(BeNil())
+		})
 	})
 })

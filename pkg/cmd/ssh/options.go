@@ -40,10 +40,8 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -152,102 +150,15 @@ var (
 		return cmd.Run()
 	}
 
-	// waitForSignal informs the user about their SSHOptions and keeps the
+	// waitForSignal informs the user how to stop gardenctl and keeps the
 	// bastion alive until gardenctl exits.
-	waitForSignal = func(ctx context.Context, o *SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string, signalChan <-chan struct{}) error {
-		if nodeHostname == "" {
-			nodeHostname = "IP_OR_HOSTNAME"
-
-			nodes, err := getNodes(ctx, shootClient)
-			if err != nil {
-				return fmt.Errorf("failed to list shoot cluster nodes: %w", err)
-			}
-
-			table := &metav1beta1.Table{
-				ColumnDefinitions: []metav1.TableColumnDefinition{
-					{
-						Name:   "Node Name",
-						Type:   "string",
-						Format: "name",
-					},
-					{
-						Name: "Status",
-						Type: "string",
-					},
-					{
-						Name: "IP",
-						Type: "string",
-					},
-					{
-						Name: "Hostname",
-						Type: "string",
-					},
-				},
-				Rows: []metav1.TableRow{},
-			}
-
-			for _, node := range nodes {
-				ip := ""
-				hostname := ""
-				status := "Ready"
-
-				if !isNodeReady(node) {
-					status = "Not Ready"
-				}
-
-				for _, addr := range node.Status.Addresses {
-					switch addr.Type {
-					case corev1.NodeInternalIP:
-						ip = addr.Address
-
-					case corev1.NodeInternalDNS:
-						hostname = addr.Address
-
-					// internal names have priority, as we jump via a bastion host,
-					// but in case the cloud provider does not offer internal IPs,
-					// we fallback to external values
-
-					case corev1.NodeExternalIP:
-						if ip == "" {
-							ip = addr.Address
-						}
-
-					case corev1.NodeExternalDNS:
-						if hostname == "" {
-							hostname = addr.Address
-						}
-					}
-				}
-
-				table.Rows = append(table.Rows, metav1.TableRow{
-					Cells: []interface{}{node.Name, status, ip, hostname},
-				})
-			}
-
-			fmt.Fprintln(o.IOStreams.Out, "The shoot cluster has the following nodes:")
-			fmt.Fprintln(o.IOStreams.Out, "")
-
-			printer := printers.NewTablePrinter(printers.PrintOptions{})
-			if err := printer.PrintObj(table, o.IOStreams.Out); err != nil {
-				return fmt.Errorf("failed to output node table: %w", err)
-			}
-
-			fmt.Fprintln(o.IOStreams.Out, "")
+	waitForSignal = func(ctx context.Context, o *SSHOptions, signalChan <-chan struct{}) {
+		if o.Output == "" {
+			fmt.Fprintln(o.IOStreams.Out, "Press Ctrl-C to stop gardenctl, after which the bastion will be removed.")
 		}
 
-		bastionAddr := preferredBastionAddress(bastion)
-		connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFiles, nodeHostname)
-
-		fmt.Fprintln(o.IOStreams.Out, "Connect to shoot nodes by using the bastion as a proxy/jump host, for example:")
-		fmt.Fprintln(o.IOStreams.Out, "")
-		fmt.Fprintln(o.IOStreams.Out, connectCmd)
-		fmt.Fprintln(o.IOStreams.Out, "")
-
-		fmt.Fprintln(o.IOStreams.Out, "Press Ctrl-C to stop gardenctl, after which the bastion will be removed.")
-
+		// keep the bastion alive until gardenctl exits
 		<-signalChan
-
-		return nil
 	}
 )
 
@@ -270,12 +181,12 @@ type SSHOptions struct {
 
 	// SSHPublicKeyFile is the full path to the file containing the user's
 	// public SSH key. If not given, gardenctl will create a new temporary keypair.
-	SSHPublicKeyFile string
+	SSHPublicKeyFile PublicKeyFile
 
 	// SSHPrivateKeyFile is the full path to the file containing the user's
 	// private SSH key. This is only set if no key was given and a temporary keypair
 	// was generated. Otherwise gardenctl relies on the user's SSH agent.
-	SSHPrivateKeyFile string
+	SSHPrivateKeyFile PrivateKeyFile
 
 	// generatedSSHKeys is true if the public and private SSH keys have been generated
 	// instead of being provided by the user. This will then be used for the cleanup.
@@ -317,15 +228,19 @@ func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 
 func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 	flagSet.BoolVar(&o.Interactive, "interactive", o.Interactive, "Open an SSH connection instead of just providing the bastion host (only if NODE_NAME is provided).")
-	flagSet.StringVar(&o.SSHPublicKeyFile, "public-key-file", "", "Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.")
+	flagSet.Var(&o.SSHPublicKeyFile, "public-key-file", "Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.")
 	flagSet.DurationVar(&o.WaitTimeout, "wait-timeout", o.WaitTimeout, "Maximum duration to wait for the bastion to become available.")
 	flagSet.BoolVar(&o.KeepBastion, "keep-bastion", o.KeepBastion, "Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)")
 	flagSet.BoolVar(&o.SkipAvailabilityCheck, "skip-availability-check", o.SkipAvailabilityCheck, "Skip checking for SSH bastion host availability.")
 	flagSet.BoolVar(&o.NoKeepalive, "no-keepalive", o.NoKeepalive, "Exit after the bastion host became available without keeping the bastion alive or establishing an SSH connection. Note that this flag requires the flags --interactive=false and --keep-bastion to be set")
+	o.Options.AddFlags(flagSet)
 }
 
 // Complete adapts from the command line args to the data required.
 func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+	ctx := f.Context()
+	logger := klog.FromContext(ctx)
+
 	if err := o.AccessConfig.Complete(f, cmd, args); err != nil {
 		return err
 	}
@@ -350,6 +265,12 @@ func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string)
 
 	if len(args) > 0 {
 		o.NodeName = strings.TrimSpace(args[0])
+	}
+
+	if o.NodeName == "" && o.Interactive {
+		logger.V(4).Info("no node name given, switching to non-interactive mode")
+
+		o.Interactive = false
 	}
 
 	return nil
@@ -404,7 +325,13 @@ func (o *SSHOptions) Validate() error {
 		}
 	}
 
-	content, err := os.ReadFile(o.SSHPublicKeyFile)
+	if o.Output != "" {
+		if o.Interactive {
+			return errors.New("set --interactive=false when using the output flag")
+		}
+	}
+
+	content, err := os.ReadFile(o.SSHPublicKeyFile.String())
 	if err != nil {
 		return fmt.Errorf("invalid SSH public key file: %w", err)
 	}
@@ -416,7 +343,7 @@ func (o *SSHOptions) Validate() error {
 	return nil
 }
 
-func createSSHKeypair(tempDir string, keyName string) (string, string, error) {
+func createSSHKeypair(tempDir string, keyName string) (PrivateKeyFile, PublicKeyFile, error) {
 	if keyName == "" {
 		id, err := utils.GenerateRandomString(8)
 		if err != nil {
@@ -440,17 +367,17 @@ func createSSHKeypair(tempDir string, keyName string) (string, string, error) {
 		tempDir = os.TempDir()
 	}
 
-	privateKeyFile := filepath.Join(tempDir, keyName)
-	if err := writeKeyFile(privateKeyFile, encodePrivateKey(privateKey)); err != nil {
+	sshPrivateKeyFile := PrivateKeyFile(filepath.Join(tempDir, keyName))
+	if err := writeKeyFile(sshPrivateKeyFile.String(), encodePrivateKey(privateKey)); err != nil {
 		return "", "", fmt.Errorf("failed to write private key: %w", err)
 	}
 
-	publicKeyFile := filepath.Join(tempDir, fmt.Sprintf("%s.pub", keyName))
-	if err := writeKeyFile(publicKeyFile, encodePublicKey(publicKey)); err != nil {
+	sshPublicKeyFile := PublicKeyFile(filepath.Join(tempDir, fmt.Sprintf("%s.pub", keyName)))
+	if err := writeKeyFile(sshPublicKeyFile.String(), encodePublicKey(publicKey)); err != nil {
 		return "", "", fmt.Errorf("failed to write public key: %w", err)
 	}
 
-	return privateKeyFile, publicKeyFile, nil
+	return sshPrivateKeyFile, sshPublicKeyFile, nil
 }
 
 func createSSHPrivateKey() (*rsa.PrivateKey, error) {
@@ -571,7 +498,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	}
 
 	// save the keys into temporary files that we try to clean up when exiting
-	nodePrivateKeyFiles := []string{}
+	var nodePrivateKeyFiles []PrivateKeyFile
 
 	for _, pk := range nodePrivateKeys {
 		filename, err := writeToTemporaryFile(pk)
@@ -579,7 +506,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 			return err
 		}
 
-		nodePrivateKeyFiles = append(nodePrivateKeyFiles, filename)
+		nodePrivateKeyFiles = append(nodePrivateKeyFiles, PrivateKeyFile(filename))
 	}
 
 	shootClient, err := manager.ShootClient(ctx, sshTarget)
@@ -610,7 +537,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return fmt.Errorf("failed to get bastion ingress policies: %w", err)
 	}
 
-	sshPublicKey, err := os.ReadFile(o.SSHPublicKeyFile)
+	sshPublicKey, err := os.ReadFile(o.SSHPublicKeyFile.String())
 	if err != nil {
 		return fmt.Errorf("failed to read SSH public key: %w", err)
 	}
@@ -665,38 +592,39 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	logger.Info("Waiting for bastion to be ready…", "waitTimeout", o.WaitTimeout)
 
 	err = waitForBastion(ctx, o, gardenClient.RuntimeClient(), bastion)
-
 	if err == wait.ErrWaitTimeout {
-		logger.Info("Timed out waiting for the bastion to be ready.")
+		return errors.New("timed out waiting for the bastion to be ready")
 	} else if err != nil {
-		logger.Error(err, "An error occurred while waiting for the bastion to be ready.")
+		return fmt.Errorf("an error occurred while waiting for the bastion to be ready: %w", err)
 	}
 
-	if err != nil {
-		// actual error has already been printed
-		return errors.New("precondition failed")
-	}
+	logger.Info("Bastion host became available.", "address", toAdress(bastion.Status.Ingress).String())
 
-	ingress := bastion.Status.Ingress
-	printAddr := ""
+	if !o.Interactive {
+		var nodes []corev1.Node
+		if nodeHostname == "" {
+			nodes, err = getNodes(ctx, shootClient)
+			if err != nil {
+				return fmt.Errorf("failed to list shoot cluster nodes: %w", err)
+			}
+		}
 
-	switch {
-	case ingress.Hostname != "" && ingress.IP != "":
-		printAddr = fmt.Sprintf("%s (%s)", ingress.IP, ingress.Hostname)
-	case ingress.Hostname != "":
-		printAddr = ingress.Hostname
-	default:
-		printAddr = ingress.IP
-	}
+		connectInformation, err := NewConnectInformation(bastion, nodeHostname, o.SSHPublicKeyFile, o.SSHPrivateKeyFile, nodePrivateKeyFiles, nodes)
+		if err != nil {
+			return err
+		}
 
-	logger.Info("Bastion host became available.", "address", printAddr)
+		if err := o.PrintObject(connectInformation); err != nil {
+			return err
+		}
 
-	if o.NoKeepalive {
+		if o.NoKeepalive {
+			return nil
+		}
+
+		waitForSignal(ctx, o, ctx.Done())
+
 		return nil
-	}
-
-	if nodeHostname == "" || !o.Interactive {
-		return waitForSignal(ctx, o, shootClient, bastion, nodeHostname, nodePrivateKeyFiles, ctx.Done())
 	}
 
 	return remoteShell(ctx, o, bastion, nodeHostname, nodePrivateKeyFiles)
@@ -750,7 +678,7 @@ func printTargetInformation(logger klog.Logger, t target.Target) {
 	logger.Info("Preparing SSH access", "target", target, "garden", t.GardenName())
 }
 
-func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []string) {
+func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []PrivateKeyFile) {
 	logger := klog.FromContext(ctx)
 
 	if !o.KeepBastion {
@@ -761,11 +689,11 @@ func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bas
 		}
 
 		if o.generatedSSHKeys {
-			if err := os.Remove(o.SSHPublicKeyFile); err != nil {
+			if err := os.Remove(o.SSHPublicKeyFile.String()); err != nil {
 				logger.Error(err, "Failed to delete SSH public key file", "path", o.SSHPublicKeyFile)
 			}
 
-			if err := os.Remove(o.SSHPrivateKeyFile); err != nil {
+			if err := os.Remove(o.SSHPrivateKeyFile.String()); err != nil {
 				logger.Error(err, "Failed to delete SSH private key file", "path", o.SSHPrivateKeyFile)
 			}
 		}
@@ -774,7 +702,7 @@ func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bas
 		// these files remaining, the user would not be able to use the SSH
 		// command we provided to connect to the shoot nodes
 		for _, filename := range nodePrivateKeyFiles {
-			if err := os.Remove(filename); err != nil {
+			if err := os.Remove(filename.String()); err != nil {
 				logger.Error(err, "Failed to delete node private key", "path", filename)
 			}
 		}
@@ -851,7 +779,7 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 	logger := klog.FromContext(ctx)
 
 	if o.SSHPrivateKeyFile != "" {
-		privateKeyBytes, err = os.ReadFile(o.SSHPrivateKeyFile)
+		privateKeyBytes, err = os.ReadFile(o.SSHPrivateKeyFile.String())
 		if err != nil {
 			return fmt.Errorf("failed to read SSH private key from %q: %w", o.SSHPrivateKeyFile, err)
 		}
@@ -903,9 +831,9 @@ func getShootNode(ctx context.Context, o *SSHOptions, shootClient client.Client)
 	return node, nil
 }
 
-func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string) error {
+func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []PrivateKeyFile) error {
 	bastionAddr := preferredBastionAddress(bastion)
-	connectCmd := sshCommandLine(o, bastionAddr, nodePrivateKeyFiles, nodeHostname)
+	connectCmd := sshCommandLine(o.SSHPrivateKeyFile, bastionAddr, nodePrivateKeyFiles, nodeHostname)
 
 	fmt.Fprintln(o.IOStreams.Out, "You can open additional SSH sessions using the command below:")
 	fmt.Fprintln(o.IOStreams.Out, "")
@@ -931,7 +859,7 @@ func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1
 	}
 
 	for _, file := range nodePrivateKeyFiles {
-		args = append(args, "-i", file)
+		args = append(args, "-i", file.String())
 	}
 
 	args = append(args, fmt.Sprintf("%s@%s", SSHNodeUsername, nodeHostname))
@@ -939,20 +867,10 @@ func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1
 	return execCommand(ctx, "ssh", args, o)
 }
 
-func isNodeReady(node corev1.Node) bool {
-	for _, cond := range node.Status.Conditions {
-		if cond.Type == corev1.NodeReady {
-			return cond.Status == corev1.ConditionTrue
-		}
-	}
-
-	return false
-}
-
-func sshCommandLine(o *SSHOptions, bastionAddr string, nodePrivateKeyFiles []string, nodeName string) string {
+func sshCommandLine(sshPrivateKeyFile PrivateKeyFile, bastionAddr string, nodePrivateKeyFiles []PrivateKeyFile, nodeName string) string {
 	proxyPrivateKeyFlag := ""
-	if o.SSHPrivateKeyFile != "" {
-		proxyPrivateKeyFlag = fmt.Sprintf(" -o IdentitiesOnly=yes -i %s", o.SSHPrivateKeyFile)
+	if sshPrivateKeyFile != "" {
+		proxyPrivateKeyFlag = fmt.Sprintf(" -o IdentitiesOnly=yes -i %s", sshPrivateKeyFile)
 	}
 
 	proxyCmd := fmt.Sprintf(

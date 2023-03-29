@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"sigs.k8s.io/yaml"
 
 	cmdconfig "github.com/gardener/gardenctl-v2/pkg/cmd/config"
 	"github.com/gardener/gardenctl-v2/pkg/config"

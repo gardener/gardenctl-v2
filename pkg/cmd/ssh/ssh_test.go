@@ -8,6 +8,7 @@ package ssh_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -305,9 +306,9 @@ var _ = Describe("SSH Command", func() {
 			Expect(cmd.RunE(cmd, nil)).To(Succeed())
 
 			// assert the output
-			Expect(logs).To(ContainSubstring(bastionName))
-			Expect(logs).To(ContainSubstring(bastionHostname))
-			Expect(out).To(ContainSubstring(bastionIP))
+			Expect(logs.String()).To(ContainSubstring(bastionName))
+			Expect(logs.String()).To(ContainSubstring(bastionHostname))
+			Expect(out.String()).To(ContainSubstring(bastionIP))
 
 			// assert that the bastion has been cleaned up
 			key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
@@ -316,10 +317,10 @@ var _ = Describe("SSH Command", func() {
 			Expect(gardenClient.Get(ctx, key, bastion)).NotTo(Succeed())
 
 			// assert that no temporary SSH keypair remained on disk
-			_, err := os.Stat(options.SSHPublicKeyFile)
+			_, err := os.Stat(options.SSHPublicKeyFile.String())
 			Expect(err).To(HaveOccurred())
 
-			_, err = os.Stat(options.SSHPrivateKeyFile)
+			_, err = os.Stat(options.SSHPrivateKeyFile.String())
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -357,9 +358,9 @@ var _ = Describe("SSH Command", func() {
 
 			// assert output
 			Expect(executedCommands).To(Equal(1))
-			Expect(logs).To(ContainSubstring(bastionName))
-			Expect(logs).To(ContainSubstring(bastionHostname))
-			Expect(out).To(ContainSubstring(bastionIP))
+			Expect(logs.String()).To(ContainSubstring(bastionName))
+			Expect(logs.String()).To(ContainSubstring(bastionHostname))
+			Expect(out.String()).To(ContainSubstring(bastionIP))
 
 			// assert that the bastion has been cleaned up
 			key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
@@ -368,10 +369,10 @@ var _ = Describe("SSH Command", func() {
 			Expect(gardenClient.Get(ctx, key, bastion)).NotTo(Succeed())
 
 			// assert that no temporary SSH keypair remained on disk
-			_, err := os.Stat(options.SSHPublicKeyFile)
+			_, err := os.Stat(options.SSHPublicKeyFile.String())
 			Expect(err).To(HaveOccurred())
 
-			_, err = os.Stat(options.SSHPrivateKeyFile)
+			_, err = os.Stat(options.SSHPrivateKeyFile.String())
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -411,10 +412,10 @@ var _ = Describe("SSH Command", func() {
 
 			// assert output
 			Expect(executedCommands).To(Equal(1))
-			Expect(logs).To(ContainSubstring(bastionName))
-			Expect(logs).To(ContainSubstring(bastionHostname))
-			Expect(out).To(ContainSubstring(bastionIP))
-			Expect(logs).To(ContainSubstring("node did not yet join the cluster"))
+			Expect(logs.String()).To(ContainSubstring(bastionName))
+			Expect(logs.String()).To(ContainSubstring(bastionHostname))
+			Expect(out.String()).To(ContainSubstring(bastionIP))
+			Expect(logs.String()).To(ContainSubstring("node did not yet join the cluster"))
 
 			// assert that the bastion has been cleaned up
 			key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
@@ -423,10 +424,10 @@ var _ = Describe("SSH Command", func() {
 			Expect(gardenClient.Get(ctx, key, bastion)).NotTo(Succeed())
 
 			// assert that no temporary SSH keypair remained on disk
-			_, err := os.Stat(options.SSHPublicKeyFile)
+			_, err := os.Stat(options.SSHPublicKeyFile.String())
 			Expect(err).To(HaveOccurred())
 
-			_, err = os.Stat(options.SSHPrivateKeyFile)
+			_, err = os.Stat(options.SSHPrivateKeyFile.String())
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -491,13 +492,15 @@ var _ = Describe("SSH Command", func() {
 			})
 
 			// Once the waitForSignal function is called we delete the bastion
-			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string, signalChan <-chan struct{}) error {
+			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, signalChan <-chan struct{}) {
 				By("deleting bastion")
+				bastion := &operationsv1alpha1.Bastion{}
+				key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
+				Expect(gardenClient.Get(ctx, key, bastion)).To(Succeed())
+
 				Expect(gardenClient.Delete(ctx, bastion)).To(Succeed())
 
 				<-signalChan
-
-				return nil
 			})
 
 			// let the magic happen
@@ -523,7 +526,7 @@ var _ = Describe("SSH Command", func() {
 
 			Expect(cmd.RunE(cmd, nil)).To(Succeed())
 
-			Expect(logs).To(ContainSubstring("Bastion is ready, skipping availability check"))
+			Expect(logs.String()).To(ContainSubstring("Bastion is ready, skipping availability check"))
 		})
 
 		It("should not keep alive the bastion", func() {
@@ -534,10 +537,8 @@ var _ = Describe("SSH Command", func() {
 
 			cmd := ssh.NewCmdSSH(factory, options)
 
-			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, shootClient client.Client, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []string, signalChan <-chan struct{}) error {
-				err := errors.New("this function should not be executed as of NoKeepalive = true")
-				Fail(err.Error())
-				return err
+			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, signalChan <-chan struct{}) {
+				Fail("this function should not be executed as of NoKeepalive = true")
 			})
 			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, o *ssh.SSHOptions) error {
 				err := errors.New("this function should not be executed as of NoKeepalive = true")
@@ -550,7 +551,40 @@ var _ = Describe("SSH Command", func() {
 
 			Expect(cmd.RunE(cmd, nil)).To(Succeed())
 
-			Expect(logs).To(ContainSubstring("Bastion host became available."))
+			Expect(logs.String()).To(ContainSubstring("Bastion host became available."))
+		})
+
+		It("should output as json", func() {
+			options := ssh.NewSSHOptions(streams)
+			options.NoKeepalive = true
+			options.KeepBastion = true
+			options.Interactive = false
+
+			options.Output = "json"
+
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, signalChan <-chan struct{}) {
+				Fail("this function should not be executed as of NoKeepalive = true")
+			})
+			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, o *ssh.SSHOptions) error {
+				err := errors.New("this function should not be executed as of NoKeepalive = true")
+				Fail(err.Error())
+				return err
+			})
+
+			// simulate an external controller processing the bastion and proving a successful status
+			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
+
+			Expect(cmd.RunE(cmd, nil)).To(Succeed())
+
+			var info ssh.ConnectInformation
+			Expect(json.Unmarshal([]byte(out.String()), &info)).To(Succeed())
+			Expect(info.Bastion.Name).To(Equal(bastionName))
+			Expect(info.Bastion.PreferredAddress).To(Equal("0.0.0.0"))
+			Expect(info.Bastion.SSHPrivateKeyFile).To(Equal(options.SSHPrivateKeyFile))
+			Expect(info.Bastion.SSHPublicKeyFile).To(Equal(options.SSHPublicKeyFile))
+			Expect(info.NodePrivateKeyFiles).NotTo(BeEmpty())
 		})
 	})
 
@@ -587,7 +621,8 @@ var _ = Describe("SSH Command", func() {
 var _ = Describe("SSH Options", func() {
 	var (
 		streams          util.IOStreams
-		publicSSHKeyFile string
+		publicSSHKeyFile ssh.PublicKeyFile
+		o                *ssh.SSHOptions
 	)
 
 	BeforeEach(func() {
@@ -601,52 +636,69 @@ var _ = Describe("SSH Options", func() {
 		_, err = io.WriteString(tmpFile, "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDouNkxsNuApuKVIfgL6Yz3Ep+DqX84Yde9DArwLBSWgLnl/pH9AbbcDcAmdB2CPVXAATo4qxK7xprvyyZp52SQRCcAZpAy4D6gAWwAG3OfzrRbxRiB5pQDaaWATSzNbLtoy0ecVwFeTJe2w71q+wxbI7tfxbvo9XbXIN4I0cQy2KLICzkYkQmygGnHztv1Mvi338+sgcG7Gwq2tdSyggDaAggwDIuT39S4/L7QpR27tWH79J4Ls8tTHud2eRbkOcF98vXlQAIzb6w8iHBXylOjMM/oODwoA7V4mtRL9o13AoocvZSsD1UvfOjGxDHuLrCfFXN+/rEw0hEiYo0cnj7F")
 		Expect(err).NotTo(HaveOccurred())
 
-		publicSSHKeyFile = tmpFile.Name()
+		publicSSHKeyFile = ssh.PublicKeyFile(tmpFile.Name())
+
+		o = ssh.NewSSHOptions(streams)
+		o.CIDRs = []string{"8.8.8.8/32"}
+		o.SSHPublicKeyFile = publicSSHKeyFile
 	})
 
 	AfterEach(func() {
-		Expect(os.Remove(publicSSHKeyFile)).To(Succeed())
+		Expect(os.Remove(publicSSHKeyFile.String())).To(Succeed())
 	})
 
 	It("should validate", func() {
-		o := ssh.NewSSHOptions(streams)
-		o.CIDRs = []string{"8.8.8.8/32"}
-		o.SSHPublicKeyFile = publicSSHKeyFile
-
 		Expect(o.Validate()).To(Succeed())
 	})
 
 	It("should require a non-zero wait time", func() {
-		o := ssh.NewSSHOptions(streams)
-		o.CIDRs = []string{"8.8.8.8/32"}
-		o.SSHPublicKeyFile = publicSSHKeyFile
 		o.WaitTimeout = 0
 
 		Expect(o.Validate()).NotTo(Succeed())
 	})
 
 	Context("no-keepalive", func() {
-		It("should require non-interactive mode", func() {
-			o := ssh.NewSSHOptions(streams)
+		BeforeEach(func() {
 			o.NoKeepalive = true
-			o.KeepBastion = true
 
+			o.KeepBastion = true
+			o.Interactive = false
+		})
+
+		It("should validate", func() {
+			Expect(o.Validate()).Should(Succeed())
+		})
+
+		It("should require non-interactive mode", func() {
 			o.Interactive = true
 
 			Expect(o.Validate()).NotTo(Succeed())
 		})
 
 		It("should require keep bastion", func() {
-			o := ssh.NewSSHOptions(streams)
-			o.NoKeepalive = true
-			o.Interactive = false
-
 			o.KeepBastion = false
 
 			Expect(o.Validate()).NotTo(Succeed())
 		})
 	})
 
+	Describe("output flag not empty", func() {
+		BeforeEach(func() {
+			o.Output = "yaml" // or json - does not matter
+
+			o.Interactive = false
+		})
+
+		It("should validate", func() {
+			Expect(o.Validate()).Should(Succeed())
+		})
+
+		It("should require non-interactive mode", func() {
+			o.Interactive = true
+
+			Expect(o.Validate()).NotTo(Succeed())
+		})
+	})
 	It("should require a public SSH key file", func() {
 		o := ssh.NewSSHOptions(streams)
 		o.CIDRs = []string{"8.8.8.8/32"}
@@ -655,7 +707,7 @@ var _ = Describe("SSH Options", func() {
 	})
 
 	It("should require a valid public SSH key file", func() {
-		Expect(os.WriteFile(publicSSHKeyFile, []byte("not a key"), 0o644)).To(Succeed())
+		Expect(os.WriteFile(publicSSHKeyFile.String(), []byte("not a key"), 0o644)).To(Succeed())
 
 		o := ssh.NewSSHOptions(streams)
 		o.CIDRs = []string{"8.8.8.8/32"}

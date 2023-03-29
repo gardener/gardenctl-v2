@@ -15,10 +15,10 @@ import (
 	"strconv"
 
 	"github.com/mitchellh/go-homedir"
-	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/yaml"
 
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 )
@@ -26,33 +26,33 @@ import (
 // Config holds the gardenctl configuration.
 type Config struct {
 	// Filename is the name of the gardenctl configuration file
-	Filename string `yaml:"-" json:"-"`
+	Filename string `json:"-"`
 	// LinkKubeconfig defines if kubeconfig is symlinked with the target
-	LinkKubeconfig *bool `yaml:"linkKubeconfig,omitempty" json:"linkKubeconfig,omitempty"`
+	LinkKubeconfig *bool `json:"linkKubeconfig,omitempty"`
 	// Gardens is a list of known Garden clusters
-	Gardens []Garden `yaml:"gardens" json:"gardens"`
+	Gardens []Garden `json:"gardens"`
 }
 
 // Garden represents one garden cluster.
 type Garden struct {
 	// Name is a unique identifier of this Garden that can be used to target this Garden
-	Name string `yaml:"identity" json:"identity"`
+	Name string `json:"identity"`
 	// Alias is a unique identifier of this Garden that can be used as an alternate name to target this Garden
 	// +optional
-	Alias string `yaml:"name,omitempty" json:"name,omitempty"`
+	Alias string `json:"name,omitempty"`
 	// Kubeconfig holds the path for the kubeconfig of the garden cluster
-	Kubeconfig string `yaml:"kubeconfig" json:"kubeconfig"`
+	Kubeconfig string `json:"kubeconfig"`
 	// Context overrides the current-context of the garden cluster kubeconfig
 	// +optional
-	Context string `yaml:"context,omitempty" json:"context,omitempty"`
+	Context string `json:"context,omitempty"`
 	// Patterns is a list of regex patterns that can be defined to use custom input formats for targeting
 	// Use named capturing groups to match target values.
 	// Supported capturing groups: project, namespace, shoot
 	// +optional
-	Patterns []string `yaml:"patterns,omitempty" json:"patterns,omitempty"`
+	Patterns []string `json:"patterns,omitempty"`
 	// AccessRestrictions is a list of access restriction definitions
 	// +optional
-	AccessRestrictions []ac.AccessRestriction `yaml:"accessRestrictions,omitempty" json:"accessRestrictions,omitempty"`
+	AccessRestrictions []ac.AccessRestriction `json:"accessRestrictions,omitempty"`
 }
 
 // LoadFromFile parses a gardenctl config file and returns a Config struct.
@@ -75,7 +75,12 @@ func LoadFromFile(filename string) (*Config, error) {
 	}
 
 	if stat.Size() > 0 {
-		if err := yaml.NewDecoder(f).Decode(config); err != nil {
+		buf, err := os.ReadFile(filename)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read config file: %w", err)
+		}
+
+		if err = yaml.Unmarshal(buf, config); err != nil {
 			return nil, fmt.Errorf("failed to decode as YAML: %w", err)
 		}
 
@@ -147,14 +152,13 @@ func (config *Config) Save() error {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	f, err := os.OpenFile(config.Filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	buf, err := yaml.Marshal(config)
 	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	defer f.Close()
-
-	if err := yaml.NewEncoder(f).Encode(config); err != nil {
 		return fmt.Errorf("failed to encode as YAML: %w", err)
+	}
+
+	if err := os.WriteFile(config.Filename, buf, 0o600); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
 	}
 
 	return nil

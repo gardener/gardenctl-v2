@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"os"
 
-	"gopkg.in/yaml.v3"
+	"sigs.k8s.io/yaml"
 )
 
 // TargetReader can read targets.
@@ -65,8 +65,14 @@ func (p *fsTargetProvider) Read() (Target, error) {
 	}
 
 	target := &targetImpl{}
+
 	if stat.Size() > 0 {
-		if err := yaml.NewDecoder(f).Decode(target); err != nil {
+		buf, err := os.ReadFile(p.targetFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read target file: %w", err)
+		}
+
+		if err = yaml.Unmarshal(buf, target); err != nil {
 			return nil, fmt.Errorf("failed to decode as YAML: %w", err)
 		}
 	}
@@ -80,14 +86,13 @@ func (p *fsTargetProvider) Read() (Target, error) {
 
 // Write takes a target and saves it permanently.
 func (p *fsTargetProvider) Write(t Target) error {
-	f, err := os.OpenFile(p.targetFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	buf, err := yaml.Marshal(t)
 	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	defer f.Close()
-
-	if err := yaml.NewEncoder(f).Encode(t); err != nil {
 		return fmt.Errorf("failed to encode as YAML: %w", err)
+	}
+
+	if err := os.WriteFile(p.targetFile, buf, 0o600); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
 	}
 
 	return nil
