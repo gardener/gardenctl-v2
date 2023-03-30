@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strings"
 
+	internalclient "github.com/gardener/gardenctl-v2/internal/client"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
@@ -102,7 +103,7 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 	}
 
 	targetProvider := target.NewTargetProvider(filepath.Join(sessionDirectory, "target.yaml"), f.targetFlags)
-	clientProvider := target.NewClientProvider()
+	clientProvider := internalclient.NewProvider()
 
 	return target.NewManager(cfg, targetProvider, clientProvider, sessionDirectory)
 }

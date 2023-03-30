@@ -13,6 +13,7 @@ import (
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 
+	internalclient "github.com/gardener/gardenctl-v2/internal/client"
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/config"
@@ -48,7 +49,7 @@ type handler func(t *targetImpl) error
 
 type targetBuilderImpl struct {
 	config         *config.Config
-	clientProvider ClientProvider
+	clientProvider internalclient.Provider
 	target         Target
 	actions        []handler
 }
@@ -56,7 +57,7 @@ type targetBuilderImpl struct {
 var _ TargetBuilder = &targetBuilderImpl{}
 
 // NewTargetBuilder returns a new target builder.
-func NewTargetBuilder(config *config.Config, clientProvider ClientProvider) (TargetBuilder, error) {
+func NewTargetBuilder(config *config.Config, clientProvider internalclient.Provider) (TargetBuilder, error) {
 	if config == nil {
 		return nil, errors.New("config must not be nil")
 	}

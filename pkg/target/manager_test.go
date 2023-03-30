@@ -21,6 +21,7 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	internalclient "github.com/gardener/gardenctl-v2/internal/client"
 	"github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -81,7 +82,7 @@ func cloneTarget(t target.Target) target.Target {
 	return target.NewTarget(t.GardenName(), t.ProjectName(), t.SeedName(), t.ShootName()).WithControlPlane(t.ControlPlane())
 }
 
-func createTestManager(t target.Target, cfg *config.Config, clientProvider target.ClientProvider) (target.Manager, target.TargetProvider) {
+func createTestManager(t target.Target, cfg *config.Config, clientProvider internalclient.Provider) (target.Manager, target.TargetProvider) {
 	targetProvider := fake.NewFakeTargetProvider(cloneTarget(t))
 
 	manager, err := target.NewManager(cfg, targetProvider, clientProvider, sessionDir)

@@ -18,6 +18,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	internalclient "github.com/gardener/gardenctl-v2/internal/client"
 	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
@@ -115,13 +116,13 @@ type Manager interface {
 type managerImpl struct {
 	config           *config.Config
 	targetProvider   TargetProvider
-	clientProvider   ClientProvider
+	clientProvider   internalclient.Provider
 	sessionDirectory string
 }
 
 var _ Manager = &managerImpl{}
 
-func newGardenClient(name string, config *config.Config, provider ClientProvider) (gardenclient.Client, error) {
+func newGardenClient(name string, config *config.Config, provider internalclient.Provider) (gardenclient.Client, error) {
 	clientConfig, err := config.ClientConfig(name)
 	if err != nil {
 		return nil, err
@@ -141,7 +142,7 @@ func newGardenClient(name string, config *config.Config, provider ClientProvider
 }
 
 // NewManager returns a new manager.
-func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider ClientProvider, sessionDirectory string) (Manager, error) {
+func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider internalclient.Provider, sessionDirectory string) (Manager, error) {
 	return &managerImpl{
 		config:           config,
 		targetProvider:   targetProvider,
