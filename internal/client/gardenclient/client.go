@@ -47,7 +47,7 @@ func init() {
 	decoder = serializer.NewCodecFactory(extensionsScheme).UniversalDecoder()
 }
 
-//go:generate mockgen -destination=./mocks/mock_client.go -package=mocks github.com/gardener/gardenctl-v2/internal/gardenclient Client
+//go:generate mockgen -destination=./mocks/mock_client.go -package=mocks github.com/gardener/gardenctl-v2/internal/client/gardenclient Client
 
 // Client returns a new client with functions to get Gardener and Kubernetes resources.
 type Client interface {

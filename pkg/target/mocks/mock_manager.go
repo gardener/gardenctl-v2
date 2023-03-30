@@ -6,9 +6,9 @@ package mocks
 
 import (
 	context "context"
-	"github.com/gardener/gardenctl-v2/internal/client/gardenclient"
 	reflect "reflect"
 
+	gardenclient "github.com/gardener/gardenctl-v2/internal/client/gardenclient"
 	config "github.com/gardener/gardenctl-v2/pkg/config"
 	target "github.com/gardener/gardenctl-v2/pkg/target"
 	gomock "github.com/golang/mock/gomock"
