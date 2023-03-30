@@ -19,7 +19,7 @@ aliasRules:
     expr: '^github.com/gardener/gardenctl-v2/internal/client$'
     alias: 'internalclient'
 
-  - name: garden-client
+  - name: client-garden
     expr: '^github.com/gardener/gardenctl-v2/internal/client/garden$'
     alias: 'clientgarden'
 
