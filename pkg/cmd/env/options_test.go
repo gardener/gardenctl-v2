@@ -27,7 +27,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/pointer"
 
-	gardenclientmocks "github.com/gardener/gardenctl-v2/internal/client/gardenclient/mocks"
+	gardenclientmocks "github.com/gardener/gardenctl-v2/internal/client/garden/mocks"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/env"
 	envmocks "github.com/gardener/gardenctl-v2/pkg/cmd/env/mocks"

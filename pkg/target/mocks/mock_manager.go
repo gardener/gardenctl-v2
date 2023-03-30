@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gardenclient "github.com/gardener/gardenctl-v2/internal/client/gardenclient"
+	gardenclient "github.com/gardener/gardenctl-v2/internal/client/garden"
 	config "github.com/gardener/gardenctl-v2/pkg/config"
 	target "github.com/gardener/gardenctl-v2/pkg/target"
 	gomock "github.com/golang/mock/gomock"

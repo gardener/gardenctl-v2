@@ -14,7 +14,7 @@ import (
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/gardener/gardenctl-v2/internal/client/gardenclient"
+	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 )
 
 /*
@@ -189,7 +189,7 @@ func (t *targetImpl) IsEmpty() bool {
 }
 
 func (t *targetImpl) AsListOption() client.ListOption {
-	opt := gardenclient.ProjectFilter{}
+	opt := clientgarden.ProjectFilter{}
 
 	if t.ShootName() != "" {
 		opt["metadata.name"] = t.ShootName()

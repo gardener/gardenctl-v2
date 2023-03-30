@@ -13,7 +13,7 @@ import (
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 
-	gardenClient "github.com/gardener/gardenctl-v2/internal/client/gardenclient"
+	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
@@ -34,7 +34,7 @@ type bastionListPatcher interface {
 
 type userBastionListPatcherImpl struct {
 	target       target.Target
-	gardenClient gardenClient.Client
+	gardenClient clientgarden.Client
 }
 
 var _ bastionListPatcher = &userBastionListPatcherImpl{}
@@ -66,7 +66,7 @@ func (u *userBastionListPatcherImpl) List(ctx context.Context) ([]operationsv1al
 		return nil, fmt.Errorf("could not get current user: %w", err)
 	}
 
-	listOption := gardenClient.ProjectFilter{}
+	listOption := clientgarden.ProjectFilter{}
 
 	if u.target.ShootName() != "" {
 		listOption["spec.shootRef.name"] = u.target.ShootName()

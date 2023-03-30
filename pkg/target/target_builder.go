@@ -14,7 +14,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 
 	internalclient "github.com/gardener/gardenctl-v2/internal/client"
-	"github.com/gardener/gardenctl-v2/internal/client/gardenclient"
+	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
@@ -313,6 +313,6 @@ func (b *targetBuilderImpl) validateSeed(ctx context.Context, gardenName string,
 	return seed, nil
 }
 
-func (b *targetBuilderImpl) getGardenClient(gardenName string) (gardenclient.Client, error) {
+func (b *targetBuilderImpl) getGardenClient(gardenName string) (clientgarden.Client, error) {
 	return newGardenClient(gardenName, b.config, b.clientProvider)
 }
