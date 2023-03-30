@@ -22,10 +22,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	internalclient "github.com/gardener/gardenctl-v2/internal/client"
+	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
 	"github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
-	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
 
 func assertTargetProvider(tp target.TargetProvider, expected target.Target) {
@@ -106,7 +106,7 @@ var _ = Describe("Target Manager", func() {
 		prod1PendingShoot    *gardencorev1beta1.Shoot
 		cfg                  *config.Config
 		gardenClient         client.Client
-		clientProvider       *targetmocks.MockClientProvider
+		clientProvider       *clientmocks.MockProvider
 		namespace            *corev1.Namespace
 	)
 
@@ -213,7 +213,7 @@ var _ = Describe("Target Manager", func() {
 		)
 
 		ctrl = gomock.NewController(GinkgoT())
-		clientProvider = targetmocks.NewMockClientProvider(ctrl)
+		clientProvider = clientmocks.NewMockProvider(ctrl)
 		clientConfig, err := cfg.ClientConfig(gardenName)
 		Expect(err).NotTo(HaveOccurred())
 		clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(gardenClient, nil).AnyTimes()

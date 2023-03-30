@@ -17,13 +17,13 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
-	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
 
 var _ = Describe("Target Command", func() {
@@ -42,7 +42,7 @@ var _ = Describe("Target Command", func() {
 		out            *util.SafeBytesBuffer
 		ctrl           *gomock.Controller
 		cfg            *config.Config
-		clientProvider *targetmocks.MockClientProvider
+		clientProvider *clientmocks.MockProvider
 		gardenClient   client.Client
 		targetProvider *internalfake.TargetProvider
 		factory        *internalfake.Factory
@@ -98,7 +98,7 @@ var _ = Describe("Target Command", func() {
 
 		ctrl = gomock.NewController(GinkgoT())
 
-		clientProvider = targetmocks.NewMockClientProvider(ctrl)
+		clientProvider = clientmocks.NewMockProvider(ctrl)
 		targetProvider = internalfake.NewFakeTargetProvider(target.NewTarget("", "", "", ""))
 		factory = internalfake.NewFakeFactory(cfg, nil, clientProvider, targetProvider)
 	})

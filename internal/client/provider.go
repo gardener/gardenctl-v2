@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//go:generate mockgen -destination=./mocks/mock_client_provider.go -package=mocks github.com/gardener/gardenctl-v2/pkg/target Provider
+//go:generate mockgen -destination=./mocks/mock_provider.go -package=mocks github.com/gardener/gardenctl-v2/internal/client Provider
 
 // Provider is able to take a kubeconfig either directly or
 // from a file and return a controller-runtime client for it.

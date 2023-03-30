@@ -33,12 +33,12 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
-	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
 
 type bastionStatusPatch func(status *operationsv1alpha1.BastionStatus)
@@ -100,7 +100,7 @@ var _ = Describe("SSH Command", func() {
 
 	var (
 		ctrl               *gomock.Controller
-		clientProvider     *targetmocks.MockClientProvider
+		clientProvider     *clientmocks.MockProvider
 		cfg                *config.Config
 		streams            util.IOStreams
 		out                *util.SafeBytesBuffer
@@ -253,7 +253,7 @@ var _ = Describe("SSH Command", func() {
 
 		ctrl = gomock.NewController(GinkgoT())
 
-		clientProvider = targetmocks.NewMockClientProvider(ctrl)
+		clientProvider = clientmocks.NewMockProvider(ctrl)
 		clientConfig, err := cfg.ClientConfig(gardenName)
 		Expect(err).ToNot(HaveOccurred())
 		clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(gardenClient, nil).AnyTimes()
