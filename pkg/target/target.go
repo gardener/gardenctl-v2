@@ -14,7 +14,7 @@ import (
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+	"github.com/gardener/gardenctl-v2/internal/client/gardenclient"
 )
 
 /*

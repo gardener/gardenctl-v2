@@ -13,7 +13,7 @@ import (
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 
-	gardenClient "github.com/gardener/gardenctl-v2/internal/gardenclient"
+	gardenClient "github.com/gardener/gardenctl-v2/internal/client/gardenclient"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 

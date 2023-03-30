@@ -22,8 +22,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	gardenclient2 "github.com/gardener/gardenctl-v2/internal/client/gardenclient"
 	"github.com/gardener/gardenctl-v2/internal/fake"
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
 )
 
 type createInterceptingClient struct {
@@ -49,7 +49,7 @@ var _ = Describe("Client", func() {
 
 	var (
 		ctx          context.Context
-		gardenClient gardenclient.Client
+		gardenClient gardenclient2.Client
 	)
 
 	Describe("GetSeedClientConfig", func() {
@@ -80,7 +80,7 @@ var _ = Describe("Client", func() {
 					"kubeconfig": seed2Kubeconfig,
 				},
 			}
-			gardenClient = gardenclient.NewGardenClient(
+			gardenClient = gardenclient2.NewGardenClient(
 				nil,
 				fake.NewClientWithObjects(oidcSecret, loginSecret),
 				gardenName,
@@ -122,7 +122,7 @@ var _ = Describe("Client", func() {
 					},
 				},
 			}
-			gardenClient = gardenclient.NewGardenClient(
+			gardenClient = gardenclient2.NewGardenClient(
 				nil,
 				fake.NewClientWithObjects(managedSeed),
 				gardenName,
@@ -199,7 +199,7 @@ var _ = Describe("Client", func() {
 
 		Context("good case", func() {
 			JustBeforeEach(func() {
-				gardenClient = gardenclient.NewGardenClient(
+				gardenClient = gardenclient2.NewGardenClient(
 					nil,
 					fake.NewClientWithObjects(testShoot1, caSecret),
 					gardenName,
@@ -207,7 +207,7 @@ var _ = Describe("Client", func() {
 			})
 
 			It("it should return the client config", func() {
-				gardenClient = gardenclient.NewGardenClient(
+				gardenClient = gardenclient2.NewGardenClient(
 					nil,
 					fake.NewClientWithObjects(testShoot1, caSecret),
 					gardenName,
@@ -224,7 +224,7 @@ var _ = Describe("Client", func() {
 				Expect(cluster.Server).To(Equal("https://api." + domain))
 				Expect(cluster.CertificateAuthorityData).To(Equal(ca.CertificatePEM))
 
-				extension := &gardenclient.ExecPluginConfig{}
+				extension := &gardenclient2.ExecPluginConfig{}
 				extension.GardenClusterIdentity = gardenName
 				extension.ShootRef.Namespace = namespace
 				extension.ShootRef.Name = shootName
@@ -279,7 +279,7 @@ var _ = Describe("Client", func() {
 
 		Context("when the ca-cluster secret does not exist", func() {
 			BeforeEach(func() {
-				gardenClient = gardenclient.NewGardenClient(
+				gardenClient = gardenclient2.NewGardenClient(
 					nil,
 					fake.NewClientWithObjects(testShoot1),
 					gardenName,
@@ -316,7 +316,7 @@ var _ = Describe("Client", func() {
 				},
 			}
 
-			gardenClient = gardenclient.NewGardenClient(
+			gardenClient = gardenclient2.NewGardenClient(
 				clientcmd.NewDefaultClientConfig(*config, nil),
 				cic,
 				gardenName,
@@ -339,7 +339,7 @@ var _ = Describe("Client", func() {
 
 			config := fake.NewCertConfig("client-cert", generatedClientCert.CertificatePEM)
 
-			gardenClient = gardenclient.NewGardenClient(
+			gardenClient = gardenclient2.NewGardenClient(
 				clientcmd.NewDefaultClientConfig(*config, nil),
 				nil, // no client needed for this test
 				gardenName,

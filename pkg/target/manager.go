@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	internalclient "github.com/gardener/gardenctl-v2/internal/client"
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+	"github.com/gardener/gardenctl-v2/internal/client/gardenclient"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 

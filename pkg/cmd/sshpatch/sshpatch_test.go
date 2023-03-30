@@ -23,7 +23,7 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 
-	gcmocks "github.com/gardener/gardenctl-v2/internal/gardenclient/mocks"
+	gcmocks "github.com/gardener/gardenctl-v2/internal/client/gardenclient/mocks"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/sshpatch"
