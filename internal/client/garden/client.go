@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package gardenclient
+package garden
 
 import (
 	"bytes"
@@ -47,7 +47,7 @@ func init() {
 	decoder = serializer.NewCodecFactory(extensionsScheme).UniversalDecoder()
 }
 
-//go:generate mockgen -destination=./mocks/mock_client.go -package=mocks github.com/gardener/gardenctl-v2/internal/gardenclient Client
+//go:generate mockgen -destination=./mocks/mock_client.go -package=mocks github.com/gardener/gardenctl-v2/internal/client/garden Client
 
 // Client returns a new client with functions to get Gardener and Kubernetes resources.
 type Client interface {
@@ -111,8 +111,8 @@ type clientImpl struct {
 	name string
 }
 
-// NewGardenClient returns a new gardenclient.
-func NewGardenClient(config clientcmd.ClientConfig, client client.Client, name string) Client {
+// NewClient returns a new garden Client.
+func NewClient(config clientcmd.ClientConfig, client client.Client, name string) Client {
 	return &clientImpl{
 		config: config,
 		c:      client,

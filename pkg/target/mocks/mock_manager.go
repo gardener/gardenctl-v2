@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gardenclient "github.com/gardener/gardenctl-v2/internal/gardenclient"
+	garden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	config "github.com/gardener/gardenctl-v2/pkg/config"
 	target "github.com/gardener/gardenctl-v2/pkg/target"
 	gomock "github.com/golang/mock/gomock"
@@ -84,10 +84,10 @@ func (mr *MockManagerMockRecorder) CurrentTarget() *gomock.Call {
 }
 
 // GardenClient mocks base method.
-func (m *MockManager) GardenClient(arg0 string) (gardenclient.Client, error) {
+func (m *MockManager) GardenClient(arg0 string) (garden.Client, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GardenClient", arg0)
-	ret0, _ := ret[0].(gardenclient.Client)
+	ret0, _ := ret[0].(garden.Client)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

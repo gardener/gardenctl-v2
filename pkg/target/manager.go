@@ -18,7 +18,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+	internalclient "github.com/gardener/gardenctl-v2/internal/client"
+	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
@@ -109,19 +110,19 @@ type Manager interface {
 	Configuration() *config.Config
 
 	// GardenClient returns a gardenClient for a garden cluster
-	GardenClient(name string) (gardenclient.Client, error)
+	GardenClient(name string) (clientgarden.Client, error)
 }
 
 type managerImpl struct {
 	config           *config.Config
 	targetProvider   TargetProvider
-	clientProvider   ClientProvider
+	clientProvider   internalclient.Provider
 	sessionDirectory string
 }
 
 var _ Manager = &managerImpl{}
 
-func newGardenClient(name string, config *config.Config, provider ClientProvider) (gardenclient.Client, error) {
+func newGardenClient(name string, config *config.Config, provider internalclient.Provider) (clientgarden.Client, error) {
 	clientConfig, err := config.ClientConfig(name)
 	if err != nil {
 		return nil, err
@@ -137,11 +138,11 @@ func newGardenClient(name string, config *config.Config, provider ClientProvider
 		return nil, err
 	}
 
-	return gardenclient.NewGardenClient(clientConfig, client, garden.Name), nil
+	return clientgarden.NewClient(clientConfig, client, garden.Name), nil
 }
 
 // NewManager returns a new manager.
-func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider ClientProvider, sessionDirectory string) (Manager, error) {
+func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider internalclient.Provider, sessionDirectory string) (Manager, error) {
 	return &managerImpl{
 		config:           config,
 		targetProvider:   targetProvider,
@@ -447,7 +448,7 @@ func (m *managerImpl) updateTarget(ctx context.Context, target Target) error {
 
 func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.ClientConfig, error) {
 	if t.ControlPlane() {
-		return m.getClientConfig(t, func(client gardenclient.Client) (clientcmd.ClientConfig, error) {
+		return m.getClientConfig(t, func(client clientgarden.Client) (clientcmd.ClientConfig, error) {
 			shoot, err := client.FindShoot(ctx, t.WithControlPlane(false).AsListOption())
 			if err != nil {
 				return nil, err
@@ -471,7 +472,7 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 	}
 
 	if t.ShootName() != "" {
-		return m.getClientConfig(t, func(client gardenclient.Client) (clientcmd.ClientConfig, error) {
+		return m.getClientConfig(t, func(client clientgarden.Client) (clientcmd.ClientConfig, error) {
 			var namespace string
 
 			if t.ProjectName() != "" {
@@ -495,13 +496,13 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 	}
 
 	if t.SeedName() != "" {
-		return m.getClientConfig(t, func(client gardenclient.Client) (clientcmd.ClientConfig, error) {
+		return m.getClientConfig(t, func(client clientgarden.Client) (clientcmd.ClientConfig, error) {
 			return client.GetSeedClientConfig(ctx, t.SeedName())
 		})
 	}
 
 	if t.ProjectName() != "" {
-		return m.getClientConfig(t, func(client gardenclient.Client) (clientcmd.ClientConfig, error) {
+		return m.getClientConfig(t, func(client clientgarden.Client) (clientcmd.ClientConfig, error) {
 			clientConfig, err := m.Configuration().DirectClientConfig(t.GardenName())
 			if err != nil {
 				return nil, err
@@ -587,7 +588,7 @@ func (m *managerImpl) ShootClient(ctx context.Context, t Target) (client.Client,
 	return m.clientProvider.FromClientConfig(config)
 }
 
-func (m *managerImpl) getClientConfig(t Target, loadClientConfig func(gardenclient.Client) (clientcmd.ClientConfig, error)) (clientcmd.ClientConfig, error) {
+func (m *managerImpl) getClientConfig(t Target, loadClientConfig func(clientgarden.Client) (clientcmd.ClientConfig, error)) (clientcmd.ClientConfig, error) {
 	client, err := m.GardenClient(t.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
@@ -661,11 +662,11 @@ func (m *managerImpl) getTarget(t Target) (Target, error) {
 	return t, err
 }
 
-func (m *managerImpl) GardenClient(name string) (gardenclient.Client, error) {
+func (m *managerImpl) GardenClient(name string) (clientgarden.Client, error) {
 	return newGardenClient(name, m.config, m.clientProvider)
 }
 
-// ShootNamesForTarget returns all shoots for the current target.
+// ShootNames returns all shoot names for the current target.
 func (m *managerImpl) ShootNames(ctx context.Context) ([]string, error) {
 	t, err := m.CurrentTarget()
 	if err != nil {
@@ -770,7 +771,7 @@ func writeRawConfig(config clientcmd.ClientConfig) ([]byte, error) {
 	return clientcmd.Write(rawConfig)
 }
 
-func getProjectNamespace(ctx context.Context, client gardenclient.Client, name string) (*string, error) {
+func getProjectNamespace(ctx context.Context, client clientgarden.Client, name string) (*string, error) {
 	project, err := client.GetProject(ctx, name)
 	if err != nil {
 		return nil, err

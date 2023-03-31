@@ -13,7 +13,8 @@ import (
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+	internalclient "github.com/gardener/gardenctl-v2/internal/client"
+	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
@@ -48,7 +49,7 @@ type handler func(t *targetImpl) error
 
 type targetBuilderImpl struct {
 	config         *config.Config
-	clientProvider ClientProvider
+	clientProvider internalclient.Provider
 	target         Target
 	actions        []handler
 }
@@ -56,7 +57,7 @@ type targetBuilderImpl struct {
 var _ TargetBuilder = &targetBuilderImpl{}
 
 // NewTargetBuilder returns a new target builder.
-func NewTargetBuilder(config *config.Config, clientProvider ClientProvider) (TargetBuilder, error) {
+func NewTargetBuilder(config *config.Config, clientProvider internalclient.Provider) (TargetBuilder, error) {
 	if config == nil {
 		return nil, errors.New("config must not be nil")
 	}
@@ -312,6 +313,6 @@ func (b *targetBuilderImpl) validateSeed(ctx context.Context, gardenName string,
 	return seed, nil
 }
 
-func (b *targetBuilderImpl) getGardenClient(gardenName string) (gardenclient.Client, error) {
+func (b *targetBuilderImpl) getGardenClient(gardenName string) (clientgarden.Client, error) {
 	return newGardenClient(gardenName, b.config, b.clientProvider)
 }

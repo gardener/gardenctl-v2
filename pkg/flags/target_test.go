@@ -23,12 +23,12 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
 	"github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd"
 	"github.com/gardener/gardenctl-v2/pkg/flags"
 	"github.com/gardener/gardenctl-v2/pkg/target"
-	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
 
 var _ = Describe("Target flags", func() {
@@ -167,7 +167,7 @@ var _ = Describe("Target flags", func() {
 			Expect(shootClient).NotTo(BeNil())
 
 			ctrl = gomock.NewController(GinkgoT())
-			clientProvider := targetmocks.NewMockClientProvider(ctrl)
+			clientProvider := clientmocks.NewMockProvider(ctrl)
 
 			// ensure the clientprovider provides the proper clients to the manager
 			clientConfig1, err := cfg.ClientConfig(gardenName1)
