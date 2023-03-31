@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/utils/pointer"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
@@ -161,8 +162,7 @@ users: null
 
 				Context("json format", func() {
 					BeforeEach(func() {
-						outputFormat := "json"
-						options.PrintFlags.OutputFormat = &outputFormat
+						options.PrintFlags.OutputFormat = pointer.String("json")
 					})
 
 					It("should return the kubeconfig ", func() {
