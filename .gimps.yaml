@@ -31,6 +31,10 @@ aliasRules:
     expr: '^k8s.io/client-go/tools/([a-z0-9-]+)/api/(latest)$'
     alias: '$1$2'
 
+  - name: client-go-apis
+    expr: '^k8s.io/client-go/pkg/apis/([a-z0-9-]+)/(v[a-z0-9-]+)$'
+    alias: '$1$2'
+
   - name: k8s-api
     expr: '^k8s.io/api/([a-z0-9-]+)/(v[a-z0-9-]+)$'
     alias: '$1$2'
