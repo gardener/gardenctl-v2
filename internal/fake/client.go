@@ -37,13 +37,20 @@ func (w *clientWrapper) Get(ctx context.Context, key client.ObjectKey, obj clien
 }
 
 func (w *clientWrapper) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
-	err := w.delegate.List(ctx, list, opts...)
+	o := &client.ListOptions{}
+	for _, opt := range opts {
+		opt.ApplyToList(o)
+	}
+
+	fieldSelector := o.FieldSelector
+	o.FieldSelector = nil
+
+	err := w.delegate.List(ctx, list, o)
 	if err != nil {
 		return err
 	}
 
-	fieldSelector := getFieldSelector(opts...)
-	if fieldSelector.Empty() {
+	if fieldSelector == nil || fieldSelector.Empty() {
 		return nil
 	}
 
@@ -116,19 +123,8 @@ func (w *clientWrapper) RESTMapper() meta.RESTMapper {
 	return w.delegate.RESTMapper()
 }
 
-func getFieldSelector(opts ...client.ListOption) fields.Selector {
-	fieldSelectors := []fields.Selector{}
-
-	for _, opt := range opts {
-		o := &client.ListOptions{}
-		opt.ApplyToList(o)
-
-		if o.FieldSelector != nil && !o.FieldSelector.Empty() {
-			fieldSelectors = append(fieldSelectors, o.FieldSelector)
-		}
-	}
-
-	return fields.AndSelectors(fieldSelectors...)
+func (w *clientWrapper) SubResource(subResource string) client.SubResourceClient {
+	return w.delegate.SubResource(subResource)
 }
 
 func filterItems(list client.ObjectList, selector fields.Selector, getFieldSet func(reflect.Value) fields.Set) {

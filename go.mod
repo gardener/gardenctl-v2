@@ -19,7 +19,7 @@ require (
 	golang.org/x/crypto v0.7.0
 	k8s.io/api v0.26.2
 	k8s.io/apimachinery v0.26.2
-	k8s.io/cli-runtime v0.25.0
+	k8s.io/cli-runtime v0.26.2
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/component-base v0.26.2
 	k8s.io/klog/v2 v2.80.1
@@ -133,4 +133,4 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
-replace k8s.io/client-go => k8s.io/client-go v0.25.0
+replace k8s.io/client-go => k8s.io/client-go v0.26.2
