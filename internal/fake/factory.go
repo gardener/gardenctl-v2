@@ -12,6 +12,7 @@ import (
 
 	"k8s.io/utils/pointer"
 
+	internalclient "github.com/gardener/gardenctl-v2/internal/client"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -28,7 +29,7 @@ type Factory struct {
 
 	// Override these to customize the created manager.
 	Config             *config.Config
-	ClientProviderImpl target.ClientProvider
+	ClientProviderImpl internalclient.Provider
 	TargetProviderImpl target.TargetProvider
 	TargetFlagsImpl    target.TargetFlags
 
@@ -44,7 +45,7 @@ type Factory struct {
 
 var _ util.Factory = &Factory{}
 
-func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider target.ClientProvider, targetProvider target.TargetProvider) *Factory {
+func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider internalclient.Provider, targetProvider target.TargetProvider) *Factory {
 	if cfg == nil {
 		cfg = &config.Config{
 			LinkKubeconfig: pointer.Bool(false),

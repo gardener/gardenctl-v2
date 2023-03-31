@@ -15,6 +15,14 @@ exclude:
   - "hack/boilerplate.go.txt"
 
 aliasRules:
+  - name: internal-client
+    expr: '^github.com/gardener/gardenctl-v2/internal/client$'
+    alias: 'internalclient'
+
+  - name: client-garden
+    expr: '^github.com/gardener/gardenctl-v2/internal/client/garden$'
+    alias: 'clientgarden'
+
   - name: client-go
     expr: '^k8s.io/client-go/tools/([a-z0-9-]+)/api/(v[a-z0-9-]+)$'
     alias: '$1$2'

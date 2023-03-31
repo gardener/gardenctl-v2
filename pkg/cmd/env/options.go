@@ -22,7 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/gardener/gardenctl-v2/internal/gardenclient"
+	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
@@ -349,7 +349,7 @@ func getTargetFlags(t target.Target) string {
 }
 
 func getKeyStoneURL(cloudProfile *gardencorev1beta1.CloudProfile, region string) (string, error) {
-	config, err := gardenclient.CloudProfile(*cloudProfile).GetOpenstackProviderConfig()
+	config, err := clientgarden.CloudProfile(*cloudProfile).GetOpenstackProviderConfig()
 	if err != nil {
 		return "", fmt.Errorf("failed to get openstack provider config: %w", err)
 	}

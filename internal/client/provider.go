@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package target
+package client
 
 import (
 	"fmt"
@@ -13,26 +13,26 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//go:generate mockgen -destination=./mocks/mock_client_provider.go -package=mocks github.com/gardener/gardenctl-v2/pkg/target ClientProvider
+//go:generate mockgen -destination=./mocks/mock_provider.go -package=mocks github.com/gardener/gardenctl-v2/internal/client Provider
 
-// ClientProvider is able to take a kubeconfig either directly or
+// Provider is able to take a kubeconfig either directly or
 // from a file and return a controller-runtime client for it.
-type ClientProvider interface {
+type Provider interface {
 	// FromClientConfig returns a Kubernetes client for the given client config.
 	FromClientConfig(config clientcmd.ClientConfig) (client.Client, error)
 }
 
-type clientProvider struct{}
+type provider struct{}
 
-var _ ClientProvider = &clientProvider{}
+var _ Provider = &provider{}
 
-// NewClientProvider returns a new ClientProvider.
-func NewClientProvider() ClientProvider {
-	return &clientProvider{}
+// NewProvider returns a new Provider.
+func NewProvider() Provider {
+	return &provider{}
 }
 
 // FromClientConfig returns a Kubernetes client for the given client config.
-func (p *clientProvider) FromClientConfig(clientConfig clientcmd.ClientConfig) (client.Client, error) {
+func (p *provider) FromClientConfig(clientConfig clientcmd.ClientConfig) (client.Client, error) {
 	config, err := clientConfig.ClientConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create restclient config: %w", err)
