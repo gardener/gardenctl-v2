@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/fatih/color v1.15.0
-	github.com/gardener/gardener v1.67.1
+	github.com/gardener/gardener v1.68.0
 	github.com/gardener/gardener-extension-provider-openstack v1.32.2
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
