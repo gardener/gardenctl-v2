@@ -491,6 +491,10 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return nil // abort
 	}
 
+	if !shoot.Spec.Provider.WorkersSettings.SSHAccess.Enabled {
+		return errors.New("Node SSH access disabled, SSH not allowed")
+	}
+
 	// fetch the SSH key(s) for the shoot nodes
 	nodePrivateKeys, err := getShootNodePrivateKeys(ctx, gardenClient.RuntimeClient(), shoot)
 	if err != nil {
