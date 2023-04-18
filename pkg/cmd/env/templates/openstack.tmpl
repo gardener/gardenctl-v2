@@ -1,75 +1,96 @@
 {{define "default"}}{{if .__meta.unset -}}
-unset OS_IDENTITY_API_VERSION;
-unset OS_AUTH_VERSION;
-unset OS_AUTH_STRATEGY;
 unset OS_AUTH_URL;
-unset OS_TENANT_NAME;
 unset OS_PROJECT_DOMAIN_NAME;
 unset OS_USER_DOMAIN_NAME;
+unset OS_REGION_NAME;
+unset OS_AUTH_STRATEGY;
+unset OS_TENANT_NAME;
 unset OS_USERNAME;
 unset OS_PASSWORD;
-unset OS_REGION_NAME;
+unset OS_AUTH_TYPE;
+unset OS_APPLICATION_CREDENTIAL_ID;
+unset OS_APPLICATION_CREDENTIAL_NAME;
+unset OS_APPLICATION_CREDENTIAL_SECRET;
 {{else -}}
-export OS_IDENTITY_API_VERSION='3';
-export OS_AUTH_VERSION='3';
-export OS_AUTH_STRATEGY='keystone';
 export OS_AUTH_URL={{.authURL | shellEscape}};
-export OS_TENANT_NAME={{.tenantName | shellEscape}};
 export OS_PROJECT_DOMAIN_NAME={{.domainName | shellEscape}};
 export OS_USER_DOMAIN_NAME={{.domainName | shellEscape}};
+export OS_REGION_NAME={{.region | shellEscape}};
+{{if .applicationCredentialSecret -}}
+export OS_AUTH_TYPE='v3applicationcredential';
+export OS_APPLICATION_CREDENTIAL_ID={{.applicationCredentialID | shellEscape}};
+export OS_APPLICATION_CREDENTIAL_NAME={{.applicationCredentialName | shellEscape}};
+export OS_APPLICATION_CREDENTIAL_SECRET={{.applicationCredentialSecret | shellEscape}};
+{{else -}}
+export OS_AUTH_STRATEGY='keystone';
+export OS_TENANT_NAME={{.tenantName | shellEscape}};
 export OS_USERNAME={{.username | shellEscape}};
 export OS_PASSWORD={{.password | shellEscape}};
-export OS_REGION_NAME={{.region | shellEscape}};
+{{end -}}
 {{end}}{{template "usage-hint" .__meta}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
 {{define "zsh"}}{{template "default" .}}{{end}}
 
 {{define "fish"}}{{if .__meta.unset -}}
-set -e OS_IDENTITY_API_VERSION;
-set -e OS_AUTH_VERSION;
-set -e OS_AUTH_STRATEGY;
 set -e OS_AUTH_URL;
-set -e OS_TENANT_NAME;
 set -e OS_PROJECT_DOMAIN_NAME;
 set -e OS_USER_DOMAIN_NAME;
+set -e OS_REGION_NAME;
+set -e OS_AUTH_STRATEGY;
+set -e OS_TENANT_NAME;
 set -e OS_USERNAME;
 set -e OS_PASSWORD;
-set -e OS_REGION_NAME;
+set -e OS_AUTH_TYPE;
+set -e OS_APPLICATION_CREDENTIAL_ID;
+set -e OS_APPLICATION_CREDENTIAL_NAME;
+set -e OS_APPLICATION_CREDENTIAL_SECRET;
 {{else -}}
-set -gx OS_IDENTITY_API_VERSION '3';
-set -gx OS_AUTH_VERSION '3';
-set -gx OS_AUTH_STRATEGY 'keystone';
 set -gx OS_AUTH_URL {{.authURL | shellEscape}};
-set -gx OS_TENANT_NAME {{.tenantName | shellEscape}};
 set -gx OS_PROJECT_DOMAIN_NAME {{.domainName | shellEscape}};
 set -gx OS_USER_DOMAIN_NAME {{.domainName | shellEscape}};
+set -gx OS_REGION_NAME {{.region | shellEscape}};
+{{if .applicationCredentialSecret -}}
+set -gx OS_AUTH_TYPE 'v3applicationcredential';
+set -gx OS_APPLICATION_CREDENTIAL_ID {{.applicationCredentialID | shellEscape}};
+set -gx OS_APPLICATION_CREDENTIAL_NAME {{.applicationCredentialName | shellEscape}};
+set -gx OS_APPLICATION_CREDENTIAL_SECRET {{.applicationCredentialSecret | shellEscape}};
+{{else -}}
+set -gx OS_AUTH_STRATEGY 'keystone';
+set -gx OS_TENANT_NAME {{.tenantName | shellEscape}};
 set -gx OS_USERNAME {{.username | shellEscape}};
 set -gx OS_PASSWORD {{.password | shellEscape}};
-set -gx OS_REGION_NAME {{.region | shellEscape}};
+{{end -}}
 {{end}}{{template "usage-hint" .__meta}}{{end}}
 
 {{define "powershell"}}{{if .__meta.unset -}}
-Remove-Item -ErrorAction SilentlyContinue Env:\OS_IDENTITY_API_VERSION;
-Remove-Item -ErrorAction SilentlyContinue Env:\OS_AUTH_VERSION;
-Remove-Item -ErrorAction SilentlyContinue Env:\OS_AUTH_STRATEGY;
 Remove-Item -ErrorAction SilentlyContinue Env:\OS_AUTH_URL;
-Remove-Item -ErrorAction SilentlyContinue Env:\OS_TENANT_NAME;
 Remove-Item -ErrorAction SilentlyContinue Env:\OS_PROJECT_DOMAIN_NAME;
 Remove-Item -ErrorAction SilentlyContinue Env:\OS_USER_DOMAIN_NAME;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_REGION_NAME;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_AUTH_STRATEGY;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_TENANT_NAME;
 Remove-Item -ErrorAction SilentlyContinue Env:\OS_USERNAME;
 Remove-Item -ErrorAction SilentlyContinue Env:\OS_PASSWORD;
-Remove-Item -ErrorAction SilentlyContinue Env:\OS_REGION_NAME;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_AUTH_TYPE;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_APPLICATION_CREDENTIAL_ID;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_APPLICATION_CREDENTIAL_NAME;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_APPLICATION_CREDENTIAL_SECRET;
 {{else -}}
-$Env:OS_IDENTITY_API_VERSION = '3';
-$Env:OS_AUTH_VERSION = '3';
-$Env:OS_AUTH_STRATEGY = 'keystone';
 $Env:OS_AUTH_URL = {{.authURL | shellEscape}};
-$Env:OS_TENANT_NAME = {{.tenantName | shellEscape}};
 $Env:OS_PROJECT_DOMAIN_NAME = {{.domainName | shellEscape}};
 $Env:OS_USER_DOMAIN_NAME = {{.domainName | shellEscape}};
+$Env:OS_REGION_NAME = {{.region | shellEscape}};
+{{if .applicationCredentialSecret -}}
+$Env:OS_AUTH_TYPE = 'v3applicationcredential';
+$Env:OS_APPLICATION_CREDENTIAL_ID = {{.applicationCredentialID | shellEscape}};
+$Env:OS_APPLICATION_CREDENTIAL_NAME = {{.applicationCredentialName | shellEscape}};
+$Env:OS_APPLICATION_CREDENTIAL_SECRET = {{.applicationCredentialSecret | shellEscape}};
+{{else -}}
+$Env:OS_AUTH_STRATEGY = 'keystone';
+$Env:OS_TENANT_NAME = {{.tenantName | shellEscape}};
 $Env:OS_USERNAME = {{.username | shellEscape}};
 $Env:OS_PASSWORD = {{.password | shellEscape}};
-$Env:OS_REGION_NAME = {{.region | shellEscape}};
+{{end -}}
 {{end}}{{template "usage-hint" .__meta}}{{end}}
 
