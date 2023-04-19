@@ -16,17 +16,14 @@ export OS_AUTH_URL={{.authURL | shellEscape}};
 export OS_PROJECT_DOMAIN_NAME={{.domainName | shellEscape}};
 export OS_USER_DOMAIN_NAME={{.domainName | shellEscape}};
 export OS_REGION_NAME={{.region | shellEscape}};
-{{if .applicationCredentialSecret -}}
-export OS_AUTH_TYPE='v3applicationcredential';
-export OS_APPLICATION_CREDENTIAL_ID={{.applicationCredentialID | shellEscape}};
-export OS_APPLICATION_CREDENTIAL_NAME={{.applicationCredentialName | shellEscape}};
-export OS_APPLICATION_CREDENTIAL_SECRET={{.applicationCredentialSecret | shellEscape}};
-{{else -}}
-export OS_AUTH_STRATEGY='keystone';
+export OS_AUTH_STRATEGY={{.authStrategy | shellEscape}};
 export OS_TENANT_NAME={{.tenantName | shellEscape}};
 export OS_USERNAME={{.username | shellEscape}};
 export OS_PASSWORD={{.password | shellEscape}};
-{{end -}}
+export OS_AUTH_TYPE={{.authType | shellEscape}};
+export OS_APPLICATION_CREDENTIAL_ID={{.applicationCredentialID | shellEscape}};
+export OS_APPLICATION_CREDENTIAL_NAME={{.applicationCredentialName | shellEscape}};
+export OS_APPLICATION_CREDENTIAL_SECRET={{.applicationCredentialSecret | shellEscape}};
 {{end}}{{template "usage-hint" .__meta}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
@@ -50,17 +47,14 @@ set -gx OS_AUTH_URL {{.authURL | shellEscape}};
 set -gx OS_PROJECT_DOMAIN_NAME {{.domainName | shellEscape}};
 set -gx OS_USER_DOMAIN_NAME {{.domainName | shellEscape}};
 set -gx OS_REGION_NAME {{.region | shellEscape}};
-{{if .applicationCredentialSecret -}}
-set -gx OS_AUTH_TYPE 'v3applicationcredential';
-set -gx OS_APPLICATION_CREDENTIAL_ID {{.applicationCredentialID | shellEscape}};
-set -gx OS_APPLICATION_CREDENTIAL_NAME {{.applicationCredentialName | shellEscape}};
-set -gx OS_APPLICATION_CREDENTIAL_SECRET {{.applicationCredentialSecret | shellEscape}};
-{{else -}}
-set -gx OS_AUTH_STRATEGY 'keystone';
+set -gx OS_AUTH_STRATEGY {{.authStrategy | shellEscape}};
 set -gx OS_TENANT_NAME {{.tenantName | shellEscape}};
 set -gx OS_USERNAME {{.username | shellEscape}};
 set -gx OS_PASSWORD {{.password | shellEscape}};
-{{end -}}
+set -gx OS_AUTH_TYPE {{.authType | shellEscape}};
+set -gx OS_APPLICATION_CREDENTIAL_ID {{.applicationCredentialID | shellEscape}};
+set -gx OS_APPLICATION_CREDENTIAL_NAME {{.applicationCredentialName | shellEscape}};
+set -gx OS_APPLICATION_CREDENTIAL_SECRET {{.applicationCredentialSecret | shellEscape}};
 {{end}}{{template "usage-hint" .__meta}}{{end}}
 
 {{define "powershell"}}{{if .__meta.unset -}}
@@ -81,16 +75,13 @@ $Env:OS_AUTH_URL = {{.authURL | shellEscape}};
 $Env:OS_PROJECT_DOMAIN_NAME = {{.domainName | shellEscape}};
 $Env:OS_USER_DOMAIN_NAME = {{.domainName | shellEscape}};
 $Env:OS_REGION_NAME = {{.region | shellEscape}};
-{{if .applicationCredentialSecret -}}
-$Env:OS_AUTH_TYPE = 'v3applicationcredential';
-$Env:OS_APPLICATION_CREDENTIAL_ID = {{.applicationCredentialID | shellEscape}};
-$Env:OS_APPLICATION_CREDENTIAL_NAME = {{.applicationCredentialName | shellEscape}};
-$Env:OS_APPLICATION_CREDENTIAL_SECRET = {{.applicationCredentialSecret | shellEscape}};
-{{else -}}
-$Env:OS_AUTH_STRATEGY = 'keystone';
+$Env:OS_AUTH_STRATEGY = {{.authStrategy | shellEscape}};
 $Env:OS_TENANT_NAME = {{.tenantName | shellEscape}};
 $Env:OS_USERNAME = {{.username | shellEscape}};
 $Env:OS_PASSWORD = {{.password | shellEscape}};
-{{end -}}
+$Env:OS_AUTH_TYPE = {{.authType | shellEscape}};
+$Env:OS_APPLICATION_CREDENTIAL_ID = {{.applicationCredentialID | shellEscape}};
+$Env:OS_APPLICATION_CREDENTIAL_NAME = {{.applicationCredentialName | shellEscape}};
+$Env:OS_APPLICATION_CREDENTIAL_SECRET = {{.applicationCredentialSecret | shellEscape}};
 {{end}}{{template "usage-hint" .__meta}}{{end}}
 
