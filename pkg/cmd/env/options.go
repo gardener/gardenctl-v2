@@ -303,7 +303,9 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 		}
 
 		data["authURL"] = authURL
-		if _, ok := data["applicationCredentialSecret"]; ok {
+
+		_, ok := data["applicationCredentialSecret"]
+		if ok {
 			data["authType"] = "v3applicationcredential"
 			data["authStrategy"] = ""
 			data["tenantName"] = ""
