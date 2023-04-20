@@ -303,6 +303,21 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 		}
 
 		data["authURL"] = authURL
+
+		_, ok := data["applicationCredentialSecret"]
+		if ok {
+			data["authType"] = "v3applicationcredential"
+			data["authStrategy"] = ""
+			data["tenantName"] = ""
+			data["username"] = ""
+			data["password"] = ""
+		} else {
+			data["authStrategy"] = "keystone"
+			data["authType"] = ""
+			data["applicationCredentialID"] = ""
+			data["applicationCredentialName"] = ""
+			data["applicationCredentialSecret"] = ""
+		}
 	}
 
 	filename := filepath.Join(o.GardenDir, "templates", o.ProviderType+".tmpl")
