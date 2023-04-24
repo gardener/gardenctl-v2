@@ -491,7 +491,8 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return nil // abort
 	}
 
-	if !shoot.Spec.Provider.WorkersSettings.SSHAccess.Enabled {
+	workersSettings := shoot.Spec.Provider.WorkersSettings
+	if workersSettings != nil && workersSettings.SSHAccess != nil && !workersSettings.SSHAccess.Enabled {
 		return errors.New("Node SSH access disabled, SSH not allowed")
 	}
 

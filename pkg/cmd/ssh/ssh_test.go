@@ -189,6 +189,13 @@ var _ = Describe("SSH Command", func() {
 				Kubernetes: gardencorev1beta1.Kubernetes{
 					Version: "1.20.0", // >= 1.20.0 for non-legacy shoot kubeconfigs
 				},
+				Provider: gardencorev1beta1.Provider{
+					WorkersSettings: &gardencorev1beta1.WorkersSettings{
+						SSHAccess: &gardencorev1beta1.SSHAccess{
+							Enabled: true,
+						},
+					},
+				},
 			},
 			Status: gardencorev1beta1.ShootStatus{
 				AdvertisedAddresses: []gardencorev1beta1.ShootAdvertisedAddress{
@@ -585,6 +592,17 @@ var _ = Describe("SSH Command", func() {
 			Expect(info.Bastion.SSHPrivateKeyFile).To(Equal(options.SSHPrivateKeyFile))
 			Expect(info.Bastion.SSHPublicKeyFile).To(Equal(options.SSHPublicKeyFile))
 			Expect(info.NodePrivateKeyFiles).NotTo(BeEmpty())
+		})
+
+		It("should error retrun when SSHAccess enabled false", func() {
+			options := ssh.NewSSHOptions(streams)
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			testShootCopy := testShoot.DeepCopy()
+			testShoot.Spec.Provider.WorkersSettings.SSHAccess.Enabled = false
+			Expect(gardenClient.Patch(ctx, testShoot, client.MergeFrom(testShootCopy))).To(Succeed())
+
+			Expect(cmd.RunE(cmd, nil).Error()).To(ContainSubstring("Node SSH access disabled, SSH not allowed"))
 		})
 	})
 
