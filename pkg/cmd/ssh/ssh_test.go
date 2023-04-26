@@ -594,15 +594,15 @@ var _ = Describe("SSH Command", func() {
 			Expect(info.NodePrivateKeyFiles).NotTo(BeEmpty())
 		})
 
-		It("should error retrun when SSHAccess enabled false", func() {
+		It("should return an error when SSHAccess is disabled", func() {
 			options := ssh.NewSSHOptions(streams)
 			cmd := ssh.NewCmdSSH(factory, options)
 
-			testShootCopy := testShoot.DeepCopy()
+			testShootBase := testShoot.DeepCopy()
 			testShoot.Spec.Provider.WorkersSettings.SSHAccess.Enabled = false
-			Expect(gardenClient.Patch(ctx, testShoot, client.MergeFrom(testShootCopy))).To(Succeed())
+			Expect(gardenClient.Patch(ctx, testShoot, client.MergeFrom(testShootBase))).To(Succeed())
 
-			Expect(cmd.RunE(cmd, nil).Error()).To(ContainSubstring("Node SSH access disabled, SSH not allowed"))
+			Expect(cmd.RunE(cmd, nil)).To(MatchError("Node SSH access disabled, SSH not allowed"))
 		})
 	})
 
