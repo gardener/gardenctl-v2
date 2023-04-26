@@ -10,7 +10,7 @@ gardenctl ssh-patch [BASTION_NAME] [flags]
 
 ```
 # Update CIDRs on one of your bastion hosts. You can specify multiple CIDRs.
-gardenctl ssh-patch cli-xxxxxxxx --cidr 10.1.2.3/20 --cidr dead:beaf::/64
+gardenctl ssh-patch cli-xxxxxxxx --cidr 10.1.2.3/32 --cidr dead:beaf::/64
 
 # You can also omit the CIDR-flag and your system's public IPs (v4 and v6) will be auto-detected.
 gardenctl ssh-patch cli-xxxxxxxx
