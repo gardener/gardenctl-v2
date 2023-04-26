@@ -345,15 +345,15 @@ var _ = Describe("SSH Command", func() {
 
 				Expect(command).To(Equal("ssh"))
 				Expect(args).To(Equal([]string{
-					"-o", "StrictHostKeyChecking=no",
-					"-o", "IdentitiesOnly=yes",
-					"-o", fmt.Sprintf(
-						"ProxyCommand=ssh -W%%h:%%p -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i %s %s@%s",
+					"-oStrictHostKeyChecking=no",
+					"-oIdentitiesOnly=yes",
+					fmt.Sprintf("-i%s", nodePrivateKeyFile),
+					fmt.Sprintf(
+						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '-i%s' '%s@%s'",
 						o.SSHPrivateKeyFile,
 						ssh.SSHBastionUsername,
 						bastionIP,
 					),
-					"-i", nodePrivateKeyFile,
 					fmt.Sprintf("%s@%s", ssh.SSHNodeUsername, nodeHostname),
 				}))
 
@@ -399,15 +399,15 @@ var _ = Describe("SSH Command", func() {
 
 				Expect(command).To(Equal("ssh"))
 				Expect(args).To(Equal([]string{
-					"-o", "StrictHostKeyChecking=no",
-					"-o", "IdentitiesOnly=yes",
-					"-o", fmt.Sprintf(
-						"ProxyCommand=ssh -W%%h:%%p -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i %s %s@%s",
+					"-oStrictHostKeyChecking=no",
+					"-oIdentitiesOnly=yes",
+					fmt.Sprintf("-i%s", nodePrivateKeyFile),
+					fmt.Sprintf(
+						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '-i%s' '%s@%s'",
 						o.SSHPrivateKeyFile,
 						ssh.SSHBastionUsername,
 						bastionIP,
 					),
-					"-i", nodePrivateKeyFile,
 					fmt.Sprintf("%s@%s", ssh.SSHNodeUsername, nodeName),
 				}))
 
