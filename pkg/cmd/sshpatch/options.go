@@ -113,7 +113,7 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) er
 		return err
 	}
 
-	bastionListPatcher, err := newUserBastionListPatcher(manager)
+	bastionListPatcher, err := newBastionListPatcher(manager)
 	if err != nil {
 		return fmt.Errorf("could not create bastion lister: %w", err)
 	}
