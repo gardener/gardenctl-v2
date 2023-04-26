@@ -603,7 +603,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return fmt.Errorf("an error occurred while waiting for the bastion to be ready: %w", err)
 	}
 
-	logger.Info("Bastion host became available.", "address", toAdress(bastion.Status.Ingress).String())
+	logger.Info("Bastion host became available.", "address", toAddress(bastion.Status.Ingress).String())
 
 	if !o.Interactive {
 		var nodes []corev1.Node
@@ -837,68 +837,21 @@ func getShootNode(ctx context.Context, o *SSHOptions, shootClient client.Client)
 }
 
 func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []PrivateKeyFile) error {
-	bastionAddr := preferredBastionAddress(bastion)
-	connectCmd := sshCommandLine(o.SSHPrivateKeyFile, bastionAddr, nodePrivateKeyFiles, nodeHostname)
+	bastionAddress := preferredBastionAddress(bastion)
+	commandArgs := sshCommandArguments(bastionAddress, o.SSHPrivateKeyFile, nodeHostname, nodePrivateKeyFiles)
 
 	fmt.Fprintln(o.IOStreams.Out, "You can open additional SSH sessions using the command below:")
 	fmt.Fprintln(o.IOStreams.Out, "")
-	fmt.Fprintln(o.IOStreams.Out, connectCmd)
+	fmt.Fprintf(o.IOStreams.Out, "ssh %s\n", commandArgs.String())
 	fmt.Fprintln(o.IOStreams.Out, "")
 
-	proxyPrivateKeyFlag := ""
-	if o.SSHPrivateKeyFile != "" {
-		proxyPrivateKeyFlag = fmt.Sprintf(" -o IdentitiesOnly=yes -i %s", o.SSHPrivateKeyFile)
+	var args []string
+
+	for _, arg := range commandArgs.list {
+		args = append(args, arg.value)
 	}
-
-	proxyCmd := fmt.Sprintf(
-		"ssh -W%%h:%%p -o StrictHostKeyChecking=no%s %s@%s",
-		proxyPrivateKeyFlag,
-		SSHBastionUsername,
-		bastionAddr,
-	)
-
-	args := []string{
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "IdentitiesOnly=yes",
-		"-o", fmt.Sprintf("ProxyCommand=%s", proxyCmd),
-	}
-
-	for _, file := range nodePrivateKeyFiles {
-		args = append(args, "-i", file.String())
-	}
-
-	args = append(args, fmt.Sprintf("%s@%s", SSHNodeUsername, nodeHostname))
 
 	return execCommand(ctx, "ssh", args, o)
-}
-
-func sshCommandLine(sshPrivateKeyFile PrivateKeyFile, bastionAddr string, nodePrivateKeyFiles []PrivateKeyFile, nodeName string) string {
-	proxyPrivateKeyFlag := ""
-	if sshPrivateKeyFile != "" {
-		proxyPrivateKeyFlag = fmt.Sprintf(" -o IdentitiesOnly=yes -i %s", sshPrivateKeyFile)
-	}
-
-	proxyCmd := fmt.Sprintf(
-		"ssh -W%%h:%%p -o StrictHostKeyChecking=no%s %s@%s",
-		proxyPrivateKeyFlag,
-		SSHBastionUsername,
-		bastionAddr,
-	)
-
-	identities := []string{}
-	for _, filename := range nodePrivateKeyFiles {
-		identities = append(identities, fmt.Sprintf("-i %s", filename))
-	}
-
-	connectCmd := fmt.Sprintf(
-		`ssh -o "StrictHostKeyChecking=no" -o "IdentitiesOnly=yes" %s -o "ProxyCommand=%s" %s@%s`,
-		strings.Join(identities, " "),
-		proxyCmd,
-		SSHNodeUsername,
-		nodeName,
-	)
-
-	return connectCmd
 }
 
 func getKeepAliveInterval() time.Duration {

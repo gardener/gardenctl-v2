@@ -11,42 +11,12 @@ import (
 	"fmt"
 
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
-	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/klog/v2"
 )
-
-type PublicKeyFile string
-
-var (
-	_ pflag.Value  = (*PublicKeyFile)(nil)
-	_ fmt.Stringer = (*PublicKeyFile)(nil)
-)
-
-func (s *PublicKeyFile) Set(val string) error {
-	*s = PublicKeyFile(val)
-
-	return nil
-}
-
-func (s *PublicKeyFile) Type() string {
-	return "string"
-}
-
-func (s *PublicKeyFile) String() string {
-	return string(*s)
-}
-
-type PrivateKeyFile string
-
-var _ fmt.Stringer = (*PrivateKeyFile)(nil)
-
-func (s *PrivateKeyFile) String() string {
-	return string(*s)
-}
 
 // ConnectInformation holds connect information required to establish an SSH connection
 // to Shoot worker nodes.
@@ -205,11 +175,11 @@ func (p *ConnectInformation) String() string {
 		fmt.Fprintln(&buf, "")
 	}
 
-	connectCmd := sshCommandLine(p.Bastion.SSHPrivateKeyFile, p.Bastion.PreferredAddress, p.NodePrivateKeyFiles, nodeHostname)
+	connectArgs := sshCommandArguments(p.Bastion.PreferredAddress, p.Bastion.SSHPrivateKeyFile, nodeHostname, p.NodePrivateKeyFiles)
 
 	fmt.Fprintln(&buf, "Connect to shoot nodes by using the bastion as a proxy/jump host, for example:")
 	fmt.Fprintln(&buf, "")
-	fmt.Fprintln(&buf, connectCmd)
+	fmt.Fprintf(&buf, "ssh %s\n", connectArgs.String())
 	fmt.Fprintln(&buf, "")
 
 	return buf.String()
@@ -225,7 +195,7 @@ func isNodeReady(node corev1.Node) bool {
 	return false
 }
 
-func toAdress(ingress *corev1.LoadBalancerIngress) *Address {
+func toAddress(ingress *corev1.LoadBalancerIngress) *Address {
 	if ingress == nil {
 		return nil
 	}
