@@ -41,7 +41,7 @@ type viewOptions struct {
 }
 
 // Complete adapts from the command line args to the data required.
-func (o *viewOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+func (o *viewOptions) Complete(f util.Factory, _ *cobra.Command, _ []string) error {
 	config, err := getConfiguration(f)
 	if err != nil {
 		return err

@@ -54,7 +54,7 @@ type UnsetOptions struct {
 }
 
 // Complete adapts from the command line args to the data required.
-func (o *UnsetOptions) Complete(_ util.Factory, cmd *cobra.Command, args []string) error {
+func (o *UnsetOptions) Complete(_ util.Factory, _ *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		o.Kind = TargetKind(strings.TrimSpace(args[0]))
 	}
@@ -76,11 +76,7 @@ func ValidateKind(kind TargetKind) error {
 
 // Validate validates the provided options.
 func (o *UnsetOptions) Validate() error {
-	if err := ValidateKind(o.Kind); err != nil {
-		return err
-	}
-
-	return nil
+	return ValidateKind(o.Kind)
 }
 
 // Run executes the command.

@@ -17,7 +17,7 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 )
 
-func GetBastionNameCompletions(f util.Factory, cmd *cobra.Command, prefix string) ([]string, error) {
+func GetBastionNameCompletions(f util.Factory, _ *cobra.Command, prefix string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(f.Context(), 30*time.Second)
 	defer cancel()
 

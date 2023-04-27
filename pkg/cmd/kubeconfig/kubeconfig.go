@@ -149,7 +149,7 @@ func (o *options) Validate() error {
 }
 
 // Run does the actual work of the command.
-func (o *options) Run(f util.Factory) error {
+func (o *options) Run(_ util.Factory) error {
 	if o.Minify {
 		if len(o.Context) > 0 {
 			o.RawConfig.CurrentContext = o.Context

@@ -58,7 +58,7 @@ type options struct {
 }
 
 // Complete adapts from the command line args to the data required.
-func (o *options) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error {
 	o.Shell = cmd.Name()
 	o.CmdPath = cmd.Parent().CommandPath()
 	o.GardenDir = f.GardenHomeDir()
@@ -92,11 +92,8 @@ func (o *options) Validate() error {
 	}
 
 	s := Shell(o.Shell)
-	if err := s.Validate(); err != nil {
-		return err
-	}
 
-	return nil
+	return s.Validate()
 }
 
 // AddFlags binds the command options to a given flagset.

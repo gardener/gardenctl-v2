@@ -75,7 +75,7 @@ type setGardenOptions struct {
 }
 
 // Complete adapts from the command line args to the data required.
-func (o *setGardenOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+func (o *setGardenOptions) Complete(f util.Factory, _ *cobra.Command, args []string) error {
 	config, err := getConfiguration(f)
 	if err != nil {
 		return err
@@ -96,11 +96,7 @@ func (o *setGardenOptions) Validate() error {
 		return errors.New("garden identity is required")
 	}
 
-	if err := validatePatterns(o.Patterns); err != nil {
-		return err
-	}
-
-	return nil
+	return validatePatterns(o.Patterns)
 }
 
 // AddFlags adds flags to adjust the output to a cobra command.

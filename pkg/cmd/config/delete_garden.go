@@ -46,7 +46,7 @@ type deleteGardenOptions struct {
 }
 
 // Complete adapts from the command line args to the data required.
-func (o *deleteGardenOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+func (o *deleteGardenOptions) Complete(f util.Factory, _ *cobra.Command, args []string) error {
 	config, err := getConfiguration(f)
 	if err != nil {
 		return err
