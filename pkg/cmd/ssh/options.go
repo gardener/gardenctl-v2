@@ -44,6 +44,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
@@ -174,6 +175,10 @@ type SSHOptions struct {
 	// interactive mode, a NodeName must be specified as well.
 	Interactive bool
 
+	// BastionName is the name of the bastion. If not provided, a unique name will be
+	// automatically generated.
+	BastionName string
+
 	// NodeName is the name of the Shoot cluster node that the user wants to
 	// connect to. If this is left empty, gardenctl will only establish the
 	// bastion host, but leave it up to the user to SSH themselves.
@@ -184,8 +189,7 @@ type SSHOptions struct {
 	SSHPublicKeyFile PublicKeyFile
 
 	// SSHPrivateKeyFile is the full path to the file containing the user's
-	// private SSH key. This is only set if no key was given and a temporary keypair
-	// was generated. Otherwise gardenctl relies on the user's SSH agent.
+	// private SSH key. If not set, gardenctl relies on the user's SSH agent.
 	SSHPrivateKeyFile PrivateKeyFile
 
 	// generatedSSHKeys is true if the public and private SSH keys have been generated
@@ -229,10 +233,12 @@ func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 	flagSet.BoolVar(&o.Interactive, "interactive", o.Interactive, "Open an SSH connection instead of just providing the bastion host (only if NODE_NAME is provided).")
 	flagSet.Var(&o.SSHPublicKeyFile, "public-key-file", "Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.")
+	flagSet.Var(&o.SSHPrivateKeyFile, "private-key-file", "Path to the file that contains a private SSH key. Must be provided alongside the --public-key-file flag if you want to use a custom keypair. If not provided, gardenctl will either generate a temporary keypair or rely on the user's SSH agent for an available private key.")
 	flagSet.DurationVar(&o.WaitTimeout, "wait-timeout", o.WaitTimeout, "Maximum duration to wait for the bastion to become available.")
 	flagSet.BoolVar(&o.KeepBastion, "keep-bastion", o.KeepBastion, "Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)")
 	flagSet.BoolVar(&o.SkipAvailabilityCheck, "skip-availability-check", o.SkipAvailabilityCheck, "Skip checking for SSH bastion host availability.")
 	flagSet.BoolVar(&o.NoKeepalive, "no-keepalive", o.NoKeepalive, "Exit after the bastion host became available without keeping the bastion alive or establishing an SSH connection. Note that this flag requires the flags --interactive=false and --keep-bastion to be set")
+	flagSet.StringVar(&o.BastionName, "bastion-name", o.BastionName, "Name of the bastion. If a bastion with this name doesn't exist, it will be created. If it does exist, the provided public SSH key must match the one used during the bastion's creation.")
 	o.Options.AddFlags(flagSet)
 }
 
@@ -254,7 +260,9 @@ func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string)
 		o.SSHPublicKeyFile = publicKeyFile
 		o.SSHPrivateKeyFile = privateKeyFile
 		o.generatedSSHKeys = true
-	} else {
+	}
+
+	if len(o.SSHPrivateKeyFile) == 0 {
 		count, err := countSSHAgentSigners()
 		if err != nil {
 			return fmt.Errorf("failed to check SSH agent status: %w", err)
@@ -271,6 +279,15 @@ func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string)
 		logger.V(4).Info("no node name given, switching to non-interactive mode")
 
 		o.Interactive = false
+	}
+
+	if o.BastionName == "" {
+		name, err := bastionNameProvider()
+		if err != nil {
+			return fmt.Errorf("failed to create bastion name: %w", err)
+		}
+
+		o.BastionName = name
 	}
 
 	return nil
@@ -547,24 +564,9 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return fmt.Errorf("failed to read SSH public key: %w", err)
 	}
 
-	// avoid GenerateName because we want to immediately fetch and check the bastion
-	bastionName, err := bastionNameProvider()
-	if err != nil {
-		return fmt.Errorf("failed to create bastion name: %w", err)
-	}
-
-	bastion := &operationsv1alpha1.Bastion{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      bastionName,
-			Namespace: shoot.Namespace,
-		},
-		Spec: operationsv1alpha1.BastionSpec{
-			ShootRef: corev1.LocalObjectReference{
-				Name: shoot.Name,
-			},
-			SSHPublicKey: strings.TrimSpace(string(sshPublicKey)),
-			Ingress:      policies,
-		},
+	bastionKey := client.ObjectKey{
+		Namespace: shoot.Namespace,
+		Name:      o.BastionName,
 	}
 
 	// allow to cancel at any time, but with us still performing the cleanup
@@ -583,12 +585,11 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	}()
 
 	// do not use `ctx`, as it might be cancelled already when running the cleanup
-	defer cleanup(f.Context(), o, gardenClient.RuntimeClient(), bastion, nodePrivateKeyFiles)
+	defer cleanup(f.Context(), o, gardenClient.RuntimeClient(), bastionKey, nodePrivateKeyFiles)
 
-	logger.Info("Creating bastion", "bastion", klog.KObj(bastion))
-
-	if err := gardenClient.RuntimeClient().Create(ctx, bastion); err != nil {
-		return fmt.Errorf("failed to create bastion: %w", err)
+	bastion, err := createOrPatchBastion(ctx, gardenClient.RuntimeClient(), bastionKey, shoot, sshPublicKey, policies)
+	if err != nil {
+		return err
 	}
 
 	// continuously keep the bastion alive by renewing its annotation
@@ -633,6 +634,38 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	}
 
 	return remoteShell(ctx, o, bastion, nodeHostname, nodePrivateKeyFiles)
+}
+
+func createOrPatchBastion(ctx context.Context, gardenClient client.Client, key client.ObjectKey, shoot *gardencorev1beta1.Shoot, sshPublicKey []byte, policies []operationsv1alpha1.BastionIngressPolicy) (*operationsv1alpha1.Bastion, error) {
+	logger := klog.FromContext(ctx)
+
+	bastion := &operationsv1alpha1.Bastion{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      key.Name,
+			Namespace: key.Namespace,
+		},
+	}
+
+	result, err := controllerutil.CreateOrPatch(ctx, gardenClient, bastion, func() error {
+		if len(bastion.Annotations) == 0 {
+			bastion.Annotations = map[string]string{}
+		}
+		bastion.Annotations[corev1beta1constants.GardenerOperation] = corev1beta1constants.GardenerOperationKeepalive
+		bastion.Spec.ShootRef = corev1.LocalObjectReference{
+			Name: shoot.Name,
+		}
+		bastion.Spec.SSHPublicKey = strings.TrimSpace(string(sshPublicKey))
+		bastion.Spec.Ingress = policies
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create or patch bastion: %w", err)
+	}
+
+	logger.Info("Bastion operation", "bastion", klog.KObj(bastion), "result", result)
+
+	return bastion, nil
 }
 
 func (o *SSHOptions) bastionIngressPolicies(logger klog.Logger, providerType string) ([]operationsv1alpha1.BastionIngressPolicy, error) {
@@ -683,12 +716,18 @@ func printTargetInformation(logger klog.Logger, t target.Target) {
 	logger.Info("Preparing SSH access", "target", target, "garden", t.GardenName())
 }
 
-func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, nodePrivateKeyFiles []PrivateKeyFile) {
+func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bastionKey client.ObjectKey, nodePrivateKeyFiles []PrivateKeyFile) {
 	logger := klog.FromContext(ctx)
 
 	if !o.KeepBastion {
 		logger.Info("Cleaning up")
 
+		bastion := &operationsv1alpha1.Bastion{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      bastionKey.Name,
+				Namespace: bastionKey.Namespace,
+			},
+		}
 		if err := gardenClient.Delete(ctx, bastion); client.IgnoreNotFound(err) != nil {
 			logger.Error(err, "Failed to delete bastion.", "bastion", klog.KObj(bastion))
 		}
@@ -712,7 +751,7 @@ func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bas
 			}
 		}
 	} else {
-		logger.Info("Keeping bastion", "bastion", klog.KObj(bastion))
+		logger.Info("Keeping bastion", "bastion", klog.KRef(bastionKey.Namespace, bastionKey.Name))
 
 		if o.generatedSSHKeys {
 			logger.Info("The SSH keypair for the bastion remain on disk", "publicKeyPath", o.SSHPublicKeyFile, "privateKeyPath", o.SSHPrivateKeyFile)
