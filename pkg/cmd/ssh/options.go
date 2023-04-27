@@ -192,9 +192,9 @@ type SSHOptions struct {
 	// private SSH key. If not set, gardenctl relies on the user's SSH agent.
 	SSHPrivateKeyFile PrivateKeyFile
 
-	// generatedSSHKeys is true if the public and private SSH keys have been generated
+	// GeneratedSSHKeys is true if the public and private SSH keys have been generated
 	// instead of being provided by the user. This will then be used for the cleanup.
-	generatedSSHKeys bool
+	GeneratedSSHKeys bool
 
 	// WaitTimeout is the maximum time to wait for a bastion to become ready.
 	WaitTimeout time.Duration
@@ -259,7 +259,7 @@ func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string)
 
 		o.SSHPublicKeyFile = publicKeyFile
 		o.SSHPrivateKeyFile = privateKeyFile
-		o.generatedSSHKeys = true
+		o.GeneratedSSHKeys = true
 	}
 
 	if len(o.SSHPrivateKeyFile) == 0 {
@@ -732,7 +732,7 @@ func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bas
 			logger.Error(err, "Failed to delete bastion.", "bastion", klog.KObj(bastion))
 		}
 
-		if o.generatedSSHKeys {
+		if o.GeneratedSSHKeys {
 			if err := os.Remove(o.SSHPublicKeyFile.String()); err != nil {
 				logger.Error(err, "Failed to delete SSH public key file", "path", o.SSHPublicKeyFile)
 			}
@@ -753,7 +753,7 @@ func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bas
 	} else {
 		logger.Info("Keeping bastion", "bastion", klog.KRef(bastionKey.Namespace, bastionKey.Name))
 
-		if o.generatedSSHKeys {
+		if o.GeneratedSSHKeys {
 			logger.Info("The SSH keypair for the bastion remain on disk", "publicKeyPath", o.SSHPublicKeyFile, "privateKeyPath", o.SSHPrivateKeyFile)
 		}
 
