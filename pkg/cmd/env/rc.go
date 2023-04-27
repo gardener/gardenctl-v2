@@ -187,7 +187,7 @@ type rcOptions struct {
 }
 
 // Complete adapts from the command line args to the data required.
-func (o *rcOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+func (o *rcOptions) Complete(_ util.Factory, cmd *cobra.Command, _ []string) error {
 	o.Shell = cmd.Name()
 	o.CmdPath = cmd.Parent().CommandPath()
 	o.Template = newTemplate("rc")
@@ -214,7 +214,7 @@ func (o *rcOptions) Validate() error {
 }
 
 // Run does the actual work of the command.
-func (o *rcOptions) Run(f util.Factory) error {
+func (o *rcOptions) Run(_ util.Factory) error {
 	data := map[string]interface{}{
 		"shell":        o.Shell,
 		"prefix":       o.Prefix,

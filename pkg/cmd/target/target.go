@@ -133,7 +133,7 @@ func NewTargetOptions(ioStreams util.IOStreams) *TargetOptions {
 }
 
 // Complete adapts from the command line args to the data required.
-func (o *TargetOptions) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+func (o *TargetOptions) Complete(f util.Factory, _ *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		if o.Kind == "" {
 			o.Kind = TargetKindPattern

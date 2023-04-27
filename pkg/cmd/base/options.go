@@ -111,7 +111,7 @@ func (o *Options) Validate() error {
 }
 
 // Complete adapts from the command line args to the data required.
-func (o *Options) Complete(f util.Factory, cmd *cobra.Command, args []string) error {
+func (o *Options) Complete(_ util.Factory, _ *cobra.Command, _ []string) error {
 	return nil
 }
 

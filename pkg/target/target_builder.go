@@ -178,7 +178,7 @@ func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBui
 	return b
 }
 
-func (b *targetBuilderImpl) SetControlPlane(ctx context.Context) TargetBuilder {
+func (b *targetBuilderImpl) SetControlPlane(_ context.Context) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
 		if t.Garden == "" {
 			return ErrNoGardenTargeted

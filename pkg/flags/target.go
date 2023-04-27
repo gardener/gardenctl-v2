@@ -21,7 +21,7 @@ import (
 // RegisterCompletionFuncsForTargetFlags registers the completion functions to a given cobra command
 // for the target flags (--garden, --project, --seed and --shoot). Each completion function is only
 // registered if the flag has been previously added to the provided flag set.
-func RegisterCompletionFuncsForTargetFlags(cmd *cobra.Command, factory util.Factory, ioStreams util.IOStreams, flags *pflag.FlagSet) {
+func RegisterCompletionFuncsForTargetFlags(cmd *cobra.Command, factory util.Factory, ioStreams util.IOStreams, _ *pflag.FlagSet) {
 	if cmd.Flag("garden") != nil {
 		utilruntime.Must(cmd.RegisterFlagCompletionFunc("garden", completionWrapper(factory, ioStreams, gardenFlagCompletionFunc)))
 	}
