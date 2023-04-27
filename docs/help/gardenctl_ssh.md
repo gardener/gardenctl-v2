@@ -31,11 +31,15 @@ gardenctl ssh
 # Create the bastion and output the connection information in JSON format
 gardenctl ssh --no-keepalive --keep-bastion --interactive=false --output json
 
+# Reuse a previously created bastion
+gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path/to/ssh/key.pub --private-key-file /path/to/ssh/key
+
 ```
 
 ### Options
 
 ```
+      --bastion-name string       Name of the bastion. If a bastion with this name doesn't exist, it will be created. If it does exist, the provided public SSH key must match the one used during the bastion's creation.
       --cidr stringArray          CIDRs to allow access to the bastion host; if not given, your system's public IPs (v4 and v6) are auto-detected.
       --control-plane             target control plane of shoot, use together with shoot argument
       --garden string             target the given garden cluster
@@ -44,6 +48,7 @@ gardenctl ssh --no-keepalive --keep-bastion --interactive=false --output json
       --keep-bastion              Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)
       --no-keepalive              Exit after the bastion host became available without keeping the bastion alive or establishing an SSH connection. Note that this flag requires the flags --interactive=false and --keep-bastion to be set
   -o, --output string             One of 'yaml' or 'json'.
+      --private-key-file string   Path to the file that contains a private SSH key. Must be provided alongside the --public-key-file flag if you want to use a custom keypair. If not provided, gardenctl will either generate a temporary keypair or rely on the user's SSH agent for an available private key.
       --project string            target the given project
       --public-key-file string    Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.
       --seed string               target the given seed cluster
