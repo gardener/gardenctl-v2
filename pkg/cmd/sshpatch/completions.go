@@ -26,7 +26,7 @@ func GetBastionNameCompletions(f util.Factory, _ *cobra.Command, prefix string) 
 		return nil, fmt.Errorf("failed to get manager: %w", err)
 	}
 
-	userBastionLister, err := newUserBastionListPatcher(manager)
+	userBastionLister, err := newBastionListPatcher(manager)
 	if err != nil {
 		return nil, fmt.Errorf("could not create bastion lister: %w", err)
 	}

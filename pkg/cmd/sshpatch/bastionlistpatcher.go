@@ -18,7 +18,7 @@ import (
 )
 
 type bastionLister interface {
-	// List lists all bastions for the current target
+	// List lists all bastions for the current user and current target
 	List(ctx context.Context) ([]operationsv1alpha1.Bastion, error)
 }
 
@@ -32,16 +32,16 @@ type bastionListPatcher interface {
 	bastionLister
 }
 
-type userBastionListPatcherImpl struct {
+type bastionListPatcherImpl struct {
 	target       target.Target
 	gardenClient clientgarden.Client
 }
 
-var _ bastionListPatcher = &userBastionListPatcherImpl{}
+var _ bastionListPatcher = &bastionListPatcherImpl{}
 
-// newUserBastionListPatcher creates a new bastionListPatcher which only lists bastions
+// newBastionListPatcher creates a new bastionListPatcher which only lists bastions
 // of the current user.
-func newUserBastionListPatcher(manager target.Manager) (bastionListPatcher, error) {
+func newBastionListPatcher(manager target.Manager) (bastionListPatcher, error) {
 	currentTarget, err := manager.CurrentTarget()
 	if err != nil {
 		return nil, err
@@ -54,13 +54,13 @@ func newUserBastionListPatcher(manager target.Manager) (bastionListPatcher, erro
 		return nil, err
 	}
 
-	return &userBastionListPatcherImpl{
+	return &bastionListPatcherImpl{
 		currentTarget,
 		gardenClient,
 	}, nil
 }
 
-func (u *userBastionListPatcherImpl) List(ctx context.Context) ([]operationsv1alpha1.Bastion, error) {
+func (u *bastionListPatcherImpl) List(ctx context.Context) ([]operationsv1alpha1.Bastion, error) {
 	user, err := u.gardenClient.CurrentUser(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("could not get current user: %w", err)
@@ -96,6 +96,6 @@ func (u *userBastionListPatcherImpl) List(ctx context.Context) ([]operationsv1al
 	return bastionsOfUser, nil
 }
 
-func (u *userBastionListPatcherImpl) Patch(ctx context.Context, newBastion, oldBastion *operationsv1alpha1.Bastion) error {
+func (u *bastionListPatcherImpl) Patch(ctx context.Context, newBastion, oldBastion *operationsv1alpha1.Bastion) error {
 	return u.gardenClient.PatchBastion(ctx, newBastion, oldBastion)
 }
