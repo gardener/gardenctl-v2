@@ -44,8 +44,8 @@ func (a *arguments) String() string {
 	return sb.String()
 }
 
-func sshCommandArguments(bastionAddress string, sshPrivateKeyFile PrivateKeyFile, nodeHostname string, nodePrivateKeyFiles []PrivateKeyFile) arguments {
-	proxyCmdArgs := sshProxyCmdArguments(bastionAddress, sshPrivateKeyFile)
+func sshCommandArguments(bastionHost string, bastionPort string, sshPrivateKeyFile PrivateKeyFile, nodeHostname string, nodePrivateKeyFiles []PrivateKeyFile) arguments {
+	proxyCmdArgs := sshProxyCmdArguments(bastionHost, bastionPort, sshPrivateKeyFile)
 
 	args := []argument{
 		{value: "-oStrictHostKeyChecking=no", shellEscapeDisabled: true},
@@ -63,7 +63,7 @@ func sshCommandArguments(bastionAddress string, sshPrivateKeyFile PrivateKeyFile
 	return arguments{list: args}
 }
 
-func sshProxyCmdArguments(bastionAddress string, sshPrivateKeyFile PrivateKeyFile) arguments {
+func sshProxyCmdArguments(bastionHost string, bastionPort string, sshPrivateKeyFile PrivateKeyFile) arguments {
 	args := []argument{
 		{value: "ssh", shellEscapeDisabled: true},
 		{value: "-W%h:%p", shellEscapeDisabled: true},
@@ -75,7 +75,11 @@ func sshProxyCmdArguments(bastionAddress string, sshPrivateKeyFile PrivateKeyFil
 		args = append(args, argument{value: fmt.Sprintf("-i%s", sshPrivateKeyFile)})
 	}
 
-	args = append(args, argument{value: fmt.Sprintf("%s@%s", SSHBastionUsername, bastionAddress)})
+	args = append(args, argument{value: fmt.Sprintf("%s@%s", SSHBastionUsername, bastionHost)})
+
+	if bastionPort != "" {
+		args = append(args, argument{value: fmt.Sprintf("-p%s", bastionPort)})
+	}
 
 	return arguments{list: args}
 }

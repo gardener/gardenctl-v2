@@ -126,7 +126,7 @@ var _ = Describe("SSH Command", func() {
 		klog.LogToStderr(false) // must set to false, otherwise klog will log to os.stderr instead of to our buffer
 
 		// all fake bastions are always immediately available
-		ssh.SetBastionAvailabilityChecker(func(hostname string, privateKey []byte) error {
+		ssh.SetBastionAvailabilityChecker(func(hostname string, port string, privateKey []byte) error {
 			return nil
 		})
 
@@ -340,7 +340,7 @@ var _ = Describe("SSH Command", func() {
 
 			// do not actually execute any commands
 			executedCommands := 0
-			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, o *ssh.SSHOptions) error {
+			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
 				executedCommands++
 
 				Expect(command).To(Equal("ssh"))
@@ -349,8 +349,8 @@ var _ = Describe("SSH Command", func() {
 					"-oIdentitiesOnly=yes",
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '-i%s' '%s@%s'",
-						o.SSHPrivateKeyFile,
+						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '-i%s' '%s@%s' '-p22'",
+						options.SSHPrivateKeyFile,
 						ssh.SSHBastionUsername,
 						bastionIP,
 					),
@@ -394,7 +394,7 @@ var _ = Describe("SSH Command", func() {
 
 			// do not actually execute any commands
 			executedCommands := 0
-			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, o *ssh.SSHOptions) error {
+			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
 				executedCommands++
 
 				Expect(command).To(Equal("ssh"))
@@ -403,8 +403,8 @@ var _ = Describe("SSH Command", func() {
 					"-oIdentitiesOnly=yes",
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '-i%s' '%s@%s'",
-						o.SSHPrivateKeyFile,
+						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '-i%s' '%s@%s' '-p22'",
+						options.SSHPrivateKeyFile,
 						ssh.SSHBastionUsername,
 						bastionIP,
 					),
@@ -522,7 +522,7 @@ var _ = Describe("SSH Command", func() {
 
 			cmd := ssh.NewCmdSSH(factory, options)
 
-			ssh.SetBastionAvailabilityChecker(func(hostname string, privateKey []byte) error {
+			ssh.SetBastionAvailabilityChecker(func(hostname string, port string, privateKey []byte) error {
 				err := errors.New("this function should not be executed as of SkipAvailabilityCheck = true")
 				Fail(err.Error())
 				return err
@@ -547,7 +547,7 @@ var _ = Describe("SSH Command", func() {
 			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, signalChan <-chan struct{}) {
 				Fail("this function should not be executed as of NoKeepalive = true")
 			})
-			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, o *ssh.SSHOptions) error {
+			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
 				err := errors.New("this function should not be executed as of NoKeepalive = true")
 				Fail(err.Error())
 				return err
@@ -574,7 +574,7 @@ var _ = Describe("SSH Command", func() {
 			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, signalChan <-chan struct{}) {
 				Fail("this function should not be executed as of NoKeepalive = true")
 			})
-			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, o *ssh.SSHOptions) error {
+			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
 				err := errors.New("this function should not be executed as of NoKeepalive = true")
 				Fail(err.Error())
 				return err

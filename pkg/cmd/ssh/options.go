@@ -80,7 +80,7 @@ var (
 	// bastionAvailabilityChecker returns nil if the given hostname allows incoming
 	// connections on the SSHPort and has a public key configured that matches the
 	// given private key.
-	bastionAvailabilityChecker = func(hostname string, privateKey []byte) error {
+	bastionAvailabilityChecker = func(hostname string, port string, privateKey []byte) error {
 		authMethods := []ssh.AuthMethod{}
 
 		if len(privateKey) > 0 {
@@ -107,7 +107,7 @@ var (
 			return errors.New("neither private key nor the environment variable SSH_AUTH_SOCK are defined, cannot connect to bastion")
 		}
 
-		client, err := ssh.Dial("tcp", net.JoinHostPort(hostname, strconv.Itoa(SSHPort)), &ssh.ClientConfig{
+		client, err := ssh.Dial("tcp", net.JoinHostPort(hostname, port), &ssh.ClientConfig{
 			User:            SSHBastionUsername,
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 			Auth:            authMethods,
@@ -142,11 +142,11 @@ var (
 	// execCommand executes the given command, using the in/out streams
 	// from the SSHOptions. The function returns an error if the command
 	// fails.
-	execCommand = func(ctx context.Context, command string, args []string, o *SSHOptions) error {
+	execCommand = func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
 		cmd := exec.CommandContext(ctx, command, args...)
-		cmd.Stdout = o.IOStreams.Out
-		cmd.Stdin = o.IOStreams.In
-		cmd.Stderr = o.IOStreams.ErrOut
+		cmd.Stdout = ioStreams.Out
+		cmd.Stdin = ioStreams.In
+		cmd.Stderr = ioStreams.ErrOut
 
 		return cmd.Run()
 	}
@@ -178,6 +178,14 @@ type SSHOptions struct {
 	// BastionName is the name of the bastion. If not provided, a unique name will be
 	// automatically generated.
 	BastionName string
+
+	// BastionHost overrides the hostname or IP address of the Bastion used for the SSH command.
+	// If not provided, the address will be determined from .status.ingress.ip or
+	// status.ingress.hostname of the Bastion.
+	BastionHost string
+
+	// BastionPort is the SSH port for the bastion host
+	BastionPort string
 
 	// NodeName is the name of the Shoot cluster node that the user wants to
 	// connect to. If this is left empty, gardenctl will only establish the
@@ -227,6 +235,7 @@ func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 		KeepBastion:           false,
 		SkipAvailabilityCheck: false,
 		NoKeepalive:           false,
+		BastionPort:           strconv.Itoa(SSHPort),
 	}
 }
 
@@ -239,6 +248,8 @@ func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 	flagSet.BoolVar(&o.SkipAvailabilityCheck, "skip-availability-check", o.SkipAvailabilityCheck, "Skip checking for SSH bastion host availability.")
 	flagSet.BoolVar(&o.NoKeepalive, "no-keepalive", o.NoKeepalive, "Exit after the bastion host became available without keeping the bastion alive or establishing an SSH connection. Note that this flag requires the flags --interactive=false and --keep-bastion to be set")
 	flagSet.StringVar(&o.BastionName, "bastion-name", o.BastionName, "Name of the bastion. If a bastion with this name doesn't exist, it will be created. If it does exist, the provided public SSH key must match the one used during the bastion's creation.")
+	flagSet.StringVar(&o.BastionHost, "bastion-host", o.BastionHost, "Override the hostname or IP address of the bastion used for the SSH client command. If not provided, the address will be automatically determined.")
+	flagSet.StringVar(&o.BastionPort, "bastion-port", o.BastionPort, "SSH port of the bastion used for the SSH client command. Defaults to port 22")
 	o.Options.AddFlags(flagSet)
 }
 
@@ -606,6 +617,8 @@ func (o *SSHOptions) Run(f util.Factory) error {
 
 	logger.Info("Bastion host became available.", "address", toAddress(bastion.Status.Ingress).String())
 
+	bastionPreferredAddress := preferredBastionAddress(o.BastionHost, bastion)
+
 	if !o.Interactive {
 		var nodes []corev1.Node
 		if nodeHostname == "" {
@@ -615,7 +628,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 			}
 		}
 
-		connectInformation, err := NewConnectInformation(bastion, nodeHostname, o.SSHPublicKeyFile, o.SSHPrivateKeyFile, nodePrivateKeyFiles, nodes)
+		connectInformation, err := NewConnectInformation(bastion, bastionPreferredAddress, o.BastionPort, nodeHostname, o.SSHPublicKeyFile, o.SSHPrivateKeyFile, nodePrivateKeyFiles, nodes)
 		if err != nil {
 			return err
 		}
@@ -633,7 +646,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return nil
 	}
 
-	return remoteShell(ctx, o, bastion, nodeHostname, nodePrivateKeyFiles)
+	return remoteShell(ctx, o.IOStreams, bastionPreferredAddress, o.BastionPort, o.SSHPrivateKeyFile, nodeHostname, nodePrivateKeyFiles)
 }
 
 func createOrPatchBastion(ctx context.Context, gardenClient client.Client, key client.ObjectKey, shoot *gardencorev1beta1.Shoot, sshPublicKey []byte, policies []operationsv1alpha1.BastionIngressPolicy) (*operationsv1alpha1.Bastion, error) {
@@ -801,7 +814,18 @@ func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
 	return nodeNames, nil
 }
 
-func preferredBastionAddress(bastion *operationsv1alpha1.Bastion) string {
+// preferredBastionAddress returns the preferred bastion address.
+//
+// Selection Priority:
+// 1. bastionHostOverride (if non-empty)
+// 2. bastion IP (if available)
+// 3. bastion hostname (if available)
+// 4. empty string (if none of the above options are available).
+func preferredBastionAddress(bastionHostOverride string, bastion *operationsv1alpha1.Bastion) string {
+	if bastionHostOverride != "" {
+		return bastionHostOverride
+	}
+
 	if ingress := bastion.Status.Ingress; ingress != nil {
 		if ingress.IP != "" {
 			return ingress.IP
@@ -850,7 +874,9 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 			return true, nil
 		}
 
-		lastCheckErr = bastionAvailabilityChecker(preferredBastionAddress(bastion), privateKeyBytes)
+		bastionPreferredAddress := preferredBastionAddress(o.BastionHost, bastion)
+
+		lastCheckErr = bastionAvailabilityChecker(bastionPreferredAddress, o.BastionPort, privateKeyBytes)
 		if lastCheckErr != nil {
 			logger.Error(lastCheckErr, "Still waiting for bastion to accept SSH connection")
 			return false, nil
@@ -875,14 +901,13 @@ func getShootNode(ctx context.Context, o *SSHOptions, shootClient client.Client)
 	return node, nil
 }
 
-func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1.Bastion, nodeHostname string, nodePrivateKeyFiles []PrivateKeyFile) error {
-	bastionAddress := preferredBastionAddress(bastion)
-	commandArgs := sshCommandArguments(bastionAddress, o.SSHPrivateKeyFile, nodeHostname, nodePrivateKeyFiles)
+func remoteShell(ctx context.Context, ioStreams util.IOStreams, bastionHost string, bastionPort string, sshPrivateKeyFile PrivateKeyFile, nodeHostname string, nodePrivateKeyFiles []PrivateKeyFile) error {
+	commandArgs := sshCommandArguments(bastionHost, bastionPort, sshPrivateKeyFile, nodeHostname, nodePrivateKeyFiles)
 
-	fmt.Fprintln(o.IOStreams.Out, "You can open additional SSH sessions using the command below:")
-	fmt.Fprintln(o.IOStreams.Out, "")
-	fmt.Fprintf(o.IOStreams.Out, "ssh %s\n", commandArgs.String())
-	fmt.Fprintln(o.IOStreams.Out, "")
+	fmt.Fprintln(ioStreams.Out, "You can open additional SSH sessions using the command below:")
+	fmt.Fprintln(ioStreams.Out, "")
+	fmt.Fprintf(ioStreams.Out, "ssh %s\n", commandArgs.String())
+	fmt.Fprintln(ioStreams.Out, "")
 
 	var args []string
 
@@ -890,7 +915,7 @@ func remoteShell(ctx context.Context, o *SSHOptions, bastion *operationsv1alpha1
 		args = append(args, arg.value)
 	}
 
-	return execCommand(ctx, "ssh", args, o)
+	return execCommand(ctx, "ssh", args, ioStreams)
 }
 
 func getKeepAliveInterval() time.Duration {
