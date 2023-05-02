@@ -638,114 +638,168 @@ var _ = Describe("SSH Command", func() {
 
 var _ = Describe("SSH Options", func() {
 	var (
-		streams          util.IOStreams
-		publicSSHKeyFile ssh.PublicKeyFile
-		o                *ssh.SSHOptions
+		streams util.IOStreams
+		o       *ssh.SSHOptions
 	)
 
 	BeforeEach(func() {
 		streams, _, _, _ = util.NewTestIOStreams()
 
-		tmpFile, err := os.CreateTemp("", "")
-		Expect(err).NotTo(HaveOccurred())
-		defer tmpFile.Close()
-
-		// write dummy SSH public key
-		_, err = io.WriteString(tmpFile, "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDouNkxsNuApuKVIfgL6Yz3Ep+DqX84Yde9DArwLBSWgLnl/pH9AbbcDcAmdB2CPVXAATo4qxK7xprvyyZp52SQRCcAZpAy4D6gAWwAG3OfzrRbxRiB5pQDaaWATSzNbLtoy0ecVwFeTJe2w71q+wxbI7tfxbvo9XbXIN4I0cQy2KLICzkYkQmygGnHztv1Mvi338+sgcG7Gwq2tdSyggDaAggwDIuT39S4/L7QpR27tWH79J4Ls8tTHud2eRbkOcF98vXlQAIzb6w8iHBXylOjMM/oODwoA7V4mtRL9o13AoocvZSsD1UvfOjGxDHuLrCfFXN+/rEw0hEiYo0cnj7F")
-		Expect(err).NotTo(HaveOccurred())
-
-		publicSSHKeyFile = ssh.PublicKeyFile(tmpFile.Name())
-
 		o = ssh.NewSSHOptions(streams)
-		o.CIDRs = []string{"8.8.8.8/32"}
-		o.SSHPublicKeyFile = publicSSHKeyFile
 	})
 
-	AfterEach(func() {
-		Expect(os.Remove(publicSSHKeyFile.String())).To(Succeed())
-	})
-
-	It("should validate", func() {
-		Expect(o.Validate()).To(Succeed())
-	})
-
-	It("should require a non-zero wait time", func() {
-		o.WaitTimeout = 0
-
-		Expect(o.Validate()).NotTo(Succeed())
-	})
-
-	Context("no-keepalive", func() {
+	Describe("Complete", func() {
+		var factory *internalfake.Factory
 		BeforeEach(func() {
-			o.NoKeepalive = true
+			factory = internalfake.NewFakeFactory(nil, nil, nil, nil)
+		})
 
-			o.KeepBastion = true
-			o.Interactive = false
+		AfterEach(func() {
+			Expect(os.Remove(o.SSHPublicKeyFile.String())).To(Succeed())
+			Expect(os.Remove(o.SSHPrivateKeyFile.String())).To(Succeed())
+		})
+
+		It("should complete node name", func() {
+			Expect(o.Complete(factory, nil, []string{"my-node"})).To(Succeed())
+
+			Expect(o.NodeName).To(Equal("my-node"))
+		})
+
+		It("should complete public and private key", func() {
+			Expect(o.Complete(factory, nil, nil)).To(Succeed())
+
+			Expect(o.SSHPublicKeyFile).NotTo(BeEmpty())
+			Expect(o.SSHPrivateKeyFile).NotTo(BeEmpty())
+			Expect(o.GeneratedSSHKeys).To(BeTrue())
+		})
+
+		It("should complete bastion name", func() {
+			Expect(o.Complete(factory, nil, nil)).To(Succeed())
+
+			Expect(o.BastionName).To(Not(BeEmpty()))
+		})
+
+		It("should not touch bastion name if set", func() {
+			o.BastionName = "cli-xxxxxx"
+
+			Expect(o.Complete(factory, nil, nil)).To(Succeed())
+
+			Expect(o.BastionName).To(Equal("cli-xxxxxx"))
+		})
+
+		It("should switch to non-interactive mode if no node name given", func() {
+			o.Interactive = true
+
+			Expect(o.Complete(factory, nil, []string{""})).To(Succeed())
+
+			Expect(o.Interactive).To(BeFalse())
+		})
+	})
+
+	Describe("Validate", func() {
+		var publicSSHKeyFile ssh.PublicKeyFile
+
+		BeforeEach(func() {
+			tmpFile, err := os.CreateTemp("", "")
+			Expect(err).NotTo(HaveOccurred())
+			defer tmpFile.Close()
+
+			// write dummy SSH public key
+			_, err = io.WriteString(tmpFile, "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDouNkxsNuApuKVIfgL6Yz3Ep+DqX84Yde9DArwLBSWgLnl/pH9AbbcDcAmdB2CPVXAATo4qxK7xprvyyZp52SQRCcAZpAy4D6gAWwAG3OfzrRbxRiB5pQDaaWATSzNbLtoy0ecVwFeTJe2w71q+wxbI7tfxbvo9XbXIN4I0cQy2KLICzkYkQmygGnHztv1Mvi338+sgcG7Gwq2tdSyggDaAggwDIuT39S4/L7QpR27tWH79J4Ls8tTHud2eRbkOcF98vXlQAIzb6w8iHBXylOjMM/oODwoA7V4mtRL9o13AoocvZSsD1UvfOjGxDHuLrCfFXN+/rEw0hEiYo0cnj7F")
+			Expect(err).NotTo(HaveOccurred())
+
+			publicSSHKeyFile = ssh.PublicKeyFile(tmpFile.Name())
+
+			o.CIDRs = []string{"8.8.8.8/32"}
+			o.SSHPublicKeyFile = publicSSHKeyFile
+		})
+
+		AfterEach(func() {
+			Expect(os.Remove(publicSSHKeyFile.String())).To(Succeed())
 		})
 
 		It("should validate", func() {
-			Expect(o.Validate()).Should(Succeed())
+			Expect(o.Validate()).To(Succeed())
 		})
 
-		It("should require non-interactive mode", func() {
-			o.Interactive = true
+		It("should require a non-zero wait time", func() {
+			o.WaitTimeout = 0
 
 			Expect(o.Validate()).NotTo(Succeed())
 		})
 
-		It("should require keep bastion", func() {
-			o.KeepBastion = false
+		Context("no-keepalive", func() {
+			BeforeEach(func() {
+				o.NoKeepalive = true
+
+				o.KeepBastion = true
+				o.Interactive = false
+			})
+
+			It("should validate", func() {
+				Expect(o.Validate()).Should(Succeed())
+			})
+
+			It("should require non-interactive mode", func() {
+				o.Interactive = true
+
+				Expect(o.Validate()).NotTo(Succeed())
+			})
+
+			It("should require keep bastion", func() {
+				o.KeepBastion = false
+
+				Expect(o.Validate()).NotTo(Succeed())
+			})
+		})
+
+		Describe("output flag not empty", func() {
+			BeforeEach(func() {
+				o.Output = "yaml" // or json - does not matter
+
+				o.Interactive = false
+			})
+
+			It("should validate", func() {
+				Expect(o.Validate()).Should(Succeed())
+			})
+
+			It("should require non-interactive mode", func() {
+				o.Interactive = true
+
+				Expect(o.Validate()).NotTo(Succeed())
+			})
+		})
+		It("should require a public SSH key file", func() {
+			o := ssh.NewSSHOptions(streams)
+			o.CIDRs = []string{"8.8.8.8/32"}
 
 			Expect(o.Validate()).NotTo(Succeed())
 		})
-	})
 
-	Describe("output flag not empty", func() {
-		BeforeEach(func() {
-			o.Output = "yaml" // or json - does not matter
+		It("should require a valid public SSH key file", func() {
+			Expect(os.WriteFile(publicSSHKeyFile.String(), []byte("not a key"), 0o644)).To(Succeed())
 
-			o.Interactive = false
-		})
-
-		It("should validate", func() {
-			Expect(o.Validate()).Should(Succeed())
-		})
-
-		It("should require non-interactive mode", func() {
-			o.Interactive = true
+			o := ssh.NewSSHOptions(streams)
+			o.CIDRs = []string{"8.8.8.8/32"}
+			o.SSHPublicKeyFile = publicSSHKeyFile
 
 			Expect(o.Validate()).NotTo(Succeed())
 		})
-	})
-	It("should require a public SSH key file", func() {
-		o := ssh.NewSSHOptions(streams)
-		o.CIDRs = []string{"8.8.8.8/32"}
 
-		Expect(o.Validate()).NotTo(Succeed())
-	})
+		It("should require at least one CIDR", func() {
+			o := ssh.NewSSHOptions(streams)
+			o.SSHPublicKeyFile = publicSSHKeyFile
 
-	It("should require a valid public SSH key file", func() {
-		Expect(os.WriteFile(publicSSHKeyFile.String(), []byte("not a key"), 0o644)).To(Succeed())
+			Expect(o.Validate()).NotTo(Succeed())
+		})
 
-		o := ssh.NewSSHOptions(streams)
-		o.CIDRs = []string{"8.8.8.8/32"}
-		o.SSHPublicKeyFile = publicSSHKeyFile
+		It("should reject invalid CIDRs", func() {
+			o := ssh.NewSSHOptions(streams)
+			o.CIDRs = []string{"8.8.8.8"}
+			o.SSHPublicKeyFile = publicSSHKeyFile
 
-		Expect(o.Validate()).NotTo(Succeed())
-	})
-
-	It("should require at least one CIDR", func() {
-		o := ssh.NewSSHOptions(streams)
-		o.SSHPublicKeyFile = publicSSHKeyFile
-
-		Expect(o.Validate()).NotTo(Succeed())
-	})
-
-	It("should reject invalid CIDRs", func() {
-		o := ssh.NewSSHOptions(streams)
-		o.CIDRs = []string{"8.8.8.8"}
-		o.SSHPublicKeyFile = publicSSHKeyFile
-
-		Expect(o.Validate()).NotTo(Succeed())
+			Expect(o.Validate()).NotTo(Succeed())
+		})
 	})
 })

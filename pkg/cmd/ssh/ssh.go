@@ -38,6 +38,9 @@ gardenctl ssh
 
 # Create the bastion and output the connection information in JSON format
 gardenctl ssh --no-keepalive --keep-bastion --interactive=false --output json
+
+# Reuse a previously created bastion
+gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path/to/ssh/key.pub --private-key-file /path/to/ssh/key
 `,
 		Args: cobra.MaximumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
