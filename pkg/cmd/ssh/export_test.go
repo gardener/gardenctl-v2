@@ -48,3 +48,11 @@ func SetKeepAliveInterval(d time.Duration) {
 func SetWaitForSignal(f func(ctx context.Context, o *SSHOptions, signalChan <-chan struct{})) {
 	waitForSignal = f
 }
+
+type TestArguments struct {
+	arguments
+}
+
+func SSHCommandArguments(bastionHost string, bastionPort string, sshPrivateKeyFile PrivateKeyFile, bastionUserKnownHostsFiles []string, nodeHostname string, nodePrivateKeyFiles []PrivateKeyFile) TestArguments {
+	return TestArguments{sshCommandArguments(bastionHost, bastionPort, sshPrivateKeyFile, bastionUserKnownHostsFiles, nodeHostname, nodePrivateKeyFiles)}
+}
