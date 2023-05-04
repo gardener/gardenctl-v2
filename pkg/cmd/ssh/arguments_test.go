@@ -39,7 +39,14 @@ var _ = Describe("Arguments", func() {
 	Describe("sshCommandArguments", func() {
 		DescribeTable("should match the expected arguments as string",
 			func(tc testCase) {
-				args := ssh.SSHCommandArguments(tc.bastionHost, tc.bastionPort, tc.sshPrivateKeyFile, tc.bastionUserKnownHostsFiles, tc.nodeHostname, tc.nodePrivateKeyFiles)
+				args := ssh.SSHCommandArguments(
+					tc.bastionHost,
+					tc.bastionPort,
+					tc.sshPrivateKeyFile,
+					tc.bastionUserKnownHostsFiles,
+					tc.nodeHostname,
+					tc.nodePrivateKeyFiles,
+				)
 				Expect(args.String()).To(Equal(strings.Join(tc.expectedArgs, " ")))
 			},
 			Entry("basic case", func() testCase {

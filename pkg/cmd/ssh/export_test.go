@@ -53,6 +53,22 @@ type TestArguments struct {
 	arguments
 }
 
-func SSHCommandArguments(bastionHost string, bastionPort string, sshPrivateKeyFile PrivateKeyFile, bastionUserKnownHostsFiles []string, nodeHostname string, nodePrivateKeyFiles []PrivateKeyFile) TestArguments {
-	return TestArguments{sshCommandArguments(bastionHost, bastionPort, sshPrivateKeyFile, bastionUserKnownHostsFiles, nodeHostname, nodePrivateKeyFiles)}
+func SSHCommandArguments(
+	bastionHost string,
+	bastionPort string,
+	sshPrivateKeyFile PrivateKeyFile,
+	bastionUserKnownHostsFiles []string,
+	nodeHostname string,
+	nodePrivateKeyFiles []PrivateKeyFile,
+) TestArguments {
+	return TestArguments{
+		sshCommandArguments(
+			bastionHost,
+			bastionPort,
+			sshPrivateKeyFile,
+			bastionUserKnownHostsFiles,
+			nodeHostname,
+			nodePrivateKeyFiles,
+		),
+	}
 }

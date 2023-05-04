@@ -661,7 +661,16 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return nil
 	}
 
-	return remoteShell(ctx, o.IOStreams, bastionPreferredAddress, o.BastionPort, o.SSHPrivateKeyFile, o.BastionUserKnownHostsFiles, nodeHostname, nodePrivateKeyFiles)
+	return remoteShell(
+		ctx,
+		o.IOStreams,
+		bastionPreferredAddress,
+		o.BastionPort,
+		o.SSHPrivateKeyFile,
+		o.BastionUserKnownHostsFiles,
+		nodeHostname,
+		nodePrivateKeyFiles,
+	)
 }
 
 func createOrPatchBastion(ctx context.Context, gardenClient client.Client, key client.ObjectKey, shoot *gardencorev1beta1.Shoot, sshPublicKey []byte, policies []operationsv1alpha1.BastionIngressPolicy) (*operationsv1alpha1.Bastion, error) {
@@ -916,8 +925,24 @@ func getShootNode(ctx context.Context, o *SSHOptions, shootClient client.Client)
 	return node, nil
 }
 
-func remoteShell(ctx context.Context, ioStreams util.IOStreams, bastionHost string, bastionPort string, sshPrivateKeyFile PrivateKeyFile, bastionUserKnownHostsFiles []string, nodeHostname string, nodePrivateKeyFiles []PrivateKeyFile) error {
-	commandArgs := sshCommandArguments(bastionHost, bastionPort, sshPrivateKeyFile, bastionUserKnownHostsFiles, nodeHostname, nodePrivateKeyFiles)
+func remoteShell(
+	ctx context.Context,
+	ioStreams util.IOStreams,
+	bastionHost string,
+	bastionPort string,
+	sshPrivateKeyFile PrivateKeyFile,
+	bastionUserKnownHostsFiles []string,
+	nodeHostname string,
+	nodePrivateKeyFiles []PrivateKeyFile,
+) error {
+	commandArgs := sshCommandArguments(
+		bastionHost,
+		bastionPort,
+		sshPrivateKeyFile,
+		bastionUserKnownHostsFiles,
+		nodeHostname,
+		nodePrivateKeyFiles,
+	)
 
 	fmt.Fprintln(ioStreams.Out, "You can open additional SSH sessions using the command below:")
 	fmt.Fprintln(ioStreams.Out, "")

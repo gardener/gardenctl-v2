@@ -191,7 +191,14 @@ func (p *ConnectInformation) String() string {
 		fmt.Fprintln(&buf, "")
 	}
 
-	connectArgs := sshCommandArguments(p.Bastion.PreferredAddress, p.Bastion.Port, p.Bastion.SSHPrivateKeyFile, p.Bastion.UserKnownHostsFiles, nodeHostname, p.NodePrivateKeyFiles)
+	connectArgs := sshCommandArguments(
+		p.Bastion.PreferredAddress,
+		p.Bastion.Port,
+		p.Bastion.SSHPrivateKeyFile,
+		p.Bastion.UserKnownHostsFiles,
+		nodeHostname,
+		p.NodePrivateKeyFiles,
+	)
 
 	fmt.Fprintln(&buf, "Connect to shoot nodes by using the bastion as a proxy/jump host, for example:")
 	fmt.Fprintln(&buf, "")
