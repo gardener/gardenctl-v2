@@ -44,6 +44,8 @@ type Bastion struct {
 	Namespace string `json:"namespace"`
 	// PreferredAddress is the preferred IP address or hostname to use when connecting to the bastion host.
 	PreferredAddress string `json:"preferredAddress"`
+	// Port is the port to use when connecting to the bastion host.
+	Port string `json:"port"`
 	// Address holds information about the IP address and hostname of the bastion host.
 	Address
 	// SSHPublicKeyFile is the full path to the file containing the public SSH key.
@@ -70,7 +72,7 @@ type Address struct {
 
 var _ fmt.Stringer = &Address{}
 
-func NewConnectInformation(bastion *operationsv1alpha1.Bastion, nodeHostname string, sshPublicKeyFile PublicKeyFile, sshPrivateKeyFile PrivateKeyFile, nodePrivateKeyFiles []PrivateKeyFile, nodes []corev1.Node) (*ConnectInformation, error) {
+func NewConnectInformation(bastion *operationsv1alpha1.Bastion, bastionPreferredAddress string, bastionPort string, nodeHostname string, sshPublicKeyFile PublicKeyFile, sshPrivateKeyFile PrivateKeyFile, nodePrivateKeyFiles []PrivateKeyFile, nodes []corev1.Node) (*ConnectInformation, error) {
 	var nodeList []Node
 
 	for _, node := range nodes {
@@ -113,7 +115,8 @@ func NewConnectInformation(bastion *operationsv1alpha1.Bastion, nodeHostname str
 		Bastion: Bastion{
 			Name:             bastion.Name,
 			Namespace:        bastion.Namespace,
-			PreferredAddress: preferredBastionAddress(bastion),
+			PreferredAddress: bastionPreferredAddress,
+			Port:             bastionPort,
 			Address: Address{
 				IP:       bastion.Status.Ingress.IP,
 				Hostname: bastion.Status.Ingress.Hostname,
@@ -175,7 +178,7 @@ func (p *ConnectInformation) String() string {
 		fmt.Fprintln(&buf, "")
 	}
 
-	connectArgs := sshCommandArguments(p.Bastion.PreferredAddress, p.Bastion.SSHPrivateKeyFile, nodeHostname, p.NodePrivateKeyFiles)
+	connectArgs := sshCommandArguments(p.Bastion.PreferredAddress, p.Bastion.Port, p.Bastion.SSHPrivateKeyFile, nodeHostname, p.NodePrivateKeyFiles)
 
 	fmt.Fprintln(&buf, "Connect to shoot nodes by using the bastion as a proxy/jump host, for example:")
 	fmt.Fprintln(&buf, "")

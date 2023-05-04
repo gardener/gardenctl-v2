@@ -10,9 +10,11 @@ import (
 	"context"
 	"os"
 	"time"
+
+	"github.com/gardener/gardenctl-v2/internal/util"
 )
 
-func SetBastionAvailabilityChecker(f func(hostname string, privateKey []byte) error) {
+func SetBastionAvailabilityChecker(f func(hostname string, port string, privateKey []byte) error) {
 	bastionAvailabilityChecker = f
 }
 
@@ -28,7 +30,7 @@ func SetCreateSignalChannel(f func() chan os.Signal) {
 	createSignalChannel = f
 }
 
-func SetExecCommand(f func(ctx context.Context, command string, args []string, o *SSHOptions) error) {
+func SetExecCommand(f func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error) {
 	execCommand = f
 }
 

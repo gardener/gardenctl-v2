@@ -39,7 +39,9 @@ gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path
 ### Options
 
 ```
+      --bastion-host string       Override the hostname or IP address of the bastion used for the SSH client command. If not provided, the address will be automatically determined.
       --bastion-name string       Name of the bastion. If a bastion with this name doesn't exist, it will be created. If it does exist, the provided public SSH key must match the one used during the bastion's creation.
+      --bastion-port string       SSH port of the bastion used for the SSH client command. Defaults to port 22 (default "22")
       --cidr stringArray          CIDRs to allow access to the bastion host; if not given, your system's public IPs (v4 and v6) are auto-detected.
       --control-plane             target control plane of shoot, use together with shoot argument
       --garden string             target the given garden cluster
