@@ -187,6 +187,9 @@ type SSHOptions struct {
 	// BastionPort is the SSH port for the bastion host
 	BastionPort string
 
+	// BastionUserKnownHostsFiles is a list of custom known hosts files for the SSH connection to the bastion.
+	BastionUserKnownHostsFiles []string
+
 	// NodeName is the name of the Shoot cluster node that the user wants to
 	// connect to. If this is left empty, gardenctl will only establish the
 	// bastion host, but leave it up to the user to SSH themselves.
@@ -250,6 +253,8 @@ func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 	flagSet.StringVar(&o.BastionName, "bastion-name", o.BastionName, "Name of the bastion. If a bastion with this name doesn't exist, it will be created. If it does exist, the provided public SSH key must match the one used during the bastion's creation.")
 	flagSet.StringVar(&o.BastionHost, "bastion-host", o.BastionHost, "Override the hostname or IP address of the bastion used for the SSH client command. If not provided, the address will be automatically determined.")
 	flagSet.StringVar(&o.BastionPort, "bastion-port", o.BastionPort, "SSH port of the bastion used for the SSH client command. Defaults to port 22")
+	flagSet.StringSliceVar(&o.BastionUserKnownHostsFiles, "bastion-user-known-hosts-file", o.BastionUserKnownHostsFiles, "Path to a custom known hosts file for the SSH connection to the bastion. This file is used to verify the public keys of remote hosts when establishing a secure connection.")
+
 	o.Options.AddFlags(flagSet)
 }
 
@@ -628,7 +633,17 @@ func (o *SSHOptions) Run(f util.Factory) error {
 			}
 		}
 
-		connectInformation, err := NewConnectInformation(bastion, bastionPreferredAddress, o.BastionPort, nodeHostname, o.SSHPublicKeyFile, o.SSHPrivateKeyFile, nodePrivateKeyFiles, nodes)
+		connectInformation, err := NewConnectInformation(
+			bastion,
+			bastionPreferredAddress,
+			o.BastionPort,
+			o.BastionUserKnownHostsFiles,
+			nodeHostname,
+			o.SSHPublicKeyFile,
+			o.SSHPrivateKeyFile,
+			nodePrivateKeyFiles,
+			nodes,
+		)
 		if err != nil {
 			return err
 		}
@@ -646,7 +661,16 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return nil
 	}
 
-	return remoteShell(ctx, o.IOStreams, bastionPreferredAddress, o.BastionPort, o.SSHPrivateKeyFile, nodeHostname, nodePrivateKeyFiles)
+	return remoteShell(
+		ctx,
+		o.IOStreams,
+		bastionPreferredAddress,
+		o.BastionPort,
+		o.SSHPrivateKeyFile,
+		o.BastionUserKnownHostsFiles,
+		nodeHostname,
+		nodePrivateKeyFiles,
+	)
 }
 
 func createOrPatchBastion(ctx context.Context, gardenClient client.Client, key client.ObjectKey, shoot *gardencorev1beta1.Shoot, sshPublicKey []byte, policies []operationsv1alpha1.BastionIngressPolicy) (*operationsv1alpha1.Bastion, error) {
@@ -901,8 +925,24 @@ func getShootNode(ctx context.Context, o *SSHOptions, shootClient client.Client)
 	return node, nil
 }
 
-func remoteShell(ctx context.Context, ioStreams util.IOStreams, bastionHost string, bastionPort string, sshPrivateKeyFile PrivateKeyFile, nodeHostname string, nodePrivateKeyFiles []PrivateKeyFile) error {
-	commandArgs := sshCommandArguments(bastionHost, bastionPort, sshPrivateKeyFile, nodeHostname, nodePrivateKeyFiles)
+func remoteShell(
+	ctx context.Context,
+	ioStreams util.IOStreams,
+	bastionHost string,
+	bastionPort string,
+	sshPrivateKeyFile PrivateKeyFile,
+	bastionUserKnownHostsFiles []string,
+	nodeHostname string,
+	nodePrivateKeyFiles []PrivateKeyFile,
+) error {
+	commandArgs := sshCommandArguments(
+		bastionHost,
+		bastionPort,
+		sshPrivateKeyFile,
+		bastionUserKnownHostsFiles,
+		nodeHostname,
+		nodePrivateKeyFiles,
+	)
 
 	fmt.Fprintln(ioStreams.Out, "You can open additional SSH sessions using the command below:")
 	fmt.Fprintln(ioStreams.Out, "")

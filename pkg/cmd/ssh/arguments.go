@@ -44,8 +44,37 @@ func (a *arguments) String() string {
 	return sb.String()
 }
 
-func sshCommandArguments(bastionHost string, bastionPort string, sshPrivateKeyFile PrivateKeyFile, nodeHostname string, nodePrivateKeyFiles []PrivateKeyFile) arguments {
-	proxyCmdArgs := sshProxyCmdArguments(bastionHost, bastionPort, sshPrivateKeyFile)
+func userKnownHostsFilesArgument(userKnownHostsFiles []string) *argument {
+	if len(userKnownHostsFiles) == 0 {
+		return nil
+	}
+
+	var escapedHostsFiles []string
+	for _, path := range userKnownHostsFiles {
+		escapedHostsFiles = append(escapedHostsFiles, util.ShellEscape(path))
+	}
+
+	userKnownHostsFilesValue := strings.Join(escapedHostsFiles, " ")
+
+	return &argument{value: fmt.Sprintf("-oUserKnownHostsFile=%s", userKnownHostsFilesValue)}
+}
+
+func sshCommandArguments(
+	bastionHost string,
+	bastionPort string,
+	sshPrivateKeyFile PrivateKeyFile,
+	bastionUserKnownHostsFiles []string,
+	nodeHostname string,
+	nodePrivateKeyFiles []PrivateKeyFile,
+) arguments {
+	bastionUserKnownHostsFilesArg := userKnownHostsFilesArgument(bastionUserKnownHostsFiles)
+
+	proxyCmdArgs := sshProxyCmdArguments(
+		bastionHost,
+		bastionPort,
+		sshPrivateKeyFile,
+		bastionUserKnownHostsFilesArg,
+	)
 
 	args := []argument{
 		{value: "-oStrictHostKeyChecking=no", shellEscapeDisabled: true},
@@ -63,7 +92,12 @@ func sshCommandArguments(bastionHost string, bastionPort string, sshPrivateKeyFi
 	return arguments{list: args}
 }
 
-func sshProxyCmdArguments(bastionHost string, bastionPort string, sshPrivateKeyFile PrivateKeyFile) arguments {
+func sshProxyCmdArguments(
+	bastionHost string,
+	bastionPort string,
+	sshPrivateKeyFile PrivateKeyFile,
+	userKnownHostsFileArg *argument,
+) arguments {
 	args := []argument{
 		{value: "ssh", shellEscapeDisabled: true},
 		{value: "-W%h:%p", shellEscapeDisabled: true},
@@ -73,6 +107,10 @@ func sshProxyCmdArguments(bastionHost string, bastionPort string, sshPrivateKeyF
 	if sshPrivateKeyFile != "" {
 		args = append(args, argument{value: "-oIdentitiesOnly=yes", shellEscapeDisabled: true})
 		args = append(args, argument{value: fmt.Sprintf("-i%s", sshPrivateKeyFile)})
+	}
+
+	if userKnownHostsFileArg != nil {
+		args = append(args, *userKnownHostsFileArg)
 	}
 
 	args = append(args, argument{value: fmt.Sprintf("%s@%s", SSHBastionUsername, bastionHost)})
