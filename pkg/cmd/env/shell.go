@@ -20,7 +20,10 @@ const (
 	powershell Shell = "powershell"
 )
 
-var validShells = []Shell{bash, zsh, fish, powershell}
+// ValidShells returns a list of supported shell types.
+func ValidShells() []Shell {
+	return []Shell{bash, zsh, fish, powershell}
+}
 
 // EvalCommand returns the script that evaluates the given command.
 func (s Shell) EvalCommand(cmd string) string {
