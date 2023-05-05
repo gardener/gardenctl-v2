@@ -7,14 +7,19 @@ package target_test
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
+	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
+	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	"github.com/gardener/gardenctl-v2/pkg/target"
+	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
 
 var _ = Describe("Target View Command", func() {
@@ -27,19 +32,41 @@ var _ = Describe("Target View Command", func() {
 	var (
 		streams        util.IOStreams
 		out            *util.SafeBytesBuffer
-		factory        *internalfake.Factory
-		targetProvider *internalfake.TargetProvider
+		ctrl           *gomock.Controller
+		factory        *utilmocks.MockFactory
+		manager        *targetmocks.MockManager
+		targetProvider target.TargetProvider
 		currentTarget  target.Target
+		sessionDir     string
 	)
 
 	BeforeEach(func() {
+		ctrl = gomock.NewController(GinkgoT())
+		factory = utilmocks.NewMockFactory(ctrl)
+		manager = targetmocks.NewMockManager(ctrl)
+
+		factory.EXPECT().Manager().Return(manager, nil)
+
 		streams, _, out, _ = util.NewTestIOStreams()
+
+		targetFlags := target.NewTargetFlags("", "", "", "", false)
+		factory.EXPECT().TargetFlags().Return(targetFlags).AnyTimes()
+
+		sessionID := uuid.New().String()
+		sessionDir = filepath.Join(os.TempDir(), "garden", sessionID)
+		Expect(os.MkdirAll(sessionDir, os.ModePerm))
 		currentTarget = target.NewTarget(gardenName, projectName, "", shootName)
+		targetProvider = target.NewTargetProvider(filepath.Join(sessionDir, "target.yaml"), targetFlags)
+		Expect(targetProvider.Write(currentTarget)).To(Succeed())
+
+		manager.EXPECT().CurrentTarget().DoAndReturn(func() (target.Target, error) {
+			return targetProvider.Read()
+		})
 	})
 
-	JustBeforeEach(func() {
-		targetProvider = internalfake.NewFakeTargetProvider(currentTarget)
-		factory = internalfake.NewFakeFactory(nil, nil, nil, targetProvider)
+	AfterEach(func() {
+		Expect(os.RemoveAll(sessionDir)).To(Succeed())
+		ctrl.Finish()
 	})
 
 	It("should print current target information", func() {
@@ -47,6 +74,18 @@ var _ = Describe("Target View Command", func() {
 		cmd := cmdtarget.NewCmdView(factory, streams)
 		Expect(cmd.RunE(cmd, nil)).To(Succeed())
 		Expect(out.String()).To(Equal(fmt.Sprintf("garden:\"%s\", project:\"%s\", shoot:\"%s\"", gardenName, projectName, shootName)))
+	})
+
+	Context("when target flags given", func() {
+		It("should print current target information", func() {
+			cmd := cmdtarget.NewCmdView(factory, streams)
+			cmd.SetArgs([]string{"--shoot", "myshoot2"})
+			Expect(cmd.Execute()).To(Succeed())
+			Expect(cmd.Flag("shoot").Value.String()).To(Equal("myshoot2"))
+
+			// here we need the real manager
+			Expect(out.String()).To(Equal(fmt.Sprintf("garden:\"%s\", project:\"%s\", shoot:\"%s\"", gardenName, projectName, "myshoot2")))
+		})
 	})
 })
 
