@@ -25,7 +25,7 @@ var _ = Describe("Env Commands - Shell", func() {
 		})
 
 		It("should fail for a currently unsupported shell", func() {
-			Expect(env.Shell("cmd").Validate()).To(MatchError(fmt.Sprintf("invalid shell given, must be one of %v", env.ValidShells)))
+			Expect(env.Shell("cmd").Validate()).To(MatchError(fmt.Sprintf("invalid shell given, must be one of %v", env.ValidShells())))
 		})
 	})
 

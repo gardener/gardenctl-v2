@@ -58,11 +58,11 @@ func (s Shell) Prompt(goos string) string {
 
 // Validate checks if the shell is valid.
 func (s Shell) Validate() error {
-	for _, shell := range validShells {
+	for _, shell := range ValidShells() {
 		if s == shell {
 			return nil
 		}
 	}
 
-	return fmt.Errorf("invalid shell given, must be one of %v", validShells)
+	return fmt.Errorf("invalid shell given, must be one of %v", ValidShells())
 }
