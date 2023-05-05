@@ -25,10 +25,6 @@ var (
 	ParseFile           = parseFile
 )
 
-type RCOptions struct {
-	rcOptions
-}
-
 type TestOptions struct {
 	options
 	out *util.SafeBytesBuffer
