@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/gardener/gardenctl-v2/pkg/cmd/env"
+	"github.com/gardener/gardenctl-v2/pkg/env"
 )
 
 var _ = Describe("Env Commands - Shell", func() {

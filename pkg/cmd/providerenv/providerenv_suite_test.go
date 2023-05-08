@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package env_test
+package providerenv_test
 
 import (
 	"os"
@@ -18,7 +18,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/gardener/gardenctl-v2/pkg/cmd/env/testdata"
+	"github.com/gardener/gardenctl-v2/pkg/env/testdata"
 )
 
 var (
@@ -33,7 +33,7 @@ func init() {
 
 func TestCloudEnvCommand(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CloudEnv Command Test Suite")
+	RunSpecs(t, "ProviderEnv Command Test Suite")
 }
 
 var _ = BeforeSuite(func() {

@@ -15,8 +15,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/gardener/gardenctl-v2/pkg/cmd/env"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/env/testdata"
+	"github.com/gardener/gardenctl-v2/pkg/env"
+	"github.com/gardener/gardenctl-v2/pkg/env/testdata"
 )
 
 var _ = Describe("Env Commands - Template", func() {
@@ -50,9 +50,8 @@ var _ = Describe("Env Commands - Template", func() {
 
 	JustBeforeEach(func() {
 		t = env.NewTemplate(filenames...)
-		cli = env.GetProviderCLI(providerType)
 		metadata["commandPath"] = commandPath
-		metadata["cli"] = env.GetProviderCLI(providerType)
+		metadata["cli"] = cli
 		metadata["shell"] = shell
 		metadata["prompt"] = prompt
 		metadata["targetFlags"] = targetFlags
@@ -105,6 +104,7 @@ var _ = Describe("Env Commands - Template", func() {
 
 		BeforeEach(func() {
 			providerType = "kubernetes"
+			cli = "kubectl"
 			commandPath = "gardenctl kubectl-env"
 			filenames = append(filenames, "helpers", providerType)
 		})
@@ -156,6 +156,7 @@ unset CLOUDSDK_CONFIG;
 
 		BeforeEach(func() {
 			providerType = "gcp"
+			cli = "gcloud"
 			commandPath = "gardenctl provider-env"
 			filenames = append(filenames, "helpers", providerType)
 		})
@@ -212,6 +213,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 
 		BeforeEach(func() {
 			providerType = "azure"
+			cli = "az"
 			shell = "powershell"
 			commandPath = "gardenctl provider-env"
 			filenames = append(filenames, "helpers", providerType)
@@ -279,6 +281,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 
 			BeforeEach(func() {
 				providerType = "test"
+				cli = "test"
 				token = "token"
 				filename = filepath.Join("templates", providerType+".tmpl")
 				writeTempFile(filename, readTestFile("templates/"+providerType+".tmpl"))

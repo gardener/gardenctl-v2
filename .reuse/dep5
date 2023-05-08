@@ -13,10 +13,10 @@ Files:
   logo/*
   *.tmpl
   */mocks/*.go
-  pkg/cmd/env/testdata/*/*.fish
-  pkg/cmd/env/testdata/*/*.bash
-  pkg/cmd/env/testdata/*/*.pwsh
-  pkg/cmd/env/testdata/gcp/serviceaccount.json
+  pkg/env/testdata/*/*.fish
+  pkg/env/testdata/*/*.bash
+  pkg/env/testdata/*/*.pwsh
+  pkg/env/testdata/gcp/serviceaccount.json
   .dockerignore
   .gimps.yaml
   .gitignore
