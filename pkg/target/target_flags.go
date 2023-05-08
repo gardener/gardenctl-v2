@@ -7,9 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package target
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/spf13/pflag"
 )
 
@@ -49,8 +46,9 @@ type TargetFlags interface {
 	// must also be given. If ShootName and GardenName are set, false is
 	// returned because either project or seed have to be given as well.
 	IsTargetValid() bool
-	// OverrideTarget overrides the given target with the values of the target flags
-	OverrideTarget(current Target) (Target, error)
+
+	// IsEmpty returns true if no flags were given by the user
+	IsEmpty() bool
 }
 
 func NewTargetFlags(garden, project, seed, shoot string, controlPlane bool) TargetFlags {
@@ -123,48 +121,8 @@ func (tf *targetFlagsImpl) ToTarget() Target {
 	return NewTarget(tf.gardenName, tf.projectName, tf.seedName, tf.shootName).WithControlPlane(tf.controlPlane)
 }
 
-func (tf *targetFlagsImpl) isEmpty() bool {
+func (tf *targetFlagsImpl) IsEmpty() bool {
 	return tf.gardenName == "" && tf.projectName == "" && tf.seedName == "" && tf.shootName == "" && !tf.controlPlane
-}
-
-func (tf *targetFlagsImpl) OverrideTarget(current Target) (Target, error) {
-	// user gave _some_ flags; we use those to override the current target
-	// (e.g. to quickly change a shoot while keeping garden/project names)
-	if !tf.isEmpty() {
-		// note that "deeper" levels of targets are reset, as to allow the
-		// user to "move up", e.g. when they have targeted a shoot, just
-		// specifying "--garden mygarden" should target the garden, not the same
-		// shoot on the garden mygarden.
-		if tf.gardenName != "" {
-			current = current.WithGardenName(tf.gardenName).WithProjectName("").WithSeedName("").WithShootName("")
-		}
-
-		if tf.projectName != "" && tf.seedName != "" {
-			return nil, errors.New("cannot specify --project and --seed at the same time")
-		}
-
-		if tf.projectName != "" {
-			current = current.WithProjectName(tf.projectName).WithSeedName("").WithShootName("")
-		}
-
-		if tf.seedName != "" {
-			current = current.WithSeedName(tf.seedName).WithProjectName("").WithShootName("")
-		}
-
-		if tf.shootName != "" {
-			current = current.WithShootName(tf.shootName)
-		}
-
-		if tf.controlPlane {
-			current = current.WithControlPlane(tf.controlPlane)
-		}
-
-		if err := current.Validate(); err != nil {
-			return nil, fmt.Errorf("invalid target flags: %w", err)
-		}
-	}
-
-	return current, nil
 }
 
 func (tf *targetFlagsImpl) IsTargetValid() bool {

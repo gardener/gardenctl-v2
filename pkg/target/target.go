@@ -60,6 +60,9 @@ type Target interface {
 	IsEmpty() bool
 	// AsListOption returns the target as list option
 	AsListOption() client.ListOption
+
+	// DeepCopy returns a deep copy of the target
+	DeepCopy() Target
 }
 
 type targetImpl struct {
@@ -202,4 +205,14 @@ func (t *targetImpl) AsListOption() client.ListOption {
 	}
 
 	return opt
+}
+
+func (t *targetImpl) DeepCopy() Target {
+	return &targetImpl{
+		Garden:           t.Garden,
+		Project:          t.Project,
+		Seed:             t.Seed,
+		Shoot:            t.Shoot,
+		ControlPlaneFlag: t.ControlPlaneFlag,
+	}
 }
