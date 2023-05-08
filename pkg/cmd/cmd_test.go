@@ -67,10 +67,6 @@ var _ = Describe("Gardenctl command", func() {
 				manager, err := factory.Manager()
 				Expect(err).NotTo(HaveOccurred())
 
-				// check target flags
-				tf := manager.TargetFlags()
-				Expect(tf).To(BeIdenticalTo(factory.TargetFlags()))
-
 				// check current target values
 				current, err := manager.CurrentTarget()
 				Expect(err).NotTo(HaveOccurred())

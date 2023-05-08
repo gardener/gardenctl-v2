@@ -320,8 +320,7 @@ var _ = Describe("Target flags", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				// check target flags values
-				tf := manager.TargetFlags()
-				Expect(tf).To(BeIdenticalTo(factory.TargetFlags()))
+				tf := factory.TargetFlags()
 				Expect(tf.GardenName()).To(BeEmpty())
 				Expect(tf.ProjectName()).To(BeEmpty())
 				Expect(tf.SeedName()).To(BeEmpty())
