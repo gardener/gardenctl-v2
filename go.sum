@@ -119,8 +119,8 @@ github.com/fsnotify/fsnotify v1.6.0 h1:n+5WquG0fcWoWp6xPWfHdbskMCQaFnG6PfBrh1Ky4
 github.com/fsnotify/fsnotify v1.6.0/go.mod h1:sl3t1tCWJFWoRz9R8WJCbQihKKwmorjAbSClcnxKAGw=
 github.com/gardener/etcd-druid v0.15.3 h1:IMsJTaUaSOXusfgOOF5GX5eJ0o1CI/9XtKzgxwWJ0Eo=
 github.com/gardener/etcd-druid v0.15.3/go.mod h1:VTxoQXmaE2RSP+LQS5qWUDoXzmdK6xlKLUdFhaGu6KM=
-github.com/gardener/gardener v1.69.1 h1:X0S+aFyFK1jd4oPD4mI7ipeONAqv1cAxdQ4VCQOjBys=
-github.com/gardener/gardener v1.69.1/go.mod h1:cqFadgATO9ptB8tpTQssDu8imWoehgvaWBO8vhnEGos=
+github.com/gardener/gardener v1.70.0 h1:RTd30AsyyWS0aKpIKn8Gxil4h9zpmk0GNHSpQIXiUlU=
+github.com/gardener/gardener v1.70.0/go.mod h1:cqFadgATO9ptB8tpTQssDu8imWoehgvaWBO8vhnEGos=
 github.com/gardener/gardener-extension-provider-openstack v1.33.1 h1:Me9IVfv5SSNNz2Lzq8q4HmiDODqMFDXC6zzDHBHOfdI=
 github.com/gardener/gardener-extension-provider-openstack v1.33.1/go.mod h1:BQaTjI1d4g9E3UJ+2+fxOBEGNAES3RWUXVWn7ITQx8Q=
 github.com/gardener/hvpa-controller v0.3.1 h1:VsOdcKZMcZDlUNVbFY8oqlKrb1GSCdmzPooKT/Tyi+Y=
