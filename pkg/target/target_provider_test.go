@@ -77,6 +77,24 @@ var _ = Describe("Target Provider", func() {
 		Expect(target.ShootName()).To(Equal(t.ShootName()))
 		Expect(target.ControlPlane()).To(Equal(t.ControlPlane()))
 	})
+
+	It("should override a target with target flags", func() {
+		tf := target.NewTargetFlags("garden", "project", "", "shoot", true)
+
+		t, err := target.Merge(target.NewTarget("a", "b", "c", "d"), tf)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(t.GardenName()).To(Equal("garden"))
+		Expect(t.ProjectName()).To(Equal("project"))
+		Expect(t.SeedName()).To(BeEmpty())
+		Expect(t.ShootName()).To(Equal("shoot"))
+		Expect(t.ControlPlane()).To(BeTrue())
+	})
+
+	It("should fail to override a target", func() {
+		tf := target.NewTargetFlags("", "", "", "shoot", false)
+		_, err := target.Merge(target.NewTarget("", "b", "c", "d"), tf)
+		Expect(err).To(HaveOccurred())
+	})
 })
 
 var _ = Describe("Dynamic Target Provider", func() {

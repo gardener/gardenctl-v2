@@ -66,17 +66,6 @@ var _ = Describe("Target Flags", func() {
 		Expect(target.NewTargetFlags("garden", "project", "", "shoot", true).IsTargetValid()).To(BeTrue())
 	})
 
-	It("should override a target with target flags", func() {
-		tf := target.NewTargetFlags("garden", "project", "", "shoot", true)
-		t, err := tf.OverrideTarget(target.NewTarget("a", "b", "c", "d"))
-		Expect(err).NotTo(HaveOccurred())
-		Expect(t.GardenName()).To(Equal("garden"))
-		Expect(t.ProjectName()).To(Equal("project"))
-		Expect(t.SeedName()).To(BeEmpty())
-		Expect(t.ShootName()).To(Equal("shoot"))
-		Expect(t.ControlPlane()).To(BeTrue())
-	})
-
 	It("should convert to target", func() {
 		t := target.NewTargetFlags("garden", "project", "", "shoot", true).ToTarget()
 		Expect(t.GardenName()).To(Equal("garden"))
@@ -84,11 +73,5 @@ var _ = Describe("Target Flags", func() {
 		Expect(t.SeedName()).To(BeEmpty())
 		Expect(t.ShootName()).To(Equal("shoot"))
 		Expect(t.ControlPlane()).To(BeTrue())
-	})
-
-	It("should fail to override a target", func() {
-		tf := target.NewTargetFlags("", "", "", "shoot", false)
-		_, err := tf.OverrideTarget(target.NewTarget("", "b", "c", "d"))
-		Expect(err).To(HaveOccurred())
 	})
 })
