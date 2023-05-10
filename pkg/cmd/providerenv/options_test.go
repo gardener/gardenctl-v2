@@ -235,7 +235,7 @@ var _ = Describe("Env Commands - Options", func() {
 				}
 				cloudProfile = &gardencorev1beta1.CloudProfile{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: t.ShootName(),
+						Name: cloudProfileName,
 					},
 					Spec: gardencorev1beta1.CloudProfileSpec{
 						Type: provider.Type,

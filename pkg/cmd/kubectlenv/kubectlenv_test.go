@@ -62,7 +62,7 @@ var _ = Describe("Env Commands", func() {
 			subCmds := cmd.Commands()
 			Expect(len(subCmds)).To(Equal(4))
 			for _, c := range subCmds {
-				Expect(cmd.Flag("unset")).To(BeIdenticalTo(flag))
+				Expect(c.Flag("unset")).To(BeIdenticalTo(flag))
 				s := env.Shell(c.Name())
 				Expect(s).To(BeElementOf(env.ValidShells()))
 			}
