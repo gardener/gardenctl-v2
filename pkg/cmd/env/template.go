@@ -43,6 +43,7 @@ type templateImpl struct {
 
 var _ Template = &templateImpl{}
 
+// NewTemplate creates a new Template instance with the given filenames.
 func NewTemplate(filenames ...string) Template {
 	return newTemplateImpl(filenames...)
 }
