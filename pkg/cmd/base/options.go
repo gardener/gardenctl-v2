@@ -83,7 +83,7 @@ func (o *Options) PrintObject(obj interface{}) error {
 			return err
 		}
 
-		fmt.Fprintln(o.IOStreams.Out, string(marshalled))
+		fmt.Fprint(o.IOStreams.Out, string(marshalled))
 	case "json":
 		marshalled, err := json.MarshalIndent(&obj, "", "  ")
 		if err != nil {

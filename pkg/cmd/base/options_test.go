@@ -102,7 +102,6 @@ var _ = Describe("Base Options", func() {
 					`bar:
   baz: %s
 foo: %s
-
 `,
 					foo.Bar.Baz, foo.Foo)))
 			})
