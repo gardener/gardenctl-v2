@@ -52,6 +52,7 @@ for the respective provider in the "templates" folder of the gardenctl home dire
 Please refer to the templates of the already supported cloud providers which can be found
 here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.`,
 		Aliases: []string{"p-env", "cloud-env"},
+		RunE:    runE,
 	}
 
 	persistentFlags := cmd.PersistentFlags()
@@ -59,6 +60,10 @@ here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
 
 	f.TargetFlags().AddFlags(persistentFlags)
 	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, persistentFlags)
+
+	// add output flag only to the base provider-env command
+	cmdFlags := cmd.Flags()
+	o.Options.AddFlags(cmdFlags)
 
 	for _, s := range env.ValidShells() {
 		cmd.AddCommand(&cobra.Command{
