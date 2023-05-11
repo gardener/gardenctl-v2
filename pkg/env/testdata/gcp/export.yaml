@@ -1,0 +1,11 @@
+__meta:
+  cli: gcloud
+  commandPath: test-parent
+  targetFlags: --garden test --project project --shoot shoot
+  unset: false
+configDir: %s
+credentials:
+  client_email: test@example.org
+  project_id: test
+region: europe
+serviceaccount.json: '{"client_email":"test@example.org","project_id":"test"}'

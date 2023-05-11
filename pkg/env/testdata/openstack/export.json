@@ -1,0 +1,21 @@
+{
+  "__meta": {
+    "cli": "openstack",
+    "commandPath": "gardenctl provider-env",
+    "targetFlags": "--garden test --project project --shoot shoot",
+    "unset": false
+  },
+  "applicationCredentialID": "",
+  "applicationCredentialName": "",
+  "applicationCredentialSecret": "",
+  "authStrategy": "keystone",
+  "authType": "",
+  "authURL": "keyStoneURL",
+  "domainName": "domain",
+  "password": "secret",
+  "region": "europe",
+  "serviceaccount.json": "{\n  \"project_id\": \"test\",\n  \"client_email\": \"test@example.org\"\n}",
+  "tenantName": "tenant",
+  "testToken": "token",
+  "username": "user"
+}

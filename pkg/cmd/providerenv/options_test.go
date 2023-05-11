@@ -43,6 +43,7 @@ var _ = Describe("Env Commands - Options", func() {
 			options *providerenv.TestOptions
 			cmdPath,
 			shell string
+			output       string
 			providerType string
 			unset        bool
 			baseTemplate env.Template
@@ -58,6 +59,7 @@ var _ = Describe("Env Commands - Options", func() {
 			cmdPath = "gardenctl provider-env"
 			baseTemplate = env.NewTemplate("helpers")
 			shell = "default"
+			output = ""
 			providerType = "aws"
 			cfg = &config.Config{
 				LinkKubeconfig: pointer.Bool(false),
@@ -72,6 +74,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 		JustBeforeEach(func() {
 			options.Shell = shell
+			options.Output = output
 			options.CmdPath = cmdPath
 			options.Unset = unset
 			options.Template = baseTemplate
@@ -140,6 +143,22 @@ var _ = Describe("Env Commands - Options", func() {
 		})
 
 		Describe("validating the command options", func() {
+			Context("when output is set", func() {
+				BeforeEach(func() {
+					shell = ""
+				})
+
+				It("should successfully validate the options", func() {
+					options.Output = "json"
+					Expect(options.Validate()).To(Succeed())
+				})
+
+				It("should return an error when output is invalid", func() {
+					options.Output = "invalid"
+					Expect(options.Validate()).To(MatchError("--output must be either 'yaml' or 'json'"))
+				})
+			})
+
 			It("should successfully validate the options", func() {
 				options.Shell = "bash"
 				Expect(options.Validate()).To(Succeed())
@@ -573,6 +592,18 @@ var _ = Describe("Env Commands - Options", func() {
 					cloudProfile.Spec.ProviderConfig = nil
 					Expect(options.OutputProviderEnv(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to get openstack provider config:")))
 				})
+
+				Context("output is json", func() {
+					BeforeEach(func() {
+						output = "json"
+						shell = ""
+					})
+
+					It("should render the json successfully", func() {
+						Expect(options.OutputProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
+						Expect(options.String()).To(Equal(readTestFile("openstack/export.json")))
+					})
+				})
 			})
 
 			Context("when the cloudprovider is azure", func() {
@@ -603,6 +634,19 @@ var _ = Describe("Env Commands - Options", func() {
 				It("should fail with mkdir error", func() {
 					options.SessionDir = string([]byte{0})
 					Expect(options.OutputProviderEnv(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to create az configuration directory:")))
+				})
+
+				Context("output is json", func() {
+					BeforeEach(func() {
+						output = "json"
+						shell = ""
+					})
+
+					It("should render the json successfully", func() {
+						Expect(options.OutputProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
+						fmt.Println(options.String())
+						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("azure/export.json"), filepath.Join(sessionDir, ".config", "az"))))
+					})
 				})
 			})
 		})
