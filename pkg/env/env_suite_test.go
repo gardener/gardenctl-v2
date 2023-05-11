@@ -28,9 +28,9 @@ func init() {
 	utilruntime.Must(seedmanagementv1alpha1.AddToScheme(scheme.Scheme))
 }
 
-func TestCloudEnvCommand(t *testing.T) {
+func TestEnv(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CloudEnv Command Test Suite")
+	RunSpecs(t, "Env Test Suite")
 }
 
 var _ = BeforeSuite(func() {

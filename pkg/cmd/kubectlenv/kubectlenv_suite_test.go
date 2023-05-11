@@ -29,7 +29,7 @@ func init() {
 	utilruntime.Must(seedmanagementv1alpha1.AddToScheme(scheme.Scheme))
 }
 
-func TestCloudEnvCommand(t *testing.T) {
+func TestKubectlEnvCommand(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "KubectlEnv Command Test Suite")
 }

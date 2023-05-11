@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestCloudEnvCommand(t *testing.T) {
+func TestRCCommand(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Rc Command Test Suite")
+	RunSpecs(t, "RC Command Test Suite")
 }

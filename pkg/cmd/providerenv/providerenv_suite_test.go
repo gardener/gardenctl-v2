@@ -31,7 +31,7 @@ func init() {
 	utilruntime.Must(seedmanagementv1alpha1.AddToScheme(scheme.Scheme))
 }
 
-func TestCloudEnvCommand(t *testing.T) {
+func TestProviderEnvCommand(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "ProviderEnv Command Test Suite")
 }
