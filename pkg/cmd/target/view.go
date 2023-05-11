@@ -12,6 +12,7 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/flags"
 )
 
 // NewCmdView returns a new target view command.
@@ -34,6 +35,9 @@ func NewCmdView(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	}
 
 	o.AddFlags(cmd.Flags())
+
+	f.TargetFlags().AddFlags(cmd.Flags())
+	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, cmd.Flags())
 
 	return cmd
 }
