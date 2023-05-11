@@ -59,7 +59,7 @@ here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
 	f.TargetFlags().AddFlags(persistentFlags)
 	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, persistentFlags)
 
-	for _, s := range validShells {
+	for _, s := range ValidShells() {
 		cmd.AddCommand(&cobra.Command{
 			Use:   string(s),
 			Short: fmt.Sprintf("Generate the cloud provider CLI configuration script for %s", s),
@@ -95,7 +95,7 @@ The generated script points the KUBECONFIG environment variable to the currently
 	}
 	o.AddFlags(cmd.PersistentFlags())
 
-	for _, s := range validShells {
+	for _, s := range ValidShells() {
 		cmd.AddCommand(&cobra.Command{
 			Use:   string(s),
 			Short: fmt.Sprintf("Generate a script that points KUBECONFIG to the targeted cluster for %s", s),

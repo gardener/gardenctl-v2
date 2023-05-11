@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package env_test
+package rc_test
 
 import (
 	"fmt"
@@ -18,6 +18,7 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/env"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/rc"
 )
 
 var _ = Describe("Env Commands", func() {
@@ -34,7 +35,7 @@ var _ = Describe("Env Commands", func() {
 			ctrl = gomock.NewController(GinkgoT())
 			factory = utilmocks.NewMockFactory(ctrl)
 			streams, _, out, _ = util.NewTestIOStreams()
-			cmd = env.NewCmdRC(factory, streams)
+			cmd = rc.NewCmdRC(factory, streams)
 		})
 
 		AfterEach(func() {
@@ -50,7 +51,7 @@ var _ = Describe("Env Commands", func() {
 			Expect(len(subCmds)).To(Equal(4))
 			for _, c := range subCmds {
 				s := env.Shell(c.Name())
-				Expect(s).To(BeElementOf(env.ValidShells))
+				Expect(s).To(BeElementOf(env.ValidShells()))
 				flag := c.Flag("prefix")
 				Expect(flag).NotTo(BeNil())
 				Expect(flag.Shorthand).To(Equal("p"))
@@ -202,10 +203,10 @@ gk
 	})
 
 	Describe("Validating the RC command options", func() {
-		var options *env.RCOptions
+		var options *rc.Options
 
 		BeforeEach(func() {
-			options = &env.RCOptions{}
+			options = &rc.Options{}
 			options.Shell = "bash"
 			options.Prefix = "g"
 		})
@@ -221,7 +222,7 @@ gk
 
 		It("should return an error when the shell is invalid", func() {
 			options.Shell = "cmd"
-			Expect(options.Validate()).To(MatchError(fmt.Sprintf("invalid shell given, must be one of %v", env.ValidShells)))
+			Expect(options.Validate()).To(MatchError(fmt.Sprintf("invalid shell given, must be one of %v", env.ValidShells())))
 		})
 
 		It("should return an error when the prefix is invalid", func() {

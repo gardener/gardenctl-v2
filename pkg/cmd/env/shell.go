@@ -20,7 +20,10 @@ const (
 	powershell Shell = "powershell"
 )
 
-var validShells = []Shell{bash, zsh, fish, powershell}
+// ValidShells returns a list of supported shell types.
+func ValidShells() []Shell {
+	return []Shell{bash, zsh, fish, powershell}
+}
 
 // EvalCommand returns the script that evaluates the given command.
 func (s Shell) EvalCommand(cmd string) string {
@@ -55,11 +58,11 @@ func (s Shell) Prompt(goos string) string {
 
 // Validate checks if the shell is valid.
 func (s Shell) Validate() error {
-	for _, shell := range validShells {
+	for _, shell := range ValidShells() {
 		if s == shell {
 			return nil
 		}
 	}
 
-	return fmt.Errorf("invalid shell given, must be one of %v", validShells)
+	return fmt.Errorf("invalid shell given, must be one of %v", ValidShells())
 }

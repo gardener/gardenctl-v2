@@ -18,18 +18,12 @@ import (
 )
 
 var (
-	ValidShells         = validShells
 	ParseGCPCredentials = parseGCPCredentials
 	GetKeyStoneURL      = getKeyStoneURL
 	GetProviderCLI      = getProviderCLI
 	GetTargetFlags      = getTargetFlags
 	ParseFile           = parseFile
-	NewTemplate         = newTemplate
 )
-
-type RCOptions struct {
-	rcOptions
-}
 
 type TestOptions struct {
 	options

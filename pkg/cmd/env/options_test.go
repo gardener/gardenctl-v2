@@ -163,7 +163,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 			It("should return an error when the shell is invalid", func() {
 				options.Shell = "cmd"
-				Expect(options.Validate()).To(MatchError(fmt.Sprintf("invalid shell given, must be one of %v", env.ValidShells)))
+				Expect(options.Validate()).To(MatchError(fmt.Sprintf("invalid shell given, must be one of %v", env.ValidShells())))
 			})
 		})
 
