@@ -27,6 +27,10 @@ for the respective provider in the "templates" folder of the gardenctl home dire
 Please refer to the templates of the already supported cloud providers which can be found
 here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
 
+```
+gardenctl provider-env [flags]
+```
+
 ### Options
 
 ```
@@ -34,6 +38,7 @@ here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
   -f, --force            Generate the script even if there are access restrictions to be confirmed
       --garden string    target the given garden cluster
   -h, --help             help for provider-env
+  -o, --output string    One of 'yaml' or 'json'.
       --project string   target the given project
       --seed string      target the given seed cluster
       --shoot string     target the given shoot cluster
