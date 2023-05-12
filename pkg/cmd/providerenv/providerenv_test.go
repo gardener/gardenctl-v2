@@ -157,7 +157,7 @@ var _ = Describe("Env Commands", func() {
 					Spec: gardencorev1beta1.ShootSpec{
 						CloudProfileName:  cloudProfileName,
 						Region:            region,
-						SecretBindingName: secretBindingName,
+						SecretBindingName: &secretBindingName,
 						Provider:          *provider.DeepCopy(),
 					},
 				}
