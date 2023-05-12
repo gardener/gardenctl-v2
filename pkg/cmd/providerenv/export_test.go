@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package env
+package providerenv
 
 import (
 	"text/template"
@@ -15,6 +15,7 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/env"
 )
 
 var (
@@ -22,7 +23,6 @@ var (
 	GetKeyStoneURL      = getKeyStoneURL
 	GetProviderCLI      = getProviderCLI
 	GetTargetFlags      = getTargetFlags
-	ParseFile           = parseFile
 )
 
 type TestOptions struct {
@@ -47,8 +47,8 @@ func (o *TestOptions) ExecTmpl(shoot *gardencorev1beta1.Shoot, secret *corev1.Se
 	return execTmpl(&o.options, shoot, secret, cloudProfile, messages)
 }
 
-func (o *TestOptions) GenerateMetadata() map[string]interface{} {
-	return generateMetadata(&o.options)
+func (o *TestOptions) GenerateMetadata(cli string) map[string]interface{} {
+	return generateMetadata(&o.options, cli)
 }
 
 func (o *TestOptions) String() string {
@@ -56,8 +56,6 @@ func (o *TestOptions) String() string {
 }
 
 type TestTemplate interface {
-	Template
+	env.Template
 	Delegate() *template.Template
 }
-
-var _ TestTemplate = &templateImpl{}

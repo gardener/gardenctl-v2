@@ -4,11 +4,10 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package env
+package providerenv
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,6 +26,7 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/gardener/gardenctl-v2/pkg/config"
+	"github.com/gardener/gardenctl-v2/pkg/env"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
@@ -47,12 +47,8 @@ type options struct {
 	Target target.Target
 	// TargetFlags are the target override flags
 	TargetFlags target.TargetFlags
-	// ProviderType is the name of the cloud provider
-	ProviderType string
 	// Template is the script template
-	Template Template
-	// Symlink indicates if KUBECONFIG environment variable should point to the session stable symlink
-	Symlink bool
+	Template env.Template
 	// Force generates the script even if there are access restrictions to be confirmed
 	Force bool
 }
@@ -62,23 +58,13 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error
 	o.Shell = cmd.Name()
 	o.CmdPath = cmd.Parent().CommandPath()
 	o.GardenDir = f.GardenHomeDir()
-	o.Template = NewTemplate("helpers")
-
-	//nolint:gocritic // accept singleCaseSwitch to be consistent with rest of the file. Will be resolved once we refactor to have own options for each provider type
-	switch o.ProviderType {
-	case "kubernetes":
-		filename := filepath.Join(o.GardenDir, "templates", "kubernetes.tmpl")
-		if err := o.Template.ParseFiles(filename); err != nil {
-			return err
-		}
-	}
+	o.Template = env.NewTemplate("helpers")
 
 	manager, err := f.Manager()
 	if err != nil {
 		return err
 	}
 
-	o.Symlink = manager.Configuration().SymlinkTargetKubeconfig()
 	o.SessionDir = manager.SessionDir()
 	o.TargetFlags = manager.TargetFlags()
 
@@ -91,26 +77,15 @@ func (o *options) Validate() error {
 		return pflag.ErrHelp
 	}
 
-	s := Shell(o.Shell)
+	s := env.Shell(o.Shell)
 
 	return s.Validate()
 }
 
 // AddFlags binds the command options to a given flagset.
 func (o *options) AddFlags(flags *pflag.FlagSet) {
-	var text string
-
-	switch o.ProviderType {
-	case "kubernetes":
-		text = "the KUBECONFIG environment variable"
-	default:
-		text = "the cloud provider CLI environment variables and logout"
-
-		flags.BoolVarP(&o.Force, "force", "f", false, "Generate the script even if there are access restrictions to be confirmed")
-	}
-
-	usage := fmt.Sprintf("Generate the script to unset %s for %s", text, o.Shell)
-	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, usage)
+	flags.BoolVarP(&o.Force, "force", "f", false, "Generate the script even if there are access restrictions to be confirmed")
+	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, fmt.Sprintf("Generate the script to unset the cloud provider CLI environment variables and logout for %s", o.Shell))
 }
 
 // Run does the actual work of the command.
@@ -127,67 +102,17 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	switch o.ProviderType {
-	case "kubernetes":
-		if !o.Symlink && o.Target.GardenName() == "" {
-			return target.ErrNoGardenTargeted
-		}
-
-		return o.runKubernetes(ctx, manager)
-	default:
-		if o.Target.GardenName() == "" {
-			return target.ErrNoGardenTargeted
-		}
-
-		return o.run(ctx, manager)
-	}
-}
-
-func (o *options) runKubernetes(ctx context.Context, manager target.Manager) error {
-	data := map[string]interface{}{
-		"__meta": generateMetadata(o),
+	if o.Target.GardenName() == "" {
+		return target.ErrNoGardenTargeted
 	}
 
-	if !o.Unset {
-		var filename string
-
-		if o.Symlink {
-			filename = filepath.Join(o.SessionDir, "kubeconfig.yaml")
-
-			if !o.Target.IsEmpty() {
-				_, err := os.Lstat(filename)
-				if os.IsNotExist(err) {
-					return fmt.Errorf("symlink to targeted cluster does not exist: %w", err)
-				}
-			}
-		} else {
-			config, err := manager.ClientConfig(ctx, o.Target)
-			if err != nil {
-				return err
-			}
-
-			filename, err = manager.WriteClientConfig(config)
-			if err != nil {
-				return err
-			}
-		}
-
-		data["filename"] = filename
-	}
-
-	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
-}
-
-func (o *options) run(ctx context.Context, manager target.Manager) error {
-	t := o.Target
-
-	client, err := manager.GardenClient(t.GardenName())
+	client, err := manager.GardenClient(o.Target.GardenName())
 	if err != nil {
 		return fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	if t.ShootName() == "" && t.SeedName() != "" {
-		if shoot, err := client.GetShootOfManagedSeed(ctx, t.SeedName()); err != nil {
+	if o.Target.ShootName() == "" && o.Target.SeedName() != "" {
+		if shoot, err := client.GetShootOfManagedSeed(ctx, o.Target.SeedName()); err != nil {
 			if apierrors.IsNotFound(err) {
 				return fmt.Errorf("cannot generate cloud provider CLI configuration script for non-managed seeds: %w", err)
 			}
@@ -223,7 +148,7 @@ func (o *options) run(ctx context.Context, manager target.Manager) error {
 	}
 
 	// check access restrictions
-	messages, err := o.checkAccessRestrictions(manager.Configuration(), t.GardenName(), shoot)
+	messages, err := o.checkAccessRestrictions(manager.Configuration(), o.Target.GardenName(), shoot)
 	if err != nil {
 		return err
 	}
@@ -232,9 +157,10 @@ func (o *options) run(ctx context.Context, manager target.Manager) error {
 }
 
 func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile, messages ac.AccessRestrictionMessages) error {
-	o.ProviderType = shoot.Spec.Provider.Type
+	providerType := shoot.Spec.Provider.Type
+	cli := getProviderCLI(providerType)
 
-	metadata := generateMetadata(o)
+	metadata := generateMetadata(o, cli)
 
 	if len(messages) > 0 {
 		b := &bytes.Buffer{}
@@ -243,7 +169,7 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 		if o.TargetFlags.ShootName() == "" || o.Force {
 			metadata["notification"] = b.String()
 		} else {
-			s := Shell(o.Shell)
+			s := env.Shell(o.Shell)
 			return o.Template.ExecuteTemplate(o.IOStreams.Out, "printf", map[string]interface{}{
 				"format": b.String() + "\n%s %s\n%s\n",
 				"arguments": []string{
@@ -264,10 +190,10 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 		data[key] = string(value)
 	}
 
-	switch o.ProviderType {
+	switch providerType {
 	case "azure":
 		if !o.Unset {
-			configDir, err := createProviderConfigDir(o.SessionDir, o.ProviderType)
+			configDir, err := createProviderConfigDir(o.SessionDir, providerType)
 			if err != nil {
 				return err
 			}
@@ -283,7 +209,7 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 		}
 
 		if !o.Unset {
-			configDir, err := createProviderConfigDir(o.SessionDir, o.ProviderType)
+			configDir, err := createProviderConfigDir(o.SessionDir, providerType)
 			if err != nil {
 				return err
 			}
@@ -317,7 +243,7 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 		}
 	}
 
-	filename := filepath.Join(o.GardenDir, "templates", o.ProviderType+".tmpl")
+	filename := filepath.Join(o.GardenDir, "templates", providerType+".tmpl")
 	if err := o.Template.ParseFiles(filename); err != nil {
 		return fmt.Errorf("failed to generate the cloud provider CLI configuration script: %w", err)
 	}
@@ -325,13 +251,13 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
 }
 
-func generateMetadata(o *options) map[string]interface{} {
+func generateMetadata(o *options, cli string) map[string]interface{} {
 	metadata := make(map[string]interface{})
 	metadata["unset"] = o.Unset
 	metadata["shell"] = o.Shell
 	metadata["commandPath"] = o.CmdPath
-	metadata["cli"] = getProviderCLI(o.ProviderType)
-	metadata["prompt"] = Shell(o.Shell).Prompt(runtime.GOOS)
+	metadata["cli"] = cli
+	metadata["prompt"] = env.Shell(o.Shell).Prompt(runtime.GOOS)
 	metadata["targetFlags"] = getTargetFlags(o.Target)
 
 	return metadata
@@ -345,8 +271,6 @@ func getProviderCLI(providerType string) string {
 		return "gcloud"
 	case "azure":
 		return "az"
-	case "kubernetes":
-		return "kubectl"
 	default:
 		return providerType
 	}

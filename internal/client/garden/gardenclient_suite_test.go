@@ -20,7 +20,7 @@ func init() {
 	utilruntime.Must(gardencorev1beta1.AddToScheme(scheme.Scheme))
 }
 
-func TestCloudEnvCommand(t *testing.T) {
+func TestGardenclient(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Gardenclient Test Suite")
 }

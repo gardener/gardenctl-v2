@@ -17,8 +17,8 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/env"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/rc"
+	"github.com/gardener/gardenctl-v2/pkg/env"
 )
 
 var _ = Describe("Env Commands", func() {

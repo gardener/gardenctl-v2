@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2021 SAP SE or an SAP affiliate company and Gardener con
 SPDX-License-Identifier: Apache-2.0
 */
 
-package env_test
+package kubectlenv_test
 
 import (
 	"os"
@@ -17,8 +17,6 @@ import (
 	. "github.com/onsi/gomega"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-
-	"github.com/gardener/gardenctl-v2/pkg/cmd/env/testdata"
 )
 
 var (
@@ -31,9 +29,9 @@ func init() {
 	utilruntime.Must(seedmanagementv1alpha1.AddToScheme(scheme.Scheme))
 }
 
-func TestCloudEnvCommand(t *testing.T) {
+func TestKubectlEnvCommand(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "CloudEnv Command Test Suite")
+	RunSpecs(t, "KubectlEnv Command Test Suite")
 }
 
 var _ = BeforeSuite(func() {
@@ -53,23 +51,7 @@ func makeTempGardenHomeDir() string {
 	return dir
 }
 
-// The separator in the filename must be a forward slash, even on Windows systems.
-// see https://pkg.go.dev/embed#hdr-Directives
-func readTestFile(filename string) string {
-	data, err := testdata.FS.ReadFile(filename)
-	Expect(err).NotTo(HaveOccurred())
-
-	return string(data)
-}
-
 func writeTempFile(filename string, content string) {
 	err := os.WriteFile(filepath.Join(gardenHomeDir, filename), []byte(content), 0o777)
 	Expect(err).NotTo(HaveOccurred())
-}
-
-func removeTempFile(filename string) {
-	err := os.Remove(filepath.Join(gardenHomeDir, filename))
-	if !os.IsNotExist(err) {
-		Expect(err).NotTo(HaveOccurred())
-	}
 }

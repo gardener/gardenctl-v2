@@ -75,7 +75,6 @@ var _ = Describe("Kubeconfig Command - Options", func() {
 		})
 
 		It("should execute the kubeconfig subcommand", func() {
-			cmd = cmdkubeconfig.NewCmdKubeconfig(factory, streams)
 			cmd.SetArgs([]string{"--output", "yaml"})
 			Expect(cmd.Execute()).To(Succeed())
 			Expect(out.String()).To(Equal(`apiVersion: v1

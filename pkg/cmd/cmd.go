@@ -21,8 +21,9 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	cmdconfig "github.com/gardener/gardenctl-v2/pkg/cmd/config"
-	cmdenv "github.com/gardener/gardenctl-v2/pkg/cmd/env"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/kubeconfig"
+	cmdkubectl "github.com/gardener/gardenctl-v2/pkg/cmd/kubectlenv"
+	cmdprovider "github.com/gardener/gardenctl-v2/pkg/cmd/providerenv"
 	cmdrc "github.com/gardener/gardenctl-v2/pkg/cmd/rc"
 	cmdssh "github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
 	cmdsshpatch "github.com/gardener/gardenctl-v2/pkg/cmd/sshpatch"
@@ -118,8 +119,8 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 	cmd.AddCommand(cmdtarget.NewCmdTarget(f, ioStreams))
 	cmd.AddCommand(cmdversion.NewCmdVersion(f, cmdversion.NewVersionOptions(ioStreams)))
 	cmd.AddCommand(cmdconfig.NewCmdConfig(f, ioStreams))
-	cmd.AddCommand(cmdenv.NewCmdProviderEnv(f, ioStreams))
-	cmd.AddCommand(cmdenv.NewCmdKubectlEnv(f, ioStreams))
+	cmd.AddCommand(cmdprovider.NewCmdProviderEnv(f, ioStreams))
+	cmd.AddCommand(cmdkubectl.NewCmdKubectlEnv(f, ioStreams))
 	cmd.AddCommand(cmdrc.NewCmdRC(f, ioStreams))
 	cmd.AddCommand(kubeconfig.NewCmdKubeconfig(f, ioStreams))
 

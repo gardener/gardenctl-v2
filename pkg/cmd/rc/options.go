@@ -15,7 +15,7 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/env"
+	"github.com/gardener/gardenctl-v2/pkg/env"
 )
 
 var prefixRegexp = regexp.MustCompile(`^[[:alpha:]][\w-]*$`)
