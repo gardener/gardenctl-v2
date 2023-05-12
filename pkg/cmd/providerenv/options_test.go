@@ -644,7 +644,6 @@ var _ = Describe("Env Commands - Options", func() {
 
 					It("should render the json successfully", func() {
 						Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
-						fmt.Println(options.String())
 						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("azure/export.json"), filepath.Join(sessionDir, ".config", "az"))))
 					})
 				})
