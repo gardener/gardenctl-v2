@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package target
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -149,10 +150,53 @@ func (p *dynamicTargetProvider) Read() (Target, error) {
 		return nil, err
 	}
 
-	return p.targetFlags.OverrideTarget(current)
+	return merge(current, p.targetFlags)
 }
 
 // Write takes a target and saves it permanently.
 func (p *dynamicTargetProvider) Write(t Target) error {
 	return p.delegate.Write(t)
+}
+
+// merge returns a new target with the specified target flags merged into it.
+func merge(t Target, tf TargetFlags) (Target, error) {
+	newTarget := t.DeepCopy()
+
+	if tf.IsEmpty() {
+		return newTarget, nil
+	}
+
+	// Note that "deeper" levels of targets are reset, allowing the
+	// user to "move up". For example, when they have targeted a shoot, simply
+	// specifying "--garden mygarden" should target the garden, not the same
+	// shoot within the garden named mygarden.
+	if tf.GardenName() != "" {
+		newTarget = newTarget.WithGardenName(tf.GardenName()).WithProjectName("").WithSeedName("").WithShootName("")
+	}
+
+	if tf.ProjectName() != "" && tf.SeedName() != "" {
+		return nil, errors.New("cannot specify --project and --seed at the same time")
+	}
+
+	if tf.ProjectName() != "" {
+		newTarget = newTarget.WithProjectName(tf.ProjectName()).WithSeedName("").WithShootName("")
+	}
+
+	if tf.SeedName() != "" {
+		newTarget = newTarget.WithSeedName(tf.SeedName()).WithProjectName("").WithShootName("")
+	}
+
+	if tf.ShootName() != "" {
+		newTarget = newTarget.WithShootName(tf.ShootName())
+	}
+
+	if tf.ControlPlane() {
+		newTarget = newTarget.WithControlPlane(tf.ControlPlane())
+	}
+
+	if err := newTarget.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid target flags: %w", err)
+	}
+
+	return newTarget, nil
 }
