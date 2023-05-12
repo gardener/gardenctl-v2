@@ -207,7 +207,11 @@ func (o *options) run(ctx context.Context, manager target.Manager) error {
 		return err
 	}
 
-	secretBinding, err := client.GetSecretBinding(ctx, shoot.Namespace, shoot.Spec.SecretBindingName)
+	if shoot.Spec.SecretBindingName == nil || *shoot.Spec.SecretBindingName == "" {
+		return fmt.Errorf("shoot %q is not bound to a secret", t.ShootName())
+	}
+
+	secretBinding, err := client.GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName)
 	if err != nil {
 		return err
 	}
