@@ -98,8 +98,8 @@ var _ = Describe("Env Commands - Options", func() {
 			Context("when the providerType is empty", func() {
 				It("should complete options with default shell", func() {
 					factory.EXPECT().Manager().Return(manager, nil)
+					factory.EXPECT().TargetFlags().Return(tf)
 					manager.EXPECT().SessionDir().Return(sessionDir)
-					manager.EXPECT().TargetFlags().Return(tf)
 					Expect(options.Template).To(BeNil())
 					Expect(options.Complete(factory, child, nil)).To(Succeed())
 					Expect(options.Shell).To(Equal(child.Name()))
@@ -127,8 +127,8 @@ var _ = Describe("Env Commands - Options", func() {
 
 				It("should complete options", func() {
 					factory.EXPECT().Manager().Return(manager, nil)
+					factory.EXPECT().TargetFlags().Return(tf)
 					manager.EXPECT().SessionDir().Return(sessionDir)
-					manager.EXPECT().TargetFlags().Return(tf)
 					Expect(options.Template).To(BeNil())
 					Expect(options.Complete(factory, child, nil)).To(Succeed())
 					Expect(options.Template).NotTo(BeNil())

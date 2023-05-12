@@ -216,20 +216,6 @@ func (mr *MockManagerMockRecorder) TargetControlPlane(arg0 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetControlPlane", reflect.TypeOf((*MockManager)(nil).TargetControlPlane), arg0)
 }
 
-// TargetFlags mocks base method.
-func (m *MockManager) TargetFlags() target.TargetFlags {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TargetFlags")
-	ret0, _ := ret[0].(target.TargetFlags)
-	return ret0
-}
-
-// TargetFlags indicates an expected call of TargetFlags.
-func (mr *MockManagerMockRecorder) TargetFlags() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetFlags", reflect.TypeOf((*MockManager)(nil).TargetFlags))
-}
-
 // TargetGarden mocks base method.
 func (m *MockManager) TargetGarden(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
@@ -245,17 +231,17 @@ func (mr *MockManagerMockRecorder) TargetGarden(arg0, arg1 interface{}) *gomock.
 }
 
 // TargetMatchPattern mocks base method.
-func (m *MockManager) TargetMatchPattern(arg0 context.Context, arg1 string) error {
+func (m *MockManager) TargetMatchPattern(arg0 context.Context, arg1 target.TargetFlags, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TargetMatchPattern", arg0, arg1)
+	ret := m.ctrl.Call(m, "TargetMatchPattern", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TargetMatchPattern indicates an expected call of TargetMatchPattern.
-func (mr *MockManagerMockRecorder) TargetMatchPattern(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockManagerMockRecorder) TargetMatchPattern(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetMatchPattern", reflect.TypeOf((*MockManager)(nil).TargetMatchPattern), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TargetMatchPattern", reflect.TypeOf((*MockManager)(nil).TargetMatchPattern), arg0, arg1, arg2)
 }
 
 // TargetProject mocks base method.

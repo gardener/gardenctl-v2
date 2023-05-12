@@ -66,7 +66,7 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error
 	}
 
 	o.SessionDir = manager.SessionDir()
-	o.TargetFlags = manager.TargetFlags()
+	o.TargetFlags = f.TargetFlags()
 
 	return nil
 }

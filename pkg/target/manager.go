@@ -58,9 +58,6 @@ type Manager interface {
 	// CurrentTarget contains the current target configuration
 	CurrentTarget() (Target, error)
 
-	// TargetFlags returns the global target flags
-	TargetFlags() TargetFlags
-
 	// TargetGarden sets the garden target configuration
 	// This implicitly unsets project, seed and shoot target configuration
 	TargetGarden(ctx context.Context, name string) error
@@ -92,7 +89,7 @@ type Manager interface {
 	// Garden, Project and Shoot values are determined by matching the provided value
 	// against patterns defined in gardenctl configuration. Some values may only match a subset
 	// of a pattern
-	TargetMatchPattern(ctx context.Context, value string) error
+	TargetMatchPattern(ctx context.Context, tf TargetFlags, value string) error
 
 	// ClientConfig returns the client config for a target
 	ClientConfig(ctx context.Context, t Target) (clientcmd.ClientConfig, error)
@@ -153,20 +150,6 @@ func NewManager(config *config.Config, targetProvider TargetProvider, clientProv
 
 func (m *managerImpl) CurrentTarget() (Target, error) {
 	return m.targetProvider.Read()
-}
-
-func (m *managerImpl) TargetFlags() TargetFlags {
-	var tf TargetFlags
-
-	if dtp, ok := m.targetProvider.(*dynamicTargetProvider); ok {
-		tf = dtp.targetFlags
-	}
-
-	if tf == nil {
-		tf = NewTargetFlags("", "", "", "", false)
-	}
-
-	return tf
 }
 
 func (m *managerImpl) Configuration() *config.Config {
@@ -374,7 +357,7 @@ func (m *managerImpl) UnsetTargetControlPlane(ctx context.Context) error {
 	})
 }
 
-func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) error {
+func (m *managerImpl) TargetMatchPattern(ctx context.Context, tf TargetFlags, value string) error {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
 		return fmt.Errorf("failed to get current target: %w", err)
@@ -422,7 +405,7 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, value string) erro
 		tb.SetShoot(ctx, tm.Shoot)
 	}
 
-	if m.TargetFlags().ControlPlane() {
+	if tf.ControlPlane() {
 		tb.SetControlPlane(ctx)
 	}
 

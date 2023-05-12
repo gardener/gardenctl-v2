@@ -334,44 +334,51 @@ var _ = Describe("Target Manager", func() {
 		assertTargetProvider(targetProvider, t)
 	})
 
-	It("should be able to target valid garden, project and shoot by matching a pattern", func() {
-		t := target.NewTarget("", "", "", "")
-		manager, targetProvider := createTestManager(t, cfg, clientProvider)
+	Describe("#TargetMatchPattern", func() {
+		var tf target.TargetFlags
+		BeforeEach(func() {
+			tf = target.NewTargetFlags("", "", "", "", false)
+		})
 
-		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("%s/shoot--%s--%s", gardenName, prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
-	})
+		It("should be able to target valid garden, project and shoot by matching a pattern", func() {
+			t := target.NewTarget("", "", "", "")
+			manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-	It("should be able to target valid project shoot by matching a pattern if garden is set", func() {
-		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, cfg, clientProvider)
+			Expect(manager.TargetMatchPattern(ctx, tf, fmt.Sprintf("%s/shoot--%s--%s", gardenName, prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
+			assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
+		})
 
-		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
-	})
+		It("should be able to target valid project shoot by matching a pattern if garden is set", func() {
+			t := target.NewTarget(gardenName, "", "", "")
+			manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-	It("should be able to target shoot by matching a pattern if garden is not set", func() {
-		t := target.NewTarget("", "", "", "")
-		manager, targetProvider := createTestManager(t, cfg, clientProvider)
+			Expect(manager.TargetMatchPattern(ctx, tf, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
+			assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
+		})
 
-		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
-	})
+		It("should be able to target shoot by matching a pattern if garden is not set", func() {
+			t := target.NewTarget("", "", "", "")
+			manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-	It("should not target anything if target is not completely valid", func() {
-		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, cfg, clientProvider)
+			Expect(manager.TargetMatchPattern(ctx, tf, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
+			assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
+		})
 
-		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, "invalid shoot"))).NotTo(Succeed())
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
-	})
+		It("should not target anything if target is not completely valid", func() {
+			t := target.NewTarget(gardenName, "", "", "")
+			manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-	It("should be able to target valid project by matching a pattern containing a namespace", func() {
-		t := target.NewTarget(gardenName, "", "", "")
-		manager, targetProvider := createTestManager(t, cfg, clientProvider)
+			Expect(manager.TargetMatchPattern(ctx, tf, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, "invalid shoot"))).NotTo(Succeed())
+			assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
+		})
 
-		Expect(manager.TargetMatchPattern(ctx, fmt.Sprintf("namespace:%s", *prod1Project.Spec.Namespace))).To(Succeed())
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
+		It("should be able to target valid project by matching a pattern containing a namespace", func() {
+			t := target.NewTarget(gardenName, "", "", "")
+			manager, targetProvider := createTestManager(t, cfg, clientProvider)
+
+			Expect(manager.TargetMatchPattern(ctx, tf, fmt.Sprintf("namespace:%s", *prod1Project.Spec.Namespace))).To(Succeed())
+			assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
+		})
 	})
 
 	It("should be able to target control plane for a shoot", func() {

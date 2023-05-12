@@ -59,11 +59,11 @@ go-test: ## Run go tests.
 	@./hack/test-integration.sh
 
 .PHONY: gen-markdown
-gen-markdown: ## Check that the generated markdown is up-to-date
+gen-markdown: ## Generate markdown help files
 	go run ./internal/gen/markdown.go
 
 .PHONY: generate-sequential
-generate-sequential: gen-markdown $(MOCKGEN)
+generate-sequential: gen-markdown $(MOCKGEN)  ## Run go generate
 	@hack/generate.sh ./pkg/... ./internal/...
 
 ##@ Build

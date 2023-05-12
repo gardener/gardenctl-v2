@@ -142,12 +142,7 @@ func (o *TargetOptions) Complete(f util.Factory, _ *cobra.Command, args []string
 		o.TargetName = strings.TrimSpace(args[0])
 	}
 
-	manager, err := f.Manager()
-	if err != nil {
-		return err
-	}
-
-	tf := manager.TargetFlags()
+	tf := f.TargetFlags()
 
 	if o.Kind == "" {
 		switch {
@@ -201,7 +196,7 @@ func (o *TargetOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	askForConfirmation := manager.TargetFlags().ShootName() != "" || o.Kind == TargetKindShoot
+	askForConfirmation := f.TargetFlags().ShootName() != "" || o.Kind == TargetKindShoot
 	handler := ac.NewAccessRestrictionHandler(o.IOStreams.In, o.IOStreams.Out, askForConfirmation)
 	ctx := ac.WithAccessRestrictionHandler(f.Context(), handler)
 
@@ -215,7 +210,7 @@ func (o *TargetOptions) Run(f util.Factory) error {
 	case TargetKindShoot:
 		err = manager.TargetShoot(ctx, o.TargetName)
 	case TargetKindPattern:
-		err = manager.TargetMatchPattern(ctx, o.TargetName)
+		err = manager.TargetMatchPattern(ctx, f.TargetFlags(), o.TargetName)
 	case TargetKindControlPlane:
 		err = manager.TargetControlPlane(ctx)
 	}

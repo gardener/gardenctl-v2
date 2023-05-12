@@ -517,7 +517,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	}
 
 	// check access restrictions
-	ok, err := o.checkAccessRestrictions(manager.Configuration(), sshTarget.GardenName(), manager.TargetFlags(), shoot)
+	ok, err := o.checkAccessRestrictions(manager.Configuration(), sshTarget.GardenName(), f.TargetFlags(), shoot)
 	if err != nil {
 		return err
 	} else if !ok {
