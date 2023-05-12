@@ -183,7 +183,6 @@ var _ = Describe("AccessRestriction", func() {
 				},
 			}
 			messages.Render(out)
-			fmt.Println(out.String())
 			Expect(out.String()).To(Equal(`┌─ Access Restriction ───────────────┐
 │ Lorem ipsum dolor sit amet,        │
 │ consectetur adipiscing elit        │
