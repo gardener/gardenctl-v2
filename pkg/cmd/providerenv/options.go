@@ -55,7 +55,10 @@ type options struct {
 
 // Complete adapts from the command line args to the data required.
 func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error {
-	o.Shell = cmd.Name()
+	if cmd.Name() != "provider-env" {
+		o.Shell = cmd.Name()
+	}
+
 	o.CmdPath = cmd.Parent().CommandPath()
 	o.GardenDir = f.GardenHomeDir()
 	o.Template = env.NewTemplate("helpers")
@@ -73,13 +76,19 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error
 
 // Validate validates the provided command options.
 func (o *options) Validate() error {
-	if o.Shell == "" {
+	if o.Shell == "" && o.Output == "" {
 		return pflag.ErrHelp
 	}
 
-	s := env.Shell(o.Shell)
+	// Usually, we would check and return an error if both shell and output are set (not empty). However, this is not required because the output flag is not set for the shell subcommands.
 
-	return s.Validate()
+	if o.Shell != "" {
+		s := env.Shell(o.Shell)
+
+		return s.Validate()
+	}
+
+	return o.Options.Validate()
 }
 
 // AddFlags binds the command options to a given flagset.
@@ -153,10 +162,10 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	return execTmpl(o, shoot, secret, cloudProfile, messages)
+	return printProviderEnv(o, shoot, secret, cloudProfile, messages)
 }
 
-func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile, messages ac.AccessRestrictionMessages) error {
+func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile, messages ac.AccessRestrictionMessages) error {
 	providerType := shoot.Spec.Provider.Type
 	cli := getProviderCLI(providerType)
 
@@ -169,6 +178,12 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 		if o.TargetFlags.ShootName() == "" || o.Force {
 			metadata["notification"] = b.String()
 		} else {
+			if o.Output != "" {
+				return errors.New(
+					"the cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions. Use the --force flag to confirm the access",
+				)
+			}
+
 			s := env.Shell(o.Shell)
 			return o.Template.ExecuteTemplate(o.IOStreams.Out, "printf", map[string]interface{}{
 				"format": b.String() + "\n%s %s\n%s\n",
@@ -181,6 +196,19 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 		}
 	}
 
+	data, err := generateData(o, shoot, secret, cloudProfile, providerType, metadata)
+	if err != nil {
+		return err
+	}
+
+	if o.Output != "" {
+		return o.PrintObject(data)
+	}
+
+	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
+}
+
+func generateData(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile, providerType string, metadata map[string]interface{}) (map[string]interface{}, error) {
 	data := map[string]interface{}{
 		"__meta": metadata,
 		"region": shoot.Spec.Region,
@@ -195,7 +223,7 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 		if !o.Unset {
 			configDir, err := createProviderConfigDir(o.SessionDir, providerType)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			data["configDir"] = configDir
@@ -205,13 +233,13 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 
 		serviceaccountJSON, err := parseGCPCredentials(secret, &credentials)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if !o.Unset {
 			configDir, err := createProviderConfigDir(o.SessionDir, providerType)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			data["configDir"] = configDir
@@ -222,7 +250,7 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 	case "openstack":
 		authURL, err := getKeyStoneURL(cloudProfile, shoot.Spec.Region)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		data["authURL"] = authURL
@@ -245,20 +273,23 @@ func execTmpl(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret,
 
 	filename := filepath.Join(o.GardenDir, "templates", providerType+".tmpl")
 	if err := o.Template.ParseFiles(filename); err != nil {
-		return fmt.Errorf("failed to generate the cloud provider CLI configuration script: %w", err)
+		return nil, fmt.Errorf("failed to generate the cloud provider CLI configuration script: %w", err)
 	}
 
-	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
+	return data, nil
 }
 
 func generateMetadata(o *options, cli string) map[string]interface{} {
 	metadata := make(map[string]interface{})
 	metadata["unset"] = o.Unset
-	metadata["shell"] = o.Shell
 	metadata["commandPath"] = o.CmdPath
 	metadata["cli"] = cli
-	metadata["prompt"] = env.Shell(o.Shell).Prompt(runtime.GOOS)
 	metadata["targetFlags"] = getTargetFlags(o.Target)
+
+	if o.Shell != "" {
+		metadata["shell"] = o.Shell
+		metadata["prompt"] = env.Shell(o.Shell).Prompt(runtime.GOOS)
+	}
 
 	return metadata
 }

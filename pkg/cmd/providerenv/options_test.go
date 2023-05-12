@@ -43,6 +43,7 @@ var _ = Describe("Env Commands - Options", func() {
 			options *providerenv.TestOptions
 			cmdPath,
 			shell string
+			output       string
 			providerType string
 			unset        bool
 			baseTemplate env.Template
@@ -58,6 +59,7 @@ var _ = Describe("Env Commands - Options", func() {
 			cmdPath = "gardenctl provider-env"
 			baseTemplate = env.NewTemplate("helpers")
 			shell = "default"
+			output = ""
 			providerType = "aws"
 			cfg = &config.Config{
 				LinkKubeconfig: pointer.Bool(false),
@@ -72,6 +74,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 		JustBeforeEach(func() {
 			options.Shell = shell
+			options.Output = output
 			options.CmdPath = cmdPath
 			options.Unset = unset
 			options.Template = baseTemplate
@@ -140,6 +143,22 @@ var _ = Describe("Env Commands - Options", func() {
 		})
 
 		Describe("validating the command options", func() {
+			Context("when output is set", func() {
+				BeforeEach(func() {
+					shell = ""
+				})
+
+				It("should successfully validate the options", func() {
+					options.Output = "json"
+					Expect(options.Validate()).To(Succeed())
+				})
+
+				It("should return an error when output is invalid", func() {
+					options.Output = "invalid"
+					Expect(options.Validate()).To(MatchError("--output must be either 'yaml' or 'json'"))
+				})
+			})
+
 			It("should successfully validate the options", func() {
 				options.Shell = "bash"
 				Expect(options.Validate()).To(Succeed())
@@ -450,7 +469,7 @@ var _ = Describe("Env Commands - Options", func() {
 				})
 
 				It("should render the template successfully", func() {
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
+					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
 					Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.bash"), filepath.Join(sessionDir, ".config", "gcloud"))))
 				})
 			})
@@ -462,7 +481,7 @@ var _ = Describe("Env Commands - Options", func() {
 				})
 
 				It("should render the template successfully", func() {
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
+					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
 					Expect(options.String()).To(Equal(readTestFile("gcp/unset.pwsh")))
 				})
 			})
@@ -473,7 +492,7 @@ var _ = Describe("Env Commands - Options", func() {
 				})
 
 				It("should fail to render the template with JSON parse error", func() {
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError("unexpected end of JSON input"))
+					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(MatchError("unexpected end of JSON input"))
 				})
 			})
 
@@ -484,7 +503,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 				It("should fail to render the template with JSON parse error", func() {
 					noTemplateFmt := "template: no template %q associated with template %q"
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(fmt.Sprintf(noTemplateFmt, shell, "base")))
+					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(MatchError(fmt.Sprintf(noTemplateFmt, shell, "base")))
 				})
 			})
 
@@ -502,7 +521,7 @@ var _ = Describe("Env Commands - Options", func() {
 				})
 
 				It("should render the template successfully", func() {
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
+					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
 					Expect(options.String()).To(Equal(readTestFile("test/export.bash")))
 				})
 			})
@@ -514,7 +533,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 				It("should fail to render the template with a not supported error", func() {
 					message := "failed to generate the cloud provider CLI configuration script"
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp(message)))
+					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp(message)))
 				})
 			})
 
@@ -533,14 +552,14 @@ var _ = Describe("Env Commands - Options", func() {
 
 				It("should fail to render the template with a not supported error", func() {
 					message := "failed to generate the cloud provider CLI configuration script"
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp(message)))
+					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp(message)))
 				})
 			})
 
 			Context("when the configuration directory could not be created", func() {
 				It("should fail a mkdir error", func() {
 					options.SessionDir = string([]byte{0})
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to create gcloud configuration directory:")))
+					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to create gcloud configuration directory:")))
 				})
 			})
 
@@ -565,13 +584,25 @@ var _ = Describe("Env Commands - Options", func() {
 				})
 
 				It("should render the template successfully", func() {
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
+					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
 					Expect(options.String()).To(Equal(readTestFile("openstack/export.bash")))
 				})
 
 				It("should fail with invalid provider config", func() {
 					cloudProfile.Spec.ProviderConfig = nil
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to get openstack provider config:")))
+					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to get openstack provider config:")))
+				})
+
+				Context("output is json", func() {
+					BeforeEach(func() {
+						output = "json"
+						shell = ""
+					})
+
+					It("should render the json successfully", func() {
+						Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
+						Expect(options.String()).To(Equal(readTestFile("openstack/export.json")))
+					})
 				})
 			})
 
@@ -596,13 +627,26 @@ var _ = Describe("Env Commands - Options", func() {
 				})
 
 				It("should render the template successfully", func() {
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(Succeed())
+					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
 					Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("azure/export.fish"), filepath.Join(sessionDir, ".config", "az"))))
 				})
 
 				It("should fail with mkdir error", func() {
 					options.SessionDir = string([]byte{0})
-					Expect(options.ExecTmpl(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to create az configuration directory:")))
+					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to create az configuration directory:")))
+				})
+
+				Context("output is json", func() {
+					BeforeEach(func() {
+						output = "json"
+						shell = ""
+					})
+
+					It("should render the json successfully", func() {
+						Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
+						fmt.Println(options.String())
+						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("azure/export.json"), filepath.Join(sessionDir, ".config", "az"))))
+					})
 				})
 			})
 		})
