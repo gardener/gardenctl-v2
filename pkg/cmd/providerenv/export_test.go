@@ -43,8 +43,8 @@ func NewOptions() *TestOptions {
 	}
 }
 
-func (o *TestOptions) OutputProviderEnv(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile, messages ...*ac.AccessRestrictionMessage) error {
-	return outputProviderEnv(&o.options, shoot, secret, cloudProfile, messages)
+func (o *TestOptions) PrintProviderEnv(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile, messages ...*ac.AccessRestrictionMessage) error {
+	return printProviderEnv(&o.options, shoot, secret, cloudProfile, messages)
 }
 
 func (o *TestOptions) GenerateMetadata(cli string) map[string]interface{} {

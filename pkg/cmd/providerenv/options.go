@@ -162,10 +162,10 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	return outputProviderEnv(o, shoot, secret, cloudProfile, messages)
+	return printProviderEnv(o, shoot, secret, cloudProfile, messages)
 }
 
-func outputProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile, messages ac.AccessRestrictionMessages) error {
+func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile, messages ac.AccessRestrictionMessages) error {
 	providerType := shoot.Spec.Provider.Type
 	cli := getProviderCLI(providerType)
 
