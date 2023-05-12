@@ -141,7 +141,11 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	secretBinding, err := client.GetSecretBinding(ctx, shoot.Namespace, shoot.Spec.SecretBindingName)
+	if shoot.Spec.SecretBindingName == nil || *shoot.Spec.SecretBindingName == "" {
+		return fmt.Errorf("shoot %q is not bound to a cloud provider secret", o.Target.ShootName())
+	}
+
+	secretBinding, err := client.GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName)
 	if err != nil {
 		return err
 	}
