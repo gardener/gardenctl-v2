@@ -29,6 +29,7 @@ import (
 	cmdsshpatch "github.com/gardener/gardenctl-v2/pkg/cmd/sshpatch"
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	cmdversion "github.com/gardener/gardenctl-v2/pkg/cmd/version"
+	"github.com/gardener/gardenctl-v2/pkg/plugins"
 )
 
 const (
@@ -123,6 +124,15 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 	cmd.AddCommand(cmdkubectl.NewCmdKubectlEnv(f, ioStreams))
 	cmd.AddCommand(cmdrc.NewCmdRC(f, ioStreams))
 	cmd.AddCommand(kubeconfig.NewCmdKubeconfig(f, ioStreams))
+
+	for _, c := range plugins.Load() {
+		_, ok := c.Annotations["plugins"]
+		if !ok {
+			c.Annotations = map[string]string{"plugins": "yes"}
+		}
+
+		cmd.AddCommand(c)
+	}
 
 	return cmd
 }

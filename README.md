@@ -185,3 +185,29 @@ Establish an SSH connection to a Shoot cluster's node.
 ```bash
 gardenctl ssh my-node
 ```
+### Plugins
+To use [plugins](https://pkg.go.dev/plugin) , you have to make a `plugins` directory under `.garden`, and place the plugin files(with a .so extension) within that directory.
+
+example plugin, 
+```
+package main
+
+import (
+	"fmt"
+	"github.com/spf13/cobra"
+)
+
+var NewCmd = &cobra.Command{  //must be `NewCmd` name
+	Use:   "example",
+	Short: "A brief description of your command ",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("Test called")
+	},
+}
+
+```
+
+build plugin `.so` file
+```
+go build -buildmode=plugin
+```

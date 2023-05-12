@@ -29,6 +29,13 @@ func main() {
 		outDir = "./docs/help"
 	}
 
+	for _, c := range gardenctl.Commands() {
+		_, ok := c.Annotations["plugins"]
+		if ok {
+			gardenctl.RemoveCommand(c)
+		}
+	}
+
 	err := doc.GenMarkdownTree(gardenctl, outDir)
 	if err != nil {
 		log.Fatal(err)
