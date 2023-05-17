@@ -490,15 +490,23 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	}
 
 	if sshTarget.ShootName() == "" && sshTarget.SeedName() != "" {
-		if shoot, err := gardenClient.GetShootOfManagedSeed(ctx, sshTarget.SeedName()); err != nil {
+		shoot, err := gardenClient.GetShootOfManagedSeed(ctx, sshTarget.SeedName())
+		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return fmt.Errorf("cannot ssh to non-managed seeds: %w", err)
 			}
 
 			return err
-		} else if shoot != nil {
-			sshTarget = sshTarget.WithProjectName("garden").WithShootName(shoot.Name)
 		}
+
+		logger.V(1).Info("using referred shoot of managed seed",
+			"shoot", klog.ObjectRef{
+				Namespace: "garden",
+				Name:      shoot.Name,
+			},
+			"seed", sshTarget.SeedName())
+
+		sshTarget = sshTarget.WithProjectName("garden").WithShootName(shoot.Name)
 	}
 
 	if sshTarget.ShootName() == "" {
