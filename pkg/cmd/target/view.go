@@ -35,6 +35,7 @@ func NewCmdView(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	}
 
 	o.AddFlags(cmd.Flags())
+	o.RegisterCompletionsForOutputFlag(cmd)
 
 	f.TargetFlags().AddFlags(cmd.Flags())
 	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, cmd.Flags())

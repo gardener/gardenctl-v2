@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/yaml"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -66,6 +67,18 @@ func NewOptions(ioStreams util.IOStreams) *Options {
 // AddFlags adds flags to adjust the output to a cobra command.
 func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&o.Output, "output", "o", o.Output, "One of 'yaml' or 'json'.")
+}
+
+// RegisterCompletionsForOutputFlag adds output flag completion to the command.
+func (o *Options) RegisterCompletionsForOutputFlag(cmd *cobra.Command) {
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("output", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return o.AllowedOutputFormats(), cobra.ShellCompDirectiveNoFileComp
+	}))
+}
+
+// AllowedOutputFormats returns the allowed formats for the output flag.
+func (o *Options) AllowedOutputFormats() []string {
+	return []string{"json", "yaml"}
 }
 
 // PrintObject prints an object to IOStreams.out, using o.Output to print in the selected output format.
