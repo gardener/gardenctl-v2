@@ -121,8 +121,8 @@ github.com/gardener/etcd-druid v0.15.3 h1:IMsJTaUaSOXusfgOOF5GX5eJ0o1CI/9XtKzgxw
 github.com/gardener/etcd-druid v0.15.3/go.mod h1:VTxoQXmaE2RSP+LQS5qWUDoXzmdK6xlKLUdFhaGu6KM=
 github.com/gardener/gardener v1.70.2 h1:C2n9klhcmjudGd5aiRBjxq61Jvzcfw5Md5nXq2eYchg=
 github.com/gardener/gardener v1.70.2/go.mod h1:cqFadgATO9ptB8tpTQssDu8imWoehgvaWBO8vhnEGos=
-github.com/gardener/gardener-extension-provider-openstack v1.33.1 h1:Me9IVfv5SSNNz2Lzq8q4HmiDODqMFDXC6zzDHBHOfdI=
-github.com/gardener/gardener-extension-provider-openstack v1.33.1/go.mod h1:BQaTjI1d4g9E3UJ+2+fxOBEGNAES3RWUXVWn7ITQx8Q=
+github.com/gardener/gardener-extension-provider-openstack v1.33.3 h1:ajXW1mhKHucZLpHFw3J3fyZHXGo6vnrMbgl9XpnVRS0=
+github.com/gardener/gardener-extension-provider-openstack v1.33.3/go.mod h1:BQaTjI1d4g9E3UJ+2+fxOBEGNAES3RWUXVWn7ITQx8Q=
 github.com/gardener/hvpa-controller v0.3.1 h1:VsOdcKZMcZDlUNVbFY8oqlKrb1GSCdmzPooKT/Tyi+Y=
 github.com/gardener/hvpa-controller v0.3.1/go.mod h1:rjsb3BPKJFMluudZ8/bhCCDQfFCF/0Um+rzXQI/MmfI=
 github.com/gardener/machine-controller-manager v0.48.1 h1:Oxr5e6gRm7P40Ds4nGlga/0nmfF7cH4rOfjthR6Mm38=
