@@ -20,8 +20,7 @@ gardenctl target garden my-garden
 ### Options
 
 ```
-  -h, --help            help for garden
-  -o, --output string   One of 'yaml' or 'json'.
+  -h, --help   help for garden
 ```
 
 ### Options inherited from parent commands
