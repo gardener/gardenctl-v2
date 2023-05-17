@@ -35,8 +35,6 @@ gardenctl target seed my-seed --garden my-garden`,
 		RunE:              base.WrapRunE(o, f),
 	}
 
-	o.AddFlags(cmd.Flags())
-
 	f.TargetFlags().AddGardenFlag(cmd.Flags())
 	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, cmd.Flags())
 

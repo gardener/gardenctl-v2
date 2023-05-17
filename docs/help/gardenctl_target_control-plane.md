@@ -25,7 +25,6 @@ gardenctl target control-plane --garden my-garden --project my-project --shoot m
 ```
       --garden string    target the given garden cluster
   -h, --help             help for control-plane
-  -o, --output string    One of 'yaml' or 'json'.
       --project string   target the given project
       --seed string      target the given seed cluster
       --shoot string     target the given shoot cluster

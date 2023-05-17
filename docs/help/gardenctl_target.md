@@ -25,7 +25,6 @@ gardenctl target value/that/matches/pattern --control-plane
       --control-plane    target control plane of shoot, use together with shoot argument
       --garden string    target the given garden cluster
   -h, --help             help for target
-  -o, --output string    One of 'yaml' or 'json'.
       --project string   target the given project
       --seed string      target the given seed cluster
       --shoot string     target the given shoot cluster

@@ -31,7 +31,5 @@ gardenctl target garden my-garden`,
 		RunE:              base.WrapRunE(o, f),
 	}
 
-	o.AddFlags(cmd.Flags())
-
 	return cmd
 }

@@ -30,6 +30,7 @@ gardenctl config view`,
 	}
 
 	o.AddFlags(cmd.Flags())
+	o.RegisterCompletionsForOutputFlag(cmd)
 
 	return cmd
 }

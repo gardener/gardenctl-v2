@@ -35,6 +35,7 @@ func NewCmdVersion(f util.Factory, o *VersionOptions) *cobra.Command {
 	}
 
 	o.AddFlags(cmd.Flags())
+	o.RegisterCompletionsForOutputFlag(cmd)
 
 	return cmd
 }

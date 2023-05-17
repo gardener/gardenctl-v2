@@ -25,7 +25,6 @@ gardenctl target project my-project --garden my-garden
 ```
       --garden string   target the given garden cluster
   -h, --help            help for project
-  -o, --output string   One of 'yaml' or 'json'.
 ```
 
 ### Options inherited from parent commands

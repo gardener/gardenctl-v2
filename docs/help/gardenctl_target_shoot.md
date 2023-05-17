@@ -25,7 +25,6 @@ gardenctl target shoot my-shoot --garden my-garden --project my-project
 ```
       --garden string    target the given garden cluster
   -h, --help             help for shoot
-  -o, --output string    One of 'yaml' or 'json'.
       --project string   target the given project
       --seed string      target the given seed cluster
 ```
