@@ -49,8 +49,6 @@ gardenctl target value/that/matches/pattern --control-plane`,
 	cmd.AddCommand(NewCmdUnset(f, ioStreams))
 	cmd.AddCommand(NewCmdView(f, ioStreams))
 
-	o.AddFlags(cmd.Flags())
-
 	f.TargetFlags().AddFlags(cmd.Flags())
 	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, cmd.Flags())
 
