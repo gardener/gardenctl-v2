@@ -161,7 +161,7 @@ func (g *clientImpl) GetSeed(ctx context.Context, name string) (*gardencorev1bet
 	key := types.NamespacedName{Name: name}
 
 	if err := g.c.Get(ctx, key, seed); err != nil {
-		return nil, fmt.Errorf("failed to get seed %v: %w", key, err)
+		return nil, fmt.Errorf("failed to get seed %s: %w", name, err)
 	}
 
 	return seed, nil
@@ -455,6 +455,8 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clie
 		if oidcErr != nil {
 			return nil, fmt.Errorf("failed to get kubeconfig for seed %v: %w", key, err) // use original not-found error as cause and ignore error of fallback
 		}
+
+		klog.FromContext(ctx).Info("Using deprecated secret to obtain seed kubeconfig", "secret", klog.KRef("garden", name+".oidc"))
 	}
 
 	value, ok := secret.Data["kubeconfig"]
