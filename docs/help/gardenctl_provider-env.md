@@ -34,15 +34,16 @@ gardenctl provider-env [flags]
 ### Options
 
 ```
-      --control-plane    target control plane of shoot, use together with shoot argument
-  -f, --force            Generate the script even if there are access restrictions to be confirmed
-      --garden string    target the given garden cluster
-  -h, --help             help for provider-env
-  -o, --output string    One of 'yaml' or 'json'.
-      --project string   target the given project
-      --seed string      target the given seed cluster
-      --shoot string     target the given shoot cluster
-  -u, --unset            Generate the script to unset the cloud provider CLI environment variables and logout for 
+  -y, --confirm-access-restriction   Confirm any access restrictions. Set this flag only if you are completely aware of the access restrictions.
+      --control-plane                target control plane of shoot, use together with shoot argument
+  -f, --force                        Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.
+      --garden string                target the given garden cluster
+  -h, --help                         help for provider-env
+  -o, --output string                One of 'yaml' or 'json'.
+      --project string               target the given project
+      --seed string                  target the given seed cluster
+      --shoot string                 target the given shoot cluster
+  -u, --unset                        Generate the script to unset the cloud provider CLI environment variables and logout for 
 ```
 
 ### Options inherited from parent commands
