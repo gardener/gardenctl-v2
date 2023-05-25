@@ -224,6 +224,10 @@ type SSHOptions struct {
 	// not be kept alive after it became available.
 	// This option can only be used if KeepBastion is set to true and Interactive is set to false.
 	NoKeepalive bool
+
+	// ConfirmAccessRestriction, when set to true, implies the user understands the access restrictions for the targeted shoot.
+	// In this case, the access restriction banner is displayed without further confirmation.
+	ConfirmAccessRestriction bool
 }
 
 // NewSSHOptions returns initialized SSHOptions.
@@ -254,6 +258,7 @@ func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 	flagSet.StringVar(&o.BastionHost, "bastion-host", o.BastionHost, "Override the hostname or IP address of the bastion used for the SSH client command. If not provided, the address will be automatically determined.")
 	flagSet.StringVar(&o.BastionPort, "bastion-port", o.BastionPort, "SSH port of the bastion used for the SSH client command. Defaults to port 22")
 	flagSet.StringSliceVar(&o.BastionUserKnownHostsFiles, "bastion-user-known-hosts-file", o.BastionUserKnownHostsFiles, "Path to a custom known hosts file for the SSH connection to the bastion. This file is used to verify the public keys of remote hosts when establishing a secure connection.")
+	flagSet.BoolVarP(&o.ConfirmAccessRestriction, "confirm-access-restriction", "y", o.ConfirmAccessRestriction, "Bypasses the need for confirmation of any access restrictions. Set this flag only if you are fully aware of the access restrictions.")
 
 	o.Options.AddFlags(flagSet)
 }
@@ -1104,7 +1109,7 @@ func (o *SSHOptions) checkAccessRestrictions(cfg *config.Config, gardenName stri
 		return false, err
 	}
 
-	askForConfirmation := tf.ShootName() != ""
+	askForConfirmation := tf.ShootName() != "" && !o.ConfirmAccessRestriction
 	handler := ac.NewAccessRestrictionHandler(o.IOStreams.In, o.IOStreams.ErrOut, askForConfirmation) // do not write access restriction to stdout, otherwise it would break the output format
 
 	return handler(ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)), nil
