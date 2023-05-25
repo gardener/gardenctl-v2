@@ -81,17 +81,22 @@ var _ = Describe("Env Commands - Options", func() {
 		})
 
 		Describe("completing the command options", func() {
-			var root,
+			var (
+				root,
 				parent,
 				child *cobra.Command
+				ctx context.Context
+			)
 
 			BeforeEach(func() {
+				ctx = context.Background()
 				root = &cobra.Command{Use: "root"}
 				parent = &cobra.Command{Use: "parent", Aliases: []string{"alias"}}
 				child = &cobra.Command{Use: "child"}
 				parent.AddCommand(child)
 				root.AddCommand(parent)
 				factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
+				factory.EXPECT().Context().Return(ctx)
 				root.SetArgs([]string{"alias", "child"})
 				Expect(root.Execute()).To(Succeed())
 				baseTemplate = nil
