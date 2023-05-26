@@ -22,6 +22,7 @@ import (
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	gardenclientmocks "github.com/gardener/gardenctl-v2/internal/client/garden/mocks"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/resolve"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -365,6 +366,49 @@ project:
 seed:
   name: myseed
 shoot:
+  name: myshoot
+  namespace: garden-myproject
+`))
+				})
+
+				It("should succeed when access restrictions set", func() {
+					t := target.NewTarget(gardenName, "", "", shootName)
+					o.CurrentTarget = t
+					o.Garden.AccessRestrictions = []ac.AccessRestriction{
+						{
+							Key:      "a",
+							NotifyIf: true,
+							Msg:      "A",
+						},
+					}
+
+					shoot.ObjectMeta.Annotations = map[string]string{
+						"a1": "true",
+					}
+					shoot.Spec.SeedSelector = &gardencorev1beta1.SeedSelector{
+						LabelSelector: metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"a": "true",
+							},
+						},
+					}
+
+					gardenClient.EXPECT().FindShoot(ctx, t.AsListOption()).Return(shoot, nil)
+					gardenClient.EXPECT().GetProjectByNamespace(ctx, namespace).Return(project, nil)
+
+					Expect(o.Run(factory)).To(Succeed())
+					Expect(o.String()).To(Equal(`garden:
+  name: mygarden
+project:
+  name: myproject
+  namespace: garden-myproject
+seed:
+  name: myseed
+shoot:
+  accessRestriction: |
+    ┌─ Access Restriction ─┐
+    │ A                    │
+    └──────────────────────┘
   name: myshoot
   namespace: garden-myproject
 `))
