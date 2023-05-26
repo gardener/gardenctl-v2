@@ -98,7 +98,7 @@ func newCmdResolveShoot(f util.Factory, ioStreams util.IOStreams) *cobra.Command
 		Short: "Resolve shoot for the current target",
 		Long: `Resolve shoot for the current target.
 This command is particularly useful when you need to understand which shoot the current target translates to, regardless of whether a seed or a shoot is targeted.
-It fetches and displays information about its associated garden, project, seed, and shoot.
+It fetches and displays information about its associated garden, project, seed, and shoot, including any access restrictions in place.
 A garden and either a seed or shoot must be specified, either from a previously saved target or directly via target flags. Target flags temporarily override the saved target for the current command run.`,
 		Example: `# Resolve shoot for managed seed
 gardenctl resolve shoot --garden mygarden --seed myseed
