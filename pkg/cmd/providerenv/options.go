@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package providerenv
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -187,11 +186,8 @@ func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1
 	metadata := generateMetadata(o, cli)
 
 	if len(messages) > 0 {
-		b := &bytes.Buffer{}
-		messages.Render(b)
-
 		if o.TargetFlags.ShootName() == "" || o.Force {
-			metadata["notification"] = b.String()
+			metadata["notification"] = messages.String()
 		} else {
 			if o.Output != "" {
 				return errors.New(
@@ -201,7 +197,7 @@ func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1
 
 			s := env.Shell(o.Shell)
 			return o.Template.ExecuteTemplate(o.IOStreams.Out, "printf", map[string]interface{}{
-				"format": b.String() + "\n%s %s\n%s\n",
+				"format": messages.String() + "\n%s %s\n%s\n",
 				"arguments": []string{
 					"The cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions.",
 					"Use the --force flag to confirm the access.",
