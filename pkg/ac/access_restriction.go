@@ -8,6 +8,7 @@ package ac
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -163,6 +164,8 @@ type AccessRestrictionMessage struct {
 // AccessRestrictionMessages is a list of access restriction messages.
 type AccessRestrictionMessages []*AccessRestrictionMessage
 
+var _ fmt.Stringer = &AccessRestrictionMessages{}
+
 type pos int
 
 const (
@@ -215,6 +218,13 @@ func (p pos) print(text string, width int) string {
 	}
 
 	return strings.Join(results, "\n")
+}
+
+func (messages AccessRestrictionMessages) String() string {
+	b := &bytes.Buffer{}
+	messages.Render(b)
+
+	return b.String()
 }
 
 // Render displays the access restriction messages.

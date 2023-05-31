@@ -14,10 +14,12 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -75,6 +77,9 @@ type Shoot struct {
 
 	// Namespace is the namespace within which the shoot exists.
 	Namespace string `json:"namespace"`
+
+	// AccessRestriction holds the rendered access restriction messages
+	AccessRestriction *string `json:"accessRestriction,omitempty"`
 }
 
 // Seed represents a seed cluster.
@@ -250,6 +255,11 @@ func (o *options) Run(f util.Factory) error {
 	resolvedTarget.Shoot = &Shoot{
 		Name:      shoot.Name,
 		Namespace: shoot.Namespace,
+	}
+
+	messages := ac.CheckAccessRestrictions(o.Garden.AccessRestrictions, shoot)
+	if len(messages) != 0 {
+		resolvedTarget.Shoot.AccessRestriction = pointer.String(messages.String())
 	}
 
 	return o.PrintObject(resolvedTarget)
