@@ -173,6 +173,5 @@ func (o *options) Run(_ util.Factory) error {
 		return err
 	}
 
-	// TODO align PrintObject in base and in this implementation
 	return o.PrintObject(convertedObj, o.IOStreams.Out)
 }

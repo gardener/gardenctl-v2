@@ -86,32 +86,36 @@ func (o *Options) PrintObject(obj interface{}) error {
 	switch o.Output {
 	case "":
 		if _, ok := obj.(fmt.Stringer); ok {
-			fmt.Fprintf(o.IOStreams.Out, "%s", obj)
-		} else {
-			fmt.Fprintf(o.IOStreams.Out, "%v", obj)
+			_, err := fmt.Fprintf(o.IOStreams.Out, "%s", obj)
+			return err
 		}
+
+		_, err := fmt.Fprintf(o.IOStreams.Out, "%v", obj)
+
+		return err
 	case "yaml":
 		marshalled, err := yaml.Marshal(&obj)
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprint(o.IOStreams.Out, string(marshalled))
+		_, err = fmt.Fprint(o.IOStreams.Out, string(marshalled))
+
+		return err
 	case "json":
 		marshalled, err := json.MarshalIndent(&obj, "", "  ")
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprintln(o.IOStreams.Out, string(marshalled))
+		_, err = fmt.Fprintln(o.IOStreams.Out, string(marshalled))
 
+		return err
 	default:
 		// There is a bug in the program if we hit this case.
 		// However, we follow a policy of never panicking.
 		return fmt.Errorf("options were not validated: --output=%q should have been rejected", o.Output)
 	}
-
-	return nil
 }
 
 // Validate validates the provided options.

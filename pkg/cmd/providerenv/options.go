@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/klog/v2"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -101,6 +102,8 @@ func (o *options) AddFlags(flags *pflag.FlagSet) {
 func (o *options) Run(f util.Factory) error {
 	ctx := f.Context()
 
+	logger := klog.FromContext(ctx)
+
 	manager, err := f.Manager()
 	if err != nil {
 		return err
@@ -121,15 +124,23 @@ func (o *options) Run(f util.Factory) error {
 	}
 
 	if o.Target.ShootName() == "" && o.Target.SeedName() != "" {
-		if shoot, err := client.GetShootOfManagedSeed(ctx, o.Target.SeedName()); err != nil {
+		shoot, err := client.GetShootOfManagedSeed(ctx, o.Target.SeedName())
+		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return fmt.Errorf("cannot generate cloud provider CLI configuration script for non-managed seeds: %w", err)
 			}
 
 			return err
-		} else if shoot != nil {
-			o.Target = o.Target.WithProjectName("garden").WithShootName(shoot.Name)
 		}
+
+		logger.V(1).Info("using referred shoot of managed seed",
+			"shoot", klog.ObjectRef{
+				Namespace: "garden",
+				Name:      shoot.Name,
+			},
+			"seed", o.Target.SeedName())
+
+		o.Target = o.Target.WithProjectName("garden").WithShootName(shoot.Name)
 	}
 
 	if o.Target.ShootName() == "" {

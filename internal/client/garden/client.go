@@ -87,7 +87,7 @@ type Client interface {
 	GetSecret(ctx context.Context, namespace, name string) (*corev1.Secret, error)
 	// GetConfigMap returns a Kubernetes configmap resource
 	GetConfigMap(ctx context.Context, namespace, name string) (*corev1.ConfigMap, error)
-	// GetShootOfManagedSeed returns shoot of seed using ManagedSeed resource, nil if not a managed seed
+	// GetShootOfManagedSeed returns shoot of seed using ManagedSeed resource. An error is returned if it is not a managed seed or the referenced shoot is nil
 	GetShootOfManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.Shoot, error)
 
 	// ListBastions returns all Gardener bastion resources, filtered by a list option
@@ -161,7 +161,7 @@ func (g *clientImpl) GetSeed(ctx context.Context, name string) (*gardencorev1bet
 	key := types.NamespacedName{Name: name}
 
 	if err := g.c.Get(ctx, key, seed); err != nil {
-		return nil, fmt.Errorf("failed to get seed %v: %w", key, err)
+		return nil, fmt.Errorf("failed to get seed %s: %w", name, err)
 	}
 
 	return seed, nil
@@ -290,14 +290,13 @@ func (g *clientImpl) GetShootOfManagedSeed(ctx context.Context, name string) (*s
 	key := types.NamespacedName{Namespace: "garden", Name: name} // Currently, managed seeds are restricted to the garden namespace
 
 	if err := g.c.Get(ctx, key, managedSeed); err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil, nil
-		}
-
-		return nil, fmt.Errorf("failed to get managed seed %v: %w", key, err)
+		return nil, err
 	}
 
-	klog.V(1).Infof("using referred shoot %q for seed %q", managedSeed.Spec.Shoot.Name, name)
+	referredShoot := managedSeed.Spec.Shoot
+	if referredShoot == nil {
+		return nil, fmt.Errorf("no shoot referenced for managed seed %s", name)
+	}
 
 	return managedSeed.Spec.Shoot, nil
 }
@@ -423,9 +422,21 @@ func (g *clientImpl) CurrentUser(ctx context.Context) (string, error) {
 }
 
 func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clientcmd.ClientConfig, error) {
-	if shoot, err := g.GetShootOfManagedSeed(ctx, name); err != nil {
+	logger := klog.FromContext(ctx)
+
+	shoot, err := g.GetShootOfManagedSeed(ctx, name)
+	if client.IgnoreNotFound(err) != nil {
 		return nil, err
-	} else if shoot != nil {
+	}
+
+	if !apierrors.IsNotFound(err) {
+		logger.V(1).Info("using referred shoot of managed seed",
+			"shoot", klog.ObjectRef{
+				Namespace: "garden",
+				Name:      shoot.Name,
+			},
+			"seed", name)
+
 		return g.GetShootClientConfig(ctx, "garden", shoot.Name)
 	}
 
@@ -444,6 +455,8 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clie
 		if oidcErr != nil {
 			return nil, fmt.Errorf("failed to get kubeconfig for seed %v: %w", key, err) // use original not-found error as cause and ignore error of fallback
 		}
+
+		klog.FromContext(ctx).Info("Using deprecated secret to obtain seed kubeconfig", "secret", klog.KRef("garden", name+".oidc"))
 	}
 
 	value, ok := secret.Data["kubeconfig"]

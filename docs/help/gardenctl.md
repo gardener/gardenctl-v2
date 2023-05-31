@@ -56,6 +56,7 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 * [gardenctl kubectl-env](gardenctl_kubectl-env.md)	 - Generate a script that points KUBECONFIG to the targeted cluster for the specified shell
 * [gardenctl provider-env](gardenctl_provider-env.md)	 - Generate the cloud provider CLI configuration script for the specified shell
 * [gardenctl rc](gardenctl_rc.md)	 - Generate a gardenctl startup script for the specified shell
+* [gardenctl resolve](gardenctl_resolve.md)	 - Resolve the current target
 * [gardenctl ssh](gardenctl_ssh.md)	 - Establish an SSH connection to a node of a Shoot cluster
 * [gardenctl ssh-patch](gardenctl_ssh-patch.md)	 - Update a bastion host previously created through the ssh command
 * [gardenctl target](gardenctl_target.md)	 - Set scope for next operations, using subcommands or pattern
