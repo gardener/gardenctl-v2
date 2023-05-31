@@ -50,11 +50,19 @@ type options struct {
 	// Template is the script template
 	Template env.Template
 	// Force generates the script even if there are access restrictions to be confirmed
+	// Deprecated: Use ConfirmAccessRestriction instead
 	Force bool
+	// ConfirmAccessRestriction, when set to true, implies the user's understanding of the access restrictions for the targeted shoot.
+	// When set to false and access restrictions are present, the command will terminate with an error.
+	ConfirmAccessRestriction bool
 }
 
 // Complete adapts from the command line args to the data required.
 func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error {
+	ctx := f.Context()
+
+	logger := klog.FromContext(ctx)
+
 	if cmd.Name() != "provider-env" {
 		o.Shell = cmd.Name()
 	}
@@ -70,6 +78,12 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error
 
 	o.SessionDir = manager.SessionDir()
 	o.TargetFlags = f.TargetFlags()
+
+	if o.Force {
+		o.ConfirmAccessRestriction = true
+
+		logger.Info("The --force flag is deprecated and will be removed in a future gardenctl version. Please use the --confirm-access-restriction flag instead.")
+	}
 
 	return nil
 }
@@ -93,7 +107,8 @@ func (o *options) Validate() error {
 
 // AddFlags binds the command options to a given flagset.
 func (o *options) AddFlags(flags *pflag.FlagSet) {
-	flags.BoolVarP(&o.Force, "force", "f", false, "Generate the script even if there are access restrictions to be confirmed")
+	flags.BoolVarP(&o.Force, "force", "f", false, "Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.")
+	flags.BoolVarP(&o.ConfirmAccessRestriction, "confirm-access-restriction", "y", o.ConfirmAccessRestriction, "Confirm any access restrictions. Set this flag only if you are completely aware of the access restrictions.")
 	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, fmt.Sprintf("Generate the script to unset the cloud provider CLI environment variables and logout for %s", o.Shell))
 }
 
@@ -186,12 +201,12 @@ func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1
 	metadata := generateMetadata(o, cli)
 
 	if len(messages) > 0 {
-		if o.TargetFlags.ShootName() == "" || o.Force {
+		if o.TargetFlags.ShootName() == "" || o.ConfirmAccessRestriction {
 			metadata["notification"] = messages.String()
 		} else {
 			if o.Output != "" {
 				return errors.New(
-					"the cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions. Use the --force flag to confirm the access",
+					"the cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions. Use the --confirm-access-restriction flag to confirm the access",
 				)
 			}
 
@@ -200,8 +215,8 @@ func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1
 				"format": messages.String() + "\n%s %s\n%s\n",
 				"arguments": []string{
 					"The cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions.",
-					"Use the --force flag to confirm the access.",
-					s.Prompt(runtime.GOOS) + s.EvalCommand(fmt.Sprintf("%s --force %s", o.CmdPath, o.Shell)),
+					"Use the --confirm-access-restriction flag to confirm the access.",
+					s.Prompt(runtime.GOOS) + s.EvalCommand(fmt.Sprintf("%s --confirm-access-restriction %s", o.CmdPath, o.Shell)),
 				},
 			})
 		}

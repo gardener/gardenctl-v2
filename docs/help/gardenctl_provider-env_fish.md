@@ -26,8 +26,9 @@ gardenctl provider-env fish [flags]
       --add-dir-header                   If true, adds the file directory to the header of the log messages
       --alsologtostderr                  log to standard error as well as files (no effect when -logtostderr=true)
       --config string                    config file (default is ~/.garden/gardenctl-v2.yaml)
+  -y, --confirm-access-restriction       Confirm any access restrictions. Set this flag only if you are completely aware of the access restrictions.
       --control-plane                    target control plane of shoot, use together with shoot argument
-  -f, --force                            Generate the script even if there are access restrictions to be confirmed
+  -f, --force                            Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.
       --garden string                    target the given garden cluster
       --log-backtrace-at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
       --log-dir string                   If non-empty, write log files in this directory (no effect when -logtostderr=true)

@@ -126,7 +126,7 @@ var _ = Describe("Env Commands", func() {
 				factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
 
 				ctx = context.Background()
-				factory.EXPECT().Context().Return(ctx)
+				factory.EXPECT().Context().Return(ctx).AnyTimes()
 
 				secretBindingName = "secret-binding"
 				cloudProfileName = "cloud-profile"

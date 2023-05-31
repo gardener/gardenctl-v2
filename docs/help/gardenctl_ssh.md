@@ -44,6 +44,7 @@ gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path
       --bastion-port string                     SSH port of the bastion used for the SSH client command. Defaults to port 22 (default "22")
       --bastion-user-known-hosts-file strings   Path to a custom known hosts file for the SSH connection to the bastion. This file is used to verify the public keys of remote hosts when establishing a secure connection.
       --cidr stringArray                        CIDRs to allow access to the bastion host; if not given, your system's public IPs (v4 and v6) are auto-detected.
+  -y, --confirm-access-restriction              Bypasses the need for confirmation of any access restrictions. Set this flag only if you are fully aware of the access restrictions.
       --control-plane                           target control plane of shoot, use together with shoot argument
       --garden string                           target the given garden cluster
   -h, --help                                    help for ssh
