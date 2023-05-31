@@ -255,6 +255,13 @@ seed:
 `))
 				})
 			})
+
+			It("should fail if no seed is targeted", func() {
+				t := target.NewTarget(gardenName, "", "", "")
+				o.CurrentTarget = t
+
+				Expect(o.Run(factory)).To(MatchError(target.ErrNoSeedTargeted))
+			})
 		})
 
 		Context("Resolve Project", func() {

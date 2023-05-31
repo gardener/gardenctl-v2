@@ -199,8 +199,13 @@ func (o *options) Run(f util.Factory) error {
 
 	shoot, err := findShoot(ctx, o.GardenClient, o.CurrentTarget)
 	if err != nil {
-		if errors.Is(err, target.ErrNoShootTargeted) && o.Kind == KindProject {
-			return target.ErrNoProjectTargeted
+		if errors.Is(err, target.ErrNoShootTargeted) {
+			switch o.Kind {
+			case KindProject:
+				return target.ErrNoProjectTargeted
+			case KindSeed:
+				return target.ErrNoSeedTargeted
+			}
 		}
 
 		return err
