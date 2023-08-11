@@ -26,7 +26,7 @@ import (
 //go:embed templates
 var fsys embed.FS
 
-//go:generate mockgen -destination=./mocks/mock_template.go -package=mocks github.com/gardener/gardenctl-v2/pkg/cmd/env Template
+//go:generate mockgen -destination=./mocks/mock_template.go -package=mocks github.com/gardener/gardenctl-v2/pkg/env Template
 
 // Template provides an abstraction for go templates.
 type Template interface {
