@@ -593,17 +593,6 @@ var _ = Describe("SSH Command", func() {
 			Expect(info.Bastion.SSHPublicKeyFile).To(Equal(options.SSHPublicKeyFile))
 			Expect(info.NodePrivateKeyFiles).NotTo(BeEmpty())
 		})
-
-		It("should return an error when SSHAccess is disabled", func() {
-			options := ssh.NewSSHOptions(streams)
-			cmd := ssh.NewCmdSSH(factory, options)
-
-			testShootBase := testShoot.DeepCopy()
-			testShoot.Spec.Provider.WorkersSettings.SSHAccess.Enabled = false
-			Expect(gardenClient.Patch(ctx, testShoot, client.MergeFrom(testShootBase))).To(Succeed())
-
-			Expect(cmd.RunE(cmd, nil)).To(MatchError("Node SSH access disabled, SSH not allowed"))
-		})
 	})
 
 	Describe("ValidArgsFunction", func() {

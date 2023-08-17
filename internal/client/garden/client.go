@@ -95,6 +95,12 @@ type Client interface {
 	// PatchBastion patches an existing bastion to match newBastion using the merge patch strategy
 	PatchBastion(ctx context.Context, newBastion, oldBastion *operationsv1alpha1.Bastion) error
 
+	// EnableShootSSHAccess patches an existing shoot workersSettings.sshAccess to match newShoot workersSettings.sshAccess using the merge patch strategy
+	EnableShootSSHAccess(ctx context.Context, shoot *gardencorev1beta1.Shoot) error
+
+	// DisableShootSSHAccess patches an existing shoot workersSettings.sshAccess to match newShoot workersSettings.sshAccess using the merge patch strategy
+	DisableShootSSHAccess(ctx context.Context, shoot *gardencorev1beta1.Shoot) error
+
 	CurrentUser(ctx context.Context) (string, error)
 
 	// RuntimeClient returns the underlying kubernetes runtime client
@@ -317,6 +323,25 @@ func (g *clientImpl) ListBastions(ctx context.Context, opts ...client.ListOption
 
 func (g *clientImpl) PatchBastion(ctx context.Context, newBastion, oldBastion *operationsv1alpha1.Bastion) error {
 	return g.c.Patch(ctx, newBastion, client.MergeFrom(oldBastion))
+}
+
+func (g *clientImpl) EnableShootSSHAccess(ctx context.Context, shoot *gardencorev1beta1.Shoot) error {
+	newObj := shoot.DeepCopy()
+	newObj.Spec.Provider.WorkersSettings.SSHAccess.Enabled = true
+
+	return g.c.Patch(ctx, newObj, client.MergeFrom(shoot))
+}
+
+func (g *clientImpl) DisableShootSSHAccess(ctx context.Context, shoot *gardencorev1beta1.Shoot) error {
+	shoot, err := g.GetShoot(ctx, shoot.Namespace, shoot.Name)
+	if err != nil {
+		return err
+	}
+
+	newObj := shoot.DeepCopy()
+	newObj.Spec.Provider.WorkersSettings.SSHAccess.Enabled = false
+
+	return g.c.Patch(ctx, newObj, client.MergeFrom(shoot))
 }
 
 func (g *clientImpl) CurrentUser(ctx context.Context) (string, error) {

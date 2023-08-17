@@ -64,6 +64,8 @@ type Node struct {
 	Status string `json:"status"`
 	// Address holds information about the IP address and hostname of the worker node.
 	Address
+	// SSHD is sshd service status in worker node, value inherit from shoot workersSettings.sshAccess
+	SSHD string `json:"sshd"`
 }
 
 // Address holds information about an IP address and hostname.
@@ -118,6 +120,11 @@ func NewConnectInformation(
 					n.Hostname = addr.Address
 				}
 			}
+		}
+
+		value, exist := bastion.GetAnnotations()["WorkerSSHD"]
+		if exist {
+			n.SSHD = value
 		}
 
 		nodeList = append(nodeList, n)

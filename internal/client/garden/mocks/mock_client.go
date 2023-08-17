@@ -55,6 +55,34 @@ func (mr *MockClientMockRecorder) CurrentUser(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentUser", reflect.TypeOf((*MockClient)(nil).CurrentUser), arg0)
 }
 
+// DisableShootSSHAccess mocks base method.
+func (m *MockClient) DisableShootSSHAccess(arg0 context.Context, arg1 *v1beta1.Shoot) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DisableShootSSHAccess", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DisableShootSSHAccess indicates an expected call of DisableShootSSHAccess.
+func (mr *MockClientMockRecorder) DisableShootSSHAccess(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DisableShootSSHAccess", reflect.TypeOf((*MockClient)(nil).DisableShootSSHAccess), arg0, arg1)
+}
+
+// EnableShootSSHAccess mocks base method.
+func (m *MockClient) EnableShootSSHAccess(arg0 context.Context, arg1 *v1beta1.Shoot) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnableShootSSHAccess", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EnableShootSSHAccess indicates an expected call of EnableShootSSHAccess.
+func (mr *MockClientMockRecorder) EnableShootSSHAccess(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnableShootSSHAccess", reflect.TypeOf((*MockClient)(nil).EnableShootSSHAccess), arg0, arg1)
+}
+
 // FindShoot mocks base method.
 func (m *MockClient) FindShoot(arg0 context.Context, arg1 ...client.ListOption) (*v1beta1.Shoot, error) {
 	m.ctrl.T.Helper()

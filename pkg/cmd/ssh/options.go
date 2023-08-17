@@ -46,6 +46,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
@@ -228,6 +229,9 @@ type SSHOptions struct {
 	// ConfirmAccessRestriction, when set to true, implies the user understands the access restrictions for the targeted shoot.
 	// In this case, the access restriction banner is displayed without further confirmation.
 	ConfirmAccessRestriction bool
+
+	// WorkerSSHD is worker sshd service status, value inherit from shoot WorkersSettings.SSHAccess.Enabled. if true means worker sshd service is enabled to access, otherwise disabled.
+	WorkerSSHD bool
 }
 
 // NewSSHOptions returns initialized SSHOptions.
@@ -243,6 +247,7 @@ func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 		SkipAvailabilityCheck: false,
 		NoKeepalive:           false,
 		BastionPort:           strconv.Itoa(SSHPort),
+		WorkerSSHD:            true,
 	}
 }
 
@@ -537,9 +542,15 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return nil // abort
 	}
 
+	// process shoot workersSettings.SSHAccess.Enabled patch if shoot workersSettings.SSHAccess.Enabled is disabled
 	workersSettings := shoot.Spec.Provider.WorkersSettings
+
 	if workersSettings != nil && workersSettings.SSHAccess != nil && !workersSettings.SSHAccess.Enabled {
-		return errors.New("Node SSH access disabled, SSH not allowed")
+		o.WorkerSSHD = false
+
+		if err := processSSHAccessEnabled(ctx, cancel, shoot, gardenClient, logger); err != nil {
+			return err
+		}
 	}
 
 	// fetch the SSH key(s) for the shoot nodes
@@ -616,13 +627,13 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	// do not use `ctx`, as it might be cancelled already when running the cleanup
 	defer cleanup(f.Context(), o, gardenClient.RuntimeClient(), bastionKey, nodePrivateKeyFiles)
 
-	bastion, err := createOrPatchBastion(ctx, gardenClient.RuntimeClient(), bastionKey, shoot, sshPublicKey, policies)
+	bastion, err := createOrPatchBastion(ctx, gardenClient.RuntimeClient(), bastionKey, shoot, sshPublicKey, policies, o.WorkerSSHD)
 	if err != nil {
 		return err
 	}
 
 	// continuously keep the bastion alive by renewing its annotation
-	go keepBastionAlive(ctx, cancel, gardenClient.RuntimeClient(), bastion.DeepCopy())
+	go keepBastionAlive(ctx, cancel, gardenClient.RuntimeClient(), bastion.DeepCopy(), o.WorkerSSHD)
 
 	logger.Info("Waiting for bastion to be ready…", "waitTimeout", o.WaitTimeout)
 
@@ -686,7 +697,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	)
 }
 
-func createOrPatchBastion(ctx context.Context, gardenClient client.Client, key client.ObjectKey, shoot *gardencorev1beta1.Shoot, sshPublicKey []byte, policies []operationsv1alpha1.BastionIngressPolicy) (*operationsv1alpha1.Bastion, error) {
+func createOrPatchBastion(ctx context.Context, gardenClient client.Client, key client.ObjectKey, shoot *gardencorev1beta1.Shoot, sshPublicKey []byte, policies []operationsv1alpha1.BastionIngressPolicy, workerSSHD bool) (*operationsv1alpha1.Bastion, error) {
 	logger := klog.FromContext(ctx)
 
 	bastion := &operationsv1alpha1.Bastion{
@@ -701,6 +712,7 @@ func createOrPatchBastion(ctx context.Context, gardenClient client.Client, key c
 			bastion.Annotations = map[string]string{}
 		}
 		bastion.Annotations[corev1beta1constants.GardenerOperation] = corev1beta1constants.GardenerOperationKeepalive
+		bastion.Annotations["WorkerSSHD"] = strconv.FormatBool(workerSSHD)
 		bastion.Spec.ShootRef = corev1.LocalObjectReference{
 			Name: shoot.Name,
 		}
@@ -978,7 +990,7 @@ func getKeepAliveInterval() time.Duration {
 	return keepAliveInterval
 }
 
-func keepBastionAlive(ctx context.Context, cancel context.CancelFunc, gardenClient client.Client, bastion *operationsv1alpha1.Bastion) {
+func keepBastionAlive(ctx context.Context, cancel context.CancelFunc, gardenClient client.Client, bastion *operationsv1alpha1.Bastion, workerSSHD bool) {
 	logger := klog.FromContext(ctx).WithValues("bastion", klog.KObj(bastion))
 
 	ticker := time.NewTicker(getKeepAliveInterval())
@@ -1015,6 +1027,7 @@ func keepBastionAlive(ctx context.Context, cancel context.CancelFunc, gardenClie
 			}
 
 			bastion.Annotations[corev1beta1constants.GardenerOperation] = corev1beta1constants.GardenerOperationKeepalive
+			bastion.Annotations["WorkerSSHD"] = strconv.FormatBool(workerSSHD)
 
 			if err := gardenClient.Patch(ctx, bastion, client.MergeFrom(oldBastion)); err != nil {
 				logger.Error(err, "Failed to keep bastion alive.")
@@ -1113,4 +1126,35 @@ func (o *SSHOptions) checkAccessRestrictions(cfg *config.Config, gardenName stri
 	handler := ac.NewAccessRestrictionHandler(o.IOStreams.In, o.IOStreams.ErrOut, askForConfirmation) // do not write access restriction to stdout, otherwise it would break the output format
 
 	return handler(ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)), nil
+}
+
+func processSSHAccessEnabled(ctx context.Context, cancel context.CancelFunc, shoot *gardencorev1beta1.Shoot, gardenClient garden.Client, logger klog.Logger) error {
+	signalChan := createSignalChannel()
+
+	go func() {
+		<-signalChan
+
+		// If this goroutine caught the signal, the waitForSignal() might get
+		// stuck waiting for _another_ signal. To prevent this deadlock, we
+		// simply close the channel and "trigger" all who wait for it.
+		close(signalChan)
+
+		logger.Info("Caught signal, cancelling...")
+
+		err := gardenClient.DisableShootSSHAccess(ctx, shoot)
+		if err != nil {
+			logger.Error(err, "Failed to disable shoot SSHAccess, Please check shoot workersSettings.SSHAccess and shoot status")
+		}
+
+		cancel()
+	}()
+
+	err := gardenClient.EnableShootSSHAccess(ctx, shoot)
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(15 * time.Second)
+
+	return nil
 }
