@@ -15,7 +15,6 @@ import (
 	"os"
 	"time"
 
-	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
@@ -80,9 +79,9 @@ func waitForBastionThenSetBastionReady(ctx context.Context, gardenClient client.
 			Hostname: bastionHostname,
 			IP:       bastionIP,
 		}
-		status.Conditions = []gardencorev1alpha1.Condition{{
+		status.Conditions = []gardencorev1beta1.Condition{{
 			Type:   "BastionReady",
-			Status: gardencorev1alpha1.ConditionTrue,
+			Status: gardencorev1beta1.ConditionTrue,
 			Reason: "Testing",
 		}}
 	})

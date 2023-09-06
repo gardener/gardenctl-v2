@@ -24,10 +24,9 @@ import (
 	"sync"
 	"time"
 
-	gardencorev1alpha1 "github.com/gardener/gardener/pkg/apis/core/v1alpha1"
-	corev1alpha1helper "github.com/gardener/gardener/pkg/apis/core/v1alpha1/helper"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	corev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
@@ -897,10 +896,10 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 			return false, err
 		}
 
-		switch cond := corev1alpha1helper.GetCondition(bastion.Status.Conditions, operationsv1alpha1.BastionReady); {
+		switch cond := corev1beta1helper.GetCondition(bastion.Status.Conditions, operationsv1alpha1.BastionReady); {
 		case cond == nil:
 			return false, nil
-		case cond.Status != gardencorev1alpha1.ConditionTrue:
+		case cond.Status != gardencorev1beta1.ConditionTrue:
 			lastCheckErr = errors.New(cond.Message)
 			logger.Error(lastCheckErr, "Still waiting")
 			return false, nil
