@@ -147,8 +147,11 @@ func (p *ConnectInformation) String() string {
 	buf := bytes.Buffer{}
 
 	nodeHostname := p.NodeHostname
+	placeholderHostname := false
+
 	if nodeHostname == "" {
 		nodeHostname = "IP_OR_HOSTNAME"
+		placeholderHostname = true
 
 		table := &metav1beta1.Table{
 			ColumnDefinitions: []metav1.TableColumnDefinition{
@@ -179,8 +182,7 @@ func (p *ConnectInformation) String() string {
 			})
 		}
 
-		fmt.Fprintln(&buf, "The shoot cluster has the following nodes:")
-		fmt.Fprintln(&buf, "")
+		fmt.Fprintf(&buf, "> The shoot cluster has the following nodes:\n\n")
 
 		printer := printers.NewTablePrinter(printers.PrintOptions{})
 		if err := printer.PrintObj(table, &buf); err != nil {
@@ -200,10 +202,14 @@ func (p *ConnectInformation) String() string {
 		p.NodePrivateKeyFiles,
 	)
 
-	fmt.Fprintln(&buf, "Connect to shoot nodes by using the bastion as a proxy/jump host, for example:")
-	fmt.Fprintln(&buf, "")
-	fmt.Fprintf(&buf, "ssh %s\n", connectArgs.String())
-	fmt.Fprintln(&buf, "")
+	fmt.Fprintf(&buf, "> Connect to shoot nodes by using the bastion as a proxy/jump host.\n")
+	fmt.Fprintf(&buf, "> Run the following command in a separate terminal:\n")
+
+	if placeholderHostname {
+		fmt.Fprintf(&buf, "> Note: The command includes a placeholder (IP_OR_HOSTNAME). Replace it with the actual IP or hostname before running the command.\n\n")
+	}
+
+	fmt.Fprintf(&buf, "ssh %s\n\n", connectArgs.String())
 
 	return buf.String()
 }

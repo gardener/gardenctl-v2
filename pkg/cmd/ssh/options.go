@@ -155,7 +155,7 @@ var (
 	// bastion alive until gardenctl exits.
 	waitForSignal = func(ctx context.Context, o *SSHOptions, signalChan <-chan struct{}) {
 		if o.Output == "" {
-			fmt.Fprintln(o.IOStreams.Out, "Press Ctrl-C to stop gardenctl, after which the bastion will be removed.")
+			fmt.Fprintln(o.IOStreams.Out, "> Press Ctrl-C to stop gardenctl, after which the bastion will be removed.")
 		}
 
 		// keep the bastion alive until gardenctl exits
@@ -539,7 +539,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 
 	workersSettings := shoot.Spec.Provider.WorkersSettings
 	if workersSettings != nil && workersSettings.SSHAccess != nil && !workersSettings.SSHAccess.Enabled {
-		return errors.New("Node SSH access disabled, SSH not allowed")
+		return errors.New("node SSH access disabled, SSH not allowed")
 	}
 
 	// fetch the SSH key(s) for the shoot nodes
@@ -957,10 +957,8 @@ func remoteShell(
 		nodePrivateKeyFiles,
 	)
 
-	fmt.Fprintln(ioStreams.Out, "You can open additional SSH sessions using the command below:")
-	fmt.Fprintln(ioStreams.Out, "")
-	fmt.Fprintf(ioStreams.Out, "ssh %s\n", commandArgs.String())
-	fmt.Fprintln(ioStreams.Out, "")
+	fmt.Fprintf(ioStreams.Out, "> You can open additional SSH sessions by running the following command in a separate terminal:\n\n")
+	fmt.Fprintf(ioStreams.Out, "ssh %s\n\n", commandArgs.String())
 
 	var args []string
 

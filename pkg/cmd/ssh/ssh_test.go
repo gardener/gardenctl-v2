@@ -602,7 +602,7 @@ var _ = Describe("SSH Command", func() {
 			testShoot.Spec.Provider.WorkersSettings.SSHAccess.Enabled = false
 			Expect(gardenClient.Patch(ctx, testShoot, client.MergeFrom(testShootBase))).To(Succeed())
 
-			Expect(cmd.RunE(cmd, nil)).To(MatchError("Node SSH access disabled, SSH not allowed"))
+			Expect(cmd.RunE(cmd, nil)).To(MatchError("node SSH access disabled, SSH not allowed"))
 		})
 	})
 
