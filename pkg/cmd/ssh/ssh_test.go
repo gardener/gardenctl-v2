@@ -353,7 +353,7 @@ var _ = Describe("SSH Command", func() {
 						ssh.SSHBastionUsername,
 						bastionIP,
 					),
-					fmt.Sprintf("%s@%s", ssh.SSHNodeUsername, nodeHostname),
+					fmt.Sprintf("%s@%s", options.User, nodeHostname),
 				}))
 
 				return nil
@@ -407,7 +407,7 @@ var _ = Describe("SSH Command", func() {
 						ssh.SSHBastionUsername,
 						bastionIP,
 					),
-					fmt.Sprintf("%s@%s", ssh.SSHNodeUsername, nodeName),
+					fmt.Sprintf("%s@%s", options.User, nodeName),
 				}))
 
 				return nil

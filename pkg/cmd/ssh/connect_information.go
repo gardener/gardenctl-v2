@@ -200,6 +200,7 @@ func (p *ConnectInformation) String() string {
 		p.Bastion.UserKnownHostsFiles,
 		nodeHostname,
 		p.NodePrivateKeyFiles,
+		"",
 	)
 
 	fmt.Fprintf(&buf, "> Connect to shoot nodes by using the bastion as a proxy/jump host.\n")

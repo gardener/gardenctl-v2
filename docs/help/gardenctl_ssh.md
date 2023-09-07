@@ -58,7 +58,7 @@ gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path
       --seed string                             target the given seed cluster
       --shoot string                            target the given shoot cluster
       --skip-availability-check                 Skip checking for SSH bastion host availability.
-      --ssh-user string                         ssh user is the name of the Shoot cluster node ssh login user name.
+      --user string                             user is the name of the Shoot cluster node ssh login user name. (default "gardener")
       --wait-timeout duration                   Maximum duration to wait for the bastion to become available. (default 10m0s)
 ```
 

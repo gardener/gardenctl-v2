@@ -60,6 +60,7 @@ func SSHCommandArguments(
 	bastionUserKnownHostsFiles []string,
 	nodeHostname string,
 	nodePrivateKeyFiles []PrivateKeyFile,
+	user string,
 ) TestArguments {
 	return TestArguments{
 		sshCommandArguments(
@@ -69,6 +70,7 @@ func SSHCommandArguments(
 			bastionUserKnownHostsFiles,
 			nodeHostname,
 			nodePrivateKeyFiles,
+			user,
 		),
 	}
 }

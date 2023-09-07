@@ -23,6 +23,7 @@ type testCase struct {
 	nodeHostname               string
 	nodePrivateKeyFiles        []ssh.PrivateKeyFile
 	expectedArgs               []string
+	user                       string
 }
 
 func newTestCase() testCase {
@@ -32,6 +33,7 @@ func newTestCase() testCase {
 		sshPrivateKeyFile:   "path/to/private/key",
 		nodeHostname:        "node.example.com",
 		nodePrivateKeyFiles: []ssh.PrivateKeyFile{"path/to/node/private/key"},
+		user:                "gardener",
 	}
 }
 
@@ -46,6 +48,7 @@ var _ = Describe("Arguments", func() {
 					tc.bastionUserKnownHostsFiles,
 					tc.nodeHostname,
 					tc.nodePrivateKeyFiles,
+					tc.user,
 				)
 				Expect(args.String()).To(Equal(strings.Join(tc.expectedArgs, " ")))
 			},
@@ -57,6 +60,18 @@ var _ = Describe("Arguments", func() {
 					"'-ipath/to/node/private/key'",
 					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
 					"'gardener@node.example.com'",
+				}
+				return tc
+			}()),
+			Entry("basic case with other ssh username", func() testCase {
+				tc := newTestCase()
+				tc.user = "aaa"
+				tc.expectedArgs = []string{
+					"-oStrictHostKeyChecking=no",
+					"-oIdentitiesOnly=yes",
+					"'-ipath/to/node/private/key'",
+					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
+					"'aaa@node.example.com'",
 				}
 				return tc
 			}()),

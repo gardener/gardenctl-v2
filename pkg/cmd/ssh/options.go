@@ -55,14 +55,11 @@ import (
 const (
 	// SSHBastionUsername is the system username on the bastion host.
 	SSHBastionUsername = "gardener"
-	// DefaultUsername is the default system username on any of the shoot cluster nodes.
+	// DefaultUsername is the default Shoot cluster node ssh login username.
 	DefaultUsername = "gardener"
 	// SSHPort is the TCP port on a bastion instance that allows incoming SSH.
 	SSHPort = 22
 )
-
-// SSHNodeUsername is ssh login user name.
-var SSHNodeUsername string
 
 // wrappers used for unit tests only.
 var (
@@ -197,8 +194,8 @@ type SSHOptions struct {
 	// bastion host, but leave it up to the user to SSH themselves.
 	NodeName string
 
-	// SSHUser is the name of the Shoot cluster node ssh login user name
-	SSHUser string
+	// User is the name of the Shoot cluster node ssh login username
+	User string
 
 	// SSHPublicKeyFile is the full path to the file containing the user's
 	// public SSH key. If not given, gardenctl will create a new temporary keypair.
@@ -248,6 +245,7 @@ func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 		SkipAvailabilityCheck: false,
 		NoKeepalive:           false,
 		BastionPort:           strconv.Itoa(SSHPort),
+		User:                  DefaultUsername,
 	}
 }
 
@@ -264,7 +262,7 @@ func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 	flagSet.StringVar(&o.BastionPort, "bastion-port", o.BastionPort, "SSH port of the bastion used for the SSH client command. Defaults to port 22")
 	flagSet.StringSliceVar(&o.BastionUserKnownHostsFiles, "bastion-user-known-hosts-file", o.BastionUserKnownHostsFiles, "Path to a custom known hosts file for the SSH connection to the bastion. This file is used to verify the public keys of remote hosts when establishing a secure connection.")
 	flagSet.BoolVarP(&o.ConfirmAccessRestriction, "confirm-access-restriction", "y", o.ConfirmAccessRestriction, "Bypasses the need for confirmation of any access restrictions. Set this flag only if you are fully aware of the access restrictions.")
-	flagSet.StringVar(&o.SSHUser, "ssh-user", o.SSHUser, "ssh user is the name of the Shoot cluster node ssh login user name.")
+	flagSet.StringVar(&o.User, "user", o.User, "user is the name of the Shoot cluster node ssh login user name.")
 	o.Options.AddFlags(flagSet)
 }
 
@@ -314,12 +312,6 @@ func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string)
 		}
 
 		o.BastionName = name
-	}
-
-	if o.SSHUser == "" {
-		SSHNodeUsername = DefaultUsername
-	} else {
-		SSHNodeUsername = o.SSHUser
 	}
 
 	return nil
@@ -378,6 +370,10 @@ func (o *SSHOptions) Validate() error {
 		if o.Interactive {
 			return errors.New("set --interactive=false when using the output flag")
 		}
+	}
+
+	if o.User == "" {
+		return errors.New("user must not be empty")
 	}
 
 	content, err := os.ReadFile(o.SSHPublicKeyFile.String())
@@ -694,6 +690,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		o.BastionUserKnownHostsFiles,
 		nodeHostname,
 		nodePrivateKeyFiles,
+		o.User,
 	)
 }
 
@@ -958,6 +955,7 @@ func remoteShell(
 	bastionUserKnownHostsFiles []string,
 	nodeHostname string,
 	nodePrivateKeyFiles []PrivateKeyFile,
+	user string,
 ) error {
 	commandArgs := sshCommandArguments(
 		bastionHost,
@@ -966,6 +964,7 @@ func remoteShell(
 		bastionUserKnownHostsFiles,
 		nodeHostname,
 		nodePrivateKeyFiles,
+		user,
 	)
 
 	fmt.Fprintf(ioStreams.Out, "> You can open additional SSH sessions by running the following command in a separate terminal:\n\n")
