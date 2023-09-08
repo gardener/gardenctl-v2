@@ -32,6 +32,8 @@ type ConnectInformation struct {
 
 	// Nodes is a list of Node objects containing information about the worker nodes.
 	Nodes []Node `json:"nodes"`
+	// User is the name of the Shoot cluster node ssh login username
+	User string
 }
 
 var _ fmt.Stringer = &ConnectInformation{}
@@ -200,7 +202,7 @@ func (p *ConnectInformation) String() string {
 		p.Bastion.UserKnownHostsFiles,
 		nodeHostname,
 		p.NodePrivateKeyFiles,
-		"",
+		p.User,
 	)
 
 	fmt.Fprintf(&buf, "> Connect to shoot nodes by using the bastion as a proxy/jump host.\n")
