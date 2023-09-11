@@ -66,6 +66,7 @@ func sshCommandArguments(
 	bastionUserKnownHostsFiles []string,
 	nodeHostname string,
 	nodePrivateKeyFiles []PrivateKeyFile,
+	user string,
 ) arguments {
 	bastionUserKnownHostsFilesArg := userKnownHostsFilesArgument(bastionUserKnownHostsFiles)
 
@@ -87,7 +88,7 @@ func sshCommandArguments(
 
 	args = append(args, argument{value: fmt.Sprintf("-oProxyCommand=%s", proxyCmdArgs.String())})
 
-	args = append(args, argument{value: fmt.Sprintf("%s@%s", SSHNodeUsername, nodeHostname)})
+	args = append(args, argument{value: fmt.Sprintf("%s@%s", user, nodeHostname)})
 
 	return arguments{list: args}
 }
