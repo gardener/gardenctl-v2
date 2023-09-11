@@ -663,6 +663,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 			o.SSHPrivateKeyFile,
 			nodePrivateKeyFiles,
 			nodes,
+			o.User,
 		)
 		if err != nil {
 			return err

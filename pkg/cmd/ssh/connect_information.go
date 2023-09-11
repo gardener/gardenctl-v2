@@ -32,6 +32,7 @@ type ConnectInformation struct {
 
 	// Nodes is a list of Node objects containing information about the worker nodes.
 	Nodes []Node `json:"nodes"`
+
 	// User is the name of the Shoot cluster node ssh login username
 	User string
 }
@@ -86,6 +87,7 @@ func NewConnectInformation(
 	sshPrivateKeyFile PrivateKeyFile,
 	nodePrivateKeyFiles []PrivateKeyFile,
 	nodes []corev1.Node,
+	user string,
 ) (*ConnectInformation, error) {
 	var nodeList []Node
 
@@ -142,6 +144,7 @@ func NewConnectInformation(
 		NodeHostname:        nodeHostname,
 		NodePrivateKeyFiles: nodePrivateKeyFiles,
 		Nodes:               nodeList,
+		User:                user,
 	}, nil
 }
 
