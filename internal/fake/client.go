@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -125,6 +126,14 @@ func (w *clientWrapper) RESTMapper() meta.RESTMapper {
 
 func (w *clientWrapper) SubResource(subResource string) client.SubResourceClient {
 	return w.delegate.SubResource(subResource)
+}
+
+func (w *clientWrapper) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	return w.delegate.GroupVersionKindFor(obj)
+}
+
+func (w *clientWrapper) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	return w.delegate.IsObjectNamespaced(obj)
 }
 
 func filterItems(list client.ObjectList, selector fields.Selector, getFieldSet func(reflect.Value) fields.Set) {
