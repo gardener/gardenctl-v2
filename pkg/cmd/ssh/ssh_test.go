@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -31,6 +32,7 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
@@ -117,6 +119,7 @@ var _ = Describe("SSH Command", func() {
 		shootClient        client.Client
 		nodePrivateKeyFile string
 		logs               *util.SafeBytesBuffer
+		signalChan         chan os.Signal
 	)
 
 	BeforeEach(func() {
@@ -144,10 +147,8 @@ var _ = Describe("SSH Command", func() {
 			return bastionName, nil
 		})
 
-		// simulate the user immediately exiting via Ctrl-C
 		ssh.SetCreateSignalChannel(func() chan os.Signal {
-			signalChan := make(chan os.Signal, 1)
-			signalChan <- os.Interrupt
+			signalChan = make(chan os.Signal, 1)
 
 			return signalChan
 		})
@@ -234,13 +235,17 @@ var _ = Describe("SSH Command", func() {
 			},
 		}
 
-		gardenClient = internalfake.NewClientWithObjects(
-			testProject,
-			testSeed,
-			testShoot,
-			testShootKeypair,
-			caSecret,
-		)
+		gardenClient = internalfake.Wrap(
+			fakeclient.NewClientBuilder().
+				WithObjects(
+					testProject,
+					testSeed,
+					testShoot,
+					testShootKeypair,
+					caSecret,
+				).
+				WithStatusSubresource(&operationsv1alpha1.Bastion{}).
+				Build())
 
 		// create a fake shoot cluster with a single node in it
 		testNode = &corev1.Node{
@@ -305,8 +310,19 @@ var _ = Describe("SSH Command", func() {
 			options := ssh.NewSSHOptions(streams)
 			cmd := ssh.NewCmdSSH(factory, options)
 
-			// simulate an external controller processing the bastion and proving a successful status
-			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
+			go func() {
+				defer GinkgoRecover()
+				defer func() {
+					signalChan <- os.Interrupt
+				}()
+
+				// simulate an external controller processing the bastion and proving a successful status
+				waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
+
+				Eventually(func() bool {
+					return strings.Contains(logs.String(), bastionIP)
+				}).Should(BeTrue())
+			}()
 
 			// let the magic happen
 			Expect(cmd.RunE(cmd, nil)).To(Succeed())
@@ -340,6 +356,9 @@ var _ = Describe("SSH Command", func() {
 			// do not actually execute any commands
 			executedCommands := 0
 			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
+				defer func() {
+					signalChan <- os.Interrupt
+				}()
 				executedCommands++
 
 				Expect(command).To(Equal("ssh"))
@@ -394,6 +413,9 @@ var _ = Describe("SSH Command", func() {
 			// do not actually execute any commands
 			executedCommands := 0
 			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
+				defer func() {
+					signalChan <- os.Interrupt
+				}()
 				executedCommands++
 
 				Expect(command).To(Equal("ssh"))
@@ -443,21 +465,19 @@ var _ = Describe("SSH Command", func() {
 
 			cmd := ssh.NewCmdSSH(factory, options)
 
-			// simulate an external controller processing the bastion and proving a successful status
-			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
-
-			// end the test after a couple of seconds (enough seconds for the keep-alive
-			// goroutine to do its thing)
-			ssh.SetKeepAliveInterval(100 * time.Millisecond)
-			signalChan := make(chan os.Signal, 1)
-			ssh.SetCreateSignalChannel(func() chan os.Signal {
-				return signalChan
-			})
+			ssh.SetKeepAliveInterval(50 * time.Millisecond)
 
 			key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
 
 			go func() {
-				defer GinkgoRecover()
+				GinkgoRecover()
+
+				defer func() {
+					signalChan <- os.Interrupt
+				}()
+
+				// simulate an external controller processing the bastion and proving a successful status
+				waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
 
 				Eventually(func() bool {
 					bastion := &operationsv1alpha1.Bastion{}
@@ -466,9 +486,29 @@ var _ = Describe("SSH Command", func() {
 					}
 
 					return bastion.Annotations != nil && bastion.Annotations[corev1beta1constants.GardenerOperation] == corev1beta1constants.GardenerOperationKeepalive
-				}, "2s", "10ms").Should(BeTrue())
+				}).Should(BeTrue())
 
-				signalChan <- os.Interrupt
+				// delete the GardenerOperation annotation
+				bastion := &operationsv1alpha1.Bastion{}
+				Expect(gardenClient.Get(ctx, key, bastion)).To(Succeed())
+				delete(bastion.Annotations, corev1beta1constants.GardenerOperation)
+				patch := client.MergeFrom(bastion.DeepCopy())
+				Expect(gardenClient.Patch(ctx, bastion, patch)).To(Succeed())
+
+				// expect that the keepalive annotation will be added again
+				Eventually(func() bool {
+					bastion := &operationsv1alpha1.Bastion{}
+					if err := gardenClient.Get(ctx, key, bastion); apierrors.IsNotFound(err) {
+						return false
+					}
+
+					return bastion.Annotations != nil && bastion.Annotations[corev1beta1constants.GardenerOperation] == corev1beta1constants.GardenerOperationKeepalive
+				}).Should(BeTrue())
+
+				// wait until connect information is printed to be sure that the command ran through and is just waiting for the user to interrupt
+				Eventually(func() bool {
+					return strings.Contains(logs.String(), bastionIP)
+				}).Should(BeTrue())
 			}()
 
 			// let the magic happen

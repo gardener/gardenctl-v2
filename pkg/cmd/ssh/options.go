@@ -634,7 +634,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	logger.Info("Waiting for bastion to be ready…", "waitTimeout", o.WaitTimeout)
 
 	err = waitForBastion(ctx, o, gardenClient.RuntimeClient(), bastion)
-	if err == wait.ErrWaitTimeout {
+	if wait.Interrupted(err) {
 		return errors.New("timed out waiting for the bastion to be ready")
 	} else if err != nil {
 		return fmt.Errorf("an error occurred while waiting for the bastion to be ready: %w", err)
@@ -899,7 +899,7 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 		}
 	}
 
-	waitErr := wait.Poll(pollBastionStatusInterval, o.WaitTimeout, func() (bool, error) {
+	waitErr := wait.PollUntilContextTimeout(ctx, pollBastionStatusInterval, o.WaitTimeout, false, func(ctx context.Context) (bool, error) {
 		key := client.ObjectKeyFromObject(bastion)
 
 		if err := gardenClient.Get(ctx, key, bastion); err != nil {
@@ -931,7 +931,7 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 		return true, nil
 	})
 
-	if waitErr == wait.ErrWaitTimeout {
+	if wait.Interrupted(waitErr) {
 		return fmt.Errorf("timed out waiting for the bastion to become ready: %w", lastCheckErr)
 	}
 
