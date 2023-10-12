@@ -31,6 +31,7 @@ import (
 	"github.com/gardener/gardener/pkg/utils"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
 	"github.com/gardener/gardener/pkg/utils/secrets"
+	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/crypto/ssh"
@@ -836,14 +837,26 @@ func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
 		return nil, errors.New("no Shoot cluster targeted")
 	}
 
-	// create client for the shoot cluster
-	shootClient, err := manager.ShootClient(f.Context(), currentTarget)
+	// create client for the gardener cluster
+	client, err := manager.GardenClient(currentTarget.GardenName())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
+	}
+
+	shoot, err := client.FindShoot(f.Context(), currentTarget.AsListOption())
 	if err != nil {
 		return nil, err
 	}
 
-	// fetch all nodes
-	nodes, err := getNodes(f.Context(), shootClient)
+	newTarget := currentTarget.WithSeedName(*shoot.Spec.SeedName).WithControlPlane(true)
+
+	seedClient, err := manager.SeedClient(f.Context(), newTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	// fetch all machines
+	machines, err := getMachines(f.Context(), shoot.Status.TechnicalID, seedClient)
 	if err != nil {
 		return nil, err
 	}
@@ -851,9 +864,13 @@ func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
 	// collect names, filter by prefix
 	nodeNames := []string{}
 
-	for _, node := range nodes {
-		if strings.HasPrefix(node.Name, prefix) {
-			nodeNames = append(nodeNames, node.Name)
+	for _, node := range machines {
+		if _, ok := node.Labels["node"]; !ok {
+			continue
+		}
+
+		if strings.HasPrefix(node.Labels["node"], prefix) {
+			nodeNames = append(nodeNames, node.Labels["node"])
 		}
 	}
 
@@ -1101,6 +1118,15 @@ func getNodes(ctx context.Context, c client.Client) ([]corev1.Node, error) {
 	}
 
 	return nodeList.Items, nil
+}
+
+func getMachines(ctx context.Context, name string, c client.Client) ([]machinev1alpha1.Machine, error) {
+	machineList := machinev1alpha1.MachineList{}
+	if err := c.List(ctx, &machineList, client.InNamespace(name)); err != nil {
+		return nil, fmt.Errorf("failed to list machines: %w", err)
+	}
+
+	return machineList.Items, nil
 }
 
 func (o *SSHOptions) checkAccessRestrictions(cfg *config.Config, gardenName string, tf target.TargetFlags, shoot *gardencorev1beta1.Shoot) (bool, error) {
