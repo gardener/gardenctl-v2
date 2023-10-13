@@ -47,32 +47,20 @@ type bastionStatusPatch func(status *operationsv1alpha1.BastionStatus)
 func waitForBastionThenPatchStatus(ctx context.Context, gardenClient client.Client, bastionName string, namespace string, patcher bastionStatusPatch) {
 	defer GinkgoRecover()
 
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-
-		case <-ticker.C:
-			key := types.NamespacedName{Name: bastionName, Namespace: namespace}
-
-			Eventually(func() error {
-				bastion := &operationsv1alpha1.Bastion{}
-				if err := gardenClient.Get(ctx, key, bastion); err != nil {
-					return err
-				}
-
-				patch := client.MergeFrom(bastion.DeepCopy())
-				patcher(&bastion.Status)
-
-				return gardenClient.Status().Patch(ctx, bastion, patch)
-			}).Should(Succeed())
-
-			return
+	Eventually(func() error {
+		bastion := &operationsv1alpha1.Bastion{ObjectMeta: metav1.ObjectMeta{
+			Name:      bastionName,
+			Namespace: namespace,
+		}}
+		if err := gardenClient.Get(ctx, client.ObjectKeyFromObject(bastion), bastion); err != nil {
+			return err
 		}
-	}
+
+		patch := client.MergeFrom(bastion.DeepCopy())
+		patcher(&bastion.Status)
+
+		return gardenClient.Status().Patch(ctx, bastion, patch)
+	}).Should(Succeed())
 }
 
 func waitForBastionThenSetBastionReady(ctx context.Context, gardenClient client.Client, bastionName string, namespace string, bastionHostname string, bastionIP string) {
