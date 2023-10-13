@@ -427,7 +427,7 @@ func createSSHKeypair(tempDir string, keyName string) (PrivateKeyFile, PublicKey
 
 func createSSHPrivateKey() (*rsa.PrivateKey, error) {
 	// Private Key generation
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		return nil, err
 	}
