@@ -27,7 +27,6 @@ func init() {
 
 func TestCommand(t *testing.T) {
 	SetDefaultEventuallyTimeout(5 * time.Second)
-	SetDefaultEventuallyPollingInterval(200 * time.Millisecond)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "SSH Command Test Suite")
 }
