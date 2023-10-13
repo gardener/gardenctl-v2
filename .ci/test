@@ -18,5 +18,4 @@ fi
 
 export GO_TEST_ADDITIONAL_FLAGS="-race"
 
-source "${SOURCE_PATH}"/hack/test-integration.env
 "${SOURCE_PATH}"/hack/test-integration.sh

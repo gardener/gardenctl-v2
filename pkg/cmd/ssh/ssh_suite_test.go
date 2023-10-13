@@ -9,6 +9,7 @@ package ssh_test
 import (
 	"os"
 	"testing"
+	"time"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
@@ -25,6 +26,8 @@ func init() {
 }
 
 func TestCommand(t *testing.T) {
+	SetDefaultEventuallyTimeout(5 * time.Second)
+	SetDefaultEventuallyPollingInterval(200 * time.Millisecond)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "SSH Command Test Suite")
 }
