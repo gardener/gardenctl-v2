@@ -34,4 +34,6 @@ function run_test {
   popd
 }
 
+source "$(dirname "$0")/test-integration.env"
+
 run_test gardenctl-v2 "${SOURCE_PATH}" "${GO_TEST_ADDITIONAL_FLAGS}"
