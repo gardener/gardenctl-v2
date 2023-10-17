@@ -843,20 +843,7 @@ func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	shoot, err := client.FindShoot(f.Context(), currentTarget.AsListOption())
-	if err != nil {
-		return nil, err
-	}
-
-	newTarget := currentTarget.WithSeedName(*shoot.Spec.SeedName).WithControlPlane(true)
-
-	seedClient, err := manager.SeedClient(f.Context(), newTarget)
-	if err != nil {
-		return nil, err
-	}
-
-	// fetch all machines
-	machines, err := getMachines(f.Context(), shoot.Status.TechnicalID, seedClient)
+	operator, err := client.CheckUserRoles(f.Context())
 	if err != nil {
 		return nil, err
 	}
@@ -864,13 +851,51 @@ func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
 	// collect names, filter by prefix
 	nodeNames := []string{}
 
-	for _, node := range machines {
-		if _, ok := node.Labels["node"]; !ok {
-			continue
+	if !operator {
+		// create client for the shoot cluster
+		shootClient, err := manager.ShootClient(f.Context(), currentTarget)
+		if err != nil {
+			return nil, err
 		}
 
-		if strings.HasPrefix(node.Labels["node"], prefix) {
-			nodeNames = append(nodeNames, node.Labels["node"])
+		// fetch all nodes
+		nodes, err := getNodes(f.Context(), shootClient)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, node := range nodes {
+			if strings.HasPrefix(node.Name, prefix) {
+				nodeNames = append(nodeNames, node.Name)
+			}
+		}
+	} else {
+		shoot, err := client.FindShoot(f.Context(), currentTarget.AsListOption())
+		if err != nil {
+			return nil, err
+		}
+
+		newTarget := currentTarget.WithSeedName(*shoot.Spec.SeedName).WithControlPlane(true)
+		// create client for the seed cluster
+		seedClient, err := manager.SeedClient(f.Context(), newTarget)
+		if err != nil {
+			return nil, err
+		}
+
+		// fetch all machines
+		machines, err := getMachines(f.Context(), shoot.Status.TechnicalID, seedClient)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, node := range machines {
+			if _, ok := node.Labels["node"]; !ok {
+				continue
+			}
+
+			if strings.HasPrefix(node.Labels["node"], prefix) {
+				nodeNames = append(nodeNames, node.Labels["node"])
+			}
 		}
 	}
 
