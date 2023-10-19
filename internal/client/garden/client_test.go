@@ -16,6 +16,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	authenticationv1 "k8s.io/api/authentication/v1"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -352,6 +353,31 @@ var _ = Describe("Client", func() {
 			username, err := gardenClient.CurrentUser(ctx)
 			Expect(err).To(BeNil())
 			Expect(username).To(Equal(userCN))
+		})
+	})
+
+	Describe("CheckUserRoles", func() {
+		It("Should return the user roles is true as operator", func() {
+			config := fake.NewTokenConfig("garden")
+			cic := createInterceptingClient{
+				Client: fake.NewClientWithObjects(),
+				createInterceptor: func(ctx context.Context, object client.Object, option ...client.CreateOption) error {
+					if tr, ok := object.(*authorizationv1.SelfSubjectAccessReview); ok {
+						tr.ObjectMeta.Name = "foo" // must be set or else the fake client will error because no name was provided
+						tr.Status.Allowed = true
+					}
+					return nil
+				},
+			}
+			gardenClient = clientgarden.NewClient(
+				clientcmd.NewDefaultClientConfig(*config, nil),
+				cic,
+				gardenName,
+			)
+
+			operator, err := gardenClient.CheckUserRoles(ctx)
+			Expect(err).To(BeNil())
+			Expect(operator).To(Equal(true))
 		})
 	})
 })

@@ -13,6 +13,7 @@ import (
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
+	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -23,6 +24,7 @@ import (
 func init() {
 	utilruntime.Must(gardencorev1beta1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(operationsv1alpha1.AddToScheme(scheme.Scheme))
+	utilruntime.Must(machinev1alpha1.AddToScheme(scheme.Scheme))
 }
 
 func TestCommand(t *testing.T) {
