@@ -24,7 +24,6 @@ import (
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	authenticationv1 "k8s.io/api/authentication/v1"
-	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -97,8 +96,6 @@ type Client interface {
 	PatchBastion(ctx context.Context, newBastion, oldBastion *operationsv1alpha1.Bastion) error
 
 	CurrentUser(ctx context.Context) (string, error)
-
-	CheckUserRoles(ctx context.Context) (bool, error)
 
 	// RuntimeClient returns the underlying kubernetes runtime client
 	// TODO: Remove this when we switched all APIs to the new gardenclient
@@ -484,30 +481,6 @@ func (g *clientImpl) GetCloudProfile(ctx context.Context, name string) (*gardenc
 	}
 
 	return cloudProfile, nil
-}
-
-func (g *clientImpl) CheckUserRoles(ctx context.Context) (bool, error) {
-	review := &authorizationv1.SelfSubjectAccessReview{
-		Spec: authorizationv1.SelfSubjectAccessReviewSpec{
-			ResourceAttributes: &authorizationv1.ResourceAttributes{
-				Verb:     "get",
-				Resource: "secrets",
-			},
-		},
-	}
-
-	err := g.c.Create(ctx, review)
-	if err != nil {
-		return false, fmt.Errorf("failed to create self subject access review %w", err)
-	}
-
-	// operator user
-	if review.Status.Allowed {
-		return true, nil
-	}
-
-	// normal user
-	return false, nil
 }
 
 // RuntimeClient returns the underlying Kubernetes runtime client.

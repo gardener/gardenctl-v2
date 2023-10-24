@@ -40,21 +40,6 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 	return m.recorder
 }
 
-// CheckUserRoles mocks base method.
-func (m *MockClient) CheckUserRoles(arg0 context.Context) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CheckUserRoles", arg0)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CheckUserRoles indicates an expected call of CheckUserRoles.
-func (mr *MockClientMockRecorder) CheckUserRoles(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckUserRoles", reflect.TypeOf((*MockClient)(nil).CheckUserRoles), arg0)
-}
-
 // CurrentUser mocks base method.
 func (m *MockClient) CurrentUser(arg0 context.Context) (string, error) {
 	m.ctrl.T.Helper()
