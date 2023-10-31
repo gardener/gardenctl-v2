@@ -844,7 +844,7 @@ func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
 	}
 
 	// collect names, filter by prefix
-	nodeNames := []string{}
+	var nodeNames []string
 
 	shoot, err := client.FindShoot(f.Context(), currentTarget.AsListOption())
 	if err != nil {
@@ -855,43 +855,43 @@ func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
 	// create client for the seed cluster
 	seedClient, err := manager.SeedClient(f.Context(), newTarget)
 	if err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "forbidden") {
-			shootClient, err := manager.ShootClient(f.Context(), currentTarget)
-			if err != nil {
-				return nil, err
-			}
-
-			// fetch all nodes
-			nodes, err := getNodes(f.Context(), shootClient)
-			if err != nil {
-				return nil, err
-			}
-
-			for _, node := range nodes {
-				if strings.HasPrefix(node.Name, prefix) {
-					nodeNames = append(nodeNames, node.Name)
-				}
-			}
-
-			return nodeNames, nil
+		if !apierrors.IsForbidden(err) {
+			return nil, err
 		}
 
-		return nil, err
+		shootClient, err := manager.ShootClient(f.Context(), currentTarget)
+		if err != nil {
+			return nil, err
+		}
+
+		// fetch all nodes
+		nodes, err := getNodes(f.Context(), shootClient)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, node := range nodes {
+			if strings.HasPrefix(node.Name, prefix) {
+				nodeNames = append(nodeNames, node.Name)
+			}
+		}
+
+		return nodeNames, nil
 	}
 
 	// fetch all machines
-	machines, err := getMachines(f.Context(), shoot.Status.TechnicalID, seedClient)
+	machines, err := getMachines(f.Context(), seedClient, shoot.Status.TechnicalID)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, node := range machines {
-		if _, ok := node.Labels["node"]; !ok {
+	for _, machine := range machines {
+		if _, ok := machine.Labels["node"]; !ok {
 			continue
 		}
 
-		if strings.HasPrefix(node.Labels["node"], prefix) {
-			nodeNames = append(nodeNames, node.Labels["node"])
+		if strings.HasPrefix(machine.Labels["node"], prefix) {
+			nodeNames = append(nodeNames, machine.Labels["node"])
 		}
 	}
 
@@ -1141,9 +1141,9 @@ func getNodes(ctx context.Context, c client.Client) ([]corev1.Node, error) {
 	return nodeList.Items, nil
 }
 
-func getMachines(ctx context.Context, name string, c client.Client) ([]machinev1alpha1.Machine, error) {
+func getMachines(ctx context.Context, c client.Client, namespace string) ([]machinev1alpha1.Machine, error) {
 	machineList := machinev1alpha1.MachineList{}
-	if err := c.List(ctx, &machineList, client.InNamespace(name)); err != nil {
+	if err := c.List(ctx, &machineList, client.InNamespace(namespace)); err != nil {
 		return nil, fmt.Errorf("failed to list machines: %w", err)
 	}
 
