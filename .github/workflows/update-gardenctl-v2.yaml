@@ -22,7 +22,7 @@ jobs:
       - name: Upload binaries to release
         uses: AButler/upload-release-assets@c94805dc72e4b20745f543da0f62eaee7722df7a # pin@v2.0.2
         with:
-          files: 'bin/darwin-amd64/gardenctl_v2_darwin_amd64;bin/darwin-arm64/gardenctl_v2_darwin_arm64;bin/linux-amd64/gardenctl_v2_linux_amd64;bin/windows-amd64/gardenctl_v2_windows_amd64.exe'
+          files: 'bin/darwin-amd64/gardenctl_v2_darwin_amd64;bin/darwin-arm64/gardenctl_v2_darwin_arm64;bin/linux-amd64/gardenctl_v2_linux_amd64;bin/linux-arm64/gardenctl_v2_linux_arm64;bin/windows-amd64/gardenctl_v2_windows_amd64.exe'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           release-tag: ${{ env.latest_release_filtered_tag }}
       - name: Get token for gardener-github-pkg-mngr app
@@ -39,7 +39,8 @@ jobs:
           darwin_sha256sum_amd64=$(sha256sum bin/darwin-amd64/gardenctl_v2_darwin_amd64 | awk '{print $1}')
           darwin_sha256sum_arm64=$(sha256sum bin/darwin-arm64/gardenctl_v2_darwin_arm64 | awk '{print $1}')
           linux_sha256sum_amd64=$(sha256sum bin/linux-amd64/gardenctl_v2_linux_amd64 | awk '{print $1}')
-          data='{"event_type": "update", "client_payload": { "component": "gardenctl-v2", "tag": "'"$latest_release_filtered_tag"'", "darwin_sha_amd64": "'"$darwin_sha256sum_amd64"'", "darwin_sha_arm64": "'"$darwin_sha256sum_arm64"'", "linux_sha_amd64": "'"$linux_sha256sum_amd64"'"}}'
+          linux_sha256sum_arm64=$(sha256sum bin/linux-arm64/gardenctl_v2_linux_arm64 | awk '{print $1}')
+          data='{"event_type": "update", "client_payload": { "component": "gardenctl-v2", "tag": "'"$latest_release_filtered_tag"'", "darwin_sha_amd64": "'"$darwin_sha256sum_amd64"'", "darwin_sha_arm64": "'"$darwin_sha256sum_arm64"'", "linux_sha_amd64": "'"$linux_sha256sum_amd64"'", "linux_sha_arm64": "'"$linux_sha256sum_arm64"'"}}'
           echo "${data}"
           curl -X POST https://api.github.com/repos/${{ github.repository_owner }}/homebrew-tap/dispatches \
           -H 'Accept: application/vnd.github.everest-preview+json' \
