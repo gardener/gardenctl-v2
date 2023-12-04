@@ -14,6 +14,6 @@ else
 fi
 
 export GOOS=linux
-export GOARCH=amd64
+export GOARCH=arm64
 
 ${MAIN_REPO_DIR}/hack/build.sh
