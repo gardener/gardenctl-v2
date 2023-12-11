@@ -20,9 +20,11 @@ import (
 	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/secrets"
+	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -87,26 +89,29 @@ var _ = Describe("SSH Command", func() {
 	)
 
 	var (
-		ctrl               *gomock.Controller
-		clientProvider     *clientmocks.MockProvider
-		cfg                *config.Config
-		streams            util.IOStreams
-		out                *util.SafeBytesBuffer
-		factory            *internalfake.Factory
-		ctx                context.Context
-		cancel             context.CancelFunc
-		ctxTimeout         context.Context
-		cancelTimeout      context.CancelFunc
-		currentTarget      target.Target
-		testProject        *gardencorev1beta1.Project
-		testSeed           *gardencorev1beta1.Seed
-		testShoot          *gardencorev1beta1.Shoot
-		testNode           *corev1.Node
-		gardenClient       client.Client
-		shootClient        client.Client
-		nodePrivateKeyFile string
-		logs               *util.SafeBytesBuffer
-		signalChan         chan os.Signal
+		ctrl                 *gomock.Controller
+		clientProvider       *clientmocks.MockProvider
+		cfg                  *config.Config
+		streams              util.IOStreams
+		out                  *util.SafeBytesBuffer
+		factory              *internalfake.Factory
+		ctx                  context.Context
+		cancel               context.CancelFunc
+		ctxTimeout           context.Context
+		cancelTimeout        context.CancelFunc
+		currentTarget        target.Target
+		testProject          *gardencorev1beta1.Project
+		testSeed             *gardencorev1beta1.Seed
+		testShoot            *gardencorev1beta1.Shoot
+		testNode             *corev1.Node
+		testMachine          *machinev1alpha1.Machine
+		seedKubeconfigSecret *corev1.Secret
+		gardenClient         client.Client
+		shootClient          client.Client
+		seedClient           client.Client
+		nodePrivateKeyFile   string
+		logs                 *util.SafeBytesBuffer
+		signalChan           chan os.Signal
 	)
 
 	BeforeEach(func() {
@@ -191,6 +196,7 @@ var _ = Describe("SSH Command", func() {
 						URL:  "https://api.bar.baz",
 					},
 				},
+				TechnicalID: "shoot--prod1--test-shoot",
 			},
 		}
 
@@ -201,6 +207,18 @@ var _ = Describe("SSH Command", func() {
 			},
 			Data: map[string][]byte{
 				"data": []byte("not-used"),
+			},
+		}
+		testSeedKubeconfig, err := internalfake.NewConfigData("test-seed")
+		Expect(err).ToNot(HaveOccurred())
+
+		seedKubeconfigSecret = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-seed.login",
+				Namespace: "garden",
+			},
+			Data: map[string][]byte{
+				"kubeconfig": testSeedKubeconfig,
 			},
 		}
 
@@ -229,6 +247,7 @@ var _ = Describe("SSH Command", func() {
 					testSeed,
 					testShoot,
 					testShootKeypair,
+					seedKubeconfigSecret,
 					caSecret,
 				).
 				WithStatusSubresource(&operationsv1alpha1.Bastion{}).
@@ -244,6 +263,14 @@ var _ = Describe("SSH Command", func() {
 					Type:    corev1.NodeExternalDNS,
 					Address: nodeHostname,
 				}},
+			},
+		}
+
+		testMachine = &machinev1alpha1.Machine{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "machine1",
+				Namespace: "shoot--prod1--test-shoot",
+				Labels:    map[string]string{"node": "monitoring"},
 			},
 		}
 
@@ -632,35 +659,23 @@ var _ = Describe("SSH Command", func() {
 		})
 	})
 
-	// TODO not clear how to pass this test will take a look in the future https://github.com/gardener/gardenctl-v2/issues/323
-	// Describe("ValidArgsFunction", func() {
-	// 	BeforeEach(func() {
-	// 		monitoringNode := &corev1.Node{
-	// 			ObjectMeta: metav1.ObjectMeta{
-	// 				Name: "monitoring",
-	// 			},
-	// 		}
+	Describe("ValidArgsFunction", func() {
+		BeforeEach(func() {
+			seedClient = internalfake.NewClientWithObjects(testMachine)
+			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(seedClient, nil).AnyTimes()
+		})
 
-	// 		workerNode := &corev1.Node{
-	// 			ObjectMeta: metav1.ObjectMeta{
-	// 				Name: "worker",
-	// 			},
-	// 		}
+		It("should find nodes based on their prefix", func() {
+			options := ssh.NewSSHOptions(streams)
+			cmd := ssh.NewCmdSSH(factory, options)
 
-	// 		shootClient = internalfake.NewClientWithObjects(monitoringNode, workerNode)
-	// 	})
-
-	// 	It("should find nodes based on their prefix", func() {
-	// 		options := ssh.NewSSHOptions(streams)
-	// 		cmd := ssh.NewCmdSSH(factory, options)
-
-	// 		// let the magic happen; should find "monitoring" node based on this prefix
-	// 		suggestions, directive := cmd.ValidArgsFunction(cmd, nil, "mon")
-	// 		Expect(directive).To(Equal(cobra.ShellCompDirectiveNoFileComp))
-	// 		Expect(suggestions).To(HaveLen(1))
-	// 		Expect(suggestions).To(Equal([]string{"monitoring"}))
-	// 	})
-	// })
+			// let the magic happen; should find "monitoring" node based on this prefix
+			suggestions, directive := cmd.ValidArgsFunction(cmd, nil, "mon")
+			Expect(directive).To(Equal(cobra.ShellCompDirectiveNoFileComp))
+			Expect(suggestions).To(HaveLen(1))
+			Expect(suggestions).To(Equal([]string{"monitoring"}))
+		})
+	})
 })
 
 var _ = Describe("SSH Options", func() {
