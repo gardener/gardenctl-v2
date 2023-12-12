@@ -268,9 +268,9 @@ var _ = Describe("SSH Command", func() {
 
 		testMachine = &machinev1alpha1.Machine{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "machine1",
+				Name:      "monitoring1",
 				Namespace: "shoot--prod1--test-shoot",
-				Labels:    map[string]string{"node": "monitoring"},
+				Labels:    map[string]string{"node": "monitoring1"},
 			},
 		}
 
@@ -661,7 +661,27 @@ var _ = Describe("SSH Command", func() {
 
 	Describe("ValidArgsFunction", func() {
 		BeforeEach(func() {
-			seedClient = internalfake.NewClientWithObjects(testMachine)
+			testMachine2 := &machinev1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "monitoring2",
+					Namespace: "shoot--prod1--test-shoot",
+					Labels:    map[string]string{"node": "monitoring2"},
+				},
+			}
+
+			monitoringNode := &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "monitoring1-node",
+				},
+			}
+
+			workerNode := &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "monitoring2-node",
+				},
+			}
+
+			seedClient = internalfake.NewClientWithObjects(testMachine, testMachine2, monitoringNode, workerNode)
 			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(seedClient, nil).AnyTimes()
 		})
 
@@ -672,8 +692,8 @@ var _ = Describe("SSH Command", func() {
 			// let the magic happen; should find "monitoring" node based on this prefix
 			suggestions, directive := cmd.ValidArgsFunction(cmd, nil, "mon")
 			Expect(directive).To(Equal(cobra.ShellCompDirectiveNoFileComp))
-			Expect(suggestions).To(HaveLen(1))
-			Expect(suggestions).To(Equal([]string{"monitoring"}))
+			Expect(suggestions).To(HaveLen(2))
+			Expect(suggestions).To(Equal([]string{"monitoring1", "monitoring2"}))
 		})
 	})
 })
