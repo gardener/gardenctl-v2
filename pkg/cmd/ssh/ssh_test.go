@@ -16,6 +16,14 @@ import (
 	"strings"
 	"time"
 
+	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
+	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
+	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
+	"github.com/gardener/gardenctl-v2/pkg/config"
+	"github.com/gardener/gardenctl-v2/pkg/target"
+	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
+
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
@@ -34,13 +42,6 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
-	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
-	"github.com/gardener/gardenctl-v2/internal/util"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
-	"github.com/gardener/gardenctl-v2/pkg/config"
-	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 type bastionStatusPatch func(status *operationsv1alpha1.BastionStatus)
@@ -112,6 +113,8 @@ var _ = Describe("SSH Command", func() {
 		nodePrivateKeyFile   string
 		logs                 *util.SafeBytesBuffer
 		signalChan           chan os.Signal
+		manager              *targetmocks.MockManager
+		errFobidden          *apierrors.StatusError
 	)
 
 	BeforeEach(func() {
@@ -268,9 +271,9 @@ var _ = Describe("SSH Command", func() {
 
 		testMachine = &machinev1alpha1.Machine{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "monitoring1",
+				Name:      "machine1",
 				Namespace: "shoot--prod1--test-shoot",
-				Labels:    map[string]string{"node": "monitoring1"},
+				Labels:    map[string]string{"node": "node1"},
 			},
 		}
 
@@ -293,15 +296,6 @@ var _ = Describe("SSH Command", func() {
 		factory.ContextImpl = ctx
 	})
 
-	JustBeforeEach(func() {
-		clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(shootClient, nil).AnyTimes().
-			Do(func(clientConfig clientcmd.ClientConfig) {
-				config, err := clientConfig.RawConfig()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(config.CurrentContext).To(Equal(testShoot.Namespace + "--" + testShoot.Name + "-" + testShoot.Status.AdvertisedAddresses[0].Name))
-			})
-	})
-
 	AfterEach(func() {
 		cancelTimeout()
 		cancel()
@@ -310,6 +304,13 @@ var _ = Describe("SSH Command", func() {
 
 	Describe("RunE", func() {
 		BeforeEach(func() {
+			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(shootClient, nil).AnyTimes().
+				Do(func(clientConfig clientcmd.ClientConfig) {
+					config, err := clientConfig.RawConfig()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(config.CurrentContext).To(Equal(testShoot.Namespace + "--" + testShoot.Name + "-" + testShoot.Status.AdvertisedAddresses[0].Name))
+				})
+
 			shootClient = internalfake.NewClientWithObjects(testNode)
 		})
 
@@ -661,39 +662,61 @@ var _ = Describe("SSH Command", func() {
 
 	Describe("ValidArgsFunction", func() {
 		BeforeEach(func() {
-			testMachine2 := &machinev1alpha1.Machine{
+			manager = targetmocks.NewMockManager(ctrl)
+			monitoringMachine := &machinev1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "monitoring2",
+					Name:      "monitoring1",
 					Namespace: "shoot--prod1--test-shoot",
-					Labels:    map[string]string{"node": "monitoring2"},
+					Labels:    map[string]string{"node": "monitoring1"},
 				},
 			}
 
-			monitoringNode := &corev1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "monitoring1-node",
-				},
-			}
-
-			workerNode := &corev1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "monitoring2-node",
-				},
-			}
-
-			seedClient = internalfake.NewClientWithObjects(testMachine, testMachine2, monitoringNode, workerNode)
-			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(seedClient, nil).AnyTimes()
+			seedClient = internalfake.NewClientWithObjects(testMachine, testNode, monitoringMachine)
+			shootClient = internalfake.NewClientWithObjects(testMachine, testNode, monitoringMachine)
 		})
 
-		It("should find nodes based on their prefix", func() {
+		It("should return all names based on machine objects", func() {
+			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(seedClient, nil).AnyTimes()
+			manager.EXPECT().SeedClient(ctx, gomock.Any()).Return(seedClient, nil).AnyTimes()
+
+			options := ssh.NewSSHOptions(streams)
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			suggestions, directive := cmd.ValidArgsFunction(cmd, nil, "")
+			Expect(directive).To(Equal(cobra.ShellCompDirectiveNoFileComp))
+			Expect(suggestions).To(HaveLen(2))
+			Expect(suggestions).To(Equal([]string{"node1", "monitoring1"}))
+		})
+
+		It("should return all names based on node objects", func() {
+			errFobidden = &apierrors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonForbidden}}
+			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(seedClient, errFobidden).Times(1)
+			manager.EXPECT().SeedClient(gomock.Any(), gomock.Any()).Return(seedClient, errFobidden).AnyTimes()
+
+			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(shootClient, nil).AnyTimes()
+			manager.EXPECT().ShootClient(gomock.Any(), gomock.Any()).Return(shootClient, nil).AnyTimes()
+
+			options := ssh.NewSSHOptions(streams)
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			suggestions, directive := cmd.ValidArgsFunction(cmd, nil, "")
+			Expect(directive).To(Equal(cobra.ShellCompDirectiveNoFileComp))
+			Expect(suggestions).To(HaveLen(1))
+			Expect(suggestions).To(Equal([]string{"node1"}))
+		})
+
+		It("should find nodes based on their prefix from machine objects", func() {
+			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(seedClient, nil).AnyTimes()
+			manager.EXPECT().SeedClient(ctx, gomock.Any()).Return(seedClient, nil).AnyTimes()
+
 			options := ssh.NewSSHOptions(streams)
 			cmd := ssh.NewCmdSSH(factory, options)
 
 			// let the magic happen; should find "monitoring" node based on this prefix
 			suggestions, directive := cmd.ValidArgsFunction(cmd, nil, "mon")
 			Expect(directive).To(Equal(cobra.ShellCompDirectiveNoFileComp))
-			Expect(suggestions).To(HaveLen(2))
-			Expect(suggestions).To(Equal([]string{"monitoring1", "monitoring2"}))
+			Expect(suggestions).To(HaveLen(1))
+			Expect(suggestions).To(Equal([]string{"monitoring1"}))
 		})
 	})
 })
