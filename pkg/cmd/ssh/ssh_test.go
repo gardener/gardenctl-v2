@@ -690,8 +690,8 @@ var _ = Describe("SSH Command", func() {
 
 		It("should return all names based on node objects", func() {
 			errFobidden = &apierrors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonForbidden}}
-			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(seedClient, errFobidden).Times(1)
-			manager.EXPECT().SeedClient(gomock.Any(), gomock.Any()).Return(seedClient, errFobidden).AnyTimes()
+			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(nil, errFobidden).Times(1)
+			manager.EXPECT().SeedClient(gomock.Any(), gomock.Any()).Return(nil, errFobidden).AnyTimes()
 
 			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(shootClient, nil).AnyTimes()
 			manager.EXPECT().ShootClient(gomock.Any(), gomock.Any()).Return(shootClient, nil).AnyTimes()
