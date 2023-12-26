@@ -851,7 +851,7 @@ func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
 		return nil, err
 	}
 
-	newTarget := currentTarget.WithSeedName(*shoot.Spec.SeedName).WithControlPlane(true)
+	newTarget := target.NewTarget(currentTarget.GardenName(), "", *shoot.Spec.SeedName, "")
 	// create client for the seed cluster
 	seedClient, err := manager.SeedClient(f.Context(), newTarget)
 	if err != nil {

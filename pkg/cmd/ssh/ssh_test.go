@@ -676,7 +676,9 @@ var _ = Describe("SSH Command", func() {
 		})
 
 		It("should return all names based on machine objects", func() {
-			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(seedClient, nil).AnyTimes()
+			clientConfig, err := clientcmd.NewClientConfigFromBytes(seedKubeconfigSecret.Data["kubeconfig"])
+			Expect(err).NotTo(HaveOccurred())
+			clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(seedClient, nil)
 			manager.EXPECT().SeedClient(ctx, gomock.Any()).Return(seedClient, nil).AnyTimes()
 
 			options := ssh.NewSSHOptions(streams)
@@ -706,7 +708,9 @@ var _ = Describe("SSH Command", func() {
 		})
 
 		It("should find nodes based on their prefix from machine objects", func() {
-			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(seedClient, nil).AnyTimes()
+			clientConfig, err := clientcmd.NewClientConfigFromBytes(seedKubeconfigSecret.Data["kubeconfig"])
+			Expect(err).NotTo(HaveOccurred())
+			clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(seedClient, nil)
 			manager.EXPECT().SeedClient(ctx, gomock.Any()).Return(seedClient, nil).AnyTimes()
 
 			options := ssh.NewSSHOptions(streams)
