@@ -16,14 +16,6 @@ import (
 	"strings"
 	"time"
 
-	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
-	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
-	"github.com/gardener/gardenctl-v2/internal/util"
-	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
-	"github.com/gardener/gardenctl-v2/pkg/config"
-	"github.com/gardener/gardenctl-v2/pkg/target"
-	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
-
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
@@ -42,6 +34,15 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	gardenclientmocks "github.com/gardener/gardenctl-v2/internal/client/garden/mocks"
+	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
+	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
+	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
+	"github.com/gardener/gardenctl-v2/pkg/config"
+	"github.com/gardener/gardenctl-v2/pkg/target"
+	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
 
 type bastionStatusPatch func(status *operationsv1alpha1.BastionStatus)
@@ -113,8 +114,6 @@ var _ = Describe("SSH Command", func() {
 		nodePrivateKeyFile   string
 		logs                 *util.SafeBytesBuffer
 		signalChan           chan os.Signal
-		manager              *targetmocks.MockManager
-		errFobidden          *apierrors.StatusError
 	)
 
 	BeforeEach(func() {
@@ -661,8 +660,15 @@ var _ = Describe("SSH Command", func() {
 	})
 
 	Describe("ValidArgsFunction", func() {
+		var (
+			manager *targetmocks.MockManager
+			client  *gardenclientmocks.MockClient
+		)
+
 		BeforeEach(func() {
 			manager = targetmocks.NewMockManager(ctrl)
+			client = gardenclientmocks.NewMockClient(ctrl)
+
 			monitoringMachine := &machinev1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "monitoring1",
@@ -671,14 +677,17 @@ var _ = Describe("SSH Command", func() {
 				},
 			}
 
-			seedClient = internalfake.NewClientWithObjects(testMachine, testNode, monitoringMachine)
-			shootClient = internalfake.NewClientWithObjects(testMachine, testNode, monitoringMachine)
+			seedClient = internalfake.NewClientWithObjects(testMachine, monitoringMachine)
+			shootClient = internalfake.NewClientWithObjects(testNode)
+
+			factory.ManagerImpl = manager
+			manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+			manager.EXPECT().GardenClient(currentTarget.GardenName()).Return(client, nil).AnyTimes()
+
+			client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(testShoot, nil)
 		})
 
 		It("should return all names based on machine objects", func() {
-			clientConfig, err := clientcmd.NewClientConfigFromBytes(seedKubeconfigSecret.Data["kubeconfig"])
-			Expect(err).NotTo(HaveOccurred())
-			clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(seedClient, nil)
 			manager.EXPECT().SeedClient(ctx, gomock.Any()).Return(seedClient, nil).AnyTimes()
 
 			options := ssh.NewSSHOptions(streams)
@@ -691,11 +700,8 @@ var _ = Describe("SSH Command", func() {
 		})
 
 		It("should return all names based on node objects", func() {
-			errFobidden = &apierrors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonForbidden}}
-			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(nil, errFobidden).Times(1)
-			manager.EXPECT().SeedClient(gomock.Any(), gomock.Any()).Return(nil, errFobidden).AnyTimes()
-
-			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(shootClient, nil).AnyTimes()
+			errForbidden := &apierrors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonForbidden}}
+			manager.EXPECT().SeedClient(gomock.Any(), gomock.Any()).Return(nil, errForbidden).AnyTimes()
 			manager.EXPECT().ShootClient(gomock.Any(), gomock.Any()).Return(shootClient, nil).AnyTimes()
 
 			options := ssh.NewSSHOptions(streams)
@@ -708,15 +714,11 @@ var _ = Describe("SSH Command", func() {
 		})
 
 		It("should find nodes based on their prefix from machine objects", func() {
-			clientConfig, err := clientcmd.NewClientConfigFromBytes(seedKubeconfigSecret.Data["kubeconfig"])
-			Expect(err).NotTo(HaveOccurred())
-			clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(seedClient, nil)
 			manager.EXPECT().SeedClient(ctx, gomock.Any()).Return(seedClient, nil).AnyTimes()
 
 			options := ssh.NewSSHOptions(streams)
 			cmd := ssh.NewCmdSSH(factory, options)
 
-			// let the magic happen; should find "monitoring" node based on this prefix
 			suggestions, directive := cmd.ValidArgsFunction(cmd, nil, "mon")
 			Expect(directive).To(Equal(cobra.ShellCompDirectiveNoFileComp))
 			Expect(suggestions).To(HaveLen(1))
