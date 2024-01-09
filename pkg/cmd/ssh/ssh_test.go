@@ -682,13 +682,13 @@ var _ = Describe("SSH Command", func() {
 
 			factory.ManagerImpl = manager
 			manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
-			manager.EXPECT().GardenClient(currentTarget.GardenName()).Return(client, nil).AnyTimes()
+			manager.EXPECT().GardenClient(currentTarget.GardenName()).Return(client, nil)
 
 			client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(testShoot, nil)
 		})
 
 		It("should return all names based on machine objects", func() {
-			manager.EXPECT().SeedClient(ctx, gomock.Any()).Return(seedClient, nil).AnyTimes()
+			manager.EXPECT().SeedClient(ctx, gomock.Any()).Return(seedClient, nil)
 
 			options := ssh.NewSSHOptions(streams)
 			cmd := ssh.NewCmdSSH(factory, options)
@@ -701,8 +701,8 @@ var _ = Describe("SSH Command", func() {
 
 		It("should return all names based on node objects", func() {
 			errForbidden := &apierrors.StatusError{ErrStatus: metav1.Status{Reason: metav1.StatusReasonForbidden}}
-			manager.EXPECT().SeedClient(gomock.Any(), gomock.Any()).Return(nil, errForbidden).AnyTimes()
-			manager.EXPECT().ShootClient(gomock.Any(), gomock.Any()).Return(shootClient, nil).AnyTimes()
+			manager.EXPECT().SeedClient(gomock.Any(), gomock.Any()).Return(nil, errForbidden)
+			manager.EXPECT().ShootClient(gomock.Any(), gomock.Any()).Return(shootClient, nil)
 
 			options := ssh.NewSSHOptions(streams)
 			cmd := ssh.NewCmdSSH(factory, options)
@@ -714,7 +714,7 @@ var _ = Describe("SSH Command", func() {
 		})
 
 		It("should find nodes based on their prefix from machine objects", func() {
-			manager.EXPECT().SeedClient(ctx, gomock.Any()).Return(seedClient, nil).AnyTimes()
+			manager.EXPECT().SeedClient(ctx, gomock.Any()).Return(seedClient, nil)
 
 			options := ssh.NewSSHOptions(streams)
 			cmd := ssh.NewCmdSSH(factory, options)

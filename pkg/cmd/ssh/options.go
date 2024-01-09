@@ -821,14 +821,8 @@ func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bas
 	}
 }
 
-func getNodeNamesFromMachinesOrNodes(f util.Factory) ([]string, error) {
-	ctx := f.Context()
+func getNodeNamesFromMachinesOrNodes(ctx context.Context, manager target.Manager) ([]string, error) {
 	logger := klog.FromContext(ctx)
-
-	manager, err := f.Manager()
-	if err != nil {
-		return nil, err
-	}
 
 	currentTarget, err := manager.CurrentTarget()
 	if err != nil {

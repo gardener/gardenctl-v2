@@ -53,7 +53,13 @@ gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			nodeNames, err := getNodeNamesFromMachinesOrNodes(f)
+			manager, err := f.Manager()
+			if err != nil {
+				logger.Error(err, "could not get manager from factory")
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			nodeNames, err := getNodeNamesFromMachinesOrNodes(ctx, manager)
 			if err != nil {
 				logger.Error(err, "could not get node names from shoot")
 				return nil, cobra.ShellCompDirectiveNoFileComp
