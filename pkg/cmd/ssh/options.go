@@ -821,13 +821,15 @@ func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bas
 	}
 }
 
-func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
+func getNodeNamesFromMachinesOrNodes(f util.Factory) ([]string, error) {
+	ctx := f.Context()
+	logger := klog.FromContext(ctx)
+
 	manager, err := f.Manager()
 	if err != nil {
 		return nil, err
 	}
 
-	// validate the current target
 	currentTarget, err := manager.CurrentTarget()
 	if err != nil {
 		return nil, err
@@ -837,62 +839,68 @@ func getNodeNamesFromShoot(f util.Factory, prefix string) ([]string, error) {
 		return nil, errors.New("no Shoot cluster targeted")
 	}
 
-	// create client for the gardener cluster
-	client, err := manager.GardenClient(currentTarget.GardenName())
+	nodeNames, err := getNodeNamesFromMachines(ctx, manager, currentTarget)
+	if err != nil {
+		if !apierrors.IsForbidden(err) {
+			logger.Info("failed to fetch node names from machine objects", "err", err)
+		}
+
+		return getNodeNamesFromNodes(ctx, manager, currentTarget)
+	}
+
+	return nodeNames, nil
+}
+
+func getNodeNamesFromMachines(ctx context.Context, manager target.Manager, currentTarget target.Target) ([]string, error) {
+	gardenClient, err := manager.GardenClient(currentTarget.GardenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	// collect names, filter by prefix
+	shoot, err := gardenClient.FindShoot(ctx, currentTarget.AsListOption())
+	if err != nil {
+		return nil, err
+	}
+
+	seedTarget := target.NewTarget(currentTarget.GardenName(), "", *shoot.Spec.SeedName, "")
+
+	seedClient, err := manager.SeedClient(ctx, seedTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	machines, err := getMachines(ctx, seedClient, shoot.Status.TechnicalID)
+	if err != nil {
+		return nil, err
+	}
+
 	var nodeNames []string
 
-	shoot, err := client.FindShoot(f.Context(), currentTarget.AsListOption())
-	if err != nil {
-		return nil, err
-	}
-
-	newTarget := target.NewTarget(currentTarget.GardenName(), "", *shoot.Spec.SeedName, "")
-	// create client for the seed cluster
-	seedClient, err := manager.SeedClient(f.Context(), newTarget)
-	if err != nil {
-		if !apierrors.IsForbidden(err) {
-			return nil, err
-		}
-
-		shootClient, err := manager.ShootClient(f.Context(), currentTarget)
-		if err != nil {
-			return nil, err
-		}
-
-		// fetch all nodes
-		nodes, err := getNodes(f.Context(), shootClient)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, node := range nodes {
-			if strings.HasPrefix(node.Name, prefix) {
-				nodeNames = append(nodeNames, node.Name)
-			}
-		}
-
-		return nodeNames, nil
-	}
-
-	// fetch all machines
-	machines, err := getMachines(f.Context(), seedClient, shoot.Status.TechnicalID)
-	if err != nil {
-		return nil, err
-	}
-
 	for _, machine := range machines {
-		if _, ok := machine.Labels["node"]; !ok {
+		if _, ok := machine.Labels[machinev1alpha1.NodeLabelKey]; !ok {
 			continue
 		}
 
-		if strings.HasPrefix(machine.Labels["node"], prefix) {
-			nodeNames = append(nodeNames, machine.Labels["node"])
-		}
+		nodeNames = append(nodeNames, machine.Labels[machinev1alpha1.NodeLabelKey])
+	}
+
+	return nodeNames, nil
+}
+
+func getNodeNamesFromNodes(ctx context.Context, manager target.Manager, currentTarget target.Target) ([]string, error) {
+	shootClient, err := manager.ShootClient(ctx, currentTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	nodes, err := getNodes(ctx, shootClient)
+	if err != nil {
+		return nil, err
+	}
+
+	var nodeNames []string
+	for _, node := range nodes {
+		nodeNames = append(nodeNames, node.Name)
 	}
 
 	return nodeNames, nil

@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package ssh
 
 import (
+	"strings"
+
 	"github.com/spf13/cobra"
 	"k8s.io/klog/v2"
 
@@ -51,13 +53,20 @@ gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			nodeNames, err := getNodeNamesFromShoot(f, toComplete)
+			nodeNames, err := getNodeNamesFromMachinesOrNodes(f)
 			if err != nil {
 				logger.Error(err, "could not get node names from shoot")
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			return nodeNames, cobra.ShellCompDirectiveNoFileComp
+			var completions []string
+			for _, nodeName := range nodeNames {
+				if strings.HasPrefix(nodeName, toComplete) {
+					completions = append(completions, nodeName)
+				}
+			}
+
+			return completions, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: base.WrapRunE(o, f),
 	}
