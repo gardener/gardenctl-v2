@@ -490,20 +490,20 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	ctx := f.Context()
 	logger := klog.FromContext(ctx)
 
-	// sshTarget is the target used for the run method
-	sshTarget, err := manager.CurrentTarget()
+	// currentTarget is the target used for the run method
+	currentTarget, err := manager.CurrentTarget()
 	if err != nil {
 		return err
 	}
 
 	// create client for the garden cluster
-	gardenClient, err := manager.GardenClient(sshTarget.GardenName())
+	gardenClient, err := manager.GardenClient(currentTarget.GardenName())
 	if err != nil {
 		return err
 	}
 
-	if sshTarget.ShootName() == "" && sshTarget.SeedName() != "" {
-		shoot, err := gardenClient.GetShootOfManagedSeed(ctx, sshTarget.SeedName())
+	if currentTarget.ShootName() == "" && currentTarget.SeedName() != "" {
+		shoot, err := gardenClient.GetShootOfManagedSeed(ctx, currentTarget.SeedName())
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return fmt.Errorf("cannot ssh to non-managed seeds: %w", err)
@@ -517,28 +517,28 @@ func (o *SSHOptions) Run(f util.Factory) error {
 				Namespace: "garden",
 				Name:      shoot.Name,
 			},
-			"seed", sshTarget.SeedName())
+			"seed", currentTarget.SeedName())
 
-		sshTarget = sshTarget.WithProjectName("garden").WithShootName(shoot.Name)
+		currentTarget = currentTarget.WithProjectName("garden").WithShootName(shoot.Name)
 	}
 
-	if sshTarget.ShootName() == "" {
+	if currentTarget.ShootName() == "" {
 		return target.ErrNoShootTargeted
 	}
 
-	printTargetInformation(logger, sshTarget)
+	printTargetInformation(logger, currentTarget)
 
 	// fetch targeted shoot (ctx is cancellable to stop the keep alive goroutine later)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	shoot, err := gardenClient.FindShoot(ctx, sshTarget.AsListOption())
+	shoot, err := gardenClient.FindShoot(ctx, currentTarget.AsListOption())
 	if err != nil {
 		return err
 	}
 
 	// check access restrictions
-	ok, err := o.checkAccessRestrictions(manager.Configuration(), sshTarget.GardenName(), f.TargetFlags(), shoot)
+	ok, err := o.checkAccessRestrictions(manager.Configuration(), currentTarget.GardenName(), f.TargetFlags(), shoot)
 	if err != nil {
 		return err
 	} else if !ok {
@@ -568,7 +568,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		nodePrivateKeyFiles = append(nodePrivateKeyFiles, PrivateKeyFile(filename))
 	}
 
-	shootClient, err := manager.ShootClient(ctx, sshTarget)
+	shootClient, err := manager.ShootClient(ctx, currentTarget)
 	if err != nil {
 		return err
 	}
