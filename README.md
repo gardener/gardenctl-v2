@@ -12,7 +12,7 @@ gardenctl is a command-line client for the Gardener. It facilitates the administ
 
 ## Installation
 
-Install the latest release from [Homebrew](https://brew.sh/), [Chocolatey](https://chocolatey.org/packages/gardenctl-v2) or [GitHub Releases](https://github.com/gardener/gardenctl-v2/releases).
+Install the latest release from [Homebrew](https://brew.sh/), [Chocolatey](https://chocolatey.org/packages/gardenctl-v2), [Nix](https://nixos.org), or [GitHub Releases](https://github.com/gardener/gardenctl-v2/releases).
 
 ### Install using Package Managers
 
@@ -26,6 +26,25 @@ choco install gardenctl-v2
 ```
 
 Attention `brew` users: `gardenctl-v2` uses the same binary name as the legacy `gardenctl` (`gardener/gardenctl`) CLI. If you have an existing installation you should remove it with `brew uninstall gardenctl` before attempting to install `gardenctl-v2`. Alternatively, you can choose to link the binary using a different name. If you try to install without removing or relinking the old installation, brew will run into an error and provide instructions how to resolve it.
+
+### Install using Nix (with [Flakes](https://nixos.wiki/wiki/Flakes))
+
+```bash
+# Nix (macOS, Linux, and Windows)
+# ad hoc cmd execution
+nix run github:gardener/gardenctl-v2 -- --help
+
+# install development version
+nix profile install github:gardener/gardenctl-v2
+# or release <version>
+nix profile install github:gardener/gardenctl-v2/<version>
+
+#check installation
+nix profile list | grep gardenctl
+
+# optionally, open a new shell and verify that cmd completion works
+gardenctl --help
+```
 
 ### Install from Github Release
 

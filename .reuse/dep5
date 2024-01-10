@@ -28,6 +28,7 @@ Files:
   go.sum
   LATEST
   VERSION
+  flake.lock
 Copyright: 2020-2021 SAP SE or an SAP affiliate company and Gardener contributors
 License: Apache-2.0
 
