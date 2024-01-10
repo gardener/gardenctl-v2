@@ -8,6 +8,7 @@ require (
 	github.com/fatih/color v1.15.0
 	github.com/gardener/gardener v1.80.3
 	github.com/gardener/gardener-extension-provider-openstack v1.36.0
+	github.com/gardener/machine-controller-manager v0.50.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.1
 	github.com/mitchellh/go-homedir v1.1.0
@@ -45,7 +46,6 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gardener/etcd-druid v0.19.2 // indirect
 	github.com/gardener/hvpa-controller/api v0.5.0 // indirect
-	github.com/gardener/machine-controller-manager v0.48.1 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
