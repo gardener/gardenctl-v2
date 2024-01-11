@@ -302,14 +302,17 @@ var _ = Describe("SSH Command", func() {
 	})
 
 	Describe("RunE", func() {
+		var manager *targetmocks.MockManager
+
 		BeforeEach(func() {
-			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(shootClient, nil).AnyTimes().
+			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(shootClient, nil).AnyTimes()
+			manager = targetmocks.NewMockManager(ctrl)
+			manager.EXPECT().ShootClient(ctx, currentTarget).Return(shootClient, nil).AnyTimes().
 				Do(func(clientConfig clientcmd.ClientConfig) {
 					config, err := clientConfig.RawConfig()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(config.CurrentContext).To(Equal(testShoot.Namespace + "--" + testShoot.Name + "-" + testShoot.Status.AdvertisedAddresses[0].Name))
 				})
-
 			shootClient = internalfake.NewClientWithObjects(testNode)
 		})
 

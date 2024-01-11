@@ -231,6 +231,11 @@ type SSHOptions struct {
 	// ConfirmAccessRestriction, when set to true, implies the user understands the access restrictions for the targeted shoot.
 	// In this case, the access restriction banner is displayed without further confirmation.
 	ConfirmAccessRestriction bool
+
+	// Operator is determines whether the command should be have the operator role assigned.
+	Operator bool
+
+	client client.Client
 }
 
 // NewSSHOptions returns initialized SSHOptions.
@@ -247,6 +252,7 @@ func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 		NoKeepalive:           false,
 		BastionPort:           strconv.Itoa(SSHPort),
 		User:                  DefaultUsername,
+		Operator:              false,
 	}
 }
 
@@ -537,6 +543,27 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return err
 	}
 
+	if shoot.Status.TechnicalID == "" {
+		return fmt.Errorf("shoot technical ID is empty: %w", err)
+	}
+
+	// check operator role
+	if !o.Operator {
+		seedTarget := target.NewTarget(currentTarget.GardenName(), "", *shoot.Spec.SeedName, "")
+
+		seedClient, err := manager.SeedClient(ctx, seedTarget)
+		if err != nil {
+			if !apierrors.IsForbidden(err) {
+				return nil
+			}
+
+			return err
+		}
+
+		o.Operator = true
+		o.client = seedClient
+	}
+
 	// check access restrictions
 	ok, err := o.checkAccessRestrictions(manager.Configuration(), currentTarget.GardenName(), f.TargetFlags(), shoot)
 	if err != nil {
@@ -651,6 +678,43 @@ func (o *SSHOptions) Run(f util.Factory) error {
 			nodes, err = getNodes(ctx, shootClient)
 			if err != nil {
 				return fmt.Errorf("failed to list shoot cluster nodes: %w", err)
+			}
+		}
+
+		if o.Operator {
+			machines, err := getMachines(ctx, o.client, shoot.Status.TechnicalID)
+			if err != nil {
+				return fmt.Errorf("failed to list shoot cluster machines: %w", err)
+			}
+
+			if len(machines) != len(nodes) {
+				type empty struct{}
+
+				nodeSets := make(map[string]empty, len(nodes))
+
+				for _, node := range nodes {
+					nodeSets[node.Name] = empty{}
+				}
+
+				for _, machine := range machines {
+					if _, ok := machine.Labels[machinev1alpha1.NodeLabelKey]; !ok {
+						continue
+					}
+
+					if _, ok := nodeSets[machine.Labels[machinev1alpha1.NodeLabelKey]]; !ok {
+						nodes = append(nodes, corev1.Node{
+							ObjectMeta: metav1.ObjectMeta{Name: machine.Labels[machinev1alpha1.NodeLabelKey]},
+							Status: corev1.NodeStatus{
+								Conditions: []corev1.NodeCondition{
+									{
+										Type:   corev1.NodeReady,
+										Status: corev1.ConditionUnknown,
+									},
+								},
+							},
+						})
+					}
+				}
 			}
 		}
 
