@@ -35,6 +35,9 @@ type ConnectInformation struct {
 
 	// User is the name of the Shoot cluster node ssh login username
 	User string
+
+	// Machines is a list of machines name
+	Machines []string
 }
 
 var _ fmt.Stringer = &ConnectInformation{}
@@ -87,6 +90,7 @@ func NewConnectInformation(
 	sshPrivateKeyFile PrivateKeyFile,
 	nodePrivateKeyFiles []PrivateKeyFile,
 	nodes []corev1.Node,
+	machines []string,
 	user string,
 ) (*ConnectInformation, error) {
 	var nodeList []Node
@@ -144,6 +148,7 @@ func NewConnectInformation(
 		NodeHostname:        nodeHostname,
 		NodePrivateKeyFiles: nodePrivateKeyFiles,
 		Nodes:               nodeList,
+		Machines:            machines,
 		User:                user,
 	}, nil
 }
@@ -193,6 +198,30 @@ func (p *ConnectInformation) String() string {
 		if err := printer.PrintObj(table, &buf); err != nil {
 			klog.Background().Error(err, "failed to output node table: %w")
 			return ""
+		}
+
+		if len(p.Machines) != 0 && len(p.Machines) != len(p.Nodes) {
+			type empty struct{}
+
+			nodeSets := make(map[string]empty, len(p.Nodes))
+
+			var missingNodes []string
+
+			for _, node := range p.Nodes {
+				nodeSets[node.Name] = empty{}
+			}
+
+			for _, machine := range p.Machines {
+				if _, ok := nodeSets[machine]; !ok {
+					missingNodes = append(missingNodes, machine)
+				}
+			}
+
+			for _, node := range missingNodes {
+				table.Rows = append(table.Rows, metav1.TableRow{
+					Cells: []interface{}{node, "unknown", "unknown"},
+				})
+			}
 		}
 
 		fmt.Fprintln(&buf, "")
