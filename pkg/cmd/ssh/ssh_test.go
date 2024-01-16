@@ -107,7 +107,7 @@ var _ = Describe("SSH Command", func() {
 		testShoot            *gardencorev1beta1.Shoot
 		testNode             *corev1.Node
 		testMachine          *machinev1alpha1.Machine
-		monitoringMachine    *machinev1alpha1.Machine
+		pendingMachine       *machinev1alpha1.Machine
 		seedKubeconfigSecret *corev1.Secret
 		gardenClient         client.Client
 		shootClient          client.Client
@@ -277,7 +277,7 @@ var _ = Describe("SSH Command", func() {
 			},
 		}
 
-		monitoringMachine = &machinev1alpha1.Machine{
+		pendingMachine = &machinev1alpha1.Machine{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "monitoring1",
 				Namespace: "shoot--prod1--test-shoot",
@@ -286,7 +286,7 @@ var _ = Describe("SSH Command", func() {
 		}
 
 		shootClient = internalfake.NewClientWithObjects(testNode)
-		seedClient = internalfake.NewClientWithObjects(testMachine, monitoringMachine)
+		seedClient = internalfake.NewClientWithObjects(testMachine, pendingMachine)
 
 		streams, _, out, _ = util.NewTestIOStreams()
 
