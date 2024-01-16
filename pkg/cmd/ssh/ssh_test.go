@@ -660,6 +660,10 @@ var _ = Describe("SSH Command", func() {
 			Expect(info.Bastion.SSHPublicKeyFile).To(Equal(options.SSHPublicKeyFile))
 			Expect(info.Nodes).To(ConsistOf([]ssh.Node{
 				{
+					Name:   pendingMachine.Labels[machinev1alpha1.NodeLabelKey],
+					Status: "Unknown",
+				},
+				{
 					Name:   testNode.Name,
 					Status: "Not Ready",
 					Address: ssh.Address{
