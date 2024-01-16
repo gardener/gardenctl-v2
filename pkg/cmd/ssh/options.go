@@ -835,6 +835,8 @@ func getNodeNamesFromMachinesOrNodes(ctx context.Context, manager target.Manager
 
 	nodeNames, err := getNodeNamesFromMachines(ctx, manager, currentTarget)
 	if err != nil {
+		// Regular users do not have the permission to fetch the machines.
+		// However, in this case, we do not want to log an error message. Instead, we will fallback to read the node names.
 		if !apierrors.IsForbidden(err) {
 			logger.Info("failed to fetch node names from machine objects", "err", err)
 		}
