@@ -92,9 +92,10 @@ func NewConnectInformation(
 	var nodeList []Node
 
 	for _, node := range nodes {
-		n := Node{}
-		n.Name = node.Name
-		n.Status = "Ready"
+		n := Node{
+			Name:   node.Name,
+			Status: "Ready",
+		}
 
 		if !isNodeReady(node) {
 			n.Status = "Not Ready"
