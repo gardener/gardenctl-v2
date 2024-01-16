@@ -107,6 +107,7 @@ var _ = Describe("SSH Command", func() {
 		testShoot            *gardencorev1beta1.Shoot
 		testNode             *corev1.Node
 		testMachine          *machinev1alpha1.Machine
+		monitoringMachine    *machinev1alpha1.Machine
 		seedKubeconfigSecret *corev1.Secret
 		gardenClient         client.Client
 		shootClient          client.Client
@@ -255,7 +256,7 @@ var _ = Describe("SSH Command", func() {
 				WithStatusSubresource(&operationsv1alpha1.Bastion{}).
 				Build())
 
-		// create a fake shoot cluster with a single node in it
+		// create a fake shoot cluster with two machines, where one node has already joined the cluster
 		testNode = &corev1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "node1",
@@ -272,9 +273,20 @@ var _ = Describe("SSH Command", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "machine1",
 				Namespace: "shoot--prod1--test-shoot",
-				Labels:    map[string]string{"node": "node1"},
+				Labels:    map[string]string{machinev1alpha1.NodeLabelKey: "node1"},
 			},
 		}
+
+		monitoringMachine = &machinev1alpha1.Machine{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "monitoring1",
+				Namespace: "shoot--prod1--test-shoot",
+				Labels:    map[string]string{machinev1alpha1.NodeLabelKey: "monitoring1"},
+			},
+		}
+
+		shootClient = internalfake.NewClientWithObjects(testNode)
+		seedClient = internalfake.NewClientWithObjects(testMachine, monitoringMachine)
 
 		streams, _, out, _ = util.NewTestIOStreams()
 
@@ -303,14 +315,16 @@ var _ = Describe("SSH Command", func() {
 
 	Describe("RunE", func() {
 		BeforeEach(func() {
+			seedClientConfig, err := clientcmd.NewClientConfigFromBytes(seedKubeconfigSecret.Data["kubeconfig"])
+			Expect(err).NotTo(HaveOccurred())
+			clientProvider.EXPECT().FromClientConfig(gomock.Eq(seedClientConfig)).Return(seedClient, nil).AnyTimes()
+
 			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(shootClient, nil).AnyTimes().
 				Do(func(clientConfig clientcmd.ClientConfig) {
 					config, err := clientConfig.RawConfig()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(config.CurrentContext).To(Equal(testShoot.Namespace + "--" + testShoot.Name + "-" + testShoot.Status.AdvertisedAddresses[0].Name))
 				})
-
-			shootClient = internalfake.NewClientWithObjects(testNode)
 		})
 
 		It("should reject bad options", func() {
@@ -644,6 +658,15 @@ var _ = Describe("SSH Command", func() {
 			Expect(info.Bastion.PreferredAddress).To(Equal("0.0.0.0"))
 			Expect(info.Bastion.SSHPrivateKeyFile).To(Equal(options.SSHPrivateKeyFile))
 			Expect(info.Bastion.SSHPublicKeyFile).To(Equal(options.SSHPublicKeyFile))
+			Expect(info.Nodes).To(ConsistOf([]ssh.Node{
+				{
+					Name:   testNode.Name,
+					Status: "Not Ready",
+					Address: ssh.Address{
+						Hostname: nodeHostname,
+					},
+				},
+			}))
 			Expect(info.NodePrivateKeyFiles).NotTo(BeEmpty())
 		})
 
@@ -668,17 +691,6 @@ var _ = Describe("SSH Command", func() {
 		BeforeEach(func() {
 			manager = targetmocks.NewMockManager(ctrl)
 			client = gardenclientmocks.NewMockClient(ctrl)
-
-			monitoringMachine := &machinev1alpha1.Machine{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "monitoring1",
-					Namespace: "shoot--prod1--test-shoot",
-					Labels:    map[string]string{"node": "monitoring1"},
-				},
-			}
-
-			seedClient = internalfake.NewClientWithObjects(testMachine, monitoringMachine)
-			shootClient = internalfake.NewClientWithObjects(testNode)
 
 			factory.ManagerImpl = manager
 			manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
