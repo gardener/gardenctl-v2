@@ -647,10 +647,22 @@ func (o *SSHOptions) Run(f util.Factory) error {
 
 	if !o.Interactive {
 		var nodes []corev1.Node
+
+		var pendingNodeNames []string
+
 		if nodeHostname == "" {
 			nodes, err = getNodes(ctx, shootClient)
 			if err != nil {
 				return fmt.Errorf("failed to list shoot cluster nodes: %w", err)
+			}
+
+			// We also want to determine if there are nodes that have not yet joined the cluster.
+			// This is an optional step, as only Gardener operators have access to the Seeds.
+			// Regular users will receive a 'Forbidden' error when trying to fetch the Machines.
+			// However, we do not want to log an error message in this case.
+			pendingNodeNames, err = getNodeNamesFromMachines(ctx, manager, currentTarget)
+			if err != nil && !apierrors.IsForbidden(err) {
+				logger.Info("failed to get shoot cluster node names from machines", "err", err)
 			}
 		}
 
@@ -664,6 +676,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 			o.SSHPrivateKeyFile,
 			nodePrivateKeyFiles,
 			nodes,
+			pendingNodeNames,
 			o.User,
 		)
 		if err != nil {
