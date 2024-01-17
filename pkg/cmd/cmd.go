@@ -18,6 +18,8 @@ import (
 	"github.com/spf13/viper"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
+	"k8s.io/klog/v2/klogr"
+	controllerruntime "sigs.k8s.io/controller-runtime"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	cmdconfig "github.com/gardener/gardenctl-v2/pkg/cmd/config"
@@ -100,6 +102,8 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 	cobra.OnInitialize(func() {
 		initConfig(f)
 	})
+
+	controllerruntime.SetLogger(klogr.NewWithOptions(klogr.WithFormat(klogr.FormatKlog)))
 
 	flags := cmd.PersistentFlags()
 
