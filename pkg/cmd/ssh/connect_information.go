@@ -90,10 +90,10 @@ func NewConnectInformation(
 	pendingNodeNames []string,
 	user string,
 ) (*ConnectInformation, error) {
-	nodeSet := make(map[string]Node)
+	nodeMap := make(map[string]Node)
 
 	for _, pendingNodeName := range pendingNodeNames {
-		nodeSet[pendingNodeName] = Node{
+		nodeMap[pendingNodeName] = Node{
 			Name:   pendingNodeName,
 			Status: "Unknown",
 		}
@@ -133,11 +133,11 @@ func NewConnectInformation(
 			}
 		}
 
-		nodeSet[n.Name] = n
+		nodeMap[n.Name] = n
 	}
 
-	nodeList := make([]Node, 0, len(nodeSet))
-	for _, node := range nodeSet {
+	nodeList := make([]Node, 0, len(nodeMap))
+	for _, node := range nodeMap {
 		nodeList = append(nodeList, node)
 	}
 
