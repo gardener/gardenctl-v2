@@ -87,14 +87,23 @@ func NewConnectInformation(
 	sshPrivateKeyFile PrivateKeyFile,
 	nodePrivateKeyFiles []PrivateKeyFile,
 	nodes []corev1.Node,
+	pendingNodeNames []string,
 	user string,
 ) (*ConnectInformation, error) {
-	var nodeList []Node
+	nodeMap := make(map[string]Node)
+
+	for _, pendingNodeName := range pendingNodeNames {
+		nodeMap[pendingNodeName] = Node{
+			Name:   pendingNodeName,
+			Status: "Unknown",
+		}
+	}
 
 	for _, node := range nodes {
-		n := Node{}
-		n.Name = node.Name
-		n.Status = "Ready"
+		n := Node{
+			Name:   node.Name,
+			Status: "Ready",
+		}
 
 		if !isNodeReady(node) {
 			n.Status = "Not Ready"
@@ -124,7 +133,12 @@ func NewConnectInformation(
 			}
 		}
 
-		nodeList = append(nodeList, n)
+		nodeMap[n.Name] = n
+	}
+
+	nodeList := make([]Node, 0, len(nodeMap))
+	for _, node := range nodeMap {
+		nodeList = append(nodeList, node)
 	}
 
 	return &ConnectInformation{
