@@ -19,9 +19,7 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
-// TargetBuilder builds, completes and validates target values to create valid targets
-//
-//nolint:revive
+// TargetBuilder builds, completes and validates target values to create valid targets.
 type TargetBuilder interface {
 	// Init updates the TargetBuilder with the provided target
 	// Use this function to overwrite target baseline data before updating with new values

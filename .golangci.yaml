@@ -21,3 +21,11 @@ linters:
 linters-settings:
   goimports:
     local-prefixes: github.com/gardener/gardenctl-v2
+  revive:
+    rules:
+      - name: dot-imports
+        disabled: true # remove/enable once golangci-lint 1.55.3 is released where allowedPackages is supported
+        arguments:
+          - allowedPackages:
+            - "github.com/onsi/ginkgo/v2"
+            - "github.com/onsi/gomega"
