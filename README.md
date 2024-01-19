@@ -65,20 +65,11 @@ You can modify this file directly using the `gardenctl config` command. It allow
 Example `config` command:
 
 ```bash
-# Adapt the path to your kubeconfig file for the garden cluster
+# Adapt the path to your kubeconfig file for the garden cluster (not to be mistaken with your shoot cluster)
 export KUBECONFIG=~/relative/path/to/kubeconfig.yaml
 
-# Method 1 : Fetch cluster-identity of garden cluster from the configmap
+# Fetch cluster-identity of garden cluster from the configmap
 cluster_identity=$(kubectl -n kube-system get configmap cluster-identity -ojsonpath={.data.cluster-identity})
-# OR
-# Method 2 : If you don't have access to the kube-system namespace in the garden cluster, the garden cluster-identity can also be extracted from every shoot's yaml
-project="your-project-name" # Change to your project name
-shoot="your-shoot-name" # Change to any shoot's name in your project
-# Simply copy/paste the following lines
-ns=$(kubectl get project $project -ojsonpath={.spec.namespace})
-prefix="shoot--$project--$shoot-"$(kubectl get shoot -n $ns $shoot -ojsonpath={.metadata.uid})"-"
-identity_status=$(kubectl get shoot -n $ns $shoot -ojsonpath={.status.clusterIdentity})
-cluster_identity=$(echo ${identity_status#"$prefix"})
 
 # Configure garden cluster
 gardenctl config set-garden $cluster_identity --kubeconfig $KUBECONFIG
