@@ -10,7 +10,7 @@ require (
 	github.com/gardener/gardener-extension-provider-openstack v1.38.2
 	github.com/gardener/machine-controller-manager v0.51.1
 	github.com/golang/mock v1.6.0
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo/v2 v2.14.0
 	github.com/onsi/gomega v1.30.0
