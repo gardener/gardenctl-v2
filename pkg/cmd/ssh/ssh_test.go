@@ -233,13 +233,13 @@ var _ = Describe("SSH Command", func() {
 		ca, err := csc.GenerateCertificate()
 		Expect(err).NotTo(HaveOccurred())
 
-		caSecret := &corev1.Secret{
+		caConfigMap := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      testShoot.Name + ".ca-cluster",
 				Namespace: testShoot.Namespace,
 			},
-			Data: map[string][]byte{
-				"ca.crt": ca.CertificatePEM,
+			Data: map[string]string{
+				"ca.crt": string(ca.CertificatePEM),
 			},
 		}
 
@@ -251,7 +251,7 @@ var _ = Describe("SSH Command", func() {
 					testShoot,
 					testShootKeypair,
 					seedKubeconfigSecret,
-					caSecret,
+					caConfigMap,
 				).
 				WithStatusSubresource(&operationsv1alpha1.Bastion{}).
 				Build())

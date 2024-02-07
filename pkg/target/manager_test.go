@@ -188,13 +188,13 @@ var _ = Describe("Target Manager", func() {
 		ca, err := csc.GenerateCertificate()
 		Expect(err).NotTo(HaveOccurred())
 
-		prod1GoldenShootCaSecret := &corev1.Secret{
+		prod1GoldenShootCaConfigMap := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      prod1GoldenShoot.Name + ".ca-cluster",
 				Namespace: *prod1Project.Spec.Namespace,
 			},
-			Data: map[string][]byte{
-				"ca.crt": ca.CertificatePEM,
+			Data: map[string]string{
+				"ca.crt": string(ca.CertificatePEM),
 			},
 		}
 
@@ -209,7 +209,7 @@ var _ = Describe("Target Manager", func() {
 			prod2AmbiguousShoot,
 			prod1PendingShoot,
 			namespace,
-			prod1GoldenShootCaSecret,
+			prod1GoldenShootCaConfigMap,
 		)
 
 		ctrl = gomock.NewController(GinkgoT())

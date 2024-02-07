@@ -148,9 +148,10 @@ var _ = Describe("Client", func() {
 			k8sVersionLegacy = "1.19.0" // legacy kubeconfig should be rendered
 		)
 		var (
-			testShoot1 *gardencorev1beta1.Shoot
-			caSecret   *corev1.Secret
-			ca         *secrets.Certificate
+			testShoot1  *gardencorev1beta1.Shoot
+			caConfigMap *corev1.ConfigMap
+			caSecret    *corev1.Secret
+			ca          *secrets.Certificate
 		)
 
 		BeforeEach(func() {
@@ -188,6 +189,16 @@ var _ = Describe("Client", func() {
 			ca, err = csc.GenerateCertificate()
 			Expect(err).NotTo(HaveOccurred())
 
+			caConfigMap = &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testShoot1.Name + ".ca-cluster",
+					Namespace: testShoot1.Namespace,
+				},
+				Data: map[string]string{
+					"ca.crt": string(ca.CertificatePEM),
+				},
+			}
+
 			caSecret = &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      testShoot1.Name + ".ca-cluster",
@@ -203,46 +214,87 @@ var _ = Describe("Client", func() {
 			JustBeforeEach(func() {
 				gardenClient = clientgarden.NewClient(
 					nil,
-					fake.NewClientWithObjects(testShoot1, caSecret),
+					fake.NewClientWithObjects(testShoot1, caConfigMap),
 					gardenName,
 				)
 			})
 
-			It("it should return the client config", func() {
-				gardenClient = clientgarden.NewClient(
-					nil,
-					fake.NewClientWithObjects(testShoot1, caSecret),
-					gardenName,
-				)
+			Context("when ca-cluster configmap exists", func() {
+				It("it should return the client config", func() {
+					gardenClient = clientgarden.NewClient(
+						nil,
+						fake.NewClientWithObjects(testShoot1, caSecret),
+						gardenName,
+					)
 
-				clientConfig, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName)
-				Expect(err).NotTo(HaveOccurred())
+					clientConfig, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName)
+					Expect(err).NotTo(HaveOccurred())
 
-				rawConfig, err := clientConfig.RawConfig()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(rawConfig.Clusters).To(HaveLen(2))
-				context := rawConfig.Contexts[rawConfig.CurrentContext]
-				cluster := rawConfig.Clusters[context.Cluster]
-				Expect(cluster.Server).To(Equal("https://api." + domain))
-				Expect(cluster.CertificateAuthorityData).To(Equal(ca.CertificatePEM))
+					rawConfig, err := clientConfig.RawConfig()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(rawConfig.Clusters).To(HaveLen(2))
+					context := rawConfig.Contexts[rawConfig.CurrentContext]
+					cluster := rawConfig.Clusters[context.Cluster]
+					Expect(cluster.Server).To(Equal("https://api." + domain))
+					Expect(cluster.CertificateAuthorityData).To(Equal(ca.CertificatePEM))
 
-				extension := &clientgarden.ExecPluginConfig{}
-				extension.GardenClusterIdentity = gardenName
-				extension.ShootRef.Namespace = namespace
-				extension.ShootRef.Name = shootName
+					extension := &clientgarden.ExecPluginConfig{}
+					extension.GardenClusterIdentity = gardenName
+					extension.ShootRef.Namespace = namespace
+					extension.ShootRef.Name = shootName
 
-				Expect(cluster.Extensions["client.authentication.k8s.io/exec"]).To(Equal(extension.ToRuntimeObject()))
+					Expect(cluster.Extensions["client.authentication.k8s.io/exec"]).To(Equal(extension.ToRuntimeObject()))
 
-				Expect(rawConfig.Contexts).To(HaveLen(2))
+					Expect(rawConfig.Contexts).To(HaveLen(2))
 
-				Expect(rawConfig.AuthInfos).To(HaveLen(1))
-				authInfo := rawConfig.AuthInfos[context.AuthInfo]
-				Expect(authInfo.Exec.APIVersion).To(Equal(clientauthenticationv1.SchemeGroupVersion.String()))
-				Expect(authInfo.Exec.Command).To(Equal("kubectl-gardenlogin"))
-				Expect(authInfo.Exec.Args).To(Equal([]string{
-					"get-client-certificate",
-				}))
-				Expect(authInfo.Exec.InstallHint).ToNot(BeEmpty())
+					Expect(rawConfig.AuthInfos).To(HaveLen(1))
+					authInfo := rawConfig.AuthInfos[context.AuthInfo]
+					Expect(authInfo.Exec.APIVersion).To(Equal(clientauthenticationv1.SchemeGroupVersion.String()))
+					Expect(authInfo.Exec.Command).To(Equal("kubectl-gardenlogin"))
+					Expect(authInfo.Exec.Args).To(Equal([]string{
+						"get-client-certificate",
+					}))
+					Expect(authInfo.Exec.InstallHint).ToNot(BeEmpty())
+				})
+			})
+
+			Context("when ca-cluster secret exists", func() {
+				It("it should return the client config", func() {
+					gardenClient = clientgarden.NewClient(
+						nil,
+						fake.NewClientWithObjects(testShoot1, caSecret),
+						gardenName,
+					)
+
+					clientConfig, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName)
+					Expect(err).NotTo(HaveOccurred())
+
+					rawConfig, err := clientConfig.RawConfig()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(rawConfig.Clusters).To(HaveLen(2))
+					context := rawConfig.Contexts[rawConfig.CurrentContext]
+					cluster := rawConfig.Clusters[context.Cluster]
+					Expect(cluster.Server).To(Equal("https://api." + domain))
+					Expect(cluster.CertificateAuthorityData).To(Equal(ca.CertificatePEM))
+
+					extension := &clientgarden.ExecPluginConfig{}
+					extension.GardenClusterIdentity = gardenName
+					extension.ShootRef.Namespace = namespace
+					extension.ShootRef.Name = shootName
+
+					Expect(cluster.Extensions["client.authentication.k8s.io/exec"]).To(Equal(extension.ToRuntimeObject()))
+
+					Expect(rawConfig.Contexts).To(HaveLen(2))
+
+					Expect(rawConfig.AuthInfos).To(HaveLen(1))
+					authInfo := rawConfig.AuthInfos[context.AuthInfo]
+					Expect(authInfo.Exec.APIVersion).To(Equal(clientauthenticationv1.SchemeGroupVersion.String()))
+					Expect(authInfo.Exec.Command).To(Equal("kubectl-gardenlogin"))
+					Expect(authInfo.Exec.Args).To(Equal([]string{
+						"get-client-certificate",
+					}))
+					Expect(authInfo.Exec.InstallHint).ToNot(BeEmpty())
+				})
 			})
 
 			Context("legacy kubeconfig", func() {
@@ -281,7 +333,7 @@ var _ = Describe("Client", func() {
 			})
 		})
 
-		Context("when the ca-cluster secret does not exist", func() {
+		Context("when the ca-cluster does not exist", func() {
 			BeforeEach(func() {
 				gardenClient = clientgarden.NewClient(
 					nil,
