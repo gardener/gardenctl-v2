@@ -295,7 +295,7 @@ func (b *targetBuilderImpl) getProjectNameByNamespace(ctx context.Context, garde
 	return projectName, nil
 }
 
-// validateSeed ensures that the seed exists and that a secret reference is set, otherwise an error is returned.
+// validateSeed ensures that the seed exists, otherwise an error is returned.
 func (b *targetBuilderImpl) validateSeed(ctx context.Context, gardenName string, name string) (*gardencorev1beta1.Seed, error) {
 	// validate that the seed exists
 	gardenClient, err := b.getGardenClient(gardenName)
