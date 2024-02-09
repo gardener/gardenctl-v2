@@ -15,8 +15,6 @@ import (
 )
 
 // TargetReader can read targets.
-//
-//nolint:revive
 type TargetReader interface {
 	// Read returns the current target. If no target exists yet, a default
 	// (empty) target is returned.
@@ -24,8 +22,6 @@ type TargetReader interface {
 }
 
 // TargetWriter can write targets.
-//
-//nolint:revive
 type TargetWriter interface {
 	// Write takes a target and saves it permanently.
 	Write(t Target) error
@@ -34,8 +30,6 @@ type TargetWriter interface {
 //go:generate mockgen -destination=./mocks/mock_target_trovider.go -package=mocks github.com/gardener/gardenctl-v2/pkg/target TargetProvider
 
 // TargetProvider can read and write targets.
-//
-//nolint:revive
 type TargetProvider interface {
 	TargetReader
 	TargetWriter

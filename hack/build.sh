@@ -31,6 +31,10 @@ fi
 
 out_file="${BINARY_PATH}/${GOOS}-${GOARCH}/gardenctl_v2_${GOOS}_${GOARCH}"
 
+if [[ "${GOOS}" == "windows" ]]; then
+  out_file="${out_file}.exe"
+fi
+
 echo "building for ${GOOS}-${GOARCH}: ${out_file}"
 CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} GO111MODULE=on go build \
 		-ldflags "${LD_FLAGS}" \

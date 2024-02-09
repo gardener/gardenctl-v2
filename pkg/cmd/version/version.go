@@ -57,9 +57,7 @@ func runCmdVersion(opt *VersionOptions) error {
 	return opt.PrintObject(versionInfo)
 }
 
-// VersionOptions is a struct to support version command
-//
-//nolint:revive
+// VersionOptions is a struct to support version command.
 type VersionOptions struct {
 	base.Options
 

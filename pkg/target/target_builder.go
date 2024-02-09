@@ -19,9 +19,7 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
-// TargetBuilder builds, completes and validates target values to create valid targets
-//
-//nolint:revive
+// TargetBuilder builds, completes and validates target values to create valid targets.
 type TargetBuilder interface {
 	// Init updates the TargetBuilder with the provided target
 	// Use this function to overwrite target baseline data before updating with new values
@@ -297,7 +295,7 @@ func (b *targetBuilderImpl) getProjectNameByNamespace(ctx context.Context, garde
 	return projectName, nil
 }
 
-// validateSeed ensures that the seed exists and that a secret reference is set, otherwise an error is returned.
+// validateSeed ensures that the seed exists, otherwise an error is returned.
 func (b *targetBuilderImpl) validateSeed(ctx context.Context, gardenName string, name string) (*gardencorev1beta1.Seed, error) {
 	// validate that the seed exists
 	gardenClient, err := b.getGardenClient(gardenName)
