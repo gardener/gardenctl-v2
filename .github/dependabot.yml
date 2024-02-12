@@ -1,6 +1,14 @@
 version: 2
 updates:
   - package-ecosystem: "gomod"
+    groups: # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file#groups
+      gomod-dependencies:
+        patterns:
+        - "*"
+        exclude-patterns:
+        # gardener/gardener dictates the k8s dependency
+        - "k8s.io*"
+        - "sigs.k8s.io/controller-runtime"
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
