@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	gardenclientmocks "github.com/gardener/gardenctl-v2/internal/client/garden/mocks"
@@ -64,7 +64,7 @@ var _ = Describe("Resolve Command - Options", func() {
 			factory.EXPECT().Manager().Return(manager, nil)
 
 			cfg = &config.Config{
-				LinkKubeconfig: pointer.Bool(false),
+				LinkKubeconfig: ptr.To(false),
 				Gardens:        []config.Garden{garden},
 			}
 
@@ -148,7 +148,7 @@ var _ = Describe("Resolve Command - Options", func() {
 					Name: projectName,
 				},
 				Spec: gardencorev1beta1.ProjectSpec{
-					Namespace: pointer.String(namespace),
+					Namespace: ptr.To(namespace),
 				},
 			}
 
@@ -157,7 +157,7 @@ var _ = Describe("Resolve Command - Options", func() {
 					Name: "garden",
 				},
 				Spec: gardencorev1beta1.ProjectSpec{
-					Namespace: pointer.String("garden"),
+					Namespace: ptr.To("garden"),
 				},
 			}
 
@@ -180,7 +180,7 @@ var _ = Describe("Resolve Command - Options", func() {
 					Namespace: "garden",
 				},
 				Spec: gardencorev1beta1.ShootSpec{
-					SeedName: pointer.String(soil.Name),
+					SeedName: ptr.To(soil.Name),
 				},
 			}
 
@@ -190,7 +190,7 @@ var _ = Describe("Resolve Command - Options", func() {
 					Namespace: namespace,
 				},
 				Spec: gardencorev1beta1.ShootSpec{
-					SeedName: pointer.String(seed.Name),
+					SeedName: ptr.To(seed.Name),
 				},
 			}
 		})

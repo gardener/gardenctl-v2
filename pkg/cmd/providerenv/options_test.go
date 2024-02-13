@@ -23,7 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	gardenclientmocks "github.com/gardener/gardenctl-v2/internal/client/garden/mocks"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
@@ -62,7 +62,7 @@ var _ = Describe("Env Commands - Options", func() {
 			output = ""
 			providerType = "aws"
 			cfg = &config.Config{
-				LinkKubeconfig: pointer.Bool(false),
+				LinkKubeconfig: ptr.To(false),
 				Gardens:        []config.Garden{{Name: "test"}},
 			}
 			tf = target.NewTargetFlags("", "", "", "", false)

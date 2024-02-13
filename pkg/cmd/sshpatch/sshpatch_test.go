@@ -21,7 +21,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	gcmocks "github.com/gardener/gardenctl-v2/internal/client/garden/mocks"
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -80,7 +80,7 @@ var _ = Describe("SSH Patch Command", func() {
 					},
 					SSHPublicKey: "some-dummy-public-key",
 					Ingress:      bastionDefaultPolicies,
-					ProviderType: pointer.String("aws"),
+					ProviderType: ptr.To("aws"),
 				},
 			}
 		}
@@ -98,7 +98,7 @@ var _ = Describe("SSH Patch Command", func() {
 				Name: "prod1",
 			},
 			Spec: gardencorev1beta1.ProjectSpec{
-				Namespace: pointer.String("garden-prod1"),
+				Namespace: ptr.To("garden-prod1"),
 			},
 		}
 
@@ -114,7 +114,7 @@ var _ = Describe("SSH Patch Command", func() {
 				Namespace: *testProject.Spec.Namespace,
 			},
 			Spec: gardencorev1beta1.ShootSpec{
-				SeedName: pointer.String(testSeed.Name),
+				SeedName: ptr.To(testSeed.Name),
 				Kubernetes: gardencorev1beta1.Kubernetes{
 					Version: "1.20.0", // >= 1.20.0 for non-legacy shoot kubeconfigs
 				},

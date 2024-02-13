@@ -10,7 +10,7 @@ import (
 	"context"
 	"os"
 
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	internalclient "github.com/gardener/gardenctl-v2/internal/client"
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -48,7 +48,7 @@ var _ util.Factory = &Factory{}
 func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider internalclient.Provider, targetProvider target.TargetProvider) *Factory {
 	if cfg == nil {
 		cfg = &config.Config{
-			LinkKubeconfig: pointer.Bool(false),
+			LinkKubeconfig: ptr.To(false),
 		}
 	}
 
