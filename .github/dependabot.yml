@@ -1,7 +1,15 @@
 version: 2
 updates:
-  - package-ecosystem: "gomod"
+  - package-ecosystem: "github-actions"
     groups: # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file#groups
+      github-actions:
+        patterns:
+        - "*"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+  - package-ecosystem: "gomod"
+    groups:
       gomod-dependencies:
         patterns:
         - "*"
