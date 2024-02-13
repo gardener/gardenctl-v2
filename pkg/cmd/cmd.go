@@ -103,6 +103,7 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 		initConfig(f)
 	})
 
+	//nolint:staticcheck // TODO use textlogger instead
 	controllerruntime.SetLogger(klogr.NewWithOptions(klogr.WithFormat(klogr.FormatKlog)))
 
 	flags := cmd.PersistentFlags()
