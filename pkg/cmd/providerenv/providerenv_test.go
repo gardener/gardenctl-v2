@@ -20,7 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/internal/fake"
@@ -146,7 +146,7 @@ var _ = Describe("Env Commands", func() {
 						Name: t.ProjectName(),
 					},
 					Spec: gardencorev1beta1.ProjectSpec{
-						Namespace: pointer.String(namespace),
+						Namespace: ptr.To(namespace),
 					},
 				}
 				shoot = &gardencorev1beta1.Shoot{

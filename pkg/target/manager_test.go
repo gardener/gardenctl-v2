@@ -18,7 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	internalclient "github.com/gardener/gardenctl-v2/internal/client"
@@ -112,7 +112,7 @@ var _ = Describe("Target Manager", func() {
 
 	BeforeEach(func() {
 		cfg = &config.Config{
-			LinkKubeconfig: pointer.Bool(false),
+			LinkKubeconfig: ptr.To(false),
 			Gardens: []config.Garden{{
 				Name:       gardenName,
 				Kubeconfig: gardenKubeconfig,
@@ -128,7 +128,7 @@ var _ = Describe("Target Manager", func() {
 				Name: "prod1",
 			},
 			Spec: gardencorev1beta1.ProjectSpec{
-				Namespace: pointer.String("garden-prod1"),
+				Namespace: ptr.To("garden-prod1"),
 			},
 		}
 
@@ -137,7 +137,7 @@ var _ = Describe("Target Manager", func() {
 				Name: "prod2",
 			},
 			Spec: gardencorev1beta1.ProjectSpec{
-				Namespace: pointer.String("garden-prod2"),
+				Namespace: ptr.To("garden-prod2"),
 			},
 		}
 
@@ -175,9 +175,9 @@ var _ = Describe("Target Manager", func() {
 			},
 		}
 
-		prod1GoldenShoot = createTestShoot("golden-shoot", *prod1Project.Spec.Namespace, pointer.String(seed.Name))
-		prod1AmbiguousShoot = createTestShoot("ambiguous-shoot", *prod1Project.Spec.Namespace, pointer.String(seed.Name))
-		prod2AmbiguousShoot = createTestShoot("ambiguous-shoot", *prod2Project.Spec.Namespace, pointer.String(seed.Name))
+		prod1GoldenShoot = createTestShoot("golden-shoot", *prod1Project.Spec.Namespace, ptr.To(seed.Name))
+		prod1AmbiguousShoot = createTestShoot("ambiguous-shoot", *prod1Project.Spec.Namespace, ptr.To(seed.Name))
+		prod2AmbiguousShoot = createTestShoot("ambiguous-shoot", *prod2Project.Spec.Namespace, ptr.To(seed.Name))
 		prod1PendingShoot = createTestShoot("pending-shoot", *prod1Project.Spec.Namespace, nil)
 
 		csc := &secrets.CertificateSecretConfig{
@@ -627,7 +627,7 @@ var _ = Describe("Target Manager", func() {
 	Context("FlagCompletors", func() {
 		BeforeEach(func() {
 			cfg = &config.Config{
-				LinkKubeconfig: pointer.Bool(false),
+				LinkKubeconfig: ptr.To(false),
 				Gardens: []config.Garden{
 					{
 						Name:       "garden1",

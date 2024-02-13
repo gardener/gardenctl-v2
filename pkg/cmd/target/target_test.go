@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
@@ -53,7 +53,7 @@ var _ = Describe("Target Command", func() {
 
 	BeforeEach(func() {
 		cfg = &config.Config{
-			LinkKubeconfig: pointer.Bool(false),
+			LinkKubeconfig: ptr.To(false),
 			Gardens: []config.Garden{{
 				Name:       gardenName,
 				Kubeconfig: gardenKubeconfig,
@@ -73,7 +73,7 @@ var _ = Describe("Target Command", func() {
 				Name: projectName,
 			},
 			Spec: gardencorev1beta1.ProjectSpec{
-				Namespace: pointer.String(namespace),
+				Namespace: ptr.To(namespace),
 			},
 		}
 
@@ -90,7 +90,7 @@ var _ = Describe("Target Command", func() {
 				Namespace: namespace,
 			},
 			Spec: gardencorev1beta1.ShootSpec{
-				SeedName: pointer.String(seed.Name),
+				SeedName: ptr.To(seed.Name),
 			},
 		}
 
@@ -256,7 +256,7 @@ var _ = Describe("Target Command", func() {
 					Name: "prod1",
 				},
 				Spec: gardencorev1beta1.ProjectSpec{
-					Namespace: pointer.String("garden-prod1"),
+					Namespace: ptr.To("garden-prod1"),
 				},
 			}
 
@@ -265,7 +265,7 @@ var _ = Describe("Target Command", func() {
 					Name: "prod2",
 				},
 				Spec: gardencorev1beta1.ProjectSpec{
-					Namespace: pointer.String("garden-prod2"),
+					Namespace: ptr.To("garden-prod2"),
 				},
 			}
 
@@ -287,7 +287,7 @@ var _ = Describe("Target Command", func() {
 					Namespace: *testProject1.Spec.Namespace,
 				},
 				Spec: gardencorev1beta1.ShootSpec{
-					SeedName: pointer.String(testSeed1.Name),
+					SeedName: ptr.To(testSeed1.Name),
 				},
 			}
 
@@ -297,7 +297,7 @@ var _ = Describe("Target Command", func() {
 					Namespace: *testProject1.Spec.Namespace,
 				},
 				Spec: gardencorev1beta1.ShootSpec{
-					SeedName: pointer.String(testSeed1.Name),
+					SeedName: ptr.To(testSeed1.Name),
 				},
 			}
 
