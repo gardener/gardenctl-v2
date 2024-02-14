@@ -24,7 +24,6 @@ linters-settings:
   revive:
     rules:
       - name: dot-imports
-        disabled: true # remove/enable once golangci-lint 1.55.3 is released where allowedPackages is supported
         arguments:
           - allowedPackages:
             - "github.com/onsi/ginkgo/v2"
