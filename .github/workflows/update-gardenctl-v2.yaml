@@ -8,8 +8,8 @@ jobs:
   update_gardenctl_in_homebrew_tap_and_chocolatey_packages:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # pin@v3.3.0
-      - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # pin@v3.5.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # pin@v5.0.0
         with:
           go-version: '1.21.6'
       - name: Build the binary-files
@@ -28,7 +28,7 @@ jobs:
       - name: Get token for gardener-github-pkg-mngr app
         if: github.event.release.prerelease == false
         id: gardener-github-workflows
-        uses: getsentry/action-github-app-token@97c9e23528286821f97fba885c1b1123284b29cc # pin@v2.0.0
+        uses: getsentry/action-github-app-token@d4b5da6c5e37703f8c3b3e43abb5705b46e159cc # pin@v3.0.0
         with:
           app_id: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_ID }}
           private_key: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_PRIVATE_KEY }}
