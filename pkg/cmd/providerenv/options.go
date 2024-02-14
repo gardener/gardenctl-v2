@@ -211,6 +211,7 @@ func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1
 			}
 
 			s := env.Shell(o.Shell)
+
 			return o.Template.ExecuteTemplate(o.IOStreams.Out, "printf", map[string]interface{}{
 				"format": messages.String() + "\n%s %s\n%s\n",
 				"arguments": []string{
