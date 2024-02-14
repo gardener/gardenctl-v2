@@ -15,7 +15,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/pflag"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
@@ -66,7 +66,7 @@ var _ = BeforeEach(func() {
 	}
 	cfg = &config.Config{
 		Filename:       filepath.Join(gardenHomeDir, "gardenctl-testconfig.yaml"),
-		LinkKubeconfig: pointer.Bool(false),
+		LinkKubeconfig: ptr.To(false),
 		Gardens: []config.Garden{
 			{
 				Name:       gardenIdentity1,

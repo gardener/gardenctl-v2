@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/kubectlenv"
@@ -54,7 +54,7 @@ var _ = Describe("Env Commands - Options", func() {
 			baseTemplate = env.NewTemplate("helpers")
 			shell = "default"
 			cfg = &config.Config{
-				LinkKubeconfig: pointer.Bool(false),
+				LinkKubeconfig: ptr.To(false),
 				Gardens:        []config.Garden{{Name: "test"}},
 			}
 		})

@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
@@ -53,7 +53,7 @@ var _ = Describe("Target Unset Command", func() {
 
 	BeforeEach(func() {
 		cfg = &config.Config{
-			LinkKubeconfig: pointer.Bool(false),
+			LinkKubeconfig: ptr.To(false),
 			Gardens: []config.Garden{{
 				Name:       gardenName,
 				Kubeconfig: gardenKubeconfig,
@@ -65,7 +65,7 @@ var _ = Describe("Target Unset Command", func() {
 				Name: projectName,
 			},
 			Spec: gardencorev1beta1.ProjectSpec{
-				Namespace: pointer.String(namespace),
+				Namespace: ptr.To(namespace),
 			},
 		}
 

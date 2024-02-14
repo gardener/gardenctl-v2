@@ -14,7 +14,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
@@ -259,7 +259,7 @@ func (o *options) Run(f util.Factory) error {
 
 	messages := ac.CheckAccessRestrictions(o.Garden.AccessRestrictions, shoot)
 	if len(messages) != 0 {
-		resolvedTarget.Shoot.AccessRestriction = pointer.String(messages.String())
+		resolvedTarget.Shoot.AccessRestriction = ptr.To(messages.String())
 	}
 
 	return o.PrintObject(resolvedTarget)

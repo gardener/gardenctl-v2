@@ -13,7 +13,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
@@ -37,7 +37,7 @@ var _ = Describe("Config", func() {
 		gardenHomeDir = dir
 
 		cfg = &config.Config{
-			LinkKubeconfig: pointer.Bool(false),
+			LinkKubeconfig: ptr.To(false),
 			Gardens: []config.Garden{
 				{
 					Name:  clusterIdentity1,
@@ -168,14 +168,14 @@ var _ = Describe("Config", func() {
 		Expect(cfg.LinkKubeconfig).To(Equal(expVal))
 	},
 		Entry("when LinkKubeconfig is nil and envVar is unset", nil, "", nil),
-		Entry("when LinkKubeconfig is nil and envVar is True", nil, "True", pointer.Bool(true)),
-		Entry("when LinkKubeconfig is nil and envVar is False", nil, "False", pointer.Bool(false)),
-		Entry("when LinkKubeconfig is true and envVar is unset", pointer.Bool(true), "", pointer.Bool(true)),
-		Entry("when LinkKubeconfig is true and envVar is True", pointer.Bool(true), "True", pointer.Bool(true)),
-		Entry("when LinkKubeconfig is true and envVar is False", pointer.Bool(true), "False", pointer.Bool(false)),
-		Entry("when LinkKubeconfig is false and envVar is unset", pointer.Bool(false), "", pointer.Bool(false)),
-		Entry("when LinkKubeconfig is false and envVar is True", pointer.Bool(false), "True", pointer.Bool(true)),
-		Entry("when LinkKubeconfig is false and envVar is False", pointer.Bool(false), "False", pointer.Bool(false)),
+		Entry("when LinkKubeconfig is nil and envVar is True", nil, "True", ptr.To(true)),
+		Entry("when LinkKubeconfig is nil and envVar is False", nil, "False", ptr.To(false)),
+		Entry("when LinkKubeconfig is true and envVar is unset", ptr.To(true), "", ptr.To(true)),
+		Entry("when LinkKubeconfig is true and envVar is True", ptr.To(true), "True", ptr.To(true)),
+		Entry("when LinkKubeconfig is true and envVar is False", ptr.To(true), "False", ptr.To(false)),
+		Entry("when LinkKubeconfig is false and envVar is unset", ptr.To(false), "", ptr.To(false)),
+		Entry("when LinkKubeconfig is false and envVar is True", ptr.To(false), "True", ptr.To(true)),
+		Entry("when LinkKubeconfig is false and envVar is False", ptr.To(false), "False", ptr.To(false)),
 	)
 
 	It("should create configuration directories and file", func() {

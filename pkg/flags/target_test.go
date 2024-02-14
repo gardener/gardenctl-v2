@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
@@ -78,7 +78,7 @@ var _ = Describe("Target flags", func() {
 					Name: "prod1",
 				},
 				Spec: gardencorev1beta1.ProjectSpec{
-					Namespace: pointer.String("garden-prod1"),
+					Namespace: ptr.To("garden-prod1"),
 				},
 			}
 
@@ -87,7 +87,7 @@ var _ = Describe("Target flags", func() {
 					Name: "prod2",
 				},
 				Spec: gardencorev1beta1.ProjectSpec{
-					Namespace: pointer.String("garden-prod2"),
+					Namespace: ptr.To("garden-prod2"),
 				},
 			}
 
@@ -109,7 +109,7 @@ var _ = Describe("Target flags", func() {
 					Namespace: *testProject1.Spec.Namespace,
 				},
 				Spec: gardencorev1beta1.ShootSpec{
-					SeedName: pointer.String(testSeed1.Name),
+					SeedName: ptr.To(testSeed1.Name),
 				},
 			}
 
@@ -119,7 +119,7 @@ var _ = Describe("Target flags", func() {
 					Namespace: *testProject1.Spec.Namespace,
 				},
 				Spec: gardencorev1beta1.ShootSpec{
-					SeedName: pointer.String(testSeed1.Name),
+					SeedName: ptr.To(testSeed1.Name),
 				},
 			}
 
@@ -129,7 +129,7 @@ var _ = Describe("Target flags", func() {
 					Namespace: *testProject2.Spec.Namespace,
 				},
 				Spec: gardencorev1beta1.ShootSpec{
-					SeedName: pointer.String(testSeed1.Name),
+					SeedName: ptr.To(testSeed1.Name),
 				},
 			}
 

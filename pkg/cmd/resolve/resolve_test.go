@@ -15,7 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/internal/fake"
@@ -90,7 +90,7 @@ var _ = Describe("Resolve Command", func() {
 					Name: t.ProjectName(),
 				},
 				Spec: gardencorev1beta1.ProjectSpec{
-					Namespace: pointer.String(namespace),
+					Namespace: ptr.To(namespace),
 				},
 			}
 
@@ -106,7 +106,7 @@ var _ = Describe("Resolve Command", func() {
 					Namespace: namespace,
 				},
 				Spec: gardencorev1beta1.ShootSpec{
-					SeedName: pointer.String(seed.Name),
+					SeedName: ptr.To(seed.Name),
 				},
 			}
 

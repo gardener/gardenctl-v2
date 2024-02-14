@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -152,7 +152,7 @@ var _ = Describe("SSH Command", func() {
 		ssh.SetPollBastionStatusInterval(1 * time.Second)
 
 		cfg = &config.Config{
-			LinkKubeconfig: pointer.Bool(false),
+			LinkKubeconfig: ptr.To(false),
 			Gardens: []config.Garden{{
 				Name:       gardenName,
 				Kubeconfig: gardenKubeconfigFile,
@@ -164,7 +164,7 @@ var _ = Describe("SSH Command", func() {
 				Name: "prod1",
 			},
 			Spec: gardencorev1beta1.ProjectSpec{
-				Namespace: pointer.String("garden-prod1"),
+				Namespace: ptr.To("garden-prod1"),
 			},
 		}
 
@@ -180,7 +180,7 @@ var _ = Describe("SSH Command", func() {
 				Namespace: *testProject.Spec.Namespace,
 			},
 			Spec: gardencorev1beta1.ShootSpec{
-				SeedName: pointer.String(testSeed.Name),
+				SeedName: ptr.To(testSeed.Name),
 				Kubernetes: gardencorev1beta1.Kubernetes{
 					Version: "1.20.0", // >= 1.20.0 for non-legacy shoot kubeconfigs
 				},
