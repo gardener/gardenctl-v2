@@ -721,6 +721,7 @@ func createOrPatchBastion(ctx context.Context, gardenClient client.Client, key c
 		if len(bastion.Annotations) == 0 {
 			bastion.Annotations = map[string]string{}
 		}
+
 		bastion.Annotations[corev1beta1constants.GardenerOperation] = corev1beta1constants.GardenerOperationKeepalive
 		bastion.Spec.ShootRef = corev1.LocalObjectReference{
 			Name: shoot.Name,
@@ -965,6 +966,7 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 		case cond.Status != gardencorev1beta1.ConditionTrue:
 			lastCheckErr = errors.New(cond.Message)
 			logger.Error(lastCheckErr, "Still waiting")
+
 			return false, nil
 		}
 

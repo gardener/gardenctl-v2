@@ -13,12 +13,12 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
-	. "github.com/gardener/gardenctl-v2/pkg/cmd/version"
+	"github.com/gardener/gardenctl-v2/pkg/cmd/version"
 )
 
 var _ = Describe("Version Command", func() {
 	var (
-		o       *VersionOptions
+		o       *version.VersionOptions
 		factory util.Factory
 		streams util.IOStreams
 		buf     *util.SafeBytesBuffer
@@ -27,13 +27,13 @@ var _ = Describe("Version Command", func() {
 
 	BeforeEach(func() {
 		streams, _, buf, _ = util.NewTestIOStreams()
-		o = NewVersionOptions(streams)
+		o = version.NewVersionOptions(streams)
 		factory = &util.FactoryImpl{}
 		args = make([]string, 0, 5)
 	})
 
 	It("should run the command without any flags", func() {
-		cmd := NewCmdVersion(factory, o)
+		cmd := version.NewCmdVersion(factory, o)
 		cmd.SetArgs(args)
 		Expect(cmd.Execute()).To(Succeed())
 		Expect(o.Short).To(BeFalse())
@@ -42,7 +42,7 @@ var _ = Describe("Version Command", func() {
 	})
 
 	It("should run the command with flags --short", func() {
-		cmd := NewCmdVersion(factory, o)
+		cmd := version.NewCmdVersion(factory, o)
 		cmd.SetArgs(append(args, "--short"))
 		Expect(cmd.Execute()).To(Succeed())
 		Expect(o.Short).To(BeTrue())
@@ -51,7 +51,7 @@ var _ = Describe("Version Command", func() {
 	})
 
 	It("should run the command with flags --output json", func() {
-		cmd := NewCmdVersion(factory, o)
+		cmd := version.NewCmdVersion(factory, o)
 		cmd.SetArgs(append(args, "--output", "json"))
 		Expect(o.Short).To(BeFalse())
 		Expect(cmd.Execute()).To(Succeed())
@@ -62,7 +62,7 @@ var _ = Describe("Version Command", func() {
 	})
 
 	It("should run the command with flags --short --output json", func() {
-		cmd := NewCmdVersion(factory, o)
+		cmd := version.NewCmdVersion(factory, o)
 		cmd.SetArgs(append(args, "--short", "--output", "json"))
 		Expect(cmd.Execute()).To(Succeed())
 		Expect(o.Short).To(BeTrue())

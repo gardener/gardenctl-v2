@@ -155,6 +155,7 @@ func initConfig(f *util.FactoryImpl) {
 		if ok {
 			envHomeDir, err = homedir.Expand(envHomeDir)
 			cobra.CheckErr(err)
+
 			configFile = envHomeDir
 			viper.AddConfigPath(envHomeDir)
 		}
