@@ -1,0 +1,43 @@
+name: bump golangci-lint
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  bump-golangci-lint:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]' && contains(github.event.pull_request.title, 'Bump golangci/golangci-lint from')
+    steps:
+      - uses: actions/create-github-app-token@f4c6bf6752984b3a29fcc135a5e70eb792c40c6b # pin@1.8.0
+        id: app-token
+        with:
+          # required
+          app-id: ${{ secrets.GARDENER_GITHUB_WORKFLOW_WRITER_APP_ID }}
+          private-key: ${{ secrets.GARDENER_GITHUB_WORKFLOW_WRITER_APP_PRIVATE_KEY }}
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Fetch Dependabot metadata
+        id: dependabot-metadata
+        uses: dependabot/fetch-metadata@c9c4182bf1b97f5224aee3906fd373f6b61b4526 # pin@v1.6.0
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+      - name: Update Golangci-lint version in golangci-lint.yml
+        run: |
+          NEW_VERSION=${{ steps.dependabot-metadata.outputs.new-version }}
+          sed -i "s/version: v[0-9]*\.[0-9]*\.[0-9]*/version: $NEW_VERSION/g" .github/workflows/golangci-lint.yml
+      - name: Update Golangci-lint version in golangci-lint.sh
+        run: |
+          NEW_VERSION=${{ steps.dependabot-metadata.outputs.new-version }}
+          sed -i "s/v[0-9]*\.[0-9]*\.[0-9]*/$NEW_VERSION/g" hack/golangci-lint.sh
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          if git diff --quiet; then
+            echo "Skip - No changes detected"
+            exit 0
+          fi
+          git commit -am "[dependabot-skip] Update golangci-lint version to ${{ steps.dependabot-metadata.outputs.new-version }}"
+          git push

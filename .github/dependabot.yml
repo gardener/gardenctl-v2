@@ -24,3 +24,10 @@ updates:
       # gardener/gardener dictates the k8s dependency
       - dependency-name: "k8s.io*"
       - dependency-name: "sigs.k8s.io/controller-runtime"
+  - package-ecosystem: "docker"
+    # Dependabot monitors images defined in /hack/values-dependabot.yaml.
+    # This configuration serves as a workaround to trick Dependabot into thinking it's monitoring a Helm chart (https://github.com/dependabot/dependabot-core/blob/c676f5980bcd905fbb1367b3de5e9181b8f89b7d/docker/lib/dependabot/docker/file_fetcher.rb#L86).
+    # If a new PR is created by Dependabot, some workflows (like e.g. /.github./workflows/bump-golang.yaml) will proceed to update the version definitions across various files.
+    directory: "/hack"
+    schedule:
+      interval: weekly

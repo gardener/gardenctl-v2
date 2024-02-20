@@ -1,0 +1,41 @@
+name: bump golang
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  bump-golang:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]' && contains(github.event.pull_request.title, 'Bump golang from')
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Fetch Dependabot metadata
+        id: dependabot-metadata
+        uses: dependabot/fetch-metadata@c9c4182bf1b97f5224aee3906fd373f6b61b4526 # pin@v1.6.0
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+      - name: Update Golang version in pipeline_definition
+        run: |
+          NEW_VERSION=${{ steps.dependabot-metadata.outputs.new-version }}
+          sed -i "s/golang:[0-9]*\.[0-9]*\.[0-9]*/golang:$NEW_VERSION/g" .ci/pipeline_definitions
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # pin@v5.0.0
+        with:
+          go-version: ${{ steps.dependabot-metadata.outputs.new-version }}
+      - name: Update Golang version in go.mod
+        run: |
+          FULL_VERSION=${{ steps.dependabot-metadata.outputs.new-version }}
+          MAJOR_MINOR_VERSION=$(echo $FULL_VERSION | cut -d. -f1,2)
+          go mod edit -go=$MAJOR_MINOR_VERSION
+          go mod tidy
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          if git diff --quiet; then
+            echo "Skip - No changes detected"
+            exit 0
+          fi
+          git commit -am "[dependabot-skip] Update Golang version to ${{ steps.dependabot-metadata.outputs.new-version }}"
+          git push

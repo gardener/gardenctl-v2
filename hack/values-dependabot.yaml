@@ -1,0 +1,8 @@
+golang:
+  image:
+    repository: golang
+    tag: "1.21.6"
+golangci-lint:
+  image:
+    repository: golangci/golangci-lint
+    tag: "v1.56.1"
