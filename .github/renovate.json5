@@ -95,6 +95,18 @@
       ],
       matchUpdateTypes: ["patch", "digest"],
       automerge: true
+    },
+    {
+      // Group github-actions minor updates in one PR
+      matchManagers: ["github-actions"],
+      matchUpdateTypes: ["minor"],
+      groupName: "github-actions"
+    },
+    {
+      // Automerge github-actions patch updates
+      matchManagers: ["github-actions"],
+      matchUpdateTypes: ["patch", "digest"],
+      automerge: true
     }
   ]
 }
