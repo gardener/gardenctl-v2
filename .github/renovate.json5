@@ -1,0 +1,95 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:recommended",
+    ":semanticCommitsDisabled",
+    "regexManagers:githubActionsVersions"
+  ],
+  labels: ["kind/enhancement"],
+  postUpdateOptions: ["gomodTidy"],
+  automergeStrategy: "squash",
+  customManagers: [
+    {
+      // Generic detection for pod-like image specifications.
+      customType: "regex",
+      fileMatch: ["^\.ci\/pipeline_definitions$"],
+      matchStrings: ["image: ['\"]?(?<depName>.*?):(?<currentValue>.*?)['\"]?\\s"],
+      datasourceTemplate: "docker"
+    },
+    {
+      // Update `_VERSION` and `_version` variables in Makefiles and scripts.
+      // Inspired by `regexManagers:dockerfileVersions` preset.
+      customType: "regex",
+      fileMatch: ["Makefile$", "\\.mk$", "\\.sh$"],
+      matchStrings: [
+        "# renovate: datasource=(?<datasource>[a-z-.]+?) depName=(?<depName>[^\\s]+?)(?: (lookupName|packageName)=(?<packageName>[^\\s]+?))?(?: versioning=(?<versioning>[^\\s]+?))?(?: extractVersion=(?<extractVersion>[^\\s]+?))?(?: registryUrl=(?<registryUrl>[^\\s]+?))?\\s.+?_(VERSION|version) *[?:]?= *\"?(?<currentValue>.+?)\"?\\s"
+      ]
+    },
+  ],
+  packageRules: [
+    {
+      // bump go mod directive by default (https://github.com/renovatebot/renovate/blob/main/lib/modules/versioning/go-mod-directive/readme.md)
+      "matchDatasources": ["golang-version"],
+      "rangeStrategy": "bump"
+    },
+    {
+      // Group tool updates in one PR.
+      groupName: "Update tools",
+      matchFileNames: ["hack\/tools\\.mk"]
+    },
+    {
+      // gardener/gardener dictates these k8s dependencies. Ignore dependency updates for these packages.
+      matchDatasources: ["go"],
+      matchPackagePatterns: [
+        "k8s\\.io\/.+",
+        "sigs\\.k8s\\.io\/controller-runtime"
+      ],
+      enabled: false
+    },
+    {
+      // separate patch updates (keep in sync with the next package rule)
+      matchPackagePrefixes: [
+        "github.com/Masterminds/semver",
+        "github.com/Masterminds/sprig/v3",
+        "github.com/fatih/color",
+        "github.com/gardener/gardener",
+        "github.com/gardener/gardener-extension-provider-openstack",
+        "github.com/gardener/machine-controller-manager",
+        "github.com/golang/mock",
+        "github.com/google/uuid",
+        "github.com/mitchellh/go-homedir",
+        "github.com/onsi/ginkgo/v2",
+        "github.com/onsi/gomega",
+        "github.com/spf13/cobra",
+        "github.com/spf13/pflag",
+        "github.com/spf13/viper",
+        "golang.org/x/crypto",
+        "sigs.k8s.io/yaml"
+      ],
+      separateMinorPatch: true
+    },
+    {
+      // automerge patch updates, except k8s dependencies dicated by gardener/gardener (keep in sync with the previous package rule)
+      matchPackageNames: [
+        "github.com/Masterminds/semver",
+        "github.com/Masterminds/sprig/v3",
+        "github.com/fatih/color",
+        "github.com/gardener/gardener",
+        "github.com/gardener/gardener-extension-provider-openstack",
+        "github.com/gardener/machine-controller-manager",
+        "github.com/golang/mock",
+        "github.com/google/uuid",
+        "github.com/mitchellh/go-homedir",
+        "github.com/onsi/ginkgo/v2",
+        "github.com/onsi/gomega",
+        "github.com/spf13/cobra",
+        "github.com/spf13/pflag",
+        "github.com/spf13/viper",
+        "golang.org/x/crypto",
+        "sigs.k8s.io/yaml"
+      ],
+      matchUpdateTypes: ["patch", "digest"],
+      automerge: true
+    }
+  ]
+}

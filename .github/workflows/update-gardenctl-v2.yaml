@@ -8,8 +8,8 @@ jobs:
   update_gardenctl_in_homebrew_tap_and_chocolatey_packages:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
-      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # pin@v5.0.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
         with:
           go-version: '1.21.6'
       - name: Build the binary-files
@@ -20,7 +20,7 @@ jobs:
           make build
           echo "latest_release_filtered_tag=${GITHUB_REF##*/}" >> $GITHUB_ENV
       - name: Upload binaries to release
-        uses: AButler/upload-release-assets@c94805dc72e4b20745f543da0f62eaee7722df7a # pin@v2.0.2
+        uses: AButler/upload-release-assets@c94805dc72e4b20745f543da0f62eaee7722df7a # v2.0.2
         with:
           files: 'bin/darwin-amd64/gardenctl_v2_darwin_amd64;bin/darwin-arm64/gardenctl_v2_darwin_arm64;bin/linux-amd64/gardenctl_v2_linux_amd64;bin/linux-arm64/gardenctl_v2_linux_arm64;bin/windows-amd64/gardenctl_v2_windows_amd64.exe'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -28,7 +28,7 @@ jobs:
       - name: Get token for gardener-github-pkg-mngr app
         if: github.event.release.prerelease == false
         id: gardener-github-workflows
-        uses: getsentry/action-github-app-token@d4b5da6c5e37703f8c3b3e43abb5705b46e159cc # pin@v3.0.0
+        uses: getsentry/action-github-app-token@d4b5da6c5e37703f8c3b3e43abb5705b46e159cc # v3.0.0
         with:
           app_id: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_ID }}
           private_key: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_PRIVATE_KEY }}
