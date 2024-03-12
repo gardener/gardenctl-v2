@@ -47,7 +47,8 @@
       enabled: false
     },
     {
-      // separate patch updates (keep in sync with the next package rule)
+      // Group golang dependencies in one PR, separate by major, minor and patch
+      groupName: "dependencies",
       matchPackagePrefixes: [
         "github.com/Masterminds/semver",
         "github.com/Masterminds/sprig/v3",
@@ -66,31 +67,13 @@
         "golang.org/x/crypto",
         "sigs.k8s.io/yaml"
       ],
-      separateMinorPatch: true,
-      groupName: "dependencies"
+      separateMajorMinor: true,
+      separateMinorPatch: true
     },
     {
-      // automerge patch updates, except k8s dependencies dicated by gardener/gardener (keep in sync with the previous package rule)
-      matchPackageNames: [
-        "github.com/Masterminds/semver",
-        "github.com/Masterminds/sprig/v3",
-        "github.com/fatih/color",
-        "github.com/gardener/gardener",
-        "github.com/gardener/gardener-extension-provider-openstack",
-        "github.com/gardener/machine-controller-manager",
-        "github.com/golang/mock",
-        "github.com/google/uuid",
-        "github.com/mitchellh/go-homedir",
-        "github.com/onsi/ginkgo/v2",
-        "github.com/onsi/gomega",
-        "github.com/spf13/cobra",
-        "github.com/spf13/pflag",
-        "github.com/spf13/viper",
-        "golang.org/x/crypto",
-        "sigs.k8s.io/yaml"
-      ],
-      matchUpdateTypes: ["patch", "digest"],
-      automerge: true
+      // Group github-actions in one PR.
+      groupName: "github-actions",
+      matchManagers: ["github-actions"]
     }
   ]
 }
