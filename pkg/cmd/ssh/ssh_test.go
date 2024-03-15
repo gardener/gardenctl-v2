@@ -195,7 +195,7 @@ var _ = Describe("SSH Command", func() {
 			Status: gardencorev1beta1.ShootStatus{
 				AdvertisedAddresses: []gardencorev1beta1.ShootAdvertisedAddress{
 					{
-						Name: "shoot-address1",
+						Name: "external",
 						URL:  "https://api.bar.baz",
 					},
 				},

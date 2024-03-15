@@ -169,12 +169,16 @@ var _ = Describe("Client", func() {
 				Status: gardencorev1beta1.ShootStatus{
 					AdvertisedAddresses: []gardencorev1beta1.ShootAdvertisedAddress{
 						{
-							Name: "shoot-address1",
+							Name: "external",
 							URL:  "https://api." + domain,
 						},
 						{
-							Name: "shoot-address2",
+							Name: "internal",
 							URL:  "https://api2." + domain,
+						},
+						{
+							Name: "service-account-issuer",
+							URL:  "https://foo.bar/projects/prod1/shoots/test-shoot1/issuer",
 						},
 					},
 				},
