@@ -63,7 +63,7 @@ func createTestShoot(name string, namespace string, seedName *string) *gardencor
 		Status: gardencorev1beta1.ShootStatus{
 			AdvertisedAddresses: []gardencorev1beta1.ShootAdvertisedAddress{
 				{
-					Name: "shoot-address1",
+					Name: "external",
 					URL:  "https://api.bar.baz",
 				},
 			},

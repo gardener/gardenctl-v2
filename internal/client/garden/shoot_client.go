@@ -40,6 +40,13 @@ const (
 	ShootProjectSecretSuffixCACluster = "ca-cluster"
 	// DataKeyCertificateCA is the key in a secret or config map data holding the CA certificate.
 	DataKeyCertificateCA = "ca.crt"
+
+	// AdvertisedAddressExternal is a constant that represents the name of the external kube-apiserver address.
+	AdvertisedAddressExternal = "external"
+	// AdvertisedAddressInternal is a constant that represents the name of the internal kube-apiserver address.
+	AdvertisedAddressInternal = "internal"
+	// AdvertisedAddressUnmanaged is a constant that represents the name of the unmanaged kube-apiserver address.
+	AdvertisedAddressUnmanaged = "unmanaged"
 )
 
 // shootKubeconfigRequest is a struct which holds information about a Kubeconfig to be generated.
@@ -56,7 +63,7 @@ type shootKubeconfigRequest struct {
 
 // cluster holds the data to describe and connect to a kubernetes cluster.
 type cluster struct {
-	// name is the name of the shoot advertised address, usually "external", "internal" or "unmanaged"
+	// name is the name of the shoot advertised address. Either "external", "internal" or "unmanaged"
 	name string
 	// apiServerHost is the host of the kube-apiserver
 	apiServerHost string
@@ -258,6 +265,13 @@ func (g *clientImpl) GetShootClientConfig(ctx context.Context, namespace, name s
 	}
 
 	for _, address := range shoot.Status.AdvertisedAddresses {
+		isKubeApiserverAddress := address.Name == AdvertisedAddressExternal ||
+			address.Name == AdvertisedAddressInternal ||
+			address.Name == AdvertisedAddressUnmanaged
+		if !isKubeApiserverAddress {
+			continue
+		}
+
 		u, err := url.Parse(address.URL)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse shoot server url: %w", err)
