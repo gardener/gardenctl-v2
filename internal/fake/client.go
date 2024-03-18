@@ -11,6 +11,7 @@ import (
 	"reflect"
 
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -55,38 +56,35 @@ func (w *clientWrapper) List(ctx context.Context, list client.ObjectList, opts .
 		return nil
 	}
 
-	apiVersion, kind := list.GetObjectKind().GroupVersionKind().ToAPIVersionAndKind()
-	if apiVersion == "core.gardener.cloud/v1beta1" {
-		switch kind {
-		case "ShootList":
-			filterItems(list, fieldSelector, func(vItem reflect.Value) fields.Set {
-				fieldSet := fields.Set{}
-				vName := vItem.FieldByName("Name")
-				fieldSet["metadata.name"] = vName.String()
-				vSpec := vItem.FieldByName("Spec")
-				vSeedName := vSpec.FieldByName("SeedName")
+	switch list := list.(type) {
+	case *gardencorev1beta1.ShootList:
+		filterItems(list, fieldSelector, func(vItem reflect.Value) fields.Set {
+			fieldSet := fields.Set{}
+			vName := vItem.FieldByName("Name")
+			fieldSet["metadata.name"] = vName.String()
+			vSpec := vItem.FieldByName("Spec")
+			vSeedName := vSpec.FieldByName("SeedName")
 
-				if !vSeedName.IsNil() {
-					fieldSet[gardencore.ShootSeedName] = reflect.Indirect(vSeedName).String()
-				}
+			if !vSeedName.IsNil() {
+				fieldSet[gardencore.ShootSeedName] = reflect.Indirect(vSeedName).String()
+			}
 
-				return fieldSet
-			})
-		case "ProjectList":
-			filterItems(list, fieldSelector, func(vItem reflect.Value) fields.Set {
-				fieldSet := fields.Set{}
-				vName := vItem.FieldByName("Name")
-				fieldSet["metadata.name"] = vName.String()
-				vSpec := vItem.FieldByName("Spec")
-				vNamespace := vSpec.FieldByName("Namespace")
+			return fieldSet
+		})
+	case *gardencorev1beta1.ProjectList:
+		filterItems(list, fieldSelector, func(vItem reflect.Value) fields.Set {
+			fieldSet := fields.Set{}
+			vName := vItem.FieldByName("Name")
+			fieldSet["metadata.name"] = vName.String()
+			vSpec := vItem.FieldByName("Spec")
+			vNamespace := vSpec.FieldByName("Namespace")
 
-				if !vNamespace.IsNil() {
-					fieldSet[gardencore.ProjectNamespace] = reflect.Indirect(vNamespace).String()
-				}
+			if !vNamespace.IsNil() {
+				fieldSet[gardencore.ProjectNamespace] = reflect.Indirect(vNamespace).String()
+			}
 
-				return fieldSet
-			})
-		}
+			return fieldSet
+		})
 	}
 
 	return nil
