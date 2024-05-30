@@ -161,19 +161,19 @@ func (t *targetImpl) String() string {
 	steps := []string{}
 
 	if t.Garden != "" {
-		steps = append(steps, fmt.Sprintf("garden:%q", t.Garden))
+		steps = append(steps, fmt.Sprintf("garden: %q", t.Garden))
 	}
 
 	if t.Project != "" {
-		steps = append(steps, fmt.Sprintf("project:%q", t.Project))
+		steps = append(steps, fmt.Sprintf("project: %q", t.Project))
 	}
 
 	if t.Seed != "" {
-		steps = append(steps, fmt.Sprintf("seed:%q", t.Seed))
+		steps = append(steps, fmt.Sprintf("seed: %q", t.Seed))
 	}
 
 	if t.Shoot != "" {
-		steps = append(steps, fmt.Sprintf("shoot:%q", t.Shoot))
+		steps = append(steps, fmt.Sprintf("shoot: %q", t.Shoot))
 	}
 
 	if t.ControlPlaneFlag {
@@ -181,10 +181,10 @@ func (t *targetImpl) String() string {
 	}
 
 	if len(steps) == 0 {
-		return "<empty>"
+		return "<empty>\n"
 	}
 
-	return strings.Join(steps, ", ")
+	return strings.Join(steps, "\n") + "\n"
 }
 
 func (t *targetImpl) IsEmpty() bool {
