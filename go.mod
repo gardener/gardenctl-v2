@@ -1,6 +1,6 @@
 module github.com/gardener/gardenctl-v2
 
-go 1.22.3
+go 1.22.4
 
 require (
 	github.com/Masterminds/semver v1.5.0
