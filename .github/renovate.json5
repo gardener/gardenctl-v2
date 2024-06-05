@@ -74,6 +74,13 @@
       // Group github-actions in one PR.
       groupName: "github-actions",
       matchManagers: ["github-actions"]
+    },
+    {
+      // Do not update to patch versions of the Go Toolchain.
+      matchManagers: ["gomod"],
+      matchUpdateTypes: ["patch"],
+      matchPackagePatterns: ["go"],
+      enabled: false
     }
   ]
 }
