@@ -3,12 +3,12 @@ if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
 alias {{.prefix}}=gardenctl
-alias {{.prefix}}tv='gardenctl target view -o yaml'
+alias {{.prefix}}tv='gardenctl target view'
 alias {{.prefix}}tc='gardenctl target control-plane'
 alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval "$(gardenctl kubectl-env {{.shell}})"'
 alias {{.prefix}}p='eval "$(gardenctl provider-env {{.shell}})"'
-alias {{.prefix}}cv='gardenctl config view -o yaml'
+alias {{.prefix}}cv='gardenctl config view'
 {{if not .noCompletion -}}
 source <(gardenctl completion {{.shell}})
 complete -o default -F __start_gardenctl {{.prefix}}
@@ -23,12 +23,12 @@ if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
 alias {{.prefix}}=gardenctl
-alias {{.prefix}}tv='gardenctl target view -o yaml'
+alias {{.prefix}}tv='gardenctl target view'
 alias {{.prefix}}tc='gardenctl target control-plane'
 alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval "$(gardenctl kubectl-env {{.shell}})"'
 alias {{.prefix}}p='eval "$(gardenctl provider-env {{.shell}})"'
-alias {{.prefix}}cv='gardenctl config view -o yaml'
+alias {{.prefix}}cv='gardenctl config view'
 {{if not .noCompletion -}}
 if (( $+commands[gardenctl] )); then
   if [ -d "$ZSH_CACHE_DIR/completions" ] && (($fpath[(Ie)$ZSH_CACHE_DIR/completions])); then
@@ -55,12 +55,12 @@ if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ];
   set -gx GCTL_SESSION_ID (uuidgen)
 end
 alias {{.prefix}}=gardenctl
-alias {{.prefix}}tv='gardenctl target view -o yaml'
+alias {{.prefix}}tv='gardenctl target view'
 alias {{.prefix}}tc='gardenctl target control-plane'
 alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval (gardenctl kubectl-env {{.shell}})'
 alias {{.prefix}}p='eval (gardenctl provider-env {{.shell}})'
-alias {{.prefix}}cv='gardenctl config view -o yaml'
+alias {{.prefix}}cv='gardenctl config view'
 {{if not .noCompletion -}}
 gardenctl completion {{.shell}} | source
 complete -c {{.prefix}} -w gardenctl
@@ -76,7 +76,7 @@ if ( !(Test-Path Env:GCTL_SESSION_ID) -and !(Test-Path Env:TERM_SESSION_ID) ) {
 }
 Set-Alias -Name {{.prefix}} -Value (get-command gardenctl).Path -Option AllScope -Force
 function Gardenctl-Target-View {
-  gardenctl target view -o yaml
+  gardenctl target view
 }
 Set-Alias -Name {{.prefix}}tv -Value Gardenctl-Target-View -Option AllScope -Force
 function Gardenctl-Target-ControlPlane {
@@ -96,7 +96,7 @@ function Gardenctl-ProviderEnv {
 }
 Set-Alias -Name {{.prefix}}p -Value Gardenctl-ProviderEnv -Option AllScope -Force
 function Gardenctl-Config-View {
-  gardenctl config view -o yaml
+  gardenctl config view
 }
 Set-Alias -Name {{.prefix}}cv -Value Gardenctl-Config-View -Option AllScope -Force
 {{if not .noCompletion -}}
