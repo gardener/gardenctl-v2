@@ -8,8 +8,6 @@ package target
 
 import (
 	"errors"
-	"fmt"
-	"strings"
 
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -154,37 +152,6 @@ func (t *targetImpl) WithShootName(name string) Target {
 // The returned target can be invalid.
 func (t *targetImpl) WithControlPlane(controlPlane bool) Target {
 	return newTargetImpl(t.Garden, t.Project, t.Seed, t.Shoot, controlPlane)
-}
-
-// String returns a readable representation of the target.
-func (t *targetImpl) String() string {
-	steps := []string{}
-
-	if t.Garden != "" {
-		steps = append(steps, fmt.Sprintf("garden: %q", t.Garden))
-	}
-
-	if t.Project != "" {
-		steps = append(steps, fmt.Sprintf("project: %q", t.Project))
-	}
-
-	if t.Seed != "" {
-		steps = append(steps, fmt.Sprintf("seed: %q", t.Seed))
-	}
-
-	if t.Shoot != "" {
-		steps = append(steps, fmt.Sprintf("shoot: %q", t.Shoot))
-	}
-
-	if t.ControlPlaneFlag {
-		steps = append(steps, "control plane targeted")
-	}
-
-	if len(steps) == 0 {
-		return "<empty>\n"
-	}
-
-	return strings.Join(steps, "\n") + "\n"
 }
 
 func (t *targetImpl) IsEmpty() bool {
