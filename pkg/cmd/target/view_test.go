@@ -73,7 +73,7 @@ var _ = Describe("Target View Command", func() {
 		// user has already targeted a garden, project and shoot
 		cmd := cmdtarget.NewCmdView(factory, streams)
 		Expect(cmd.RunE(cmd, nil)).To(Succeed())
-		Expect(out.String()).To(Equal(fmt.Sprintf("garden:\"%s\", project:\"%s\", shoot:\"%s\"", gardenName, projectName, shootName)))
+		Expect(out.String()).To(Equal(fmt.Sprintf("garden: \"%s\"\nproject: \"%s\"\nshoot: \"%s\"\n", gardenName, projectName, shootName)))
 	})
 
 	Context("when target flags given", func() {
@@ -84,7 +84,7 @@ var _ = Describe("Target View Command", func() {
 			Expect(cmd.Flag("shoot").Value.String()).To(Equal("myshoot2"))
 
 			// here we need the real manager
-			Expect(out.String()).To(Equal(fmt.Sprintf("garden:\"%s\", project:\"%s\", shoot:\"%s\"", gardenName, projectName, "myshoot2")))
+			Expect(out.String()).To(Equal(fmt.Sprintf("garden: \"%s\"\nproject: \"%s\"\nshoot: \"%s\"\n", gardenName, projectName, "myshoot2")))
 		})
 	})
 })
