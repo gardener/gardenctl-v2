@@ -69,29 +69,29 @@ var _ = Describe("Target View Command", func() {
 		ctrl.Finish()
 	})
 
-	It("should print current target information", func() {
+	It("should print current target information in yaml format", func() {
 		// user has already targeted a garden, project and shoot
 		cmd := cmdtarget.NewCmdView(factory, streams)
 		Expect(cmd.RunE(cmd, nil)).To(Succeed())
-		Expect(out.String()).To(Equal(fmt.Sprintf("garden:\"%s\", project:\"%s\", shoot:\"%s\"", gardenName, projectName, shootName)))
+		Expect(out.String()).To(Equal(fmt.Sprintf("garden: %s\nproject: %s\nshoot: %s\n", gardenName, projectName, shootName)))
 	})
 
 	Context("when target flags given", func() {
-		It("should print current target information", func() {
+		It("should print current target information in yaml format", func() {
 			cmd := cmdtarget.NewCmdView(factory, streams)
 			cmd.SetArgs([]string{"--shoot", "myshoot2"})
 			Expect(cmd.Execute()).To(Succeed())
 			Expect(cmd.Flag("shoot").Value.String()).To(Equal("myshoot2"))
 
 			// here we need the real manager
-			Expect(out.String()).To(Equal(fmt.Sprintf("garden:\"%s\", project:\"%s\", shoot:\"%s\"", gardenName, projectName, "myshoot2")))
+			Expect(out.String()).To(Equal(fmt.Sprintf("garden: %s\nproject: %s\nshoot: %s\n", gardenName, projectName, "myshoot2")))
 		})
 	})
 })
 
 var _ = Describe("Target View Options", func() {
 	It("should validate", func() {
-		o := &cmdtarget.ViewOptions{}
+		o := &cmdtarget.TargetViewOptions{}
 		Expect(o.Validate()).ToNot(HaveOccurred())
 	})
 })

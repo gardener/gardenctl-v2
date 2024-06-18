@@ -66,12 +66,12 @@ var _ = Describe("Env Commands", func() {
   export GCTL_SESSION_ID=$(uuidgen)
 fi
 alias g=gardenctl
-alias gtv='gardenctl target view -o yaml'
+alias gtv='gardenctl target view'
 alias gtc='gardenctl target control-plane'
 alias gtc-='gardenctl target unset control-plane'
 alias gk='eval "$(gardenctl kubectl-env bash)"'
 alias gp='eval "$(gardenctl provider-env bash)"'
-alias gcv='gardenctl config view -o yaml'
+alias gcv='gardenctl config view'
 source <(gardenctl completion bash)
 complete -o default -F __start_gardenctl g
 gk
@@ -85,12 +85,12 @@ gk
   export GCTL_SESSION_ID=$(uuidgen)
 fi
 alias g=gardenctl
-alias gtv='gardenctl target view -o yaml'
+alias gtv='gardenctl target view'
 alias gtc='gardenctl target control-plane'
 alias gtc-='gardenctl target unset control-plane'
 alias gk='eval "$(gardenctl kubectl-env zsh)"'
 alias gp='eval "$(gardenctl provider-env zsh)"'
-alias gcv='gardenctl config view -o yaml'
+alias gcv='gardenctl config view'
 if (( $+commands[gardenctl] )); then
   if [ -d "$ZSH_CACHE_DIR/completions" ] && (($fpath[(Ie)$ZSH_CACHE_DIR/completions])); then
     GCTL_COMPLETION_FILE="$ZSH_CACHE_DIR/completions/_gardenctl"
@@ -116,12 +116,12 @@ gk
   set -gx GCTL_SESSION_ID (uuidgen)
 end
 alias g=gardenctl
-alias gtv='gardenctl target view -o yaml'
+alias gtv='gardenctl target view'
 alias gtc='gardenctl target control-plane'
 alias gtc-='gardenctl target unset control-plane'
 alias gk='eval (gardenctl kubectl-env fish)'
 alias gp='eval (gardenctl provider-env fish)'
-alias gcv='gardenctl config view -o yaml'
+alias gcv='gardenctl config view'
 gardenctl completion fish | source
 complete -c g -w gardenctl
 gk
@@ -136,7 +136,7 @@ gk
 }
 Set-Alias -Name g -Value (get-command gardenctl).Path -Option AllScope -Force
 function Gardenctl-Target-View {
-  gardenctl target view -o yaml
+  gardenctl target view
 }
 Set-Alias -Name gtv -Value Gardenctl-Target-View -Option AllScope -Force
 function Gardenctl-Target-ControlPlane {
@@ -156,7 +156,7 @@ function Gardenctl-ProviderEnv {
 }
 Set-Alias -Name gp -Value Gardenctl-ProviderEnv -Option AllScope -Force
 function Gardenctl-Config-View {
-  gardenctl config view -o yaml
+  gardenctl config view
 }
 Set-Alias -Name gcv -Value Gardenctl-Config-View -Option AllScope -Force
 function Gardenctl-Completion-Powershell {

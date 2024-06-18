@@ -6,18 +6,17 @@ SPDX-License-Identifier: Apache-2.0
 package target
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/gardener/gardenctl-v2/pkg/flags"
+	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 // NewCmdView returns a new target view command.
 func NewCmdView(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
-	o := &ViewOptions{
+	o := &TargetViewOptions{
 		Options: base.Options{
 			IOStreams: ioStreams,
 		},
@@ -25,13 +24,7 @@ func NewCmdView(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "view",
 		Short: "Print the current target",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := o.Validate(); err != nil {
-				return err
-			}
-
-			return runViewCommand(f, o)
-		},
+		RunE:  base.WrapRunE(o, f),
 	}
 
 	o.AddFlags(cmd.Flags())
@@ -43,26 +36,33 @@ func NewCmdView(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	return cmd
 }
 
-func runViewCommand(f util.Factory, opt *ViewOptions) error {
+// TargetViewOptions is a struct to support view command.
+type TargetViewOptions struct {
+	base.Options
+	Target target.Target
+}
+
+// Complete adapts from the command line args to the data required.
+func (o *TargetViewOptions) Complete(f util.Factory, _ *cobra.Command, _ []string) error {
 	m, err := f.Manager()
 	if err != nil {
 		return err
 	}
 
-	currentTarget, err := m.CurrentTarget()
+	o.Target, err = m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %v", err)
-	}
-
-	if opt.Output == "" && currentTarget.IsEmpty() {
-		_, err = fmt.Fprintf(opt.IOStreams.Out, "target is empty")
 		return err
 	}
 
-	return opt.PrintObject(currentTarget)
+	// Use 'yaml' as the default output format
+	if o.Output == "" {
+		o.Output = "yaml"
+	}
+
+	return nil
 }
 
-// ViewOptions is a struct to support view command.
-type ViewOptions struct {
-	base.Options
+// Run executes the command.
+func (o *TargetViewOptions) Run(_ util.Factory) error {
+	return o.PrintObject(o.Target)
 }
