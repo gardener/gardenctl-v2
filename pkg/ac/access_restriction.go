@@ -82,14 +82,6 @@ func NewAccessRestrictionHandler(r io.Reader, w io.Writer, askForConfirmation bo
 	}
 }
 
-func max(x, y int) int {
-	if y > x {
-		return y
-	}
-
-	return x
-}
-
 func (m *AccessRestrictionMessage) messageWidth() int {
 	width := 0
 
