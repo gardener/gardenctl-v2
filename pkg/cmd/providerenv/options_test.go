@@ -15,6 +15,7 @@ import (
 
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -25,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 
+	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	gardenclientmocks "github.com/gardener/gardenctl-v2/internal/client/garden/mocks"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/providerenv"
@@ -199,9 +201,10 @@ var _ = Describe("Env Commands - Options", func() {
 				region            string
 				provider          *gardencorev1beta1.Provider
 				secretRef         *corev1.SecretReference
+				cloudProfileRef   *gardencorev1beta1.CloudProfileReference
 				shoot             *gardencorev1beta1.Shoot
 				secretBinding     *gardencorev1beta1.SecretBinding
-				cloudProfile      *gardencorev1beta1.CloudProfile
+				cloudProfile      *clientgarden.CloudProfile
 				providerConfig    *openstackv1alpha1.CloudProfileConfig
 				secret            *corev1.Secret
 			)
@@ -221,6 +224,10 @@ var _ = Describe("Env Commands - Options", func() {
 					Namespace: "private",
 					Name:      "secret",
 				}
+				cloudProfileRef = &gardencorev1beta1.CloudProfileReference{
+					Kind: corev1beta1constants.CloudProfileReferenceKindCloudProfile,
+					Name: cloudProfileName,
+				}
 				shell = "bash"
 				options.SessionDir = sessionDir
 				ctx = context.Background()
@@ -235,7 +242,7 @@ var _ = Describe("Env Commands - Options", func() {
 						Namespace: "garden-" + t.ProjectName(),
 					},
 					Spec: gardencorev1beta1.ShootSpec{
-						CloudProfileName:  cloudProfileName,
+						CloudProfile:      cloudProfileRef,
 						Region:            region,
 						SecretBindingName: &secretBindingName,
 						Provider:          *provider.DeepCopy(),
@@ -257,15 +264,17 @@ var _ = Describe("Env Commands - Options", func() {
 						"serviceaccount.json": []byte(readTestFile(provider.Type + "/serviceaccount.json")),
 					},
 				}
-				cloudProfile = &gardencorev1beta1.CloudProfile{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: cloudProfileName,
-					},
-					Spec: gardencorev1beta1.CloudProfileSpec{
-						Type: provider.Type,
-						ProviderConfig: &runtime.RawExtension{
-							Object: providerConfig,
-							Raw:    nil,
+				cloudProfile = &clientgarden.CloudProfile{
+					CloudProfile: &gardencorev1beta1.CloudProfile{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: cloudProfileName,
+						},
+						Spec: gardencorev1beta1.CloudProfileSpec{
+							Type: provider.Type,
+							ProviderConfig: &runtime.RawExtension{
+								Object: providerConfig,
+								Raw:    nil,
+							},
 						},
 					},
 				}
@@ -280,7 +289,7 @@ var _ = Describe("Env Commands - Options", func() {
 				JustBeforeEach(func() {
 					client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName).Return(secretBinding, nil)
 					client.EXPECT().GetSecret(ctx, secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name).Return(secret, nil)
-					client.EXPECT().GetCloudProfile(ctx, shoot.Spec.CloudProfileName).Return(cloudProfile, nil)
+					client.EXPECT().GetCloudProfile(ctx, *shoot.Spec.CloudProfile).Return(cloudProfile, nil)
 				})
 
 				Context("and the shoot is targeted via project", func() {
@@ -390,7 +399,7 @@ var _ = Describe("Env Commands - Options", func() {
 						client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
 						client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName).Return(secretBinding, nil)
 						client.EXPECT().GetSecret(ctx, secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name).Return(secret, nil)
-						client.EXPECT().GetCloudProfile(ctx, cloudProfileName).Return(nil, err)
+						client.EXPECT().GetCloudProfile(ctx, *shoot.Spec.CloudProfile).Return(nil, err)
 						Expect(options.Run(factory)).To(BeIdenticalTo(err))
 					})
 				})
@@ -404,13 +413,13 @@ var _ = Describe("Env Commands - Options", func() {
 				secretName,
 				cloudProfileName,
 				region,
-				providerType,
 				serviceaccountJSON,
 				token string
-				shoot          *gardencorev1beta1.Shoot
-				secret         *corev1.Secret
-				cloudProfile   *gardencorev1beta1.CloudProfile
-				providerConfig *openstackv1alpha1.CloudProfileConfig
+				shoot           *gardencorev1beta1.Shoot
+				secret          *corev1.Secret
+				cloudProfile    *clientgarden.CloudProfile
+				cloudProfileRef *gardencorev1beta1.CloudProfileReference
+				providerConfig  *openstackv1alpha1.CloudProfileConfig
 			)
 
 			BeforeEach(func() {
@@ -420,6 +429,10 @@ var _ = Describe("Env Commands - Options", func() {
 				shootName = "shoot"
 				secretName = "secret"
 				cloudProfileName = "cloud-profile"
+				cloudProfileRef = &gardencorev1beta1.CloudProfileReference{
+					Kind: corev1beta1constants.CloudProfileReferenceKindCloudProfile,
+					Name: cloudProfileName,
+				}
 				region = "europe"
 				providerType = "gcp"
 				providerConfig = nil
@@ -435,8 +448,8 @@ var _ = Describe("Env Commands - Options", func() {
 						Namespace: namespace,
 					},
 					Spec: gardencorev1beta1.ShootSpec{
-						CloudProfileName: cloudProfileName,
-						Region:           region,
+						CloudProfile: cloudProfileRef,
+						Region:       region,
 						Provider: gardencorev1beta1.Provider{
 							Type: providerType,
 						},
@@ -452,15 +465,18 @@ var _ = Describe("Env Commands - Options", func() {
 						"testToken":           []byte(token),
 					},
 				}
-				cloudProfile = &gardencorev1beta1.CloudProfile{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: cloudProfileName,
-					},
-					Spec: gardencorev1beta1.CloudProfileSpec{
-						Type: providerType,
-						ProviderConfig: &runtime.RawExtension{
-							Object: providerConfig,
-							Raw:    nil,
+
+				cloudProfile = &clientgarden.CloudProfile{
+					CloudProfile: &gardencorev1beta1.CloudProfile{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: cloudProfileName,
+						},
+						Spec: gardencorev1beta1.CloudProfileSpec{
+							Type: providerType,
+							ProviderConfig: &runtime.RawExtension{
+								Object: providerConfig,
+								Raw:    nil,
+							},
 						},
 					},
 				}
@@ -594,7 +610,7 @@ var _ = Describe("Env Commands - Options", func() {
 				})
 
 				It("should fail with invalid provider config", func() {
-					cloudProfile.Spec.ProviderConfig = nil
+					cloudProfile.GetCloudProfileSpec().ProviderConfig = nil
 					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to get openstack provider config:")))
 				})
 
@@ -756,7 +772,7 @@ var _ = Describe("Env Commands - Options", func() {
 		var (
 			cloudProfileName   = "cloud-profile-name"
 			region             = "europe"
-			cloudProfile       *gardencorev1beta1.CloudProfile
+			cloudProfile       *clientgarden.CloudProfile
 			cloudProfileConfig *openstackv1alpha1.CloudProfileConfig
 		)
 
@@ -766,14 +782,16 @@ var _ = Describe("Env Commands - Options", func() {
 					{URL: "bar", Region: region},
 				},
 			}
-			cloudProfile = &gardencorev1beta1.CloudProfile{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: cloudProfileName,
-				},
-				Spec: gardencorev1beta1.CloudProfileSpec{
-					ProviderConfig: &runtime.RawExtension{
-						Object: cloudProfileConfig,
-						Raw:    nil,
+			cloudProfile = &clientgarden.CloudProfile{
+				CloudProfile: &gardencorev1beta1.CloudProfile{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: cloudProfileName,
+					},
+					Spec: gardencorev1beta1.CloudProfileSpec{
+						ProviderConfig: &runtime.RawExtension{
+							Object: cloudProfileConfig,
+							Raw:    nil,
+						},
 					},
 				},
 			}
@@ -793,7 +811,7 @@ var _ = Describe("Env Commands - Options", func() {
 		})
 
 		It("should fail with not found", func() {
-			cloudProfile.Spec.ProviderConfig = nil
+			cloudProfile.GetCloudProfileSpec().ProviderConfig = nil
 			_, err := providerenv.GetKeyStoneURL(cloudProfile, region)
 			Expect(err).To(MatchError(MatchRegexp("^failed to get openstack provider config:")))
 		})
