@@ -198,7 +198,7 @@ func (o *options) Run(f util.Factory) error {
 	return printProviderEnv(o, shoot, secret, cloudProfile, messages)
 }
 
-func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *clientgarden.CloudProfile, messages ac.AccessRestrictionMessages) error {
+func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *clientgarden.AbstractCloudProfile, messages ac.AccessRestrictionMessages) error {
 	providerType := shoot.Spec.Provider.Type
 	cli := getProviderCLI(providerType)
 
@@ -239,7 +239,7 @@ func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1
 	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
 }
 
-func generateData(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *clientgarden.CloudProfile, providerType string, metadata map[string]interface{}) (map[string]interface{}, error) {
+func generateData(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *clientgarden.AbstractCloudProfile, providerType string, metadata map[string]interface{}) (map[string]interface{}, error) {
 	data := map[string]interface{}{
 		"__meta": metadata,
 		"region": shoot.Spec.Region,
@@ -346,7 +346,7 @@ func getTargetFlags(t target.Target) string {
 	return fmt.Sprintf("--garden %s --seed %s --shoot %s", t.GardenName(), t.SeedName(), t.ShootName())
 }
 
-func getKeyStoneURL(cloudProfile *clientgarden.CloudProfile, region string) (string, error) {
+func getKeyStoneURL(cloudProfile *clientgarden.AbstractCloudProfile, region string) (string, error) {
 	config, err := cloudProfile.GetOpenstackProviderConfig()
 	if err != nil {
 		return "", fmt.Errorf("failed to get openstack provider config: %w", err)

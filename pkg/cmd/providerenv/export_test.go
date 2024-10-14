@@ -44,7 +44,7 @@ func NewOptions() *TestOptions {
 	}
 }
 
-func (o *TestOptions) PrintProviderEnv(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *clientgarden.CloudProfile, messages ...*ac.AccessRestrictionMessage) error {
+func (o *TestOptions) PrintProviderEnv(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *clientgarden.AbstractCloudProfile, messages ...*ac.AccessRestrictionMessage) error {
 	return printProviderEnv(&o.options, shoot, secret, cloudProfile, messages)
 }
 
