@@ -12,6 +12,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 
+	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
@@ -43,7 +44,7 @@ func NewOptions() *TestOptions {
 	}
 }
 
-func (o *TestOptions) PrintProviderEnv(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *gardencorev1beta1.CloudProfile, messages ...*ac.AccessRestrictionMessage) error {
+func (o *TestOptions) PrintProviderEnv(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *clientgarden.CloudProfileUnion, messages ...*ac.AccessRestrictionMessage) error {
 	return printProviderEnv(&o.options, shoot, secret, cloudProfile, messages)
 }
 

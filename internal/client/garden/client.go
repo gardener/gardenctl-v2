@@ -21,6 +21,7 @@ import (
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	authenticationv1 "k8s.io/api/authentication/v1"
@@ -78,8 +79,8 @@ type Client interface {
 	// GetSecretBinding returns a Gardener secretbinding resource
 	GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error)
 
-	// GetCloudProfile returns a Gardener cloudprofile resource
-	GetCloudProfile(ctx context.Context, name string) (*gardencorev1beta1.CloudProfile, error)
+	// GetCloudProfile returns a CloudProfileUnion resource which encapsulates the result of fetching a CloudProfile or NamespacedCloudProfile, depending on the given cloud profile reference
+	GetCloudProfile(ctx context.Context, ref gardencorev1beta1.CloudProfileReference) (*CloudProfileUnion, error)
 
 	// GetNamespace returns a Kubernetes namespace resource
 	GetNamespace(ctx context.Context, name string) (*corev1.Namespace, error)
@@ -472,15 +473,35 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clie
 	return config, nil
 }
 
-func (g *clientImpl) GetCloudProfile(ctx context.Context, name string) (*gardencorev1beta1.CloudProfile, error) {
-	cloudProfile := &gardencorev1beta1.CloudProfile{}
-	key := types.NamespacedName{Name: name}
+func (g *clientImpl) GetCloudProfile(ctx context.Context, ref gardencorev1beta1.CloudProfileReference) (*CloudProfileUnion, error) {
+	switch ref.Kind {
+	case corev1beta1constants.CloudProfileReferenceKindCloudProfile:
+		cloudProfile := &gardencorev1beta1.CloudProfile{}
+		key := types.NamespacedName{Name: ref.Name}
 
-	if err := g.c.Get(ctx, key, cloudProfile); err != nil {
-		return nil, fmt.Errorf("failed to get cloudprofile %v: %w", key, err)
+		if err := g.c.Get(ctx, key, cloudProfile); err != nil {
+			return nil, fmt.Errorf("failed to get CloudProfile %v: %w", key, err)
+		}
+
+		return &CloudProfileUnion{
+			CloudProfile: cloudProfile,
+		}, nil
+
+	case corev1beta1constants.CloudProfileReferenceKindNamespacedCloudProfile:
+		namespacedCloudProfile := &gardencorev1beta1.NamespacedCloudProfile{}
+		key := types.NamespacedName{Name: ref.Name}
+
+		if err := g.c.Get(ctx, key, namespacedCloudProfile); err != nil {
+			return nil, fmt.Errorf("failed to get NamespacedCloudProfile %v: %w", key, err)
+		}
+
+		return &CloudProfileUnion{
+			NamespacedCloudProfile: namespacedCloudProfile,
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("unknown CloudProfile kind: %s", ref.Kind)
 	}
-
-	return cloudProfile, nil
 }
 
 // RuntimeClient returns the underlying Kubernetes runtime client.
@@ -488,14 +509,37 @@ func (g *clientImpl) RuntimeClient() client.Client {
 	return g.c
 }
 
-type CloudProfile gardencorev1beta1.CloudProfile
+// CloudProfileUnion encapsulates a CloudProfile or NamespacedCloudProfile.
+type CloudProfileUnion struct {
+	// Pointer to the CloudProfile resource, if applicable. Either CloudProfile or NamespaceCloudProfile is set.
+	CloudProfile *gardencorev1beta1.CloudProfile
+	// Pointer to the NamespacedCloudProfile resource, if applicable. Either CloudProfile or NamespaceCloudProfile is set.
+	NamespacedCloudProfile *gardencorev1beta1.NamespacedCloudProfile
+}
 
-func (cp CloudProfile) GetOpenstackProviderConfig() (*openstackv1alpha1.CloudProfileConfig, error) {
-	const apiVersion = "core.gardener.cloud/v1alpha1.CloudProfile"
+// GetCloudProfileSpec returns the CloudProfileSpec of the CloudProfile or NamespacedCloudProfile.
+func (u *CloudProfileUnion) GetCloudProfileSpec() *gardencorev1beta1.CloudProfileSpec {
+	if u.NamespacedCloudProfile != nil {
+		return &u.NamespacedCloudProfile.Status.CloudProfileSpec
+	}
 
-	providerConfig := cp.Spec.ProviderConfig
+	return &u.CloudProfile.Spec
+}
+
+func (u *CloudProfileUnion) GetObjectMeta() metav1.ObjectMeta {
+	if u.NamespacedCloudProfile != nil {
+		return u.NamespacedCloudProfile.ObjectMeta
+	}
+
+	return u.CloudProfile.ObjectMeta
+}
+
+func (u *CloudProfileUnion) GetOpenstackProviderConfig() (*openstackv1alpha1.CloudProfileConfig, error) {
+	const apiVersion = "core.gardener.cloud/v1alpha1.CloudProfileUnion"
+
+	providerConfig := u.GetCloudProfileSpec().ProviderConfig
 	if providerConfig == nil {
-		return nil, fmt.Errorf("providerConfig of %s %s is empty", apiVersion, cp.Name)
+		return nil, fmt.Errorf("providerConfig of %s %s is empty", apiVersion, u.GetObjectMeta().Name)
 	}
 
 	var cloudProfileConfig *openstackv1alpha1.CloudProfileConfig
@@ -504,7 +548,7 @@ func (cp CloudProfile) GetOpenstackProviderConfig() (*openstackv1alpha1.CloudPro
 	case providerConfig.Object != nil:
 		var ok bool
 		if cloudProfileConfig, ok = providerConfig.Object.(*openstackv1alpha1.CloudProfileConfig); !ok {
-			return nil, fmt.Errorf("cannot cast providerConfig of %s %s", apiVersion, cp.Name)
+			return nil, fmt.Errorf("cannot cast providerConfig of %s %s", apiVersion, u.GetObjectMeta().Name)
 		}
 
 	case providerConfig.Raw != nil:
@@ -515,10 +559,10 @@ func (cp CloudProfile) GetOpenstackProviderConfig() (*openstackv1alpha1.CloudPro
 			},
 		}
 		if _, _, err := decoder.Decode(providerConfig.Raw, nil, cloudProfileConfig); err != nil {
-			return nil, fmt.Errorf("cannot decode providerConfig of %s %s", apiVersion, cp.Name)
+			return nil, fmt.Errorf("cannot decode providerConfig of %s %s", apiVersion, u.GetObjectMeta().Name)
 		}
 	default:
-		return nil, fmt.Errorf("providerConfig of %s %s contains neither raw data nor a decoded object", apiVersion, cp.Name)
+		return nil, fmt.Errorf("providerConfig of %s %s contains neither raw data nor u decoded object", apiVersion, u.GetObjectMeta().Name)
 	}
 
 	return cloudProfileConfig, nil
