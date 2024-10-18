@@ -77,10 +77,10 @@ func (mr *MockClientMockRecorder) FindShoot(arg0 interface{}, arg1 ...interface{
 }
 
 // GetCloudProfile mocks base method.
-func (m *MockClient) GetCloudProfile(arg0 context.Context, arg1 v1beta1.CloudProfileReference) (*garden.AbstractCloudProfile, error) {
+func (m *MockClient) GetCloudProfile(arg0 context.Context, arg1 v1beta1.CloudProfileReference) (*garden.CloudProfileUnion, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetCloudProfile", arg0, arg1)
-	ret0, _ := ret[0].(*garden.AbstractCloudProfile)
+	ret0, _ := ret[0].(*garden.CloudProfileUnion)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

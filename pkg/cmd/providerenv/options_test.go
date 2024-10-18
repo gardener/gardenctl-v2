@@ -204,7 +204,7 @@ var _ = Describe("Env Commands - Options", func() {
 				cloudProfileRef   *gardencorev1beta1.CloudProfileReference
 				shoot             *gardencorev1beta1.Shoot
 				secretBinding     *gardencorev1beta1.SecretBinding
-				cloudProfile      *clientgarden.AbstractCloudProfile
+				cloudProfile      *clientgarden.CloudProfileUnion
 				providerConfig    *openstackv1alpha1.CloudProfileConfig
 				secret            *corev1.Secret
 			)
@@ -264,7 +264,7 @@ var _ = Describe("Env Commands - Options", func() {
 						"serviceaccount.json": []byte(readTestFile(provider.Type + "/serviceaccount.json")),
 					},
 				}
-				cloudProfile = &clientgarden.AbstractCloudProfile{
+				cloudProfile = &clientgarden.CloudProfileUnion{
 					CloudProfile: &gardencorev1beta1.CloudProfile{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: cloudProfileName,
@@ -417,7 +417,7 @@ var _ = Describe("Env Commands - Options", func() {
 				token string
 				shoot           *gardencorev1beta1.Shoot
 				secret          *corev1.Secret
-				cloudProfile    *clientgarden.AbstractCloudProfile
+				cloudProfile    *clientgarden.CloudProfileUnion
 				cloudProfileRef *gardencorev1beta1.CloudProfileReference
 				providerConfig  *openstackv1alpha1.CloudProfileConfig
 			)
@@ -466,7 +466,7 @@ var _ = Describe("Env Commands - Options", func() {
 					},
 				}
 
-				cloudProfile = &clientgarden.AbstractCloudProfile{
+				cloudProfile = &clientgarden.CloudProfileUnion{
 					CloudProfile: &gardencorev1beta1.CloudProfile{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: cloudProfileName,
@@ -772,7 +772,7 @@ var _ = Describe("Env Commands - Options", func() {
 		var (
 			cloudProfileName   = "cloud-profile-name"
 			region             = "europe"
-			cloudProfile       *clientgarden.AbstractCloudProfile
+			cloudProfile       *clientgarden.CloudProfileUnion
 			cloudProfileConfig *openstackv1alpha1.CloudProfileConfig
 		)
 
@@ -782,7 +782,7 @@ var _ = Describe("Env Commands - Options", func() {
 					{URL: "bar", Region: region},
 				},
 			}
-			cloudProfile = &clientgarden.AbstractCloudProfile{
+			cloudProfile = &clientgarden.CloudProfileUnion{
 				CloudProfile: &gardencorev1beta1.CloudProfile{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: cloudProfileName,
