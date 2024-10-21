@@ -13,6 +13,7 @@ import (
 
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -155,7 +156,10 @@ var _ = Describe("Env Commands", func() {
 						Namespace: namespace,
 					},
 					Spec: gardencorev1beta1.ShootSpec{
-						CloudProfileName:  cloudProfileName,
+						CloudProfile: &gardencorev1beta1.CloudProfileReference{
+							Kind: corev1beta1constants.CloudProfileReferenceKindCloudProfile,
+							Name: cloudProfileName,
+						},
 						Region:            region,
 						SecretBindingName: &secretBindingName,
 						Provider:          *provider.DeepCopy(),
