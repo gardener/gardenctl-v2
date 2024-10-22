@@ -11,7 +11,8 @@ import (
 	garden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
-	v1alpha10 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
+	v1alpha10 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
+	v1alpha11 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	gomock "github.com/golang/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
@@ -104,6 +105,21 @@ func (m *MockClient) GetConfigMap(arg0 context.Context, arg1, arg2 string) (*v1.
 func (mr *MockClientMockRecorder) GetConfigMap(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfigMap", reflect.TypeOf((*MockClient)(nil).GetConfigMap), arg0, arg1, arg2)
+}
+
+// GetCredentialsBinding mocks base method.
+func (m *MockClient) GetCredentialsBinding(arg0 context.Context, arg1, arg2 string) (*v1alpha10.CredentialsBinding, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCredentialsBinding", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*v1alpha10.CredentialsBinding)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCredentialsBinding indicates an expected call of GetCredentialsBinding.
+func (mr *MockClientMockRecorder) GetCredentialsBinding(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCredentialsBinding", reflect.TypeOf((*MockClient)(nil).GetCredentialsBinding), arg0, arg1, arg2)
 }
 
 // GetNamespace mocks base method.
@@ -242,10 +258,10 @@ func (mr *MockClientMockRecorder) GetShootClientConfig(arg0, arg1, arg2 interfac
 }
 
 // GetShootOfManagedSeed mocks base method.
-func (m *MockClient) GetShootOfManagedSeed(arg0 context.Context, arg1 string) (*v1alpha10.Shoot, error) {
+func (m *MockClient) GetShootOfManagedSeed(arg0 context.Context, arg1 string) (*v1alpha11.Shoot, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetShootOfManagedSeed", arg0, arg1)
-	ret0, _ := ret[0].(*v1alpha10.Shoot)
+	ret0, _ := ret[0].(*v1alpha11.Shoot)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
