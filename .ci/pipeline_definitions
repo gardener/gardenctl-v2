@@ -9,6 +9,9 @@ gardenctl-v2:
         inject_effective_version: true
       component_descriptor:
         ocm_repository: europe-docker.pkg.dev/gardener-project/snapshots
+        ocm_repository_mappings:
+        - repository: europe-docker.pkg.dev/gardener-project/releases
+          prefix: ''
     steps:
       check:
         image: 'golang:1.23.2'
