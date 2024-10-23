@@ -55,6 +55,10 @@ aliasRules:
     expr: '^github.com/gardener/gardener/pkg/apis/core(/(v[a-z0-9-]+)(/([a-z0-9-]+))?)?$'
     alias: 'gardencore$2$4'
 
+  - name: gardener-garden-security
+    expr: '^github.com/gardener/gardener/pkg/apis/security/([a-z0-9-]+)'
+    alias: 'gardensecurity$1'
+
   - name: gardener-garden-other
     expr: '^github.com/gardener/gardener/pkg/apis/([a-z0-9-]+)(/(v[a-z0-9-]+)(/([a-z0-9-]+))?)?$'
     alias: '$1$3$5'

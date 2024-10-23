@@ -16,6 +16,7 @@ import (
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -192,21 +193,24 @@ var _ = Describe("Env Commands - Options", func() {
 
 		Describe("running the provider-env command with the given options", func() {
 			var (
-				ctx               context.Context
-				manager           *targetmocks.MockManager
-				client            *gardenclientmocks.MockClient
-				t                 target.Target
-				secretBindingName string
-				cloudProfileName  string
-				region            string
-				provider          *gardencorev1beta1.Provider
-				secretRef         *corev1.SecretReference
-				cloudProfileRef   *gardencorev1beta1.CloudProfileReference
-				shoot             *gardencorev1beta1.Shoot
-				secretBinding     *gardencorev1beta1.SecretBinding
-				cloudProfile      *clientgarden.CloudProfileUnion
-				providerConfig    *openstackv1alpha1.CloudProfileConfig
-				secret            *corev1.Secret
+				ctx                    context.Context
+				manager                *targetmocks.MockManager
+				client                 *gardenclientmocks.MockClient
+				t                      target.Target
+				secretBindingName      string
+				credentialsBindingName string
+				cloudProfileName       string
+				region                 string
+				provider               *gardencorev1beta1.Provider
+				secretRef              *corev1.SecretReference
+				// secretRef              *corev1.SecretReference
+				cloudProfileRef    *gardencorev1beta1.CloudProfileReference
+				shoot              *gardencorev1beta1.Shoot
+				secretBinding      *gardencorev1beta1.SecretBinding
+				credentialsBinding *gardensecurityv1alpha1.CredentialsBinding
+				cloudProfile       *clientgarden.CloudProfileUnion
+				providerConfig     *openstackv1alpha1.CloudProfileConfig
+				secret             *corev1.Secret
 			)
 
 			BeforeEach(func() {
@@ -214,6 +218,7 @@ var _ = Describe("Env Commands - Options", func() {
 				client = gardenclientmocks.NewMockClient(ctrl)
 				t = target.NewTarget("test", "project", "seed", "shoot")
 				secretBindingName = "secret-binding"
+				credentialsBindingName = "credentials-binding"
 				cloudProfileName = "cloud-profile"
 				region = "europe"
 				provider = &gardencorev1beta1.Provider{
@@ -255,6 +260,18 @@ var _ = Describe("Env Commands - Options", func() {
 					},
 					SecretRef: *secretRef.DeepCopy(),
 				}
+				credentialsBinding = &gardensecurityv1alpha1.CredentialsBinding{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      credentialsBindingName,
+						Namespace: shoot.Namespace,
+					},
+					CredentialsRef: corev1.ObjectReference{
+						Kind:       "Secret",
+						APIVersion: corev1.SchemeGroupVersion.String(),
+						Namespace:  secretRef.Namespace,
+						Name:       secretRef.Name,
+					},
+				}
 				secret = &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: secretRef.Namespace,
@@ -287,13 +304,13 @@ var _ = Describe("Env Commands - Options", func() {
 				})
 
 				JustBeforeEach(func() {
-					client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName).Return(secretBinding, nil)
 					client.EXPECT().GetSecret(ctx, secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name).Return(secret, nil)
 					client.EXPECT().GetCloudProfile(ctx, *shoot.Spec.CloudProfile).Return(cloudProfile, nil)
 				})
 
 				Context("and the shoot is targeted via project", func() {
 					JustBeforeEach(func() {
+						client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName).Return(secretBinding, nil)
 						currentTarget := t.WithSeedName("")
 						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
 						client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
@@ -321,9 +338,28 @@ var _ = Describe("Env Commands - Options", func() {
 						manager.EXPECT().Configuration().Return(cfg)
 					})
 
-					It("does the work when the shoot is targeted via seed", func() {
-						Expect(options.Run(factory)).To(Succeed())
-						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.seed.bash"), filepath.Join(sessionDir, ".config", "gcloud"))))
+					Context("and the shoot uses secret binding", func() {
+						JustBeforeEach(func() {
+							client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName).Return(secretBinding, nil)
+						})
+
+						It("does the work when the shoot is targeted via seed", func() {
+							Expect(options.Run(factory)).To(Succeed())
+							Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.seed.bash"), filepath.Join(sessionDir, ".config", "gcloud"))))
+						})
+					})
+
+					Context("and the shoot uses credentials binding", func() {
+						JustBeforeEach(func() {
+							shoot.Spec.SecretBindingName = nil
+							shoot.Spec.CredentialsBindingName = &credentialsBindingName
+							client.EXPECT().GetCredentialsBinding(ctx, shoot.Namespace, *shoot.Spec.CredentialsBindingName).Return(credentialsBinding, nil)
+						})
+
+						It("does the work when the shoot is targeted via seed", func() {
+							Expect(options.Run(factory)).To(Succeed())
+							Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.seed.bash"), filepath.Join(sessionDir, ".config", "gcloud"))))
+						})
 					})
 				})
 			})

@@ -23,6 +23,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -78,6 +79,9 @@ type Client interface {
 
 	// GetSecretBinding returns a Gardener secretbinding resource
 	GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error)
+
+	// GetCredentialsBinding returns a Gardener credentialsbinding resource
+	GetCredentialsBinding(ctx context.Context, namespace, name string) (*gardensecurityv1alpha1.CredentialsBinding, error)
 
 	// GetCloudProfile returns a CloudProfileUnion resource which encapsulates the result of fetching a CloudProfile or NamespacedCloudProfile, depending on the given cloud profile reference
 	GetCloudProfile(ctx context.Context, ref gardencorev1beta1.CloudProfileReference) (*CloudProfileUnion, error)
@@ -260,6 +264,18 @@ func (g *clientImpl) GetSecretBinding(ctx context.Context, namespace, name strin
 	}
 
 	return secretBinding, nil
+}
+
+// GetCredentialsBinding returns a Gardener credentialsbinding resource.
+func (g *clientImpl) GetCredentialsBinding(ctx context.Context, namespace, name string) (*gardensecurityv1alpha1.CredentialsBinding, error) {
+	credentialsBinding := &gardensecurityv1alpha1.CredentialsBinding{}
+	key := types.NamespacedName{Namespace: namespace, Name: name}
+
+	if err := g.c.Get(ctx, key, credentialsBinding); err != nil {
+		return nil, fmt.Errorf("failed to get credentialsbinding %v: %w", key, err)
+	}
+
+	return credentialsBinding, nil
 }
 
 // GetSecret returns a Kubernetes secret resource.

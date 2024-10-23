@@ -166,16 +166,36 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	if shoot.Spec.SecretBindingName == nil || *shoot.Spec.SecretBindingName == "" {
-		return fmt.Errorf("shoot %q is not bound to a cloud provider secret", o.Target.ShootName())
+	if (shoot.Spec.SecretBindingName == nil || *shoot.Spec.SecretBindingName == "") &&
+		(shoot.Spec.CredentialsBindingName == nil || *shoot.Spec.CredentialsBindingName == "") {
+		return fmt.Errorf("shoot %q is not bound to a cloud provider credential", o.Target.ShootName())
 	}
 
-	secretBinding, err := client.GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName)
-	if err != nil {
-		return err
+	var (
+		secretName      string
+		secretNamespace string
+	)
+
+	if shoot.Spec.SecretBindingName != nil && *shoot.Spec.SecretBindingName != "" {
+		secretBinding, err := client.GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName)
+		if err != nil {
+			return err
+		}
+
+		secretName = secretBinding.SecretRef.Name
+		secretNamespace = secretBinding.SecretRef.Namespace
+	} else {
+		// TODO: This code should eventually support credentials of type workload identity
+		credentialsBinding, err := client.GetCredentialsBinding(ctx, shoot.Namespace, *shoot.Spec.CredentialsBindingName)
+		if err != nil {
+			return err
+		}
+
+		secretName = credentialsBinding.CredentialsRef.Name
+		secretNamespace = credentialsBinding.CredentialsRef.Namespace
 	}
 
-	secret, err := client.GetSecret(ctx, secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name)
+	secret, err := client.GetSecret(ctx, secretNamespace, secretName)
 	if err != nil {
 		return err
 	}
