@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+REPO_ROOT      := $(shell git rev-parse --show-toplevel)
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -37,42 +39,58 @@ help: ## Display this help.
 
 ##@ Development
 
+.PHONY: tidy
+tidy: ## Clean up go.mod and go.sum by removing unused dependencies.
+	go mod tidy
 
-
-.PHONY: test
-test: fmt lint check go-test ## Run tests.
-
-.PHONY: fmt
-fmt: ## Run go fmt against code.
-	go fmt ./...
-
-.PHONY: lint
-lint: ## Run golangci-lint against code.
-	@./hack/golangci-lint.sh
-
-.PHONY: check
-check: ## Check that the generated markdown is up-to-date
-	@./hack/check-markdown.sh
-
-.PHONY: sast
-sast: $(GOSEC)
-	@./hack/sast.sh
-
-.PHONY: sast-report
-sast-report: $(GOSEC)
-	@./hack/sast.sh --gosec-report true
-
-.PHONY: go-test
-go-test: ## Run go tests.
-	@./hack/test-integration.sh
+.PHONY: clean
+clean: ## Remove generated files and clean up directories.
+	@hack/clean.sh ./internal/... ./pkg/...
 
 .PHONY: gen-markdown
 gen-markdown: ## Generate markdown help files
 	go run ./internal/gen/markdown.go
 
-.PHONY: generate-sequential
-generate-sequential: gen-markdown $(MOCKGEN)  ## Run go generate
+.PHONY: generate
+generate: gen-markdown $(MOCKGEN) fmt  ## Run go generate
 	@hack/generate.sh ./pkg/... ./internal/...
+
+.PHONY: fmt
+fmt: ## Run go fmt against code.
+	go fmt ./...
+
+.PHONY: check-generate
+check-generate: ## Verify if code generation is up-to-date by running generate and checking for changes.
+	@hack/check-generate.sh $(REPO_ROOT)
+
+.PHONY: lint
+lint: ## Run golangci-lint against code.
+	@./hack/golangci-lint.sh
+
+.PHONY: sast
+sast: $(GOSEC) ## Run gosec against code
+	@./hack/sast.sh
+
+.PHONY: sast-report
+sast-report: $(GOSEC) ## Run gosec against code and export report to SARIF.
+	@./hack/sast.sh --gosec-report true
+
+.PHONY: test
+test: fmt lint check-markdown go-test sast ## Run tests.
+
+.PHONY: check-markdown
+check-markdown: ## Check that the generated markdown is up-to-date
+	@./hack/check-markdown.sh
+
+.PHONY: go-test
+go-test: ## Run go tests.
+	@./hack/test-integration.sh
+
+.PHONY: verify ## Run basic verification including linting, tests, static analysis and check if the generated markdown is up-to-date.
+verify: lint go-test sast check-markdown
+
+.PHONY: verify-extended ## Run extended verification including code generation check, linting, tests, and detailed static analysis report.
+verify-extended: check-generate check-markdown lint go-test sast-report
 
 ##@ Build
 

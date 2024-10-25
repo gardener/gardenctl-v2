@@ -13,10 +13,10 @@ gardenctl-v2:
         - repository: europe-docker.pkg.dev/gardener-project/releases
           prefix: ''
     steps:
-      check:
+      verify:
         image: 'golang:1.23.2'
-      test:
-        image: 'golang:1.23.2'
+        vars:
+          TEST_COV: '"yes"'
       build:
         image: 'golang:1.23.2'
         output_dir: 'binary'
@@ -88,6 +88,16 @@ gardenctl-v2:
             artefact_extra_id:
               os: windows
               architecture: amd64
+          - type: build-step-log
+            step_name: verify
+            purposes:
+            - lint
+            - sast
+            - gosec
+            comment: |
+              we use gosec (linter) for SAST scans
+              see: https://github.com/securego/gosec
+              enabled by https://github.com/gardener/gardenctl-v2/pull/470
         slack:
           channel_cfgs:
           - channel_name: 'C01BKP30K1U' #sap-tech-gardenctl
