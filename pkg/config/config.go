@@ -59,7 +59,7 @@ type Garden struct {
 func LoadFromFile(filename string) (*Config, error) {
 	config := &Config{Filename: filename}
 
-	f, err := os.Open(filename)
+	f, err := os.Open(filename) // #nosec G304 -- Accepting user-provided config file path by design
 	if err != nil {
 		if os.IsNotExist(err) {
 			return config, nil
@@ -75,7 +75,7 @@ func LoadFromFile(filename string) (*Config, error) {
 	}
 
 	if stat.Size() > 0 {
-		buf, err := os.ReadFile(filename)
+		buf, err := os.ReadFile(filename) // #nosec G304 -- Accepting user-provided config file path by design
 		if err != nil {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
