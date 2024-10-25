@@ -513,7 +513,7 @@ func (m *managerImpl) WriteClientConfig(config clientcmd.ClientConfig) (string, 
 		return "", fmt.Errorf("failed to serialize temporary kubeconfig file: %w", err)
 	}
 
-	filename := filepath.Join(m.sessionDirectory, fmt.Sprintf("kubeconfig.%x.yaml", md5.Sum(data)))
+	filename := filepath.Join(m.sessionDirectory, fmt.Sprintf("kubeconfig.%x.yaml", md5.Sum(data))) // #nosec G401 -- No cryptographic context.
 
 	err = os.WriteFile(filename, data, 0o600)
 	if err != nil {
