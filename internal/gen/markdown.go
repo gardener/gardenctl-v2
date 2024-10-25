@@ -18,7 +18,10 @@ import (
 
 func main() {
 	if _, ok := os.LookupEnv("GCTL_SESSION_ID"); !ok {
-		os.Setenv("GCTL_SESSION_ID", uuid.NewString())
+		err := os.Setenv("GCTL_SESSION_ID", uuid.NewString())
+		if err != nil {
+			log.Fatalf("Failed to set environment variable: %v", err)
+		}
 	}
 
 	gardenctl := cmd.NewDefaultGardenctlCommand()

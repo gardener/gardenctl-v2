@@ -115,7 +115,7 @@ var (
 		})
 
 		if client != nil {
-			client.Close()
+			_ = client.Close()
 		}
 
 		return err
