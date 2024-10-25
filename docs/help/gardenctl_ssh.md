@@ -39,27 +39,30 @@ gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path
 ### Options
 
 ```
-      --bastion-host string                     Override the hostname or IP address of the bastion used for the SSH client command. If not provided, the address will be automatically determined.
-      --bastion-name string                     Name of the bastion. If a bastion with this name doesn't exist, it will be created. If it does exist, the provided public SSH key must match the one used during the bastion's creation.
-      --bastion-port string                     SSH port of the bastion used for the SSH client command. Defaults to port 22 (default "22")
-      --bastion-user-known-hosts-file strings   Path to a custom known hosts file for the SSH connection to the bastion. This file is used to verify the public keys of remote hosts when establishing a secure connection.
-      --cidr stringArray                        CIDRs to allow access to the bastion host; if not given, your system's public IPs (v4 and v6) are auto-detected.
-  -y, --confirm-access-restriction              Bypasses the need for confirmation of any access restrictions. Set this flag only if you are fully aware of the access restrictions.
-      --control-plane                           target control plane of shoot, use together with shoot argument
-      --garden string                           target the given garden cluster
-  -h, --help                                    help for ssh
-      --interactive                             Open an SSH connection instead of just providing the bastion host (only if NODE_NAME is provided). (default true)
-      --keep-bastion                            Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)
-      --no-keepalive                            Exit after the bastion host became available without keeping the bastion alive or establishing an SSH connection. Note that this flag requires the flags --interactive=false and --keep-bastion to be set
-  -o, --output string                           One of 'yaml' or 'json'.
-      --private-key-file string                 Path to the file that contains a private SSH key. Must be provided alongside the --public-key-file flag if you want to use a custom keypair. If not provided, gardenctl will either generate a temporary keypair or rely on the user's SSH agent for an available private key.
-      --project string                          target the given project
-      --public-key-file string                  Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.
-      --seed string                             target the given seed cluster
-      --shoot string                            target the given shoot cluster
-      --skip-availability-check                 Skip checking for SSH bastion host availability.
-      --user string                             user is the name of the Shoot cluster node ssh login username. (default "gardener")
-      --wait-timeout duration                   Maximum duration to wait for the bastion to become available. (default 10m0s)
+      --bastion-host string                       Override the hostname or IP address of the bastion used for the SSH client command. If not provided, the address will be automatically determined.
+      --bastion-name string                       Name of the bastion. If a bastion with this name doesn't exist, it will be created. If it does exist, the provided public SSH key must match the one used during the bastion's creation.
+      --bastion-port string                       SSH port of the bastion used for the SSH client command. Defaults to port 22 (default "22")
+      --bastion-strict-host-key-checking string   Specifies how the SSH client performs host key checking for the bastion host. Valid options are 'yes', 'no', or 'ask'. (default "ask")
+      --bastion-user-known-hosts-file strings     Path to a custom known hosts file for verifying remote hosts' public keys during SSH connection to the bastion. If not provided, defaults to <temp_dir>/garden/cache/<bastion_uid>/.ssh/known_hosts
+      --cidr stringArray                          CIDRs to allow access to the bastion host; if not given, your system's public IPs (v4 and v6) are auto-detected.
+  -y, --confirm-access-restriction                Bypasses the need for confirmation of any access restrictions. Set this flag only if you are fully aware of the access restrictions.
+      --control-plane                             target control plane of shoot, use together with shoot argument
+      --garden string                             target the given garden cluster
+  -h, --help                                      help for ssh
+      --interactive                               Open an SSH connection instead of just providing the bastion host (only if NODE_NAME is provided). (default true)
+      --keep-bastion                              Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)
+      --no-keepalive                              Exit after the bastion host became available without keeping the bastion alive or establishing an SSH connection. Note that this flag requires the flags --interactive=false and --keep-bastion to be set
+      --node-strict-host-key-checking string      Specifies how the SSH client performs host key checking for the shoot node. Valid options are 'yes', 'no', or 'ask'. (default "ask")
+      --node-user-known-hosts-file strings        Path to a custom known hosts file for verifying remote hosts' public keys during SSH connection to the shoot node. If not provided, defaults to <garden_home_dir>/cache/<shoot_uid>/.ssh/known_hosts.
+  -o, --output string                             One of 'yaml' or 'json'.
+      --private-key-file string                   Path to the file that contains a private SSH key. Must be provided alongside the --public-key-file flag if you want to use a custom keypair. If not provided, gardenctl will either generate a temporary keypair or rely on the user's SSH agent for an available private key.
+      --project string                            target the given project
+      --public-key-file string                    Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.
+      --seed string                               target the given seed cluster
+      --shoot string                              target the given shoot cluster
+      --skip-availability-check                   Skip checking for SSH bastion host availability.
+      --user string                               user is the name of the Shoot cluster node ssh login username. (default "gardener")
+      --wait-timeout duration                     Maximum duration to wait for the bastion to become available. (default 10m0s)
 ```
 
 ### Options inherited from parent commands

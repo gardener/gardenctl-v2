@@ -79,6 +79,7 @@ gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path
 
 	o.AddFlags(cmd.Flags())
 	o.RegisterCompletionsForOutputFlag(cmd)
+	o.RegisterCompletionFuncsForStrictHostKeyCheckings(cmd)
 
 	o.AccessConfig.AddFlags(cmd.Flags())
 	RegisterCompletionFuncsForAccessConfigFlags(cmd, f)

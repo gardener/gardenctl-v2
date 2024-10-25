@@ -35,6 +35,12 @@ type ConnectInformation struct {
 
 	// User is the name of the Shoot cluster node ssh login username
 	User string
+
+	// NodeUserKnownHostsFiles is a list of custom known hosts files for the SSH connection to the shoot node.
+	NodeUserKnownHostsFiles []string `json:"nodeUserKnownHostsFiles"`
+
+	// NodeStrictHostKeyChecking controls the SSH strict host key checking behavior for the shoot node.
+	NodeStrictHostKeyChecking StrictHostKeyChecking `json:"nodeStrictHostKeyChecking"`
 }
 
 var _ fmt.Stringer = &ConnectInformation{}
@@ -57,6 +63,8 @@ type Bastion struct {
 	SSHPrivateKeyFile PrivateKeyFile `json:"privateKeyFile"`
 	// UserKnownHostsFiles is a list of custom known hosts files for the SSH connection to the bastion.
 	UserKnownHostsFiles []string `json:"userKnownHostsFiles"`
+	// StrictHostKeyChecking controls the StrictHostKeyChecking option for the SSH connection to the bastion.
+	StrictHostKeyChecking StrictHostKeyChecking `json:"strictHostKeyChecking"`
 }
 
 // Node holds information about a worker node.
@@ -82,6 +90,9 @@ func NewConnectInformation(
 	bastionPreferredAddress string,
 	bastionPort string,
 	bastionUserKnownHostsFiles []string,
+	bastionStrictHostKeyChecking StrictHostKeyChecking,
+	nodeUserKnownHostsFiles []string,
+	nodeStrictHostKeyChecking StrictHostKeyChecking,
 	nodeHostname string,
 	sshPublicKeyFile PublicKeyFile,
 	sshPrivateKeyFile PrivateKeyFile,
@@ -151,14 +162,17 @@ func NewConnectInformation(
 				IP:       bastion.Status.Ingress.IP,
 				Hostname: bastion.Status.Ingress.Hostname,
 			},
-			SSHPublicKeyFile:    sshPublicKeyFile,
-			SSHPrivateKeyFile:   sshPrivateKeyFile,
-			UserKnownHostsFiles: bastionUserKnownHostsFiles,
+			SSHPublicKeyFile:      sshPublicKeyFile,
+			SSHPrivateKeyFile:     sshPrivateKeyFile,
+			UserKnownHostsFiles:   bastionUserKnownHostsFiles,
+			StrictHostKeyChecking: bastionStrictHostKeyChecking,
 		},
-		NodeHostname:        nodeHostname,
-		NodePrivateKeyFiles: nodePrivateKeyFiles,
-		Nodes:               nodeList,
-		User:                user,
+		NodeHostname:              nodeHostname,
+		NodePrivateKeyFiles:       nodePrivateKeyFiles,
+		NodeUserKnownHostsFiles:   nodeUserKnownHostsFiles,
+		NodeStrictHostKeyChecking: nodeStrictHostKeyChecking,
+		Nodes:                     nodeList,
+		User:                      user,
 	}, nil
 }
 
@@ -217,6 +231,9 @@ func (p *ConnectInformation) String() string {
 		p.Bastion.Port,
 		p.Bastion.SSHPrivateKeyFile,
 		p.Bastion.UserKnownHostsFiles,
+		p.Bastion.StrictHostKeyChecking,
+		p.NodeUserKnownHostsFiles,
+		p.NodeStrictHostKeyChecking,
 		nodeHostname,
 		p.NodePrivateKeyFiles,
 		p.User,

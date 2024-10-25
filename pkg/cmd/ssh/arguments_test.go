@@ -16,24 +16,31 @@ import (
 )
 
 type testCase struct {
-	bastionHost                string
-	bastionPort                string
-	sshPrivateKeyFile          ssh.PrivateKeyFile
-	bastionUserKnownHostsFiles []string
-	nodeHostname               string
-	nodePrivateKeyFiles        []ssh.PrivateKeyFile
-	expectedArgs               []string
-	user                       string
+	bastionHost                  string
+	bastionPort                  string
+	sshPrivateKeyFile            ssh.PrivateKeyFile
+	bastionUserKnownHostsFiles   []string
+	bastionStrictHostKeyChecking ssh.StrictHostKeyChecking
+	nodeUserKnownHostsFiles      []string
+	nodeStrictHostKeyChecking    ssh.StrictHostKeyChecking
+	nodeHostname                 string
+	nodePrivateKeyFiles          []ssh.PrivateKeyFile
+	expectedArgs                 []string
+	user                         string
 }
 
 func newTestCase() testCase {
 	return testCase{
-		bastionHost:         "bastion.example.com",
-		bastionPort:         "22",
-		sshPrivateKeyFile:   "path/to/private/key",
-		nodeHostname:        "node.example.com",
-		nodePrivateKeyFiles: []ssh.PrivateKeyFile{"path/to/node/private/key"},
-		user:                "gardener",
+		bastionHost:                  "bastion.example.com",
+		bastionPort:                  "22",
+		sshPrivateKeyFile:            "path/to/private/key",
+		bastionUserKnownHostsFiles:   []string{},
+		bastionStrictHostKeyChecking: "ask",
+		nodeUserKnownHostsFiles:      []string{},
+		nodeStrictHostKeyChecking:    "ask",
+		nodeHostname:                 "node.example.com",
+		nodePrivateKeyFiles:          []ssh.PrivateKeyFile{"path/to/node/private/key"},
+		user:                         "gardener",
 	}
 }
 
@@ -46,19 +53,24 @@ var _ = Describe("Arguments", func() {
 					tc.bastionPort,
 					tc.sshPrivateKeyFile,
 					tc.bastionUserKnownHostsFiles,
+					tc.bastionStrictHostKeyChecking,
+					tc.nodeUserKnownHostsFiles,
+					tc.nodeStrictHostKeyChecking,
 					tc.nodeHostname,
 					tc.nodePrivateKeyFiles,
 					tc.user,
 				)
-				Expect(args.String()).To(Equal(strings.Join(tc.expectedArgs, " ")))
+				res := args.String()
+				exp := strings.Join(tc.expectedArgs, " ")
+				Expect(res).To(Equal(exp))
 			},
 			Entry("basic case", func() testCase {
 				tc := newTestCase()
 				tc.expectedArgs = []string{
-					"-oStrictHostKeyChecking=no",
 					"-oIdentitiesOnly=yes",
+					"-oStrictHostKeyChecking=ask",
 					"'-ipath/to/node/private/key'",
-					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
+					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
 					"'gardener@node.example.com'",
 				}
 				return tc
@@ -67,10 +79,10 @@ var _ = Describe("Arguments", func() {
 				tc := newTestCase()
 				tc.user = "aaa"
 				tc.expectedArgs = []string{
-					"-oStrictHostKeyChecking=no",
 					"-oIdentitiesOnly=yes",
+					"-oStrictHostKeyChecking=ask",
 					"'-ipath/to/node/private/key'",
-					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
+					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
 					"'aaa@node.example.com'",
 				}
 				return tc
@@ -79,10 +91,10 @@ var _ = Describe("Arguments", func() {
 				tc := newTestCase()
 				tc.bastionPort = ""
 				tc.expectedArgs = []string{
-					"-oStrictHostKeyChecking=no",
 					"-oIdentitiesOnly=yes",
+					"-oStrictHostKeyChecking=ask",
 					"'-ipath/to/node/private/key'",
-					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"''`,
+					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"''`,
 					"'gardener@node.example.com'",
 				}
 				return tc
@@ -90,9 +102,13 @@ var _ = Describe("Arguments", func() {
 			Entry("multiple known hosts files", func() testCase {
 				tc := newTestCase()
 				tc.bastionUserKnownHostsFiles = []string{"path/to/known_hosts1", "path/to/known_hosts2"}
+				tc.nodeUserKnownHostsFiles = []string{"path/to/node_known_hosts"}
+				tc.bastionStrictHostKeyChecking = "no"
+				tc.nodeStrictHostKeyChecking = "yes"
 				tc.expectedArgs = []string{
-					"-oStrictHostKeyChecking=no",
 					"-oIdentitiesOnly=yes",
+					"-oStrictHostKeyChecking=yes",
+					`'-oUserKnownHostsFile='"'"'path/to/node_known_hosts'"'"''`,
 					"'-ipath/to/node/private/key'",
 					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'-oUserKnownHostsFile='"'"'"'"'"'"'"'"'path/to/known_hosts1'"'"'"'"'"'"'"'"' '"'"'"'"'"'"'"'"'path/to/known_hosts2'"'"'"'"'"'"'"'"''"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
 					"'gardener@node.example.com'",
@@ -104,9 +120,9 @@ var _ = Describe("Arguments", func() {
 				tc.sshPrivateKeyFile = ""
 				tc.nodePrivateKeyFiles = []ssh.PrivateKeyFile{}
 				tc.expectedArgs = []string{
-					"-oStrictHostKeyChecking=no",
 					"-oIdentitiesOnly=yes",
-					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=no '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
+					"-oStrictHostKeyChecking=ask",
+					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=ask '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
 					"'gardener@node.example.com'",
 				}
 				return tc

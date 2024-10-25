@@ -11,10 +11,12 @@ import (
 	"os"
 	"time"
 
+	"golang.org/x/crypto/ssh"
+
 	"github.com/gardener/gardenctl-v2/internal/util"
 )
 
-func SetBastionAvailabilityChecker(f func(hostname string, port string, privateKey []byte) error) {
+func SetBastionAvailabilityChecker(f func(hostname string, port string, privateKey []byte, hostKeyCallback ssh.HostKeyCallback) error) {
 	bastionAvailabilityChecker = f
 }
 
@@ -58,6 +60,9 @@ func SSHCommandArguments(
 	bastionPort string,
 	sshPrivateKeyFile PrivateKeyFile,
 	bastionUserKnownHostsFiles []string,
+	bastionStrictHostKeyChecking StrictHostKeyChecking,
+	nodeUserKnownHostsFiles []string,
+	nodeStrictHostKeyChecking StrictHostKeyChecking,
 	nodeHostname string,
 	nodePrivateKeyFiles []PrivateKeyFile,
 	user string,
@@ -68,6 +73,9 @@ func SSHCommandArguments(
 			bastionPort,
 			sshPrivateKeyFile,
 			bastionUserKnownHostsFiles,
+			bastionStrictHostKeyChecking,
+			nodeUserKnownHostsFiles,
+			nodeStrictHostKeyChecking,
 			nodeHostname,
 			nodePrivateKeyFiles,
 			user,

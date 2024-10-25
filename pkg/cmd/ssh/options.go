@@ -41,6 +41,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -80,8 +81,13 @@ var (
 	// bastionAvailabilityChecker returns nil if the given hostname allows incoming
 	// connections on the SSHPort and has a public key configured that matches the
 	// given private key.
-	bastionAvailabilityChecker = func(hostname string, port string, privateKey []byte) error {
-		authMethods := []ssh.AuthMethod{}
+	bastionAvailabilityChecker = func(
+		hostname string,
+		port string,
+		privateKey []byte,
+		hostKeyCallback ssh.HostKeyCallback,
+	) error {
+		var authMethods []ssh.AuthMethod
 
 		if len(privateKey) > 0 {
 			signer, err := ssh.ParsePrivateKey(privateKey)
@@ -109,7 +115,7 @@ var (
 
 		client, err := ssh.Dial("tcp", net.JoinHostPort(hostname, port), &ssh.ClientConfig{
 			User:            SSHBastionUsername,
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			HostKeyCallback: hostKeyCallback,
 			Auth:            authMethods,
 			Timeout:         10 * time.Second,
 		})
@@ -163,7 +169,7 @@ var (
 	}
 )
 
-// SSHOptions is a struct to support ssh command.
+// SSHOptions contains all the configurable options for the SSH command.
 type SSHOptions struct {
 	base.Options
 	AccessConfig
@@ -187,6 +193,15 @@ type SSHOptions struct {
 
 	// BastionUserKnownHostsFiles is a list of custom known hosts files for the SSH connection to the bastion.
 	BastionUserKnownHostsFiles []string
+
+	// BastionStrictHostKeyChecking controls the SSH strict host key checking behavior for the bastion host.
+	BastionStrictHostKeyChecking StrictHostKeyChecking
+
+	// NodeUserKnownHostsFiles is a list of custom known hosts files for the SSH connection to the shoot node.
+	NodeUserKnownHostsFiles []string
+
+	// NodeStrictHostKeyChecking controls the SSH strict host key checking behavior for the shoot node.
+	NodeStrictHostKeyChecking StrictHostKeyChecking
 
 	// NodeName is the name of the Shoot cluster node that the user wants to
 	// connect to. If this is left empty, gardenctl will only establish the
@@ -229,6 +244,9 @@ type SSHOptions struct {
 	// ConfirmAccessRestriction, when set to true, implies the user understands the access restrictions for the targeted shoot.
 	// In this case, the access restriction banner is displayed without further confirmation.
 	ConfirmAccessRestriction bool
+
+	// HostKeyCallbackFactory is used to create SSH host key callbacks based on the StrictHostKeyChecking setting.
+	HostKeyCallbackFactory HostKeyCallbackFactory
 }
 
 // NewSSHOptions returns initialized SSHOptions.
@@ -238,16 +256,20 @@ func NewSSHOptions(ioStreams util.IOStreams) *SSHOptions {
 		Options: base.Options{
 			IOStreams: ioStreams,
 		},
-		Interactive:           true,
-		WaitTimeout:           10 * time.Minute,
-		KeepBastion:           false,
-		SkipAvailabilityCheck: false,
-		NoKeepalive:           false,
-		BastionPort:           strconv.Itoa(SSHPort),
-		User:                  DefaultUsername,
+		Interactive:                  true,
+		WaitTimeout:                  10 * time.Minute,
+		KeepBastion:                  false,
+		SkipAvailabilityCheck:        false,
+		NoKeepalive:                  false,
+		BastionPort:                  strconv.Itoa(SSHPort),
+		User:                         DefaultUsername,
+		BastionStrictHostKeyChecking: StrictHostKeyCheckingAsk,
+		NodeStrictHostKeyChecking:    StrictHostKeyCheckingAsk,
+		HostKeyCallbackFactory:       NewRealHostKeyCallbackFactory(),
 	}
 }
 
+// AddFlags adds command-line flags to the flag set.
 func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 	flagSet.BoolVar(&o.Interactive, "interactive", o.Interactive, "Open an SSH connection instead of just providing the bastion host (only if NODE_NAME is provided).")
 	flagSet.Var(&o.SSHPublicKeyFile, "public-key-file", "Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.")
@@ -259,10 +281,30 @@ func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 	flagSet.StringVar(&o.BastionName, "bastion-name", o.BastionName, "Name of the bastion. If a bastion with this name doesn't exist, it will be created. If it does exist, the provided public SSH key must match the one used during the bastion's creation.")
 	flagSet.StringVar(&o.BastionHost, "bastion-host", o.BastionHost, "Override the hostname or IP address of the bastion used for the SSH client command. If not provided, the address will be automatically determined.")
 	flagSet.StringVar(&o.BastionPort, "bastion-port", o.BastionPort, "SSH port of the bastion used for the SSH client command. Defaults to port 22")
-	flagSet.StringSliceVar(&o.BastionUserKnownHostsFiles, "bastion-user-known-hosts-file", o.BastionUserKnownHostsFiles, "Path to a custom known hosts file for the SSH connection to the bastion. This file is used to verify the public keys of remote hosts when establishing a secure connection.")
+	flagSet.StringSliceVar(&o.BastionUserKnownHostsFiles, "bastion-user-known-hosts-file", o.BastionUserKnownHostsFiles, "Path to a custom known hosts file for verifying remote hosts' public keys during SSH connection to the bastion. If not provided, defaults to <temp_dir>/garden/cache/<bastion_uid>/.ssh/known_hosts")
+	flagSet.Var(&o.BastionStrictHostKeyChecking, "bastion-strict-host-key-checking", "Specifies how the SSH client performs host key checking for the bastion host. Valid options are 'yes', 'no', or 'ask'.")
+	flagSet.StringSliceVar(&o.NodeUserKnownHostsFiles, "node-user-known-hosts-file", o.NodeUserKnownHostsFiles, "Path to a custom known hosts file for verifying remote hosts' public keys during SSH connection to the shoot node. If not provided, defaults to <garden_home_dir>/cache/<shoot_uid>/.ssh/known_hosts.")
+	flagSet.Var(&o.NodeStrictHostKeyChecking, "node-strict-host-key-checking", "Specifies how the SSH client performs host key checking for the shoot node. Valid options are 'yes', 'no', or 'ask'.")
 	flagSet.BoolVarP(&o.ConfirmAccessRestriction, "confirm-access-restriction", "y", o.ConfirmAccessRestriction, "Bypasses the need for confirmation of any access restrictions. Set this flag only if you are fully aware of the access restrictions.")
 	flagSet.StringVar(&o.User, "user", o.User, "user is the name of the Shoot cluster node ssh login username.")
 	o.Options.AddFlags(flagSet)
+}
+
+func (o *SSHOptions) RegisterCompletionFuncsForStrictHostKeyCheckings(cmd *cobra.Command) {
+	strictHostKeyCheckingOptions := []string{
+		string(StrictHostKeyCheckingYes) + "\tOnly allow connections to hosts with known keys",
+		string(StrictHostKeyCheckingAsk) + "\tPrompt user to confirm unknown host keys",
+		string(StrictHostKeyCheckingNo) + "\tDo not check the host key at all (insecure)",
+		string(StrictHostKeyCheckingAcceptNew) + "\tAutomatically accept new host keys",
+		string(StrictHostKeyCheckingOff) + "\tAlias for 'no', do not check the host key at all (insecure)",
+	}
+
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("bastion-strict-host-key-checking", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return strictHostKeyCheckingOptions, cobra.ShellCompDirectiveNoFileComp
+	}))
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("node-strict-host-key-checking", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return strictHostKeyCheckingOptions, cobra.ShellCompDirectiveNoFileComp
+	}))
 }
 
 // Complete adapts from the command line args to the data required.
@@ -669,6 +711,9 @@ func (o *SSHOptions) Run(f util.Factory) error {
 			bastionPreferredAddress,
 			o.BastionPort,
 			o.BastionUserKnownHostsFiles,
+			o.BastionStrictHostKeyChecking,
+			o.NodeUserKnownHostsFiles,
+			o.NodeStrictHostKeyChecking,
 			nodeHostname,
 			o.SSHPublicKeyFile,
 			o.SSHPrivateKeyFile,
@@ -701,6 +746,9 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		o.BastionPort,
 		o.SSHPrivateKeyFile,
 		o.BastionUserKnownHostsFiles,
+		o.BastionStrictHostKeyChecking,
+		o.NodeUserKnownHostsFiles,
+		o.NodeStrictHostKeyChecking,
 		nodeHostname,
 		nodePrivateKeyFiles,
 		o.User,
@@ -953,6 +1001,11 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 		}
 	}
 
+	hostKeyCallback, err := o.HostKeyCallbackFactory.New(o.BastionStrictHostKeyChecking, o.BastionUserKnownHostsFiles, o.IOStreams)
+	if err != nil {
+		return fmt.Errorf("could not create hostkey callback: %w", err)
+	}
+
 	waitErr := wait.PollUntilContextTimeout(ctx, pollBastionStatusInterval, o.WaitTimeout, false, func(ctx context.Context) (bool, error) {
 		key := client.ObjectKeyFromObject(bastion)
 
@@ -977,7 +1030,12 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 
 		bastionPreferredAddress := preferredBastionAddress(o.BastionHost, bastion)
 
-		lastCheckErr = bastionAvailabilityChecker(bastionPreferredAddress, o.BastionPort, privateKeyBytes)
+		lastCheckErr = bastionAvailabilityChecker(
+			bastionPreferredAddress,
+			o.BastionPort,
+			privateKeyBytes,
+			hostKeyCallback,
+		)
 		if lastCheckErr != nil {
 			logger.Error(lastCheckErr, "Still waiting for bastion to accept SSH connection")
 			return false, nil
@@ -1009,6 +1067,9 @@ func remoteShell(
 	bastionPort string,
 	sshPrivateKeyFile PrivateKeyFile,
 	bastionUserKnownHostsFiles []string,
+	bastionStrictHostKeyChecking StrictHostKeyChecking,
+	nodeUserKnownHostsFiles []string,
+	nodeStrictHostKeyChecking StrictHostKeyChecking,
 	nodeHostname string,
 	nodePrivateKeyFiles []PrivateKeyFile,
 	user string,
@@ -1018,6 +1079,9 @@ func remoteShell(
 		bastionPort,
 		sshPrivateKeyFile,
 		bastionUserKnownHostsFiles,
+		bastionStrictHostKeyChecking,
+		nodeUserKnownHostsFiles,
+		nodeStrictHostKeyChecking,
 		nodeHostname,
 		nodePrivateKeyFiles,
 		user,
