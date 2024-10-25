@@ -8,7 +8,7 @@ package target
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/md5" // #nosec G501 -- No cryptographic context.
 	"errors"
 	"fmt"
 	"os"
