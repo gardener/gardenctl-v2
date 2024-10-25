@@ -54,6 +54,14 @@ lint: ## Run golangci-lint against code.
 check: ## Check that the generated markdown is up-to-date
 	@./hack/check-markdown.sh
 
+.PHONY: sast
+sast: $(GOSEC)
+	@./hack/sast.sh
+
+.PHONY: sast-report
+sast-report: $(GOSEC)
+	@./hack/sast.sh --gosec-report true
+
 .PHONY: go-test
 go-test: ## Run go tests.
 	@./hack/test-integration.sh
