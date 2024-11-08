@@ -52,7 +52,7 @@ var _ = BeforeSuite(func() {
 	configFile = filepath.Join(gardenHomeDir, configName+".yaml")
 	sessionID := uuid.New().String()
 	Expect(os.Setenv(envSessionID, sessionID)).To(Succeed())
-	sessionDir = filepath.Join(os.TempDir(), "garden", sessionID)
+	sessionDir = filepath.Join(os.TempDir(), "garden", "sessions", sessionID)
 	Expect(os.MkdirAll(sessionDir, os.ModePerm))
 	cfg = &config.Config{
 		Filename:       configFile,

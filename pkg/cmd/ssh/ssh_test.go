@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -116,6 +117,8 @@ var _ = Describe("SSH Command", func() {
 		nodePrivateKeyFile   string
 		logs                 *util.SafeBytesBuffer
 		signalChan           chan os.Signal
+		gardenHomeDir        string
+		gardenTempDir        string
 	)
 
 	BeforeEach(func() {
@@ -306,18 +309,32 @@ var _ = Describe("SSH Command", func() {
 		ctxTimeout, cancelTimeout = context.WithTimeout(context.Background(), 30*time.Second)
 		ctx, cancel = context.WithCancel(ctxTimeout)
 		factory.ContextImpl = ctx
+
+		gardenHomeDir, err = os.MkdirTemp("", "garden-home-*")
+		Expect(err).ToNot(HaveOccurred())
+		factory.GardenHomeDirectory = gardenHomeDir
+
+		// Create a temporary directory for GardenTempDirectory
+		gardenTempDir, err = os.MkdirTemp("", "garden-temp-*")
+		Expect(err).ToNot(HaveOccurred())
+		factory.GardenTempDirectory = gardenTempDir
 	})
 
 	AfterEach(func() {
 		cancelTimeout()
 		cancel()
 		ctrl.Finish()
+
+		// Remove the temporary directories
+		Expect(os.RemoveAll(gardenHomeDir)).To(Succeed())
+		Expect(os.RemoveAll(gardenTempDir)).To(Succeed())
 	})
 
 	Describe("RunE", func() {
 		BeforeEach(func() {
 			seedClientConfig, err := clientcmd.NewClientConfigFromBytes(seedKubeconfigSecret.Data["kubeconfig"])
 			Expect(err).NotTo(HaveOccurred())
+
 			clientProvider.EXPECT().FromClientConfig(gomock.Eq(seedClientConfig)).Return(seedClient, nil).AnyTimes()
 
 			clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(shootClient, nil).AnyTimes().
@@ -382,6 +399,8 @@ var _ = Describe("SSH Command", func() {
 			// simulate an external controller processing the bastion and proving a successful status
 			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
 
+			bastionKey := client.ObjectKey{Name: bastionName, Namespace: *testProject.Spec.Namespace}
+
 			// do not actually execute any commands
 			executedCommands := 0
 			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
@@ -390,14 +409,26 @@ var _ = Describe("SSH Command", func() {
 				}()
 				executedCommands++
 
+				// Retrieve the bastion object to get its UID
+				bastion := &operationsv1alpha1.Bastion{}
+				Expect(gardenClient.Get(ctx, bastionKey, bastion)).To(Succeed())
+
+				bastionUID := string(bastion.UID)
+				shootUID := string(testShoot.UID)
+
+				defaultBastionKnownHostsFile := filepath.Join(gardenTempDir, "cache", bastionUID, ".ssh", "known_hosts")
+				defaultNodeKnownHostsFile := filepath.Join(gardenHomeDir, "cache", shootUID, ".ssh", "known_hosts")
+
 				Expect(command).To(Equal("ssh"))
 				Expect(args).To(Equal([]string{
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
+					fmt.Sprintf("-oUserKnownHostsFile='%s'", defaultNodeKnownHostsFile),
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'%s'\"'\"'' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
+						defaultBastionKnownHostsFile,
 						ssh.SSHBastionUsername,
 						bastionIP,
 					),
@@ -417,10 +448,8 @@ var _ = Describe("SSH Command", func() {
 			Expect(out.String()).To(ContainSubstring(bastionIP))
 
 			// assert that the bastion has been cleaned up
-			key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
 			bastion := &operationsv1alpha1.Bastion{}
-
-			Expect(gardenClient.Get(ctx, key, bastion)).NotTo(Succeed())
+			Expect(gardenClient.Get(ctx, bastionKey, bastion)).NotTo(Succeed())
 
 			// assert that no temporary SSH keypair remained on disk
 			_, err := os.Stat(options.SSHPublicKeyFile.String())
@@ -439,6 +468,9 @@ var _ = Describe("SSH Command", func() {
 			// simulate an external controller processing the bastion and proving a successful status
 			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
 
+			// Retrieve the bastion object to get its UID
+			bastionKey := client.ObjectKey{Name: bastionName, Namespace: *testProject.Spec.Namespace}
+
 			// do not actually execute any commands
 			executedCommands := 0
 			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
@@ -447,14 +479,25 @@ var _ = Describe("SSH Command", func() {
 				}()
 				executedCommands++
 
+				bastion := &operationsv1alpha1.Bastion{}
+				Expect(gardenClient.Get(ctx, bastionKey, bastion)).To(Succeed())
+
+				bastionUID := string(bastion.UID)
+				shootUID := string(testShoot.UID)
+
+				defaultBastionKnownHostsFile := filepath.Join(gardenTempDir, "cache", bastionUID, ".ssh", "known_hosts")
+				defaultNodeKnownHostsFile := filepath.Join(gardenHomeDir, "cache", shootUID, ".ssh", "known_hosts")
+
 				Expect(command).To(Equal("ssh"))
 				Expect(args).To(Equal([]string{
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
+					fmt.Sprintf("-oUserKnownHostsFile='%s'", defaultNodeKnownHostsFile),
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'%s'\"'\"'' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
+						defaultBastionKnownHostsFile,
 						ssh.SSHBastionUsername,
 						bastionIP,
 					),
@@ -475,10 +518,8 @@ var _ = Describe("SSH Command", func() {
 			Expect(logs.String()).To(ContainSubstring("node did not yet join the cluster"))
 
 			// assert that the bastion has been cleaned up
-			key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
 			bastion := &operationsv1alpha1.Bastion{}
-
-			Expect(gardenClient.Get(ctx, key, bastion)).NotTo(Succeed())
+			Expect(gardenClient.Get(ctx, bastionKey, bastion)).NotTo(Succeed())
 
 			// assert that no temporary SSH keypair remained on disk
 			_, err := os.Stat(options.SSHPublicKeyFile.String())
@@ -684,6 +725,66 @@ var _ = Describe("SSH Command", func() {
 			Expect(gardenClient.Patch(ctx, testShoot, client.MergeFrom(testShootBase))).To(Succeed())
 
 			Expect(cmd.RunE(cmd, nil)).To(MatchError("node SSH access disabled, SSH not allowed"))
+		})
+
+		It("should use custom known hosts files when provided", func() {
+			options := ssh.NewSSHOptions(streams)
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			// Set custom known hosts files
+			options.BastionUserKnownHostsFiles = []string{"/custom/bastion/known_hosts"}
+			options.NodeUserKnownHostsFiles = []string{"/custom/node/known_hosts"}
+
+			// Simulate the bastion being ready
+			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
+
+			// do not actually execute any commands
+			executedCommands := 0
+			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
+				defer func() {
+					signalChan <- os.Interrupt
+				}()
+				executedCommands++
+
+				Expect(command).To(Equal("ssh"))
+				Expect(args).To(Equal([]string{
+					"-oIdentitiesOnly=yes",
+					"-oStrictHostKeyChecking=ask",
+					"-oUserKnownHostsFile='/custom/node/known_hosts'",
+					fmt.Sprintf("-i%s", nodePrivateKeyFile),
+					fmt.Sprintf(
+						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'/custom/bastion/known_hosts'\"'\"'' '%s@%s' '-p22'",
+						options.SSHPrivateKeyFile,
+						ssh.SSHBastionUsername,
+						bastionIP,
+					),
+					fmt.Sprintf("%s@%s", options.User, nodeHostname),
+				}))
+
+				return nil
+			})
+
+			// Execute the command
+			Expect(cmd.RunE(cmd, []string{testNode.Name})).To(Succeed())
+
+			// assert output
+			Expect(executedCommands).To(Equal(1))
+			Expect(logs.String()).To(ContainSubstring(bastionName))
+			Expect(logs.String()).To(ContainSubstring(bastionHostname))
+			Expect(out.String()).To(ContainSubstring(bastionIP))
+
+			// assert that the bastion has been cleaned up
+			key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
+			bastion := &operationsv1alpha1.Bastion{}
+
+			Expect(gardenClient.Get(ctx, key, bastion)).NotTo(Succeed())
+
+			// assert that no temporary SSH keypair remained on disk
+			_, err := os.Stat(options.SSHPublicKeyFile.String())
+			Expect(err).To(HaveOccurred())
+
+			_, err = os.Stat(options.SSHPrivateKeyFile.String())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 

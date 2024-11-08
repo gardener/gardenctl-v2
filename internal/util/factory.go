@@ -40,8 +40,10 @@ type Factory interface {
 	Context() context.Context
 	// Clock returns a clock that provides access to the current time.
 	Clock() Clock
-	// GardenHomeDir returns the gardenctl home directory for the executing user.
+	// GardenHomeDir returns the user's gardenctl configuration directory (e.g., ~/.garden), where persistent configuration files like gardenctl-v2.yaml are stored.
 	GardenHomeDir() string
+	// GardenTempDir returns the base directory for temporary data (e.g., /tmp/garden), including session directories and SSH known hosts files.
+	GardenTempDir() string
 	// Manager returns the target manager used to read and change the currently targeted system.
 	Manager() (target.Manager, error)
 	// PublicIPs returns the current host's public IP addresses. It's
@@ -58,9 +60,12 @@ type Factory interface {
 type FactoryImpl struct {
 	// GardenHomeDirectory is the home directory for all gardenctl
 	// related files. While some files can be explicitly loaded from
-	// different locations, cache files will always be placed inside
-	// the garden home.
+	// different locations, persistent cache files will always be placed
+	// inside the garden home.
 	GardenHomeDirectory string
+
+	// GardenTempDirectory is the base directory for temporary data.
+	GardenTempDirectory string
 
 	// ConfigFile is the location of the gardenctlv2 configuration file.
 	// This can be overridden via a CLI flag and defaults to ~/.garden/gardenctlv2.yaml
@@ -76,7 +81,8 @@ var _ Factory = &FactoryImpl{}
 
 func NewFactoryImpl() *FactoryImpl {
 	return &FactoryImpl{
-		targetFlags: target.NewTargetFlags("", "", "", "", false),
+		targetFlags:         target.NewTargetFlags("", "", "", "", false),
+		GardenTempDirectory: filepath.Join(os.TempDir(), "garden"),
 	}
 }
 
@@ -95,7 +101,16 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 		return nil, err
 	}
 
-	sessionDirectory := filepath.Join(os.TempDir(), "garden", sid)
+	sessionDirectory := filepath.Join(f.GardenTempDir(), "sessions", sid)
+
+	// Migration logic
+	oldSessionDirectory := filepath.Join(os.TempDir(), "garden", sid)
+	if _, err := os.Stat(oldSessionDirectory); err == nil {
+		err = os.Rename(oldSessionDirectory, sessionDirectory)
+		if err != nil {
+			return nil, fmt.Errorf("failed to migrate session directory: %w", err)
+		}
+	}
 
 	err = os.MkdirAll(sessionDirectory, 0o700)
 	if err != nil {
@@ -110,6 +125,10 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 
 func (f *FactoryImpl) GardenHomeDir() string {
 	return f.GardenHomeDirectory
+}
+
+func (f *FactoryImpl) GardenTempDir() string {
+	return f.GardenTempDirectory
 }
 
 func (f *FactoryImpl) Clock() Clock {

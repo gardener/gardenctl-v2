@@ -669,6 +669,39 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return err
 	}
 
+	if len(o.BastionUserKnownHostsFiles) == 0 {
+		// Set the default known_hosts file for bastions if none is provided.
+		// Bastion host keys are stored in a temporary directory because they are
+		// short-lived and become irrelevant once the bastion is terminated.
+		// Additionally, since bastion public IPs can be reused, storing keys separately
+		// prevents unnecessary host key warnings.
+		tempDir := f.GardenTempDir()
+		knownHostsFile := filepath.Join(tempDir, "cache", string(bastion.UID), ".ssh", "known_hosts")
+
+		if err := os.MkdirAll(filepath.Dir(knownHostsFile), 0o700); err != nil {
+			return fmt.Errorf("failed to create directory for bastion known hosts file: %w", err)
+		}
+
+		o.BastionUserKnownHostsFiles = []string{knownHostsFile}
+		logger.Info("Using default known_hosts file for bastion", "knownHostsFile", knownHostsFile)
+	}
+
+	if len(o.NodeUserKnownHostsFiles) == 0 {
+		// Set the default known_hosts file for shoot nodes if none is provided.
+		// Known hosts for shoot nodes are stored in the persistent garden home directory
+		// because shoot nodes are typically longer-lived than bastions. This ensures that
+		// node keys are preserved across system restarts, avoiding repeated verification.
+		gardenHomeDir := f.GardenHomeDir()
+		knownHostsFile := filepath.Join(gardenHomeDir, "cache", string(shoot.UID), ".ssh", "known_hosts")
+
+		if err := os.MkdirAll(filepath.Dir(knownHostsFile), 0o700); err != nil {
+			return fmt.Errorf("failed to create directory for node known hosts file: %w", err)
+		}
+
+		o.NodeUserKnownHostsFiles = []string{knownHostsFile}
+		logger.Info("Using default known_hosts file for shoot node", "knownHostsFile", knownHostsFile)
+	}
+
 	// continuously keep the bastion alive by renewing its annotation
 	go keepBastionAlive(ctx, cancel, gardenClient.RuntimeClient(), bastion.DeepCopy())
 

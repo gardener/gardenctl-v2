@@ -53,7 +53,7 @@ var _ = Describe("Target View Command", func() {
 		factory.EXPECT().TargetFlags().Return(targetFlags).AnyTimes()
 
 		sessionID := uuid.New().String()
-		sessionDir = filepath.Join(os.TempDir(), "garden", sessionID)
+		sessionDir = filepath.Join(os.TempDir(), "garden", "sessions", sessionID)
 		Expect(os.MkdirAll(sessionDir, os.ModePerm))
 		currentTarget = target.NewTarget(gardenName, projectName, "", shootName)
 		targetProvider = target.NewTargetProvider(filepath.Join(sessionDir, "target.yaml"), targetFlags)
