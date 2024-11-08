@@ -7,13 +7,13 @@
 set -o errexit
 set -o pipefail
 
-# For the check step concourse will set the following environment variables:
-# SOURCE_PATH - path to component repository root directory.
+# For the verify step concourse will set the following environment variables:
+# MAIN_REPO_DIR - path to component repository root directory.
 
-if [[ -z "${SOURCE_PATH}" ]]; then
-  export SOURCE_PATH="$(readlink -f "$(dirname ${0})/..")"
+if [[ -z "${MAIN_REPO_DIR}" ]]; then
+  export MAIN_REPO_DIR="$(readlink -f "$(dirname ${0})/..")"
 else
-  export SOURCE_PATH="$(readlink -f ${SOURCE_PATH})"
+  export MAIN_REPO_DIR="$(readlink -f ${MAIN_REPO_DIR})"
 fi
 
 GO_TEST_ADDITIONAL_FLAGS=${GO_TEST_ADDITIONAL_FLAGS:-""}
@@ -34,4 +34,4 @@ function run_test {
   popd
 }
 
-run_test gardenctl-v2 "${SOURCE_PATH}" "${GO_TEST_ADDITIONAL_FLAGS}"
+run_test gardenctl-v2 "${MAIN_REPO_DIR}" "${GO_TEST_ADDITIONAL_FLAGS}"
