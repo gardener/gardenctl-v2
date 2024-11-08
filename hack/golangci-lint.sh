@@ -7,13 +7,13 @@
 set -o errexit
 set -o pipefail
 
-# For the check step concourse will set the following environment variables:
-# SOURCE_PATH - path to component repository root directory.
+# For the verify step concourse will set the following environment variables:
+# MAIN_REPO_DIR - path to component repository root directory.
 
-if [[ -z "${SOURCE_PATH}" ]]; then
-  export SOURCE_PATH="$(readlink -f "$(dirname ${0})/..")"
+if [[ -z "${MAIN_REPO_DIR}" ]]; then
+  export MAIN_REPO_DIR="$(readlink -f "$(dirname ${0})/..")"
 else
-  export SOURCE_PATH="$(readlink -f ${SOURCE_PATH})"
+  export MAIN_REPO_DIR="$(readlink -f ${MAIN_REPO_DIR})"
 fi
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint
@@ -24,7 +24,7 @@ GOLANGCI_LINT_ADDITIONAL_FLAGS=${GOLANGCI_LINT_ADDITIONAL_FLAGS:-""}
 # Install golangci-lint (linting tool)
 curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin "$golangci_lint_version"
 
-cd "$SOURCE_PATH"
+cd "$MAIN_REPO_DIR"
 
 echo '> Run golangci-lint'
 

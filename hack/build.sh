@@ -7,7 +7,7 @@
 set -e
 
 # For the build step concourse will set the following environment variables:
-# SOURCE_PATH - path to component repository root directory.
+# MAIN_REPO_DIR - path to component repository root directory.
 # BINARY_PATH - path to an existing (empty) directory to place build results into.
 
 if [[ -z "${MAIN_REPO_DIR}" ]]; then

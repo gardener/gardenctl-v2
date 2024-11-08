@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # For the build step concourse will set the following environment variables:
-# SOURCE_PATH - path to component repository root directory.
+# MAIN_REPO_DIR - path to component repository root directory.
 
 if [[ -z "${MAIN_REPO_DIR}" ]]; then
   export MAIN_REPO_DIR="$(readlink -f $(dirname ${0})/..)"

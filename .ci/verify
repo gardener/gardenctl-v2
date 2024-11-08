@@ -7,7 +7,7 @@
 set -o errexit
 set -o pipefail
 
-# For the check step concourse will set the following environment variables:
+# For the verify step concourse will set the following environment variables:
 # MAIN_REPO_DIR - path to the main repository
 
 if [[ -z "${MAIN_REPO_DIR}" ]]; then
