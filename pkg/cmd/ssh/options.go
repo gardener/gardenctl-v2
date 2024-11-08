@@ -836,7 +836,7 @@ func (o *SSHOptions) bastionIngressPolicies(logger klog.Logger, providerType str
 					return nil, fmt.Errorf("GCP only supports IPv4: %s", cidr)
 				}
 
-				logger.Info("GCP only supports IPv4, skipped CIDR: %s\n", "cidr", cidr)
+				logger.Info("GCP only supports IPv4, skipped CIDR: %s", "cidr", cidr)
 
 				continue // skip
 			}
@@ -1166,6 +1166,8 @@ func keepBastionAlive(ctx context.Context, cancel context.CancelFunc, gardenClie
 				}
 
 				logger.Error(err, "Failed to keep bastion alive.")
+
+				continue
 			}
 
 			// add the keepalive annotation
