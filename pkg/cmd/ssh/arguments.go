@@ -64,22 +64,31 @@ func sshCommandArguments(
 	bastionPort string,
 	sshPrivateKeyFile PrivateKeyFile,
 	bastionUserKnownHostsFiles []string,
+	bastionStrictHostKeyChecking StrictHostKeyChecking,
+	nodeUserKnownHostsFiles []string,
+	nodeStrictHostKeyChecking StrictHostKeyChecking,
 	nodeHostname string,
 	nodePrivateKeyFiles []PrivateKeyFile,
 	user string,
 ) arguments {
 	bastionUserKnownHostsFilesArg := userKnownHostsFilesArgument(bastionUserKnownHostsFiles)
+	nodeUserKnownHostsFilesArg := userKnownHostsFilesArgument(nodeUserKnownHostsFiles)
 
 	proxyCmdArgs := sshProxyCmdArguments(
 		bastionHost,
 		bastionPort,
 		sshPrivateKeyFile,
 		bastionUserKnownHostsFilesArg,
+		bastionStrictHostKeyChecking,
 	)
 
 	args := []argument{
-		{value: "-oStrictHostKeyChecking=no", shellEscapeDisabled: true},
 		{value: "-oIdentitiesOnly=yes", shellEscapeDisabled: true},
+		{value: fmt.Sprintf("-oStrictHostKeyChecking=%s", nodeStrictHostKeyChecking), shellEscapeDisabled: true},
+	}
+
+	if nodeUserKnownHostsFilesArg != nil {
+		args = append(args, *nodeUserKnownHostsFilesArg)
 	}
 
 	for _, file := range nodePrivateKeyFiles {
@@ -98,11 +107,12 @@ func sshProxyCmdArguments(
 	bastionPort string,
 	sshPrivateKeyFile PrivateKeyFile,
 	userKnownHostsFileArg *argument,
+	bastionStrictHostKeyChecking StrictHostKeyChecking,
 ) arguments {
 	args := []argument{
 		{value: "ssh", shellEscapeDisabled: true},
 		{value: "-W%h:%p", shellEscapeDisabled: true},
-		{value: "-oStrictHostKeyChecking=no", shellEscapeDisabled: true},
+		{value: fmt.Sprintf("-oStrictHostKeyChecking=%s", bastionStrictHostKeyChecking), shellEscapeDisabled: true},
 	}
 
 	if sshPrivateKeyFile != "" {

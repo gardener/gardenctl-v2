@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
+	cryptossh "golang.org/x/crypto/ssh"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -123,7 +124,7 @@ var _ = Describe("SSH Command", func() {
 		klog.LogToStderr(false) // must set to false, otherwise klog will log to os.stderr instead of to our buffer
 
 		// all fake bastions are always immediately available
-		ssh.SetBastionAvailabilityChecker(func(hostname string, port string, privateKey []byte) error {
+		ssh.SetBastionAvailabilityChecker(func(hostname string, port string, privateKey []byte, hostKeyCallback cryptossh.HostKeyCallback) error {
 			return nil
 		})
 
@@ -391,11 +392,11 @@ var _ = Describe("SSH Command", func() {
 
 				Expect(command).To(Equal("ssh"))
 				Expect(args).To(Equal([]string{
-					"-oStrictHostKeyChecking=no",
 					"-oIdentitiesOnly=yes",
+					"-oStrictHostKeyChecking=ask",
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '-i%s' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
 						ssh.SSHBastionUsername,
 						bastionIP,
@@ -448,11 +449,11 @@ var _ = Describe("SSH Command", func() {
 
 				Expect(command).To(Equal("ssh"))
 				Expect(args).To(Equal([]string{
-					"-oStrictHostKeyChecking=no",
 					"-oIdentitiesOnly=yes",
+					"-oStrictHostKeyChecking=ask",
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '-i%s' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
 						ssh.SSHBastionUsername,
 						bastionIP,
@@ -589,7 +590,7 @@ var _ = Describe("SSH Command", func() {
 
 			cmd := ssh.NewCmdSSH(factory, options)
 
-			ssh.SetBastionAvailabilityChecker(func(hostname string, port string, privateKey []byte) error {
+			ssh.SetBastionAvailabilityChecker(func(hostname string, port string, privateKey []byte, hostKeyCallback cryptossh.HostKeyCallback) error {
 				err := errors.New("this function should not be executed as of SkipAvailabilityCheck = true")
 				Fail(err.Error())
 				return err

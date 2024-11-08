@@ -373,10 +373,9 @@ func (g *clientImpl) CurrentUser(ctx context.Context) (string, error) {
 
 		authInfo.Token = string(tmpValue)
 	case authInfo.Exec != nil && len(authInfo.Exec.Command) > 0:
-		// The command originates from the users kubeconfig and is also executed when using kubectl.
-		// So it should be safe to execute it here as well.
 		var out bytes.Buffer
 
+		// #nosec G204 -- Command and arguments are sourced from the user's kubeconfig file, which should be from a trusted source or inspected carefully. See Kubernetes docs: https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
 		execCmd := exec.Command(authInfo.Exec.Command, authInfo.Exec.Args...)
 		execCmd.Stdout = &out
 

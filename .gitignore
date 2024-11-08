@@ -41,3 +41,6 @@ kubectl-*
 *.crt
 *.key
 *.csr
+
+# gosec
+gosec-report.sarif
