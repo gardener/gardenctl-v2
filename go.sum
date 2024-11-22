@@ -100,8 +100,8 @@ github.com/gardener/cert-management v0.16.0 h1:OlE8nnPgqUii5jBknwASy5EtQlJ3Udy2f
 github.com/gardener/cert-management v0.16.0/go.mod h1:09sH/cxbK3o4xdwCjM7HE9gGX2wq2lLhhVIqiMpmZy4=
 github.com/gardener/etcd-druid v0.23.3 h1:MjkWn1e8M4SoohHp7gVMuT6iIkosjqH2dXaH8gH2Epo=
 github.com/gardener/etcd-druid v0.23.3/go.mod h1:D2VHr239nkMyRKtR6B/KGdbma7qVNmuZV8J/226VPwo=
-github.com/gardener/gardener v1.107.2 h1:lXMWpE5sAm9C+n+0HzQ3iTWWBvWJkTZaU6zM3nZ2ffk=
-github.com/gardener/gardener v1.107.2/go.mod h1:uyKS7aU7zxu+Cu+0HBSkaBx1GnLb7HHIBj4GwcpAQaI=
+github.com/gardener/gardener v1.107.3 h1:tBALxdagA3kzXQDuWpCToOGxftv6U9QY2clBfl/vRBk=
+github.com/gardener/gardener v1.107.3/go.mod h1:uyKS7aU7zxu+Cu+0HBSkaBx1GnLb7HHIBj4GwcpAQaI=
 github.com/gardener/gardener-extension-provider-openstack v1.42.1 h1:Umj1dOFn0bLsNQR3dZup3+20j5UtSSAOm3ms5LkaZt0=
 github.com/gardener/gardener-extension-provider-openstack v1.42.1/go.mod h1:77m0Wte0mF1HiQxi3ixLqCyHoJKRs9INCAI/9CKF7Xc=
 github.com/gardener/hvpa-controller/api v0.17.0 h1:1mNeP+xsnjPH6GhewugU5srslXiTCJgYIFCMuRXwI7w=
