@@ -46,7 +46,7 @@ var _ = BeforeSuite(func() {
 
 	dir, err := os.MkdirTemp("", "garden-*")
 	Expect(err).NotTo(HaveOccurred())
-	sessionDir = filepath.Join(dir, uuid.New().String())
+	sessionDir = filepath.Join(dir, "sessions", uuid.New().String())
 	Expect(os.MkdirAll(sessionDir, 0o700)).To(Succeed())
 	gardenHomeDir = dir
 	gardenKubeconfig = filepath.Join(gardenHomeDir, "kubeconfig.yaml")

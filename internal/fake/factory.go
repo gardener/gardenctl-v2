@@ -38,9 +38,12 @@ type Factory struct {
 
 	// GardenHomeDirectory is the home directory for all gardenctl
 	// related files. While some files can be explicitly loaded from
-	// different locations, cache files will always be placed inside
-	// the garden home.
+	// different locations, persistent cache files will always be placed
+	// inside the garden home.
 	GardenHomeDirectory string
+
+	// GardenTempDirectory is the base directory for temporary data.
+	GardenTempDirectory string
 }
 
 var _ util.Factory = &Factory{}
@@ -91,6 +94,10 @@ func (f *Factory) Context() context.Context {
 
 func (f *Factory) GardenHomeDir() string {
 	return f.GardenHomeDirectory
+}
+
+func (f *Factory) GardenTempDir() string {
+	return f.GardenTempDirectory
 }
 
 func (f *Factory) Clock() util.Clock {

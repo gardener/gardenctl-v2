@@ -78,6 +78,20 @@ func (mr *MockFactoryMockRecorder) GardenHomeDir() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GardenHomeDir", reflect.TypeOf((*MockFactory)(nil).GardenHomeDir))
 }
 
+// GardenTempDir mocks base method.
+func (m *MockFactory) GardenTempDir() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GardenTempDir")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GardenTempDir indicates an expected call of GardenTempDir.
+func (mr *MockFactoryMockRecorder) GardenTempDir() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GardenTempDir", reflect.TypeOf((*MockFactory)(nil).GardenTempDir))
+}
+
 // Manager mocks base method.
 func (m *MockFactory) Manager() (target.Manager, error) {
 	m.ctrl.T.Helper()
