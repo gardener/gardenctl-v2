@@ -9,7 +9,7 @@ Generate a script that points KUBECONFIG to the targeted cluster for bash.
 To load the kubectl configuration script in your current shell session:
 $ eval "$(gardenctl kubectl-env bash)"
 
-To load the kubectl configuration for each bash session add the following line at the end of the ~/.bashrc file:
+To load the kubectl configuration for each shell session add the following line at the end of the ~/.bashrc file:
 
     eval "$(gardenctl kubectl-env bash)"
 
