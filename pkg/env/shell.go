@@ -56,6 +56,22 @@ func (s Shell) Prompt(goos string) string {
 	}
 }
 
+// Config returns the typical config file for the shell.
+func (s Shell) Config() string {
+	switch s {
+	case bash:
+		return "~/.bashrc"
+	case zsh:
+		return "~/.zshrc"
+	case fish:
+		return "~/.config/fish/config.fish"
+	case powershell:
+		return "$profile"
+	default:
+		return ""
+	}
+}
+
 // Validate checks if the shell is valid.
 func (s Shell) Validate() error {
 	for _, shell := range ValidShells() {
