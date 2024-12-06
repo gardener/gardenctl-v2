@@ -9,7 +9,7 @@ Generate a script that points KUBECONFIG to the targeted cluster for fish.
 To load the kubectl configuration script in your current shell session:
 $ eval (gardenctl kubectl-env fish)
 
-To load the kubectl configuration for each shell session add the command at the end of the ~/.config/fish/config.fish file.
+To apply this setting automatically in every shell session, consider adding the command at the end of your ~/.config/fish/config.fish file.
 
 
 ```
