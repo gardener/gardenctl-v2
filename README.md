@@ -161,7 +161,7 @@ Generate a script that points KUBECONFIG to the targeted cluster for the specifi
 eval $(gardenctl kubectl-env bash)
 ```
 
-To load the kubectl configuration for each bash session add the following line at the end of the ~/.bashrc file:
+To load the kubectl configuration for each bash session add the following line at the end of the `~/.bashrc` file:
 
 ```bash
 eval "$(gardenctl kubectl-env bash)"
