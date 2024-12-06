@@ -46,7 +46,7 @@ See each sub-command's help for details on how to use the generated script.
 To load the kubectl configuration script in your current shell session:
 %s
 
-To load the kubectl configuration for each shell session add the command at the end of the %s file.
+To apply this setting automatically in every shell session, consider adding the command at the end of your %s file.
 `,
 				s, s.Prompt(runtime.GOOS)+s.EvalCommand(fmt.Sprintf("gardenctl %s %s", cmd.Name(), s)), s.Config(),
 			),
