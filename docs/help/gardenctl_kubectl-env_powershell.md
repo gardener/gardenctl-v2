@@ -9,11 +9,7 @@ Generate a script that points KUBECONFIG to the targeted cluster for powershell.
 To load the kubectl configuration script in your current shell session:
 PS /> & gardenctl kubectl-env powershell | Invoke-Expression
 
-To load the kubectl configuration for each shell session add the following line at the end of the $profile file:
-
-    & gardenctl kubectl-env powershell | Invoke-Expression
-
-You will need to start a new shell for this setup to take effect.
+To load the kubectl configuration for each shell session add the command at the end of the $profile file.
 
 
 ```
