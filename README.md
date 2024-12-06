@@ -158,12 +158,6 @@ Find more information in the [documentation](docs/usage/targeting.md).
 Generate a script that points KUBECONFIG to the targeted cluster for the specified shell. Use together with `eval` to configure your shell. Example for `bash`:
 
 ```bash
-eval $(gardenctl kubectl-env bash)
-```
-
-To load the kubectl configuration for each bash session add the following line at the end of the `~/.bashrc` file:
-
-```bash
 eval "$(gardenctl kubectl-env bash)"
 ```
 
@@ -179,7 +173,7 @@ source ~/.bashrc
 Generate the cloud provider CLI configuration script for the specified shell. Use together with `eval` to configure your shell. Example for `bash`:
 
 ```bash
-eval $(gardenctl provider-env bash)
+eval "$(gardenctl provider-env bash)"
 ```
 
 ### SSH
