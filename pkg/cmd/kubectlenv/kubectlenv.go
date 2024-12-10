@@ -28,10 +28,10 @@ func NewCmdKubectlEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "kubectl-env",
 		Short: "Generate a script that points KUBECONFIG to the targeted cluster for the specified shell",
-		Long: `Generate a script that points KUBECONFIG to the targeted cluster for the specified shell.
-See each sub-command's help for details on how to use the generated script.
+		Long: `Generate a script that points KUBECONFIG to the currently targeted shoot, seed, or garden cluster for the specified shell.
 
-The generated script points the KUBECONFIG environment variable to the currently targeted shoot, seed or garden cluster.
+Each sub-command produces a shell-specific script.
+For details on how to use the printed shell script, such as applying it temporarily to your current session or permanently through your shell's startup file, refer to the corresponding sub-command's help.
 `,
 		Aliases: []string{"k-env", "cluster-env"},
 	}
@@ -41,9 +41,14 @@ The generated script points the KUBECONFIG environment variable to the currently
 		cmd.AddCommand(&cobra.Command{
 			Use:   string(s),
 			Short: fmt.Sprintf("Generate a script that points KUBECONFIG to the targeted cluster for %s", s),
-			Long: fmt.Sprintf("Generate a script that points KUBECONFIG to the targeted cluster for %s.\n\n"+
-				"To load the kubectl configuration script in your current shell session:\n%s\n",
-				s, s.Prompt(runtime.GOOS)+s.EvalCommand(fmt.Sprintf("gardenctl %s %s", cmd.Name(), s)),
+			Long: fmt.Sprintf(`Generate a script that points KUBECONFIG to the targeted cluster for %s.
+
+To load the kubectl configuration script in your current shell session:
+%s
+
+To apply this setting automatically in every shell session, consider adding the command at the end of your %s file.
+`,
+				s, s.Prompt(runtime.GOOS)+s.EvalCommand(fmt.Sprintf("gardenctl %s %s", cmd.Name(), s)), s.Config(),
 			),
 			RunE: runE,
 		})
