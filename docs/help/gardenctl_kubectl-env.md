@@ -5,9 +5,9 @@ Generate a script that points KUBECONFIG to the targeted cluster for the specifi
 ### Synopsis
 
 Generate a script that points KUBECONFIG to the currently targeted shoot, seed, or garden cluster for the specified shell.
-To apply this setting automatically in every shell session, consider adding the generated script to your shell's startup configuration.
 
-See each sub-command's help for details on how to use the generated script.
+Each sub-command produces a shell-specific script.
+For details on how to use the printed shell script, such as applying it temporarily to your current session or permanently through your shell's startup file, refer to the corresponding sub-command's help.
 
 
 ### Options
