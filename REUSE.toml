@@ -1,0 +1,38 @@
+version = 1
+SPDX-PackageName = "Gardener gardenctl-v2"
+SPDX-PackageSupplier = "The Gardener project <gardener@googlegroups.com>"
+SPDX-PackageDownloadLocation = "https://github.com/gardener/gardenctl-v2"
+
+[[annotations]]
+path = [
+  ".ci/**",
+  ".github/**",
+  "docs/**",
+  "logo/**",
+  "**.tmpl",
+  "**/mocks/**.go",
+  "pkg/env/testdata/**/**.fish",
+  "pkg/env/testdata/**/**.bash",
+  "pkg/env/testdata/**/**.pwsh",
+  "pkg/env/testdata/**/**.json",
+  "pkg/env/testdata/**/**.yaml",
+  "pkg/env/testdata/gcp/serviceaccount.json",
+  ".dockerignore",
+  ".gimps.yaml",
+  ".gitignore",
+  ".golangci.yaml",
+  "CODEOWNERS",
+  "go.mod",
+  "go.sum",
+  "LATEST",
+  "VERSION"
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2020-2024 SAP SE or an SAP affiliate company and Gardener contributors"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = ["CONTRIBUTING.md", "README.md"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2020-2024 SAP SE or an SAP affiliate company and Gardener contributors"
+SPDX-License-Identifier = "CC-BY-4.0"
