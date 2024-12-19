@@ -8,7 +8,7 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/fatih/color v1.18.0
-	github.com/gardener/gardener v1.110.0
+	github.com/gardener/gardener v1.110.1
 	github.com/gardener/gardener-extension-provider-openstack v1.44.1
 	github.com/gardener/machine-controller-manager v0.55.1
 	github.com/golang/mock v1.6.0
