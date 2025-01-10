@@ -100,8 +100,8 @@ github.com/gardener/cert-management v0.17.1 h1:vawZGN+rsCRMviacnnMSWELbuIJsNXHaq
 github.com/gardener/cert-management v0.17.1/go.mod h1:cwSsyN935017HojKVuWqw2TBhiaxSisX132D9Tn+n9I=
 github.com/gardener/etcd-druid v0.25.0 h1:mR9/x5r27pO+I+XzpNcN2DDenam+7ITrhc7qKt9rbsI=
 github.com/gardener/etcd-druid v0.25.0/go.mod h1:6C0eyfdlw6CowLm/l4ZiKwrvkc+5NHrnc/rY2wCUwys=
-github.com/gardener/gardener v1.110.1 h1:KJFiVMlzeuJR6aToUUTlXJN6v88ACH/cWOsvX/ftX5s=
-github.com/gardener/gardener v1.110.1/go.mod h1:Ge2wQMWm0NmQZP3L/WMejpfXsnGbfTFBEZud819P3vU=
+github.com/gardener/gardener v1.110.2 h1:eLcBo9bRIkvf6YKGW2IvbUquHMOiheUptdQ/Wjtlf/E=
+github.com/gardener/gardener v1.110.2/go.mod h1:Ge2wQMWm0NmQZP3L/WMejpfXsnGbfTFBEZud819P3vU=
 github.com/gardener/gardener-extension-provider-openstack v1.44.1 h1:KNvYUeDRG2CuXeojMLlphazP6lrEdoHPkbsxicxU75g=
 github.com/gardener/gardener-extension-provider-openstack v1.44.1/go.mod h1:CiQDk/hxdBEThVydytIZc3bRL90tUcEK3ES9fWybwTQ=
 github.com/gardener/machine-controller-manager v0.55.1 h1:d6mTnuYko+jWeIi7tAFWgWnL1nR5hGcI6pRCDcH0TGY=
