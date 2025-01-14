@@ -27,9 +27,8 @@ var _ = Describe("AccessRestriction", func() {
 		BeforeEach(func() {
 			accessRestrictions = []ac.AccessRestriction{
 				{
-					Key:      "a",
-					NotifyIf: true,
-					Msg:      "A",
+					Key: "a",
+					Msg: "A",
 					Options: []ac.AccessRestrictionOption{
 						{
 							Key:      "a1",
@@ -44,9 +43,8 @@ var _ = Describe("AccessRestriction", func() {
 					},
 				},
 				{
-					Key:      "b",
-					NotifyIf: false,
-					Msg:      "B",
+					Key: "b",
+					Msg: "B",
 					Options: []ac.AccessRestrictionOption{
 						{
 							Key:      "b1",
@@ -71,11 +69,23 @@ var _ = Describe("AccessRestriction", func() {
 					},
 				},
 				Spec: gardencorev1beta1.ShootSpec{
-					SeedSelector: &gardencorev1beta1.SeedSelector{
-						LabelSelector: metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								"a": "true",
-								"b": "false",
+					AccessRestrictions: []gardencorev1beta1.AccessRestrictionWithOptions{
+						{
+							AccessRestriction: gardencorev1beta1.AccessRestriction{
+								Name: "a",
+							},
+							Options: map[string]string{
+								"a1": "true",
+								"a2": "false",
+							},
+						},
+						{
+							AccessRestriction: gardencorev1beta1.AccessRestriction{
+								Name: "b",
+							},
+							Options: map[string]string{
+								"b1": "false",
+								"b2": "true",
 							},
 						},
 					},
@@ -93,19 +103,20 @@ var _ = Describe("AccessRestriction", func() {
 		})
 
 		It("should match no access restriction", func() {
-			matchLabels := shoot.Spec.SeedSelector.MatchLabels
-			matchLabels["a"] = "false"
-			matchLabels["b"] = "true"
+			shoot.Spec.AccessRestrictions[0].Name = "c"
+			shoot.Spec.AccessRestrictions[1].Name = "d"
 			messages := ac.CheckAccessRestrictions(accessRestrictions, shoot)
 			Expect(messages).To(HaveLen(0))
 		})
 
 		It("should match all access restriction but no options", func() {
-			annotations := shoot.Annotations
-			annotations["a1"] = "0"
-			annotations["a2"] = "1"
-			annotations["b1"] = "TRUE"
-			annotations["b2"] = "Faux"
+			optionsA := shoot.Spec.AccessRestrictions[0].Options
+			optionsA["a1"] = "0"
+			optionsA["a2"] = "1"
+
+			optionsB := shoot.Spec.AccessRestrictions[1].Options
+			optionsB["b1"] = "TRUE"
+			optionsB["b2"] = "Faux"
 			messages := ac.CheckAccessRestrictions(accessRestrictions, shoot)
 			Expect(messages).To(HaveLen(2))
 			Expect(messages).To(Equal(ac.AccessRestrictionMessages{
@@ -115,7 +126,7 @@ var _ = Describe("AccessRestriction", func() {
 		})
 
 		It("should not return messages if seed selector is nil", func() {
-			shoot.Spec.SeedSelector = nil
+			shoot.Spec.AccessRestrictions = nil
 			messages := ac.CheckAccessRestrictions(accessRestrictions, shoot)
 			Expect(messages).To(HaveLen(0))
 		})
