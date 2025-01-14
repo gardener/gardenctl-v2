@@ -376,20 +376,15 @@ shoot:
 					o.CurrentTarget = t
 					o.Garden.AccessRestrictions = []ac.AccessRestriction{
 						{
-							Key:      "a",
-							NotifyIf: true,
-							Msg:      "A",
+							Key: "a",
+							Msg: "A",
 						},
 					}
 
-					shoot.ObjectMeta.Annotations = map[string]string{
-						"a1": "true",
-					}
-					shoot.Spec.SeedSelector = &gardencorev1beta1.SeedSelector{
-						LabelSelector: metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								"a": "true",
-							},
+					shoot.Spec.AccessRestrictions = []gardencorev1beta1.AccessRestrictionWithOptions{
+						{
+							AccessRestriction: gardencorev1beta1.AccessRestriction{Name: "a"},
+							Options:           map[string]string{"a1": "true"},
 						},
 					}
 

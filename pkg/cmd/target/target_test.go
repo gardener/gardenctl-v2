@@ -60,7 +60,7 @@ var _ = Describe("Target Command", func() {
 				Patterns: []string{
 					"^shoot--(?P<project>.+)--(?P<shoot>.+)$",
 				},
-				AccessRestrictions: []ac.AccessRestriction{{Key: "a", NotifyIf: true, Msg: "Access strictly prohibited"}},
+				AccessRestrictions: []ac.AccessRestriction{{Key: "a", Msg: "Access strictly prohibited"}},
 			}, {
 				Name:       "another-garden",
 				Kubeconfig: gardenKubeconfig,
@@ -217,9 +217,11 @@ var _ = Describe("Target Command", func() {
 
 		Context("when the shoot has access restrictions", func() {
 			BeforeEach(func() {
-				shoot.Spec.SeedSelector = &gardencorev1beta1.SeedSelector{
-					LabelSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{"a": "true"},
+				shoot.Spec.AccessRestrictions = []gardencorev1beta1.AccessRestrictionWithOptions{
+					{
+						AccessRestriction: gardencorev1beta1.AccessRestriction{
+							Name: "a",
+						},
 					},
 				}
 				gardenClient = internalfake.NewClientWithObjects(project, shoot)

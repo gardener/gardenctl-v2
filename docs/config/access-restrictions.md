@@ -4,31 +4,26 @@ Gardenctl can be configured with access restrictions.
 
 <img width="800" src="../images/access-restrictions.svg">
 
-When a user accesses a cluster with access restrictions a notification is shown. The user is prompted to
-confirm access with `Yes` or he can cancel the action with `No`.
+When a user accesses a cluster with access restrictions, a notification is shown. The user is prompted to
+confirm access with `Yes` or to cancel the action with `No`.
 
-Access restrictions are shown for clusters where the property `spec.seedSelector.matchLabels[key]` is set 
-and access restrictions options are shown if the annotation `metadata.annotations[optionKey]` is set.
+Access restrictions are shown for clusters where the property `spec.accessRestrictions[].name` is set,
+and options for the access restrictions are shown when `spec.accessRestrictions[].options` is set.
 
 ```yaml
 apiVersion: core.gardener.cloud/v1beta1
 kind: Shoot
-metadata:
-  annotations:
-    support.gardener.cloud/eu-access-for-cluster-addons: "true"
-    support.gardener.cloud/eu-access-for-cluster-nodes: "true"
-  ...
 spec:
-  seedSelector:
-    matchLabels:
-      seed.gardener.cloud/eu-access: "true"
+  accessRestrictions:
+  - name: eu-access-only
+    options:
+      support.gardener.cloud/eu-access-for-cluster-nodes: 'true'
 ```
 
 **Configuration**
 
-In order for `gardenctl` to display access restrictions, they must be configured as described below.
-Access restrictions must be configured separately for each garden. 
-The configuration structure is identical to the structure from gardenctl v1.
+For `gardenctl` to display access restrictions, they must be configured as described below.
+Access restrictions must be configured separately for each garden.
 
 
 ```yaml
@@ -37,8 +32,7 @@ gardens:
 - identity: my-landscape-live
   kubeconfig: /path/to/live/kubeconfig
   accessRestrictions:
-  - key: seed.gardener.cloud/eu-access
-    notifyIf: true
+  - key: eu-access-only
     msg: |-
       Do not migrate the cluster to a data center outside the 
       EEA or Switzerland without the customer's prior written 

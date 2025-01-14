@@ -22,8 +22,6 @@ import (
 type AccessRestriction struct {
 	// Key is the identifier of an access restriction
 	Key string `json:"key,omitempty"`
-	// NotifyIf controls which value the annotation must have for a notification to be sent
-	NotifyIf bool `json:"notifyIf,omitempty"`
 	// Msg is the notification text that is sent
 	Msg string `json:"msg,omitempty"`
 	// Options is a list of access restriction options
@@ -100,27 +98,43 @@ func (m *AccessRestrictionMessage) messageWidth() int {
 	return width
 }
 
-func (accessRestriction *AccessRestriction) checkAccessRestriction(matchLabels, annotations map[string]string) *AccessRestrictionMessage {
+func (ar *AccessRestriction) checkAccessRestriction(all []gardencorev1beta1.AccessRestrictionWithOptions) *AccessRestrictionMessage {
 	matches := func(m map[string]string, key string, val bool) bool {
-		if strVal, ok := m[key]; ok {
-			if boolVal, err := strconv.ParseBool(strVal); err == nil {
-				return boolVal == val
-			}
+		rawVal, ok := m[key]
+		if !ok {
+			return false
 		}
 
-		return false
+		boolVal, err := strconv.ParseBool(rawVal)
+		if err != nil {
+			// If parsing fails, skip it
+			return false
+		}
+
+		return boolVal == val
 	}
 
-	if !matches(matchLabels, accessRestriction.Key, accessRestriction.NotifyIf) {
+	effectiveKey := mapLegacyKey(ar.Key)
+
+	var match *gardencorev1beta1.AccessRestrictionWithOptions
+
+	for _, item := range all {
+		if item.Name == effectiveKey {
+			match = &item
+			break // only one match is possible, so we can break early
+		}
+	}
+
+	if match == nil {
 		return nil
 	}
 
 	message := &AccessRestrictionMessage{
-		Header: accessRestriction.Msg,
+		Header: ar.Msg,
 	}
 
-	for _, option := range accessRestriction.Options {
-		if matches(annotations, option.Key, option.NotifyIf) {
+	for _, option := range ar.Options {
+		if matches(match.Options, option.Key, option.NotifyIf) {
 			message.Items = append(message.Items, option.Msg)
 		}
 	}
@@ -128,18 +142,23 @@ func (accessRestriction *AccessRestriction) checkAccessRestriction(matchLabels, 
 	return message
 }
 
+// mapLegacyKey maps the legacy seed.gardener.cloud/eu-access access restriction key to the new one, if applicable.
+func mapLegacyKey(key string) string {
+	if key == "seed.gardener.cloud/eu-access" {
+		return "eu-access-only"
+	}
+
+	return key
+}
+
 // CheckAccessRestrictions returns a list of access restriction messages for a given shoot cluster.
 func CheckAccessRestrictions(accessRestrictions []AccessRestriction, shoot *gardencorev1beta1.Shoot) (messages AccessRestrictionMessages) {
-	seedSelector := shoot.Spec.SeedSelector
-	if seedSelector == nil || seedSelector.MatchLabels == nil {
+	if len(shoot.Spec.AccessRestrictions) == 0 {
 		return
 	}
 
-	matchLabels := seedSelector.MatchLabels
-	annotations := shoot.GetAnnotations()
-
 	for _, accessRestriction := range accessRestrictions {
-		if message := accessRestriction.checkAccessRestriction(matchLabels, annotations); message != nil {
+		if message := accessRestriction.checkAccessRestriction(shoot.Spec.AccessRestrictions); message != nil {
 			messages = append(messages, message)
 		}
 	}
