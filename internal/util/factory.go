@@ -101,7 +101,16 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 		return nil, err
 	}
 
-	sessionDirectory := filepath.Join(f.GardenTempDir(), "sessions", sid)
+	sessionsDirectory := filepath.Join(f.GardenTempDir(), "sessions")
+
+	err = os.MkdirAll(sessionsDirectory, 0o700)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create sessions directory: %w", err)
+	}
+
+	sessionDirectory := filepath.Join(sessionsDirectory, sid)
+	// Do not create sessionDirectory (if it does not exist) before the migration.
+	// Creating it prematurely will cause the migration (moving the folder) to fail.
 
 	// Migration logic
 	oldSessionDirectory := filepath.Join(os.TempDir(), "garden", sid)
