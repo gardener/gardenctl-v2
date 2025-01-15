@@ -5,6 +5,7 @@ SPDX-PackageDownloadLocation = "https://github.com/gardener/gardenctl-v2"
 
 [[annotations]]
 path = [
+  "REUSE.toml",
   ".ci/**",
   ".github/**",
   "docs/**",
