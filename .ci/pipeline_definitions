@@ -48,6 +48,7 @@ gardenctl-v2:
             artefact_extra_id:
               os: linux
               architecture: amd64
+            upload_as_github_asset: false
           - type: build-step-file
             mode: single-file
             step_name: build
@@ -58,6 +59,7 @@ gardenctl-v2:
             artefact_extra_id:
               os: linux
               architecture: arm64
+            upload_as_github_asset: false
           - type: build-step-file
             mode: single-file
             step_name: build
@@ -68,6 +70,7 @@ gardenctl-v2:
             artefact_extra_id:
               os: darwin
               architecture: amd64
+            upload_as_github_asset: false
           - type: build-step-file
             mode: single-file
             step_name: build
@@ -78,6 +81,7 @@ gardenctl-v2:
             artefact_extra_id:
               os: darwin
               architecture: arm64
+            upload_as_github_asset: false
           - type: build-step-file
             mode: single-file
             step_name: build
@@ -88,6 +92,7 @@ gardenctl-v2:
             artefact_extra_id:
               os: windows
               architecture: amd64
+            upload_as_github_asset: false
           - type: build-step-log
             step_name: verify
             purposes:
