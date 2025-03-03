@@ -1,8 +1,6 @@
-# options for analysis running
 run:
   timeout: 2m
-  skip-files:
-    - "zz_generated.*"
+
 linters:
   enable:
     - gocritic
@@ -28,3 +26,7 @@ linters-settings:
           - allowedPackages:
             - "github.com/onsi/ginkgo/v2"
             - "github.com/onsi/gomega"
+
+issues:
+  exclude-files:
+    - "zz_generated\\..*\\.go$"
