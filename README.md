@@ -89,7 +89,7 @@ gardens:
 ```
 
 > [!NOTE]  
-> - To use the kubeconfigs for **shoot clusters** provided by gardenctl, you need to have [gardenlogin](https://github.com/gardener/gardenlogin) installed as a `kubectl` auth plugin.
+> - To use the kubeconfigs for **shoot clusters** provided by `gardenctl`, you need to have [gardenlogin](https://github.com/gardener/gardenlogin) installed as a `kubectl` auth plugin.
 > - If your **garden cluster** kubeconfig uses OIDC authentication, ensure that you have the [kubelogin](https://github.com/int128/kubelogin) `kubectl` auth plugin installed.
 
 ### Config Path Overwrite
