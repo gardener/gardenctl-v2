@@ -88,7 +88,9 @@ gardens:
 # patterns: ~ # List of regex patterns for pattern targeting
 ```
 
-Note: You need to have [gardenlogin](https://github.com/gardener/gardenlogin) installed as `kubectl` plugin in order to use the `kubeconfig`s for `Shoot` clusters provided by `gardenctl`.
+> [!NOTE]  
+> - To use the kubeconfigs for **shoot clusters** provided by `gardenctl`, you need to have [gardenlogin](https://github.com/gardener/gardenlogin) installed as a `kubectl` auth plugin.
+> - If your **garden cluster** kubeconfig uses OIDC authentication, ensure that you have the [kubelogin](https://github.com/int128/kubelogin) `kubectl` auth plugin installed.
 
 ### Config Path Overwrite
 
