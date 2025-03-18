@@ -20,7 +20,7 @@ jobs:
           make build
           echo "latest_release_filtered_tag=${GITHUB_REF##*/}" >> $GITHUB_ENV
       - name: Upload binaries to release
-        uses: AButler/upload-release-assets@c94805dc72e4b20745f543da0f62eaee7722df7a # v2.0.2
+        uses: AButler/upload-release-assets@45be2facf3acc71812c1c17b4cefef5f6e8cac8a # v3.0.1
         with:
           files: 'bin/darwin-amd64/gardenctl_v2_darwin_amd64;bin/darwin-arm64/gardenctl_v2_darwin_arm64;bin/linux-amd64/gardenctl_v2_linux_amd64;bin/linux-arm64/gardenctl_v2_linux_arm64;bin/windows-amd64/gardenctl_v2_windows_amd64.exe'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
