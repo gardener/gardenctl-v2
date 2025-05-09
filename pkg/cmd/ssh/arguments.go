@@ -111,7 +111,7 @@ func sshProxyCmdArguments(
 ) arguments {
 	args := []argument{
 		{value: "ssh", shellEscapeDisabled: true},
-		{value: "-W%h:%p", shellEscapeDisabled: true},
+		{value: "-W[%h]:%p"},
 		{value: fmt.Sprintf("-oStrictHostKeyChecking=%s", bastionStrictHostKeyChecking), shellEscapeDisabled: true},
 	}
 

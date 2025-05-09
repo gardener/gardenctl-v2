@@ -426,7 +426,7 @@ var _ = Describe("SSH Command", func() {
 					fmt.Sprintf("-oUserKnownHostsFile='%s'", defaultNodeKnownHostsFile),
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'%s'\"'\"'' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'%s'\"'\"'' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
 						defaultBastionKnownHostsFile,
 						ssh.SSHBastionUsername,
@@ -495,7 +495,7 @@ var _ = Describe("SSH Command", func() {
 					fmt.Sprintf("-oUserKnownHostsFile='%s'", defaultNodeKnownHostsFile),
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'%s'\"'\"'' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'%s'\"'\"'' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
 						defaultBastionKnownHostsFile,
 						ssh.SSHBastionUsername,
@@ -753,7 +753,7 @@ var _ = Describe("SSH Command", func() {
 					"-oUserKnownHostsFile='/custom/node/known_hosts'",
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh -W%%h:%%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'/custom/bastion/known_hosts'\"'\"'' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'/custom/bastion/known_hosts'\"'\"'' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
 						ssh.SSHBastionUsername,
 						bastionIP,
