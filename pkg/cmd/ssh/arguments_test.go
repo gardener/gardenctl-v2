@@ -70,7 +70,7 @@ var _ = Describe("Arguments", func() {
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
 					"'-ipath/to/node/private/key'",
-					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
+					`'-oProxyCommand=ssh '"'"'-W[%h]:%p'"'"' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
 					"'gardener@node.example.com'",
 				}
 				return tc
@@ -82,7 +82,7 @@ var _ = Describe("Arguments", func() {
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
 					"'-ipath/to/node/private/key'",
-					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
+					`'-oProxyCommand=ssh '"'"'-W[%h]:%p'"'"' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
 					"'aaa@node.example.com'",
 				}
 				return tc
@@ -94,7 +94,7 @@ var _ = Describe("Arguments", func() {
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
 					"'-ipath/to/node/private/key'",
-					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"''`,
+					`'-oProxyCommand=ssh '"'"'-W[%h]:%p'"'"' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"''`,
 					"'gardener@node.example.com'",
 				}
 				return tc
@@ -110,7 +110,7 @@ var _ = Describe("Arguments", func() {
 					"-oStrictHostKeyChecking=yes",
 					`'-oUserKnownHostsFile='"'"'path/to/node_known_hosts'"'"''`,
 					"'-ipath/to/node/private/key'",
-					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'-oUserKnownHostsFile='"'"'"'"'"'"'"'"'path/to/known_hosts1'"'"'"'"'"'"'"'"' '"'"'"'"'"'"'"'"'path/to/known_hosts2'"'"'"'"'"'"'"'"''"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
+					`'-oProxyCommand=ssh '"'"'-W[%h]:%p'"'"' -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'-oUserKnownHostsFile='"'"'"'"'"'"'"'"'path/to/known_hosts1'"'"'"'"'"'"'"'"' '"'"'"'"'"'"'"'"'path/to/known_hosts2'"'"'"'"'"'"'"'"''"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
 					"'gardener@node.example.com'",
 				}
 				return tc
@@ -122,7 +122,7 @@ var _ = Describe("Arguments", func() {
 				tc.expectedArgs = []string{
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
-					`'-oProxyCommand=ssh -W%h:%p -oStrictHostKeyChecking=ask '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
+					`'-oProxyCommand=ssh '"'"'-W[%h]:%p'"'"' -oStrictHostKeyChecking=ask '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
 					"'gardener@node.example.com'",
 				}
 				return tc
