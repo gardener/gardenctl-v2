@@ -1,4 +1,4 @@
-export GOOGLE_CREDENTIALS='{"client_email":"test@example.org","project_id":"test"}';
+export GOOGLE_CREDENTIALS='{"client_email":"test@example.org","project_id":"test","type":"service_account"}';
 export GOOGLE_CREDENTIALS_ACCOUNT='test@example.org';
 export CLOUDSDK_CORE_PROJECT='test';
 export CLOUDSDK_COMPUTE_REGION='europe';

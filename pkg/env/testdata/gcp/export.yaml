@@ -7,5 +7,6 @@ configDir: %s
 credentials:
   client_email: test@example.org
   project_id: test
+  type: service_account
 region: europe
-serviceaccount.json: '{"client_email":"test@example.org","project_id":"test"}'
+serviceaccount.json: '{"client_email":"test@example.org","project_id":"test","type":"service_account"}'
