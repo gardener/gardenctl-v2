@@ -282,7 +282,7 @@ func generateData(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Sec
 	case "gcp":
 		credentials := make(map[string]interface{})
 
-		serviceaccountJSON, err := parseGCPCredentials(secret, &credentials)
+		serviceaccountJSON, err := parseGCPCredentials(secret, credentials)
 		if err != nil {
 			return nil, err
 		}
@@ -385,14 +385,18 @@ func getKeyStoneURL(cloudProfile *clientgarden.CloudProfileUnion, region string)
 	return "", fmt.Errorf("cannot find keystone URL for region %q in cloudprofile %q", region, cloudProfile.GetObjectMeta().Name)
 }
 
-func parseGCPCredentials(secret *corev1.Secret, credentials interface{}) ([]byte, error) {
+func parseGCPCredentials(secret *corev1.Secret, credentials map[string]interface{}) ([]byte, error) {
 	data := secret.Data["serviceaccount.json"]
 	if data == nil {
 		return nil, fmt.Errorf("no \"serviceaccount.json\" data in Secret %q", secret.Name)
 	}
 
-	if err := json.Unmarshal(data, credentials); err != nil {
+	if err := json.Unmarshal(data, &credentials); err != nil {
 		return nil, err
+	}
+
+	if typ, ok := credentials["type"].(string); !ok || typ != "service_account" {
+		return nil, fmt.Errorf("invalid credentials: expected type \"service_account\"")
 	}
 
 	return json.Marshal(credentials)

@@ -9,7 +9,7 @@
   "clientSecret": "client-secret",
   "configDir": "%s",
   "region": "europe",
-  "serviceaccount.json": "{\n  \"project_id\": \"test\",\n  \"client_email\": \"test@example.org\"\n}",
+  "serviceaccount.json": "{\n  \"type\": \"service_account\",\n  \"project_id\": \"test\",\n  \"client_email\": \"test@example.org\"\n}\n",
   "subscriptionID": "subscription-id",
   "tenantID": "tenant-id",
   "testToken": "token"

@@ -784,23 +784,31 @@ var _ = Describe("Env Commands - Options", func() {
 		})
 
 		It("should succeed for all valid shells", func() {
-			data, err := providerenv.ParseGCPCredentials(secret, &credentials)
+			data, err := providerenv.ParseGCPCredentials(secret, credentials)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string(data)).To(Equal("{\"client_email\":\"test@example.org\",\"project_id\":\"test\"}"))
+			Expect(string(data)).To(Equal("{\"client_email\":\"test@example.org\",\"project_id\":\"test\",\"type\":\"service_account\"}"))
 			Expect(credentials).To(HaveKeyWithValue("project_id", "test"))
 			Expect(credentials).To(HaveKeyWithValue("client_email", "test@example.org"))
+			Expect(credentials).To(HaveKeyWithValue("type", "service_account"))
 		})
 
 		It("should fail with invalid secret", func() {
 			secret.Data["serviceaccount.json"] = nil
-			_, err := providerenv.ParseGCPCredentials(secret, &credentials)
+			_, err := providerenv.ParseGCPCredentials(secret, credentials)
 			Expect(err).To(MatchError(fmt.Sprintf("no \"serviceaccount.json\" data in Secret %q", secretName)))
 		})
 
 		It("should fail with invalid json", func() {
 			secret.Data["serviceaccount.json"] = []byte("{")
-			_, err := providerenv.ParseGCPCredentials(secret, &credentials)
+			_, err := providerenv.ParseGCPCredentials(secret, credentials)
 			Expect(err).To(MatchError("unexpected end of JSON input"))
+		})
+
+		It("should fail when type is missing", func() {
+			incompleteJSON := `{"client_email":"test@example.org","project_id":"test"}`
+			secret.Data["serviceaccount.json"] = []byte(incompleteJSON)
+			_, err := providerenv.ParseGCPCredentials(secret, credentials)
+			Expect(err).To(MatchError("invalid credentials: expected type \"service_account\""))
 		})
 	})
 

@@ -14,7 +14,7 @@
   "domainName": "domain",
   "password": "secret",
   "region": "europe",
-  "serviceaccount.json": "{\n  \"project_id\": \"test\",\n  \"client_email\": \"test@example.org\"\n}",
+  "serviceaccount.json": "{\n  \"type\": \"service_account\",\n  \"project_id\": \"test\",\n  \"client_email\": \"test@example.org\"\n}\n",
   "tenantName": "tenant",
   "testToken": "token",
   "username": "user"
