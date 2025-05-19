@@ -365,7 +365,8 @@ var _ = Describe("Client", func() {
 				Client: fake.NewClientWithObjects(),
 				createInterceptor: func(ctx context.Context, object client.Object, option ...client.CreateOption) error {
 					if tr, ok := object.(*authenticationv1.TokenReview); ok { // patch the TokenReview
-						tr.ObjectMeta.Name = "foo" // must be set or else the fake client will error because no name was provided
+
+						tr.Name = "foo" // must be set or else the fake client will error because no name was provided
 						tr.Status.Authenticated = true
 						tr.Status.User = authenticationv1.UserInfo{
 							Username: user,
