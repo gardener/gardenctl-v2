@@ -1,5 +1,10 @@
 name: gardenctl-updater
 
+permissions:
+  contents: write
+  actions: read
+  repository-projects: write
+
 on:
   release:
     types:
