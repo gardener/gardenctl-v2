@@ -1,4 +1,6 @@
 version: "2"
+run:
+  concurrency: 4
 linters:
   enable:
     - gocritic
