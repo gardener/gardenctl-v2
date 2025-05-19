@@ -152,7 +152,7 @@ func (o *options) Complete(f util.Factory, _ *cobra.Command, _ []string) error {
 
 // Validate validates the provided command options.
 func (o *options) Validate() error {
-	if o.Options.Output == "" {
+	if o.Output == "" {
 		return errors.New("output must be 'yaml' or 'json'")
 	}
 

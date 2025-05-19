@@ -102,7 +102,7 @@ var _ = Describe("Resolve Command - Options", func() {
 	Describe("Validate", func() {
 		BeforeEach(func() {
 			o = resolve.NewOptions(resolve.KindGarden)
-			o.Options.Output = "yaml"
+			o.Output = "yaml"
 		})
 
 		It("should succeed", func() {
@@ -110,7 +110,7 @@ var _ = Describe("Resolve Command - Options", func() {
 		})
 
 		It("should fail if output is not set", func() {
-			o.Options.Output = ""
+			o.Output = ""
 
 			Expect(o.Validate()).To(MatchError("output must be 'yaml' or 'json'"))
 		})
@@ -199,7 +199,7 @@ var _ = Describe("Resolve Command - Options", func() {
 			o = resolve.NewOptions(kind)
 			o.Garden = &garden
 			o.GardenClient = gardenClient
-			o.Options.Output = "yaml"
+			o.Output = "yaml"
 		})
 
 		Context("Resolve Garden", func() {

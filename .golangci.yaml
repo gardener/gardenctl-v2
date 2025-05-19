@@ -1,32 +1,55 @@
+version: "2"
 run:
-  timeout: 2m
-
+  concurrency: 4
 linters:
   enable:
     - gocritic
     - godot
-    - gofumpt
-    - goimports
     - misspell
     - nolintlint
     - predeclared
     - revive
-    - stylecheck
+    - staticcheck
     - unconvert
     - wastedassign
     - whitespace
     - wsl
-linters-settings:
-  goimports:
-    local-prefixes: github.com/gardener/gardenctl-v2
-  revive:
-    rules:
-      - name: dot-imports
-        arguments:
-          - allowedPackages:
-            - "github.com/onsi/ginkgo/v2"
-            - "github.com/onsi/gomega"
-
+  settings:
+    revive:
+      rules:
+        - name: dot-imports
+          arguments:
+            - allowedPackages:
+                - github.com/onsi/ginkgo/v2
+                - github.com/onsi/gomega
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - zz_generated\..*\.go$
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/gardener/gardenctl-v2
+  exclusions:
+    generated: lax
+    paths:
+      - zz_generated\..*\.go$
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-files:
-    - "zz_generated\\..*\\.go$"
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
