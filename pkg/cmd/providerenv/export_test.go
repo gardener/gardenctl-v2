@@ -20,10 +20,11 @@ import (
 )
 
 var (
-	ParseGCPCredentials = parseGCPCredentials
-	GetKeyStoneURL      = getKeyStoneURL
-	GetProviderCLI      = getProviderCLI
-	GetTargetFlags      = getTargetFlags
+	ValidateAndParseGCPServiceAccount = validateAndParseGCPServiceAccount
+	DefaultAllowedPatterns            = defaultAllowedPatterns
+	GetKeyStoneURL                    = getKeyStoneURL
+	GetProviderCLI                    = getProviderCLI
+	GetTargetFlags                    = getTargetFlags
 )
 
 type TestOptions struct {

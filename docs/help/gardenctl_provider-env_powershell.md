@@ -30,6 +30,7 @@ gardenctl provider-env powershell [flags]
       --control-plane                    target control plane of shoot, use together with shoot argument
   -f, --force                            Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.
       --garden string                    target the given garden cluster
+      --gcp-allowed-patterns strings     Additional allowed patterns for GCP service account fields, in the format 'field=value', e.g., 'universe_domain=googleapis.com'. These are merged with defaults and configuration.
       --log-backtrace-at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
       --log-dir string                   If non-empty, write log files in this directory (no effect when -logtostderr=true)
       --log-file string                  If non-empty, use this log file (no effect when -logtostderr=true)
