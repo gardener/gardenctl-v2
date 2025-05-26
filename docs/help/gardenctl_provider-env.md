@@ -27,6 +27,32 @@ for the respective provider in the "templates" folder of the gardenctl home dire
 Please refer to the templates of the already supported cloud providers which can be found
 here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
 
+For shoots of provider type gcp (Google cloud), certain fields in the service account credential configuration are validated against allowed patterns. Each allowed pattern is a string in the format "field_name=allowed_value", where "allowed_value" is the exact value that the field must match.
+
+The default allowed patterns are:
+- "universe_domain=googleapis.com"
+- "token_uri=https://accounts.google.com/o/oauth2/token"
+- "token_uri=https://oauth2.googleapis.com/token"
+- "auth_uri=https://accounts.google.com/o/oauth2/auth"
+- "auth_provider_x509_cert_url=https://www.googleapis.com/oauth2/v1/certs"
+- "client_x509_cert_url=https://www.googleapis.com/robot/v1/metadata/x509/{encoded_client_email}"
+
+For the "client_x509_cert_url" field, the "{encoded_client_email}" placeholder in the allowed value is replaced with the URL-encoded "client_email" from the credential configuration before comparison.
+
+You can extend these allowed patterns by:
+- Adding them to the gardenctl configuration file under the "provider.gcp.allowedPatterns" key as a list of strings. For example:
+
+
+    provider:
+      gcp:
+        allowedPatterns:
+        - universe_domain=example.com
+        - token_uri=https://example.com/token
+        - client_x509_cert_url=https://example.com/{encoded_client_email}
+
+- Using the "--gcp-allowed-patterns" command-line flag, providing additional patterns, e.g., --gcp-allowed-patterns "token_uri=https://example.com/token".
+
+
 ```
 gardenctl provider-env [flags]
 ```
@@ -34,16 +60,17 @@ gardenctl provider-env [flags]
 ### Options
 
 ```
-  -y, --confirm-access-restriction   Confirm any access restrictions. Set this flag only if you are completely aware of the access restrictions.
-      --control-plane                target control plane of shoot, use together with shoot argument
-  -f, --force                        Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.
-      --garden string                target the given garden cluster
-  -h, --help                         help for provider-env
-  -o, --output string                One of 'yaml' or 'json'.
-      --project string               target the given project
-      --seed string                  target the given seed cluster
-      --shoot string                 target the given shoot cluster
-  -u, --unset                        Generate the script to unset the cloud provider CLI environment variables and logout for 
+  -y, --confirm-access-restriction     Confirm any access restrictions. Set this flag only if you are completely aware of the access restrictions.
+      --control-plane                  target control plane of shoot, use together with shoot argument
+  -f, --force                          Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.
+      --garden string                  target the given garden cluster
+      --gcp-allowed-patterns strings   Additional allowed patterns for GCP service account fields, in the format 'field=value', e.g., 'universe_domain=googleapis.com'. These are merged with defaults and configuration.
+  -h, --help                           help for provider-env
+  -o, --output string                  One of 'yaml' or 'json'.
+      --project string                 target the given project
+      --seed string                    target the given seed cluster
+      --shoot string                   target the given shoot cluster
+  -u, --unset                          Generate the script to unset the cloud provider CLI environment variables and logout for 
 ```
 
 ### Options inherited from parent commands
