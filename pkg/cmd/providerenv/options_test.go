@@ -111,6 +111,7 @@ var _ = Describe("Env Commands - Options", func() {
 					factory.EXPECT().Manager().Return(manager, nil)
 					factory.EXPECT().TargetFlags().Return(tf)
 					manager.EXPECT().SessionDir().Return(sessionDir)
+					manager.EXPECT().Configuration().Return(cfg)
 					Expect(options.Template).To(BeNil())
 					Expect(options.Complete(factory, child, nil)).To(Succeed())
 					Expect(options.Shell).To(Equal(child.Name()))
@@ -140,6 +141,7 @@ var _ = Describe("Env Commands - Options", func() {
 					factory.EXPECT().Manager().Return(manager, nil)
 					factory.EXPECT().TargetFlags().Return(tf)
 					manager.EXPECT().SessionDir().Return(sessionDir)
+					manager.EXPECT().Configuration().Return(cfg)
 					Expect(options.Template).To(BeNil())
 					Expect(options.Complete(factory, child, nil)).To(Succeed())
 					Expect(options.Template).NotTo(BeNil())
@@ -549,7 +551,7 @@ var _ = Describe("Env Commands - Options", func() {
 				})
 
 				It("should fail to render the template with JSON parse error", func() {
-					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(MatchError("unexpected end of JSON input"))
+					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(MatchError(ContainSubstring("unexpected end of JSON input")))
 				})
 			})
 
@@ -760,55 +762,6 @@ var _ = Describe("Env Commands - Options", func() {
 					Expect(match[2]).To(Equal(fmt.Sprintf("# eval $(%s -u %s)", options.CmdPath, shell)))
 				})
 			})
-		})
-	})
-
-	Describe("parsing gcp credentials", func() {
-		var (
-			serviceaccountJSON = readTestFile("gcp/serviceaccount.json")
-			secretName         = "gcp"
-			secret             *corev1.Secret
-			credentials        map[string]interface{}
-		)
-
-		BeforeEach(func() {
-			secret = &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: secretName,
-				},
-				Data: map[string][]byte{
-					"serviceaccount.json": []byte(serviceaccountJSON),
-				},
-			}
-			credentials = make(map[string]interface{})
-		})
-
-		It("should succeed for all valid shells", func() {
-			data, err := providerenv.ParseGCPCredentials(secret, credentials)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(string(data)).To(Equal("{\"client_email\":\"test@example.org\",\"project_id\":\"test\",\"type\":\"service_account\"}"))
-			Expect(credentials).To(HaveKeyWithValue("project_id", "test"))
-			Expect(credentials).To(HaveKeyWithValue("client_email", "test@example.org"))
-			Expect(credentials).To(HaveKeyWithValue("type", "service_account"))
-		})
-
-		It("should fail with invalid secret", func() {
-			secret.Data["serviceaccount.json"] = nil
-			_, err := providerenv.ParseGCPCredentials(secret, credentials)
-			Expect(err).To(MatchError(fmt.Sprintf("no \"serviceaccount.json\" data in Secret %q", secretName)))
-		})
-
-		It("should fail with invalid json", func() {
-			secret.Data["serviceaccount.json"] = []byte("{")
-			_, err := providerenv.ParseGCPCredentials(secret, credentials)
-			Expect(err).To(MatchError("unexpected end of JSON input"))
-		})
-
-		It("should fail when type is missing", func() {
-			incompleteJSON := `{"client_email":"test@example.org","project_id":"test"}`
-			secret.Data["serviceaccount.json"] = []byte(incompleteJSON)
-			_, err := providerenv.ParseGCPCredentials(secret, credentials)
-			Expect(err).To(MatchError("invalid credentials: expected type \"service_account\""))
 		})
 	})
 
