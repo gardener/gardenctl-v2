@@ -3,6 +3,18 @@ __meta:
   commandPath: test-parent
   targetFlags: --garden test --project project --shoot shoot
   unset: false
+allowedPatterns:
+  auth_provider_x509_cert_url:
+  - https://www.googleapis.com/oauth2/v1/certs
+  auth_uri:
+  - https://accounts.google.com/o/oauth2/auth
+  client_x509_cert_url:
+  - https://www.googleapis.com/robot/v1/metadata/x509/{encoded_client_email}
+  token_uri:
+  - https://accounts.google.com/o/oauth2/token
+  - https://oauth2.googleapis.com/token
+  universe_domain:
+  - googleapis.com
 configDir: %s
 credentials:
   client_email: test@example.org
