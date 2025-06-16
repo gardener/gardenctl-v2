@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package providerenv
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -55,6 +54,12 @@ type options struct {
 	// ConfirmAccessRestriction, when set to true, implies the user's understanding of the access restrictions for the targeted shoot.
 	// When set to false and access restrictions are present, the command will terminate with an error.
 	ConfirmAccessRestriction bool
+	// GCPAllowedPatterns is a list of allowed patterns for GCP service account fields.
+	// Each entry is a key-value pair where the key matches a credential config field
+	// (e.g., "universe_domain=googleapis.com", "token_uri=https://oauth2.googleapis.com/token").
+	GCPAllowedPatterns []string
+	// MergedGCPAllowedPatterns is the merged allowed patterns for GCP from defaults, config, and flags.
+	MergedGCPAllowedPatterns map[string][]string
 }
 
 // Complete adapts from the command line args to the data required.
@@ -85,6 +90,38 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error
 		logger.Info("The --force flag is deprecated and will be removed in a future gardenctl version. Please use the --confirm-access-restriction flag instead.")
 	}
 
+	defaultMap := defaultAllowedPatterns()
+
+	var configPatterns []string
+	if cfg := manager.Configuration(); cfg != nil && cfg.Provider != nil && cfg.Provider.GCP != nil {
+		configPatterns = cfg.Provider.GCP.AllowedPatterns
+	}
+
+	configMap, err := parseAllowedPatterns(configPatterns)
+	if err != nil {
+		return fmt.Errorf("failed to parse config allowed patterns: %w", err)
+	}
+
+	flagMap, err := parseAllowedPatterns(o.GCPAllowedPatterns)
+	if err != nil {
+		return fmt.Errorf("failed to parse flag allowed patterns: %w", err)
+	}
+
+	mergedMap := make(map[string][]string)
+	for field, values := range defaultMap {
+		mergedMap[field] = append(mergedMap[field], values...)
+	}
+
+	for field, values := range configMap {
+		mergedMap[field] = append(mergedMap[field], values...)
+	}
+
+	for field, values := range flagMap {
+		mergedMap[field] = append(mergedMap[field], values...)
+	}
+
+	o.MergedGCPAllowedPatterns = mergedMap
+
 	return nil
 }
 
@@ -110,6 +147,7 @@ func (o *options) AddFlags(flags *pflag.FlagSet) {
 	flags.BoolVarP(&o.Force, "force", "f", false, "Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.")
 	flags.BoolVarP(&o.ConfirmAccessRestriction, "confirm-access-restriction", "y", o.ConfirmAccessRestriction, "Confirm any access restrictions. Set this flag only if you are completely aware of the access restrictions.")
 	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, fmt.Sprintf("Generate the script to unset the cloud provider CLI environment variables and logout for %s", o.Shell))
+	flags.StringSliceVar(&o.GCPAllowedPatterns, "gcp-allowed-patterns", nil, "Additional allowed patterns for GCP service account fields, in the format 'field=value', e.g., 'universe_domain=googleapis.com'. These are merged with defaults and configuration.")
 }
 
 // Run does the actual work of the command.
@@ -282,7 +320,7 @@ func generateData(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Sec
 	case "gcp":
 		credentials := make(map[string]interface{})
 
-		serviceaccountJSON, err := parseGCPCredentials(secret, credentials)
+		serviceaccountJSON, err := validateAndParseGCPServiceAccount(secret, &credentials, o.MergedGCPAllowedPatterns)
 		if err != nil {
 			return nil, err
 		}
@@ -298,6 +336,7 @@ func generateData(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Sec
 
 		data["credentials"] = credentials
 		data["serviceaccount.json"] = string(serviceaccountJSON)
+		data["allowedPatterns"] = o.MergedGCPAllowedPatterns
 	case "openstack":
 		authURL, err := getKeyStoneURL(cloudProfile, shoot.Spec.Region)
 		if err != nil {
@@ -383,23 +422,6 @@ func getKeyStoneURL(cloudProfile *clientgarden.CloudProfileUnion, region string)
 	}
 
 	return "", fmt.Errorf("cannot find keystone URL for region %q in cloudprofile %q", region, cloudProfile.GetObjectMeta().Name)
-}
-
-func parseGCPCredentials(secret *corev1.Secret, credentials map[string]interface{}) ([]byte, error) {
-	data := secret.Data["serviceaccount.json"]
-	if data == nil {
-		return nil, fmt.Errorf("no \"serviceaccount.json\" data in Secret %q", secret.Name)
-	}
-
-	if err := json.Unmarshal(data, &credentials); err != nil {
-		return nil, err
-	}
-
-	if typ, ok := credentials["type"].(string); !ok || typ != "service_account" {
-		return nil, fmt.Errorf("invalid credentials: expected type \"service_account\"")
-	}
-
-	return json.Marshal(credentials)
 }
 
 func createProviderConfigDir(sessionDir string, providerType string) (string, error) {

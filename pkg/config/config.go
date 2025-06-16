@@ -31,6 +31,8 @@ type Config struct {
 	LinkKubeconfig *bool `json:"linkKubeconfig,omitempty"`
 	// Gardens is a list of known Garden clusters
 	Gardens []Garden `json:"gardens"`
+	// Provider holds provider-specific configuration
+	Provider *ProviderConfig `json:"provider,omitempty"`
 }
 
 // Garden represents one garden cluster.
@@ -53,6 +55,20 @@ type Garden struct {
 	// AccessRestrictions is a list of access restriction definitions
 	// +optional
 	AccessRestrictions []ac.AccessRestriction `json:"accessRestrictions,omitempty"`
+}
+
+// ProviderConfig represents provider-specific configuration options.
+type ProviderConfig struct {
+	// GCP configuration options
+	GCP *GCPConfig `json:"gcp,omitempty"`
+}
+
+// GCPConfig represents GCP-specific configuration options.
+type GCPConfig struct {
+	// AllowedPatterns is a list of allowed patterns for GCP service account fields.
+	// Each entry is a key-value pair where the key matches a credential config field
+	// (e.g., "universe_domain=googleapis.com", "token_uri=https://oauth2.googleapis.com/token").
+	AllowedPatterns []string `json:"allowedPatterns,omitempty"`
 }
 
 // LoadFromFile parses a gardenctl config file and returns a Config struct.
