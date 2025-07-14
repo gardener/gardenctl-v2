@@ -17,7 +17,7 @@ else
 fi
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-golangci_lint_version=v2.1.6
+golangci_lint_version=v2.2.2
 
 GOLANGCI_LINT_ADDITIONAL_FLAGS=${GOLANGCI_LINT_ADDITIONAL_FLAGS:-""}
 
