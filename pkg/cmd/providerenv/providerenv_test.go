@@ -122,7 +122,7 @@ var _ = Describe("Env Commands", func() {
 
 				manager.EXPECT().SessionDir().Return(sessionDir)
 				manager.EXPECT().CurrentTarget().Return(t, nil)
-				manager.EXPECT().Configuration().Return(cfg)
+				manager.EXPECT().Configuration().Return(cfg).AnyTimes()
 
 				factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
 
