@@ -117,8 +117,8 @@ github.com/gardener/gardener v1.122.1 h1:9AlhCeCqUuM0tEnjlXcUnKALer42UyvH9eL2Z1H
 github.com/gardener/gardener v1.122.1/go.mod h1:oIESvqvsZOOC3Ucp1dn9lLKrcGumi0yqNG+looikiyw=
 github.com/gardener/gardener-extension-provider-openstack v1.47.0 h1:g4AiLyNSLRZYYRKSfgHf5MUZY0xBe4v+o5toxcY8YDU=
 github.com/gardener/gardener-extension-provider-openstack v1.47.0/go.mod h1:7uT3jCkSoJbYyN2TTJ1B6/vWwrUVw+xXJCtDrv3i0aQ=
-github.com/gardener/machine-controller-manager v0.59.0 h1:tmFbxGCTmKfGujPyM1MzYtRWNu/STPQHZ3JEXymIIZ4=
-github.com/gardener/machine-controller-manager v0.59.0/go.mod h1:TCU/KoudCMt2eV0Jnrq2D1TwgsrBCuhIVgV3j1el6Og=
+github.com/gardener/machine-controller-manager v0.59.1 h1:oEamB/61TnEr6w+f+uJAB0frqXzA1aoBLvqFYsBFyfM=
+github.com/gardener/machine-controller-manager v0.59.1/go.mod h1:TCU/KoudCMt2eV0Jnrq2D1TwgsrBCuhIVgV3j1el6Og=
 github.com/ghodss/yaml v0.0.0-20150909031657-73d445a93680/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/go-errors/errors v1.4.2 h1:J6MZopCL4uSllY1OfXM374weqZFFItUbrImctkmUxIA=
 github.com/go-errors/errors v1.4.2/go.mod h1:sIVyrIiJhuEF+Pj9Ebtd6P/rEYROXFi3BopGUQ5a5Og=
