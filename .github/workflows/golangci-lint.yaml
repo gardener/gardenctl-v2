@@ -10,7 +10,7 @@ permissions:
   contents: read
 env:
   # renovate: datasource=github-releases depName=golangci/golangci-lint
-  GOLANG_CI_LINT_VERSION: v2.2.2
+  GOLANG_CI_LINT_VERSION: v2.3.0
 jobs:
   golangci:
     name: lint
