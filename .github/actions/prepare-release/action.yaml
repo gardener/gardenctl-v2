@@ -1,0 +1,15 @@
+name: Prepare Release
+
+inputs:
+  effective-version:
+    type: string
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: write-latest-version
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "${{ inputs.effective-version }}" > LATEST
