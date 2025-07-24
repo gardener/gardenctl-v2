@@ -6,14 +6,14 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/fatih/color v1.18.0
-	github.com/gardener/gardener v1.122.2
-	github.com/gardener/gardener-extension-provider-openstack v1.47.0
+	github.com/gardener/gardener v1.124.0
+	github.com/gardener/gardener-extension-provider-openstack v1.48.1
 	github.com/gardener/machine-controller-manager v0.59.2
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo/v2 v2.23.4
-	github.com/onsi/gomega v1.37.0
+	github.com/onsi/gomega v1.38.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.7
 	github.com/spf13/viper v1.20.1
