@@ -14,11 +14,11 @@ gardenctl-v2:
           prefix: ''
     steps:
       verify:
-        image: 'golang:1.24.5'
+        image: 'golang:1.24.6'
         vars:
           TEST_COV: '"yes"'
       build:
-        image: 'golang:1.24.5'
+        image: 'golang:1.24.6'
         output_dir: 'binary'
         timeout: '5m'
 
