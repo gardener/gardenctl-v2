@@ -8,7 +8,6 @@ on:
           - bump-minor
           - bump-patch
 
-
 jobs:
   build:
     uses: ./.github/workflows/build.yaml
@@ -64,3 +63,14 @@ jobs:
             name: gardenctl-v2
             os: windows
             architecture: amd64
+
+  publish-to-package-repositories:
+    permissions:
+      contents: write
+      actions: read
+    needs:
+      - release-to-github-and-bump
+    secrets: inherit
+    uses: ./.github/workflows/publish-to-package-repositories.yaml
+    with:
+      component-descriptor: ${{ needs.release-to-github-and-bump.outputs.component-descriptor }}
