@@ -75,7 +75,7 @@ jobs:
       - name: Get token for gardener-github-pkg-mngr app
         if: (github.event_name == 'release' && github.event.release.prerelease == false) || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false) 
         id: gardener-github-workflows
-        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e   # v2.0.6
+        uses: actions/create-github-app-token@0f859bf9e69e887678d5bbfbee594437cb440ffe   # v2.1.0
         with:
           app-id:      ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_ID }}
           private-key: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_PRIVATE_KEY }}
