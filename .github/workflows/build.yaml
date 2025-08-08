@@ -1,0 +1,144 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        required: true
+        type: string
+        default: snapshot
+        description: |
+          the mode to use. either `snapshot` or `release`. Will affect effective version, as well
+          as target-oci-registry.
+
+jobs:
+  prepare:
+    uses: gardener/cc-utils/.github/workflows/prepare.yaml@master
+    with:
+      mode: ${{ inputs.mode }}
+      version-commit-callback-action-path: ./.github/actions/prepare-release
+    permissions:
+      contents: read
+
+  build-gardenctl:
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        args:
+          - os: linux
+            arch: amd64
+            runner: ubuntu-latest
+          - os: linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+          - os: darwin
+            arch: amd64
+            runner: ubuntu-latest
+          - os: darwin
+            arch: arm64
+            runner: ubuntu-24.04-arm
+          - os: windows
+            arch: amd64
+            runner: ubuntu-latest
+    runs-on: ${{ matrix.args.runner }}
+    steps:
+      - uses: gardener/cc-utils/.github/actions/trusted-checkout@master
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: build-gardenctl-v2
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir /tmp/blobs.d
+
+          LD_FLAGS="$(hack/get-build-ld-flags.sh)" \
+          GOOS=${{ matrix.args.os }} \
+          GOARCH=${{ matrix.args.arch }} \
+          out_file="/tmp/blobs.d/gardenctl-v2-${{ matrix.args.os}}-${{ matrix.args.arch }}" \
+            hack/build.sh
+      - uses: gardener/cc-utils/.github/actions/export-ocm-fragments@master
+        with:
+          blobs-directory: /tmp/blobs.d
+          ocm-resources: |
+            name: gardenctl-v2
+            relation: local
+            type: executable
+            extraIdentity:
+              os: ${{ matrix.args.os }}
+              architecture: ${{ matrix.args.arch }}
+            access:
+              type: localBlob
+              localReference: >-
+                gardenctl-v2-${{ matrix.args.os }}-${{ matrix.args.arch }}
+
+  build-gardenctl-summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs:
+      - build-gardenctl
+    if: ${{ always() }} # always run, so we also have an error-status in case of errors
+    permissions: {}
+    steps:
+      - name: Fail if build-gardenctl failed
+        if: ${{ needs.build-gardenctl.result != 'success' }}
+        run: exit 1
+
+  verify-others:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      GOLANGCI_LINT_ADDITIONAL_FLAGS: --verbose --timeout 2m
+      GO_TEST_ADDITIONAL_FLAGS: -race
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - check-generate
+          - check-markdown
+          - lint
+          - go-test
+    steps:
+      - uses: gardener/cc-utils/.github/actions/trusted-checkout@master
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5  # v5.5.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: gardener/cc-utils/.github/actions/setup-git-identity@master
+        if: ${{ matrix.target == 'check-generate' }}
+
+      - shell: bash
+        run: |
+          set -eu
+          mkdir -p /tmp/blobs.d
+          make ${{ matrix.target }} |& tee /tmp/blobs.d/logs.txt
+          tar czf /tmp/blobs.d/logs.tar.gz -C/tmp/blobs.d logs.txt
+      - name: add-reports-to-component-descriptor
+        if: ${{ matrix.target == 'go-test' }}
+        uses: gardener/cc-utils/.github/actions/export-ocm-fragments@master
+        with:
+          blobs-directory: /tmp/blobs.d
+          ocm-resources: |
+            name: test-results
+            relation: local
+            access:
+              type: localBlob
+              localReference: logs.tar.gz
+            labels:
+              - name: gardener.cloud/purposes
+                value:
+                  - test
+
+  verify-sast:
+    uses: gardener/cc-utils/.github/workflows/sastlint-ocm.yaml@master
+    permissions:
+      contents: read
+    with:
+      linter: gosec
+      go-version-file: go.mod
+      run: |
+        set -eu
+        make sast-report

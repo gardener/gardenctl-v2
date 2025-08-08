@@ -10,17 +10,7 @@ set -e
 # MAIN_REPO_DIR - path to component repository root directory.
 # BINARY_PATH - path to an existing (empty) directory to place build results into.
 
-if [[ -z "${MAIN_REPO_DIR}" ]]; then
-  export MAIN_REPO_DIR="$(readlink -f $(dirname ${0})/..)"
-else
-  export MAIN_REPO_DIR="$(readlink -f "${MAIN_REPO_DIR}")"
-fi
-
-if [[ -z "${BINARY_PATH}" ]]; then
-  export BINARY_PATH="${MAIN_REPO_DIR}/bin"
-else
-  export BINARY_PATH="$(readlink -f "${BINARY_PATH}")"
-fi
+export MAIN_REPO_DIR="$(readlink -f ${BASH_SOURCE[0]}/..)"
 
 pushd "${MAIN_REPO_DIR}" > /dev/null
 
@@ -29,10 +19,11 @@ if [[ -z "${LD_FLAGS}" ]]; then
 fi
 ###############################################################################
 
-out_file="${BINARY_PATH}/${GOOS}-${GOARCH}/gardenctl_v2_${GOOS}_${GOARCH}"
-
-if [[ "${GOOS}" == "windows" ]]; then
-  out_file="${out_file}.exe"
+if [[ -z "${out_file:-}" ]]; then
+  out_file="${MAIN_REPO_DIR}/${GOOS}-${GOARCH}/gardenctl_v2_${GOOS}_${GOARCH}"
+  if [[ "${GOOS}" == "windows" ]]; then
+    out_file="${out_file}.exe"
+  fi
 fi
 
 echo "building for ${GOOS}-${GOARCH}: ${out_file}"
