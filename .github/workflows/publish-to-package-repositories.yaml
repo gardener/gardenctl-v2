@@ -1,0 +1,146 @@
+name: publish-to-package-repositories
+
+permissions:
+  contents: write
+  actions:  read
+
+on:
+  workflow_call:
+    inputs:
+      component-descriptor:
+        type: string
+        required: true
+        description: |
+          the OCM-Component-Descriptor from which to publish built artefacts
+
+  # Manual / ad‑hoc trigger
+  workflow_dispatch:
+    inputs:
+      version:
+        description:  |
+          Tag version tag for the release (e.g. v1.2.3).
+
+          Required if `component-descriptor`-input is not provided; ignored otherwise (
+          version is read from component-descriptor in this case).
+        required: false
+        type: string
+      component-descriptor:
+        description: |
+          The Component-Descriptor from which to read artefact-digests.
+          Hint: component-descriptor can be retrieve, for example:
+          - as (GitHub) release-asset from existing releases
+          - as GitHub-Actions-Artifact (also from non-release-builds)
+        type: string
+      dry_run:
+        description: "Dry run: disable external actions (no uploads/dispatches)"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  update_gardenctl_in_homebrew_tap_and_chocolatey_packages:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      # ───── GitHub‑App token (needed for repo‑dispatch) ──────────────────────
+      - name: Get token for gardener-github-pkg-mngr app
+        if: ${{ inputs.dry_run == false }}
+        id: gardener-github-workflows
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e   # v2.0.6
+        with:
+          app-id:      ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_ID }}
+          private-key: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_PRIVATE_KEY }}
+          owner:       ${{ github.repository_owner }}
+          repositories: |
+            homebrew-tap
+            chocolatey-packages
+
+      - uses: gardener/cc-utils/.github/actions/trusted-checkout@master
+      - name: export-version-from-input
+        if: ${{ inputs.version != '' && inputs.component-descriptor == '' }}
+        run: |
+          set -eu
+          echo "version=${{ inputs.version }}" >> ${GITHUB_ENV}
+      - name: Read-Digests
+        if: ${{ inputs.component-descriptor != '' }}
+        run: |
+          set -euo pipefail
+
+          cat <<"EOF" > /tmp/component-descriptor.yaml
+          ${{ inputs.component-descriptor }}
+          EOF
+
+          source .github/workflows/export-digests-from-component-descriptor.sh \
+            /tmp/component-descriptor.yaml
+
+          echo "DARWIN_SHA_AMD64=${DARWIN_SHA_AMD64}" >> "${GITHUB_ENV}"
+          echo "DARWIN_SHA_ARM64=${DARWIN_SHA_ARM64}" >> "${GITHUB_ENV}"
+          echo "LINUX_SHA_AMD64=${LINUX_SHA_AMD64}" >> "${GITHUB_ENV}"
+          echo "LINUX_SHA_ARM64=${LINUX_SHA_ARM64}" >> "${GITHUB_ENV}"
+          echo "WINDOWS_SHA=${WINDOWS_SHA}" >> "${GITHUB_ENV}"
+
+          version="$(cat /tmp/component-descriptor.yaml | \
+            yq '.component.version'
+          )"
+          echo "version=${version}" >> "${GITHUB_ENV}"
+
+      - name: Use dummy hashes (skip‑build)
+        if: github.event_name == 'workflow_dispatch' && inputs.skip_build == true
+        run: |
+          set -euo pipefail
+          dummy=dummySHA256sum
+          printf '%s\n' \
+            "DARWIN_SHA_AMD64=$dummy" \
+            "DARWIN_SHA_ARM64=$dummy" \
+            "LINUX_SHA_AMD64=$dummy"  \
+            "LINUX_SHA_ARM64=$dummy"  \
+            "WINDOWS_SHA=$dummy" >> "$GITHUB_ENV"
+
+      # ───── Homebrew tap dispatch ────────────────────────────────────────────
+      - name: Send update to ${{ github.repository_owner }}/homebrew-tap
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          set -euo pipefail
+          data=$(jq -n \
+            --arg component          "gardenctl-v2" \
+            --arg tag                "$version" \
+            --arg darwin_sha_amd64   "$DARWIN_SHA_AMD64" \
+            --arg darwin_sha_arm64   "$DARWIN_SHA_ARM64" \
+            --arg linux_sha_amd64    "$LINUX_SHA_AMD64" \
+            --arg linux_sha_arm64    "$LINUX_SHA_ARM64" \
+            '{event_type:"update",
+              client_payload:{
+                component:$component,
+                tag:$tag,
+                darwin_sha_amd64:$darwin_sha_amd64,
+                darwin_sha_arm64:$darwin_sha_arm64,
+                linux_sha_amd64:$linux_sha_amd64,
+                linux_sha_arm64:$linux_sha_arm64}}')
+          curl -X POST \
+            -H 'Accept: application/vnd.github.everest-preview+json' \
+            -H "Authorization: Bearer ${{ steps.gardener-github-workflows.outputs.token }}" \
+            -d "$data" \
+            "https://api.github.com/repos/${{ github.repository_owner }}/homebrew-tap/dispatches"
+
+      # ───── Chocolatey dispatch ──────────────────────────────────────────────
+      - name: Send update to ${{ github.repository_owner }}/chocolatey-packages
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          set -euo pipefail
+          data=$(jq -n \
+            --arg component   "gardenctl-v2" \
+            --arg tag         "$version" \
+            --arg windows_sha "$WINDOWS_SHA" \
+            '{event_type:"update",
+              client_payload:{
+                component:$component,
+                tag:$tag,
+                windows_sha:$windows_sha}}')
+          curl -X POST \
+            -H 'Accept: application/vnd.github.everest-preview+json' \
+            -H "Authorization: Bearer ${{ steps.gardener-github-workflows.outputs.token }}" \
+            -d "$data" \
+            "https://api.github.com/repos/${{ github.repository_owner }}/chocolatey-packages/dispatches"

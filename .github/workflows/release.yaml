@@ -1,0 +1,76 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      next-version:
+        type: choice
+        options:
+          - bump-minor
+          - bump-patch
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yaml
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+    with:
+      mode: release
+
+  release-to-github-and-bump:
+    uses: gardener/cc-utils/.github/workflows/release.yaml@master
+    needs:
+      - build
+    secrets: inherit
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+    with:
+      release-commit-target: branch
+      next-version: ${{ inputs.next-version }}
+      next-version-callback-action-path: ./.github/actions/prepare-release
+      slack-channel-id: C01BKP30K1U # #sap-tech-gardenctl
+      assets: |
+        - name: gardenctl_v2_darwin_amd64
+          type: ocm-resource
+          id:
+            name: gardenctl-v2
+            os: darwin
+            architecture: amd64
+        - name: gardenctl_v2_darwin_arm64
+          type: ocm-resource
+          id:
+            name: gardenctl-v2
+            os: darwin
+            architecture: arm64
+        - name: gardenctl_v2_linux_amd64
+          type: ocm-resource
+          id:
+            name: gardenctl-v2
+            os: linux
+            architecture: amd64
+        - name: gardenctl_v2_linux_arm64
+          type: ocm-resource
+          id:
+            name: gardenctl-v2
+            os: linux
+            architecture: arm64
+        - name: gardenctl_v2_windows_amd64
+          type: ocm-resource
+          id:
+            name: gardenctl-v2
+            os: windows
+            architecture: amd64
+
+  publish-to-package-repositories:
+    permissions:
+      contents: write
+      actions: read
+    needs:
+      - release-to-github-and-bump
+    secrets: inherit
+    uses: ./.github/workflows/publish-to-package-repositories.yaml
+    with:
+      component-descriptor: ${{ needs.release-to-github-and-bump.outputs.component-descriptor }}
