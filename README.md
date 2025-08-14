@@ -2,6 +2,7 @@
 
 ![](logo/logo_gardener_cli_large.png)
 
+[![CI Build status](https://github.com/gardener/gardenctl-v2/actions/workflows/non-release.yaml/badge.svg?branch=master)](https://github.com/gardener/gardenctl-v2/actions/workflows/non-release.yaml?query=branch%3Amaster)
 [![REUSE status](https://api.reuse.software/badge/github.com/gardener/gardenctl-v2)](https://api.reuse.software/info/github.com/gardener/gardenctl-v2)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gardener/gardenctl-v2)](https://goreportcard.com/report/github.com/gardener/gardenctl-v2)
 [![release](https://badge.fury.io/gh/gardener%2Fgardenctl-v2.svg)](https://badge.fury.io/gh/gardener%2Fgardenctl-v2)
