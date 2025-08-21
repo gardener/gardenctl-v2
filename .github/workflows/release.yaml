@@ -30,7 +30,6 @@ jobs:
     with:
       release-commit-target: branch
       next-version: ${{ inputs.next-version }}
-      next-version-callback-action-path: ./.github/actions/prepare-release
       slack-channel-id: C01BKP30K1U # #sap-tech-gardenctl
       assets: |
         - name: gardenctl_v2_darwin_amd64
@@ -57,7 +56,7 @@ jobs:
             name: gardenctl-v2
             os: linux
             architecture: arm64
-        - name: gardenctl_v2_windows_amd64
+        - name: gardenctl_v2_windows_amd64.exe
           type: ocm-resource
           id:
             name: gardenctl-v2
