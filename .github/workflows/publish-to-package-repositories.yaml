@@ -17,17 +17,17 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description:  |
-          Tag version tag for the release (e.g. v1.2.3).
+        required: false
+        type: string
+        description: |
+          The version tag for the release (e.g. v1.2.3).
 
           Required if `component-descriptor`-input is not provided; ignored otherwise (
           version is read from component-descriptor in this case).
-        required: false
-        type: string
       component-descriptor:
         description: |
-          The Component-Descriptor from which to read artefact-digests.
-          Hint: component-descriptor can be retrieve, for example:
+          The Component-Descriptor from which to read the artefact-digests
+          Hint: component-descriptor can be retrieved, for example:
           - as (GitHub) release-asset from existing releases
           - as GitHub-Actions-Artifact (also from non-release-builds)
         type: string
@@ -88,7 +88,7 @@ jobs:
           echo "version=${version}" >> "${GITHUB_ENV}"
 
       - name: Use dummy hashes (skip‑build)
-        if: github.event_name == 'workflow_dispatch' && inputs.skip_build == true
+        if: ${{ inputs.component-descriptor == '' }}
         run: |
           set -euo pipefail
           dummy=dummySHA256sum

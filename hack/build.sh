@@ -6,7 +6,6 @@
 
 set -e
 
-# For the build step concourse will set the following environment variables:
 # MAIN_REPO_DIR - path to component repository root directory.
 # BINARY_PATH - path to an existing (empty) directory to place build results into.
 

@@ -7,16 +7,12 @@
 set -o errexit
 set -o pipefail
 
-# For the verify step concourse will set the following environment variables:
-# MAIN_REPO_DIR - path to the main repository
-
-if [[ -z "${MAIN_REPO_DIR}" ]]; then
-  export MAIN_REPO_DIR="$(readlink -f "$(dirname ${0})/..")"
-else
-  export MAIN_REPO_DIR="$(readlink -f ${MAIN_REPO_DIR})"
+if [ -z "$SOURCE_PATH" ]; then
+  SOURCE_PATH="$(dirname "$0")/.."
 fi
+export SOURCE_PATH="$(readlink -f "$SOURCE_PATH")"
 
-pushd "${MAIN_REPO_DIR}" > /dev/null
+pushd "${SOURCE_PATH}" > /dev/null
 
 if [[ -z "$(git config --global user.email)" ]]; then
   echo "Setting global Git user.email to gardener@sap.com"
@@ -32,8 +28,9 @@ else
   echo "Global Git user.name is already set to $(git config --global user.name)"
 fi
 
-export GOLANGCI_LINT_ADDITIONAL_FLAGS="--verbose --timeout 2m"
-export GO_TEST_ADDITIONAL_FLAGS="-race"
+export GO_TEST_RACE=1
+export GOLANGCI_LINT_VERBOSE=1
+export GOLANGCI_LINT_TIMEOUT=5m
 
 if [ "${TEST_COV+yes}" = yes ] ; then
   # supposed to be run in release jobs

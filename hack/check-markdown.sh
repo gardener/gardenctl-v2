@@ -7,9 +7,6 @@
 set -o errexit
 set -o pipefail
 
-# For the verify step concourse will set the following environment variables:
-# MAIN_REPO_DIR - path to component repository root directory.
-
 if [[ -z "${MAIN_REPO_DIR}" ]]; then
   export MAIN_REPO_DIR="$(readlink -f "$(dirname ${0})/..")"
 else

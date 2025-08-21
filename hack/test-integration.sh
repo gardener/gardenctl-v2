@@ -7,16 +7,13 @@
 set -o errexit
 set -o pipefail
 
-# For the verify step concourse will set the following environment variables:
-# MAIN_REPO_DIR - path to component repository root directory.
-
-if [[ -z "${MAIN_REPO_DIR}" ]]; then
-  export MAIN_REPO_DIR="$(readlink -f "$(dirname ${0})/..")"
-else
-  export MAIN_REPO_DIR="$(readlink -f ${MAIN_REPO_DIR})"
+if [ -z "$SOURCE_PATH" ]; then
+  SOURCE_PATH="$(dirname "$0")/.."
 fi
+export SOURCE_PATH="$(readlink -f "$SOURCE_PATH")"
 
-GO_TEST_ADDITIONAL_FLAGS=${GO_TEST_ADDITIONAL_FLAGS:-""}
+GO_TEST_TIMEOUT="${GO_TEST_TIMEOUT:-5m}"
+GO_TEST_RACE="${GO_TEST_RACE:-0}"
 
 OS=${OS:-$(go env GOOS)}
 ARCH=${ARCH:-$(go env GOARCH)}
@@ -24,14 +21,18 @@ ARCH=${ARCH:-$(go env GOARCH)}
 function run_test {
   local component=$1
   local target_dir=$2
-  local go_test_additional_flags=$3
   echo "> Test $component"
 
   pushd "$target_dir"
 
-  GO111MODULE=on go test ./... ${go_test_additional_flags} -coverprofile cover.out
+  RACE_FLAG=""
+  if [ "${GO_TEST_RACE}" = "1" ]; then
+    RACE_FLAG="-race"
+  fi
+
+  GO111MODULE=on go test ./... ${RACE_FLAG} -timeout "${GO_TEST_TIMEOUT}" -coverprofile cover.out
 
   popd
 }
 
-run_test gardenctl-v2 "${MAIN_REPO_DIR}" "${GO_TEST_ADDITIONAL_FLAGS}"
+run_test gardenctl-v2 "${SOURCE_PATH}"

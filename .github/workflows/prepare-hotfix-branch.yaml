@@ -1,0 +1,20 @@
+name: Prepare Hotfix Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The tag for which the hotfix should be created'
+        required: true
+        type: string
+
+permissions:
+  contents: none  # we rely on the GitHub App token instead
+
+jobs:
+  call-dashboard-workflow:
+    uses: gardener/dashboard/.github/workflows/prepare-hotfix-branch.yaml@master
+    with:
+      tag: ${{ inputs.tag }}
+    secrets:
+      GARDENER_GITHUB_ACTIONS_PRIVATE_KEY: ${{ secrets.GARDENER_GITHUB_ACTIONS_PRIVATE_KEY }}
