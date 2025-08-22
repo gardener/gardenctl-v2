@@ -16,7 +16,6 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -233,29 +232,13 @@ func (g *clientImpl) GetShootClientConfig(ctx context.Context, namespace, name s
 	caClusterConfigMap := corev1.ConfigMap{}
 	caClusterConfigName := fmt.Sprintf("%s.%s", name, ShootProjectConfigMapSuffixCACluster)
 
-	err := g.c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: caClusterConfigName}, &caClusterConfigMap)
-
-	var caCert []byte
-	// TODO(petersutter): Remove this fallback of reading the `<shoot-name>.ca-cluster` Secret when Gardener no longer reconciles it, presumably with Gardener v1.97.
-	if apierrors.IsNotFound(err) { //nolint:gocritic // Rewriting the if-else to a switch statement does not provide significant improvement in this case. We will soon remove the switch once we stop reading the Secret.
-		caClusterSecret := corev1.Secret{}
-		caClusterSecretName := fmt.Sprintf("%s.%s", name, ShootProjectSecretSuffixCACluster)
-
-		if err := g.c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: caClusterSecretName}, &caClusterSecret); err != nil {
-			return nil, fmt.Errorf("could not get cluster CA secret: %w", err)
-		}
-
-		caCert = caClusterSecret.Data[DataKeyCertificateCA]
-		if len(caCert) == 0 {
-			return nil, fmt.Errorf("%s of secret %s is empty", DataKeyCertificateCA, caClusterSecretName)
-		}
-	} else if err != nil {
+	if err := g.c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: caClusterConfigName}, &caClusterConfigMap); err != nil {
 		return nil, fmt.Errorf("could not get cluster CA config map: %w", err)
-	} else {
-		caCert = []byte(caClusterConfigMap.Data[DataKeyCertificateCA])
-		if len(caCert) == 0 {
-			return nil, fmt.Errorf("%s of config map %s is empty", DataKeyCertificateCA, caClusterConfigName)
-		}
+	}
+
+	caCert := []byte(caClusterConfigMap.Data[DataKeyCertificateCA])
+	if len(caCert) == 0 {
+		return nil, fmt.Errorf("%s of config map %s is empty", DataKeyCertificateCA, caClusterConfigName)
 	}
 
 	kubeconfigRequest := shootKubeconfigRequest{
