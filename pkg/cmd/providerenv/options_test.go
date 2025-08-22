@@ -652,6 +652,48 @@ var _ = Describe("Env Commands - Options", func() {
 					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(MatchError(MatchRegexp("^failed to get openstack provider config:")))
 				})
 
+				Context("when applicationCredentialSecret is empty", func() {
+					JustBeforeEach(func() {
+						secret.Data["applicationCredentialID"] = []byte("app-cred-id")
+						secret.Data["applicationCredentialName"] = []byte("app-cred-name")
+						secret.Data["applicationCredentialSecret"] = []byte("")
+					})
+
+					It("should use keystone authentication instead of application credentials", func() {
+						Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
+						output := options.String()
+						Expect(output).To(ContainSubstring("export OS_AUTH_STRATEGY='keystone'"))
+						Expect(output).NotTo(ContainSubstring("export OS_AUTH_TYPE='v3applicationcredential'"))
+						Expect(output).To(ContainSubstring("export OS_USERNAME='user'"))
+						Expect(output).To(ContainSubstring("export OS_PASSWORD='secret'"))
+						Expect(output).To(ContainSubstring("export OS_AUTH_TYPE=''"))
+						Expect(output).To(ContainSubstring("export OS_APPLICATION_CREDENTIAL_ID=''"))
+						Expect(output).To(ContainSubstring("export OS_APPLICATION_CREDENTIAL_NAME=''"))
+						Expect(output).To(ContainSubstring("export OS_APPLICATION_CREDENTIAL_SECRET=''"))
+					})
+				})
+
+				Context("when applicationCredentialSecret has a valid value", func() {
+					JustBeforeEach(func() {
+						secret.Data["applicationCredentialID"] = []byte("app-cred-id")
+						secret.Data["applicationCredentialName"] = []byte("app-cred-name")
+						secret.Data["applicationCredentialSecret"] = []byte("app-cred-secret")
+					})
+
+					It("should use application credential authentication", func() {
+						Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
+						output := options.String()
+						Expect(output).To(ContainSubstring("export OS_AUTH_TYPE='v3applicationcredential'"))
+						Expect(output).To(ContainSubstring("export OS_APPLICATION_CREDENTIAL_ID='app-cred-id'"))
+						Expect(output).To(ContainSubstring("export OS_APPLICATION_CREDENTIAL_NAME='app-cred-name'"))
+						Expect(output).To(ContainSubstring("export OS_APPLICATION_CREDENTIAL_SECRET='app-cred-secret'"))
+						Expect(output).To(ContainSubstring("export OS_AUTH_STRATEGY=''"))
+						Expect(output).To(ContainSubstring("export OS_TENANT_NAME=''"))
+						Expect(output).To(ContainSubstring("export OS_USERNAME=''"))
+						Expect(output).To(ContainSubstring("export OS_PASSWORD=''"))
+					})
+				})
+
 				Context("output is json", func() {
 					BeforeEach(func() {
 						output = "json"
