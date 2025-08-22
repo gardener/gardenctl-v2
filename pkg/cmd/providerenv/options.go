@@ -345,8 +345,8 @@ func generateData(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Sec
 
 		data["authURL"] = authURL
 
-		_, ok := data["applicationCredentialSecret"]
-		if ok {
+		value, ok := data["applicationCredentialSecret"]
+		if ok && value != "" {
 			data["authType"] = "v3applicationcredential"
 			data["authStrategy"] = ""
 			data["tenantName"] = ""
