@@ -337,6 +337,11 @@ func generateData(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Sec
 		data["credentials"] = credentials
 		data["serviceaccount.json"] = string(serviceaccountJSON)
 		data["allowedPatterns"] = o.MergedGCPAllowedPatterns
+	// For now, support type `stackit` as an alias to openstack.
+	// TODO(maboehm): add full support once the provider extension is open sourced.
+	case "stackit":
+		providerType = "openstack"
+		fallthrough
 	case "openstack":
 		authURL, err := getKeyStoneURL(cloudProfile, shoot.Spec.Region)
 		if err != nil {
