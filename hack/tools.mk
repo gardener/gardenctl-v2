@@ -12,7 +12,7 @@ MOCKGEN                    := $(TOOLS_BIN_DIR)/mockgen
 
 # default tool versions
 # renovate: datasource=github-releases depName=securego/gosec
-GOSEC_VERSION ?= v2.22.8
+GOSEC_VERSION ?= v2.22.9
 
 export TOOLS_BIN_DIR := $(TOOLS_BIN_DIR)
 export PATH := $(abspath $(TOOLS_BIN_DIR)):$(PATH)
