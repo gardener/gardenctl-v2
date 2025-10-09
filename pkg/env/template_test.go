@@ -172,6 +172,7 @@ unset CLOUDSDK_CONFIG;
 				"project_id":   projectID,
 			}
 			data["configDir"] = configDir
+			data["project_id"] = projectID
 		})
 
 		DescribeTable("executing the bash template",
@@ -183,8 +184,8 @@ unset CLOUDSDK_CONFIG;
 					"PLACEHOLDER_SHELL", shell,
 					"PLACEHOLDER_REGION", region,
 					"PLACEHOLDER_PROJECT_ID", projectID,
-					"PLACEHOLDER_CONFIG_DIR", configDir,
 					"PLACEHOLDER_CLIENT_EMAIL", clientEmail,
+					"PLACEHOLDER_CONFIG_DIR", configDir,
 				).Replace(format)
 				Expect(out.String()).To(Equal(expected))
 			},
@@ -305,7 +306,9 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 				token = "token"
 				filename = filepath.Join("templates", providerType+".tmpl")
 				writeTempFile(filename, readTestFile("templates/"+providerType+".tmpl"))
-				data["testToken"] = token
+				data["unsafeSecretData"] = map[string]interface{}{
+					"testToken": token,
+				}
 			})
 
 			It("should successfully parse the template", func() {

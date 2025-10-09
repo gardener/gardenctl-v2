@@ -178,7 +178,7 @@ var _ = Describe("Env Commands", func() {
 						Name:      secretRef.Name,
 					},
 					Data: map[string][]byte{
-						"serviceaccount.json": []byte(readTestFile(provider.Type + "/serviceaccount.json")),
+						"serviceaccount.json": []byte(readTestFile("gcp/serviceaccount.json")),
 					},
 				}
 				cloudProfile = &gardencorev1beta1.CloudProfile{

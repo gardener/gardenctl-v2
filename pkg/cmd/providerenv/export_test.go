@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package providerenv
 
 import (
+	"context"
 	"text/template"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -20,11 +21,9 @@ import (
 )
 
 var (
-	ValidateAndParseGCPServiceAccount = validateAndParseGCPServiceAccount
-	DefaultAllowedPatterns            = defaultAllowedPatterns
-	GetKeyStoneURL                    = getKeyStoneURL
-	GetProviderCLI                    = getProviderCLI
-	GetTargetFlags                    = getTargetFlags
+	GetKeyStoneURL = getKeyStoneURL
+	GetProviderCLI = getProviderCLI
+	GetTargetFlags = getTargetFlags
 )
 
 type TestOptions struct {
@@ -45,12 +44,12 @@ func NewOptions() *TestOptions {
 	}
 }
 
-func (o *TestOptions) PrintProviderEnv(shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *clientgarden.CloudProfileUnion, messages ...*ac.AccessRestrictionMessage) error {
-	return printProviderEnv(&o.options, shoot, secret, cloudProfile, messages)
+func (o *TestOptions) PrintProviderEnv(ctx context.Context, client clientgarden.Client, shoot *gardencorev1beta1.Shoot, credentialsRef corev1.ObjectReference, cloudProfile *clientgarden.CloudProfileUnion, messages ac.AccessRestrictionMessages) error {
+	return printProviderEnv(&o.options, ctx, client, shoot, credentialsRef, cloudProfile, messages)
 }
 
-func (o *TestOptions) GenerateMetadata(cli string) map[string]interface{} {
-	return generateMetadata(&o.options, cli)
+func (o *TestOptions) GenerateMetadata(cli string, credentialKind string) map[string]interface{} {
+	return generateMetadata(&o.options, cli, credentialKind)
 }
 
 func (o *TestOptions) String() string {

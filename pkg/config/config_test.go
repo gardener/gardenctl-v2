@@ -16,6 +16,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardenctl-v2/pkg/config"
+	"github.com/gardener/gardenctl-v2/pkg/provider/common/allowpattern"
 )
 
 var _ = Describe("Config", func() {
@@ -189,6 +190,84 @@ var _ = Describe("Config", func() {
 			Filename: filename,
 		}
 		Expect(cfg.Save()).NotTo(HaveOccurred())
+	})
+
+	Describe("GCPConfig", func() {
+		Describe("Validate", func() {
+			It("should validate empty config", func() {
+				gcpConfig := &config.GCPConfig{}
+				err := gcpConfig.Validate()
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should validate config with valid patterns", func() {
+				gcpConfig := &config.GCPConfig{
+					AllowedPatterns: []allowpattern.Pattern{
+						{
+							Field: "token_uri",
+							URI:   "https://oauth2.googleapis.com/token",
+						},
+						{
+							Field: "universe_domain",
+							Host:  ptr.To("googleapis.com"),
+							Path:  ptr.To(""),
+						},
+					},
+				}
+				err := gcpConfig.Validate()
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should reject config with invalid pattern", func() {
+				gcpConfig := &config.GCPConfig{
+					AllowedPatterns: []allowpattern.Pattern{
+						{
+							Field: "token_uri",
+							URI:   "http://oauth2.googleapis.com/token", // Invalid: HTTP instead of HTTPS
+						},
+					},
+				}
+				err := gcpConfig.Validate()
+				Expect(err).To(MatchError(ContainSubstring("invalid allowed pattern at index 0")))
+				Expect(err).To(MatchError(ContainSubstring("invalid value for field token_uri: scheme must be one of {https}, got \"http\"")))
+			})
+		})
+	})
+
+	Describe("Config with GCP provider", func() {
+		It("should validate config with valid GCP provider configuration", func() {
+			cfg := &config.Config{
+				Provider: &config.ProviderConfig{
+					GCP: &config.GCPConfig{
+						AllowedPatterns: []allowpattern.Pattern{
+							{
+								Field: "token_uri",
+								URI:   "https://oauth2.googleapis.com/token",
+							},
+						},
+					},
+				},
+			}
+			err := cfg.Validate()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should reject config with invalid GCP provider configuration", func() {
+			cfg := &config.Config{
+				Provider: &config.ProviderConfig{
+					GCP: &config.GCPConfig{
+						AllowedPatterns: []allowpattern.Pattern{
+							{
+								Field: "token_uri",
+								URI:   "http://oauth2.googleapis.com/token", // Invalid: HTTP instead of HTTPS
+							},
+						},
+					},
+				},
+			}
+			err := cfg.Validate()
+			Expect(err).To(MatchError(ContainSubstring("invalid GCP provider configuration")))
+		})
 	})
 
 	Describe("#LoadFromFile", func() {

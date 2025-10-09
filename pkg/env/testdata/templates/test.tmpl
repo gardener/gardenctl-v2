@@ -1,5 +1,5 @@
 {{define "bash"}}{{if .__meta.unset -}}
 unset TEST_TOKEN;
 {{else -}}
-export TEST_TOKEN={{.testToken | shellEscape}};
+export TEST_TOKEN={{.unsafeSecretData.testToken | shellEscape}};
 {{end}}{{template "usage-hint" .__meta}}{{end}}
