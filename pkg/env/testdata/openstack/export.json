@@ -11,6 +11,7 @@
   "authStrategy": "keystone",
   "authType": "",
   "authURL": "keyStoneURL",
+  "configDir": "PLACEHOLDER_CONFIG_DIR",
   "domainName": "domain",
   "password": "secret",
   "region": "europe",

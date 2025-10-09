@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -702,7 +703,8 @@ var _ = Describe("Env Commands - Options", func() {
 
 					It("should render the json successfully", func() {
 						Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
-						Expect(options.String()).To(Equal(readTestFile("openstack/export.json")))
+						expected := strings.NewReplacer("PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "openstack")).Replace(readTestFile("openstack/export.json"))
+						Expect(options.String()).To(Equal(expected))
 					})
 				})
 			})

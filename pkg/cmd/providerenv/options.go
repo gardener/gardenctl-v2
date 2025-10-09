@@ -278,7 +278,7 @@ func printProviderEnv(
 		metadata["notification"] = messages.String()
 	}
 
-	data, err := generateData(o, ctx, c, shoot, credentialsRef, cloudProfile, providerType, metadata)
+	data, err := generateData(o, ctx, c, shoot, credentialsRef, cloudProfile, providerType, cli, metadata)
 	if err != nil {
 		return err
 	}
@@ -298,47 +298,34 @@ func generateData(
 	credentialsRef corev1.ObjectReference,
 	cloudProfile *clientgarden.CloudProfileUnion,
 	providerType string,
+	cli string,
 	metadata map[string]interface{},
 ) (map[string]interface{}, error) {
+	configDir := filepath.Join(o.SessionDir, ".config", cli)
+	if !o.Unset {
+		if err := os.MkdirAll(configDir, 0o700); err != nil {
+			return nil, fmt.Errorf("failed to create %s configuration directory: %w", cli, err)
+		}
+	}
+
 	secret, err := c.GetSecret(ctx, credentialsRef.Namespace, credentialsRef.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	data := map[string]interface{}{
-		"__meta": metadata,
-		"region": shoot.Spec.Region,
-	}
+	data := make(map[string]interface{})
 
 	for key, value := range secret.Data {
 		data[key] = string(value)
 	}
 
 	switch providerType {
-	case "azure":
-		if !o.Unset {
-			configDir, err := createProviderConfigDir(o.SessionDir, providerType)
-			if err != nil {
-				return nil, err
-			}
-
-			data["configDir"] = configDir
-		}
 	case "gcp":
 		credentials := make(map[string]interface{})
 
 		serviceaccountJSON, err := validateAndParseGCPServiceAccount(secret, &credentials, o.MergedGCPAllowedPatterns)
 		if err != nil {
 			return nil, err
-		}
-
-		if !o.Unset {
-			configDir, err := createProviderConfigDir(o.SessionDir, providerType)
-			if err != nil {
-				return nil, err
-			}
-
-			data["configDir"] = configDir
 		}
 
 		data["credentials"] = credentials
@@ -377,6 +364,11 @@ func generateData(
 	if err := o.Template.ParseFiles(filename); err != nil {
 		return nil, fmt.Errorf("failed to generate the cloud provider CLI configuration script: %w", err)
 	}
+
+	// baseline reserved fields that any template can use
+	data["__meta"] = metadata
+	data["region"] = shoot.Spec.Region
+	data["configDir"] = configDir
 
 	return data, nil
 }
@@ -468,18 +460,6 @@ func getKeyStoneURL(cloudProfile *clientgarden.CloudProfileUnion, region string)
 	}
 
 	return "", fmt.Errorf("cannot find keystone URL for region %q in cloudprofile %q", region, cloudProfile.GetObjectMeta().Name)
-}
-
-func createProviderConfigDir(sessionDir string, providerType string) (string, error) {
-	cli := getProviderCLI(providerType)
-	configDir := filepath.Join(sessionDir, ".config", cli)
-
-	err := os.MkdirAll(configDir, 0o700)
-	if err != nil {
-		return "", fmt.Errorf("failed to create %s configuration directory: %w", cli, err)
-	}
-
-	return configDir, nil
 }
 
 func (o *options) checkAccessRestrictions(cfg *config.Config, gardenName string, shoot *gardencorev1beta1.Shoot) (ac.AccessRestrictionMessages, error) {
