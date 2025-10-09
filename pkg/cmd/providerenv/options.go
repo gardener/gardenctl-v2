@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package providerenv
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -209,10 +210,7 @@ func (o *options) Run(f util.Factory) error {
 		return fmt.Errorf("shoot %q is not bound to a cloud provider credential", o.Target.ShootName())
 	}
 
-	var (
-		secretName      string
-		secretNamespace string
-	)
+	var credentialsRef corev1.ObjectReference
 
 	if shoot.Spec.SecretBindingName != nil && *shoot.Spec.SecretBindingName != "" {
 		secretBinding, err := client.GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName)
@@ -220,22 +218,19 @@ func (o *options) Run(f util.Factory) error {
 			return err
 		}
 
-		secretName = secretBinding.SecretRef.Name
-		secretNamespace = secretBinding.SecretRef.Namespace
+		credentialsRef = corev1.ObjectReference{
+			APIVersion: "v1",
+			Kind:       "Secret",
+			Namespace:  secretBinding.SecretRef.Namespace,
+			Name:       secretBinding.SecretRef.Name,
+		}
 	} else {
-		// TODO: This code should eventually support credentials of type workload identity
 		credentialsBinding, err := client.GetCredentialsBinding(ctx, shoot.Namespace, *shoot.Spec.CredentialsBindingName)
 		if err != nil {
 			return err
 		}
 
-		secretName = credentialsBinding.CredentialsRef.Name
-		secretNamespace = credentialsBinding.CredentialsRef.Namespace
-	}
-
-	secret, err := client.GetSecret(ctx, secretNamespace, secretName)
-	if err != nil {
-		return err
+		credentialsRef = credentialsBinding.CredentialsRef
 	}
 
 	if shoot.Spec.CloudProfile == nil {
@@ -253,10 +248,18 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	return printProviderEnv(o, shoot, secret, cloudProfile, messages)
+	return printProviderEnv(o, ctx, client, shoot, credentialsRef, cloudProfile, messages)
 }
 
-func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *clientgarden.CloudProfileUnion, messages ac.AccessRestrictionMessages) error {
+func printProviderEnv(
+	o *options,
+	ctx context.Context,
+	c clientgarden.Client,
+	shoot *gardencorev1beta1.Shoot,
+	credentialsRef corev1.ObjectReference,
+	cloudProfile *clientgarden.CloudProfileUnion,
+	messages ac.AccessRestrictionMessages,
+) error {
 	providerType := shoot.Spec.Provider.Type
 	cli := getProviderCLI(providerType)
 
@@ -285,7 +288,7 @@ func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1
 		}
 	}
 
-	data, err := generateData(o, shoot, secret, cloudProfile, providerType, metadata)
+	data, err := generateData(o, ctx, c, shoot, credentialsRef, cloudProfile, providerType, metadata)
 	if err != nil {
 		return err
 	}
@@ -297,7 +300,21 @@ func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1
 	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
 }
 
-func generateData(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *clientgarden.CloudProfileUnion, providerType string, metadata map[string]interface{}) (map[string]interface{}, error) {
+func generateData(
+	o *options,
+	ctx context.Context,
+	c clientgarden.Client,
+	shoot *gardencorev1beta1.Shoot,
+	credentialsRef corev1.ObjectReference,
+	cloudProfile *clientgarden.CloudProfileUnion,
+	providerType string,
+	metadata map[string]interface{},
+) (map[string]interface{}, error) {
+	secret, err := c.GetSecret(ctx, credentialsRef.Namespace, credentialsRef.Name)
+	if err != nil {
+		return nil, err
+	}
+
 	data := map[string]interface{}{
 		"__meta": metadata,
 		"region": shoot.Spec.Region,
