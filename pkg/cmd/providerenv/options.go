@@ -308,56 +308,62 @@ func generateData(
 		}
 	}
 
-	secret, err := c.GetSecret(ctx, credentialsRef.Namespace, credentialsRef.Name)
-	if err != nil {
-		return nil, err
-	}
-
 	data := make(map[string]interface{})
 
-	for key, value := range secret.Data {
-		data[key] = string(value)
-	}
-
-	switch providerType {
-	case "gcp":
-		credentials := make(map[string]interface{})
-
-		serviceaccountJSON, err := validateAndParseGCPServiceAccount(secret, &credentials, o.MergedGCPAllowedPatterns)
+	switch credentialsRef.GroupVersionKind() {
+	case corev1.SchemeGroupVersion.WithKind("Secret"):
+		secret, err := c.GetSecret(ctx, credentialsRef.Namespace, credentialsRef.Name)
 		if err != nil {
 			return nil, err
 		}
 
-		data["credentials"] = credentials
-		data["serviceaccount.json"] = string(serviceaccountJSON)
-		data["allowedPatterns"] = o.MergedGCPAllowedPatterns
-	// For now, support type `stackit` as an alias to openstack.
-	// TODO(maboehm): add full support once the provider extension is open sourced.
-	case "stackit":
-		providerType = "openstack"
-		fallthrough
-	case "openstack":
-		authURL, err := getKeyStoneURL(cloudProfile, shoot.Spec.Region)
-		if err != nil {
-			return nil, err
+		for key, value := range secret.Data {
+			data[key] = string(value)
 		}
 
-		data["authURL"] = authURL
+		switch providerType {
+		case "gcp":
+			credentials := make(map[string]interface{})
 
-		value, ok := data["applicationCredentialSecret"]
-		if ok && value != "" {
-			data["authType"] = "v3applicationcredential"
-			data["authStrategy"] = ""
-			data["tenantName"] = ""
-			data["username"] = ""
-			data["password"] = ""
-		} else {
-			data["authStrategy"] = "keystone"
-			data["authType"] = ""
-			data["applicationCredentialID"] = ""
-			data["applicationCredentialName"] = ""
-			data["applicationCredentialSecret"] = ""
+			serviceaccountJSON, err := validateAndParseGCPServiceAccount(secret, &credentials, o.MergedGCPAllowedPatterns)
+			if err != nil {
+				return nil, err
+			}
+
+			data["credentials"] = credentials
+			data["serviceaccount.json"] = string(serviceaccountJSON)
+			data["allowedPatterns"] = o.MergedGCPAllowedPatterns
+		// For now, support type `stackit` as an alias to openstack.
+		// TODO(maboehm): add full support once the provider extension is open sourced.
+		case "stackit":
+			providerType = "openstack"
+			fallthrough
+		case "openstack":
+			authURL, err := getKeyStoneURL(cloudProfile, shoot.Spec.Region)
+			if err != nil {
+				return nil, err
+			}
+
+			data["authURL"] = authURL
+
+			value, ok := data["applicationCredentialSecret"]
+			if ok && value != "" {
+				data["authType"] = "v3applicationcredential"
+				data["authStrategy"] = ""
+				data["tenantName"] = ""
+				data["username"] = ""
+				data["password"] = ""
+			} else {
+				data["authStrategy"] = "keystone"
+				data["authType"] = ""
+				data["applicationCredentialID"] = ""
+				data["applicationCredentialName"] = ""
+				data["applicationCredentialSecret"] = ""
+			}
 		}
+
+	default:
+		return nil, fmt.Errorf("unsupported credentials kind %q", credentialsRef.Kind)
 	}
 
 	filename := filepath.Join(o.GardenDir, "templates", providerType+".tmpl")
