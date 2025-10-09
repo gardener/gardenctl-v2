@@ -27,6 +27,8 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/env"
+	"github.com/gardener/gardenctl-v2/pkg/provider/common/allowpattern"
+	"github.com/gardener/gardenctl-v2/pkg/provider/credvalidate"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
@@ -55,12 +57,29 @@ type options struct {
 	// ConfirmAccessRestriction, when set to true, implies the user's understanding of the access restrictions for the targeted shoot.
 	// When set to false and access restrictions are present, the command will terminate with an error.
 	ConfirmAccessRestriction bool
-	// GCPAllowedPatterns is a list of allowed patterns for GCP service account fields.
-	// Each entry is a key-value pair where the key matches a credential config field
-	// (e.g., "universe_domain=googleapis.com", "token_uri=https://oauth2.googleapis.com/token").
+	// GCPAllowedPatterns is a list of JSON-formatted allowed patterns for GCP credential config fields
 	GCPAllowedPatterns []string
-	// MergedGCPAllowedPatterns is the merged allowed patterns for GCP from defaults, config, and flags.
-	MergedGCPAllowedPatterns map[string][]string
+	// GCPAllowedURIPatterns is a list of simple field=uri patterns for GCP credential config fields
+	GCPAllowedURIPatterns []string
+	// OpenStackAllowedPatterns is a list of JSON-formatted allowed patterns for OpenStack credential config fields
+	OpenStackAllowedPatterns []string
+	// OpenStackAllowedURIPatterns is a list of simple field=uri patterns for OpenStack credential config fields
+	OpenStackAllowedURIPatterns []string
+	// MergedAllowedPatterns contains the merged allowed patterns for all providers from defaults, config, and flags
+	MergedAllowedPatterns *MergedProviderPatterns
+}
+
+// MergedProviderPatterns contains merged allowed patterns for cloud providers that support pattern-based field validation.
+// Currently, only GCP and OpenStack providers support allowed patterns.
+type MergedProviderPatterns struct {
+	// GCP contains the merged allowed patterns for GCP credential fields.
+	// Supported fields include: universe_domain, token_uri, auth_uri, auth_provider_x509_cert_url,
+	// client_x509_cert_url, token_url, service_account_impersonation_url, private_key_id,
+	// client_id, client_email, audience, and others.
+	GCP []allowpattern.Pattern
+	// OpenStack contains the merged allowed patterns for OpenStack credential fields.
+	// Currently, only the 'authURL' field is supported for pattern validation.
+	OpenStack []allowpattern.Pattern
 }
 
 // Complete adapts from the command line args to the data required.
@@ -91,39 +110,114 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error
 		logger.Info("The --force flag is deprecated and will be removed in a future gardenctl version. Please use the --confirm-access-restriction flag instead.")
 	}
 
-	defaultMap := defaultAllowedPatterns()
+	cfg := manager.Configuration()
 
-	var configPatterns []string
-	if cfg := manager.Configuration(); cfg != nil && cfg.Provider != nil && cfg.Provider.GCP != nil {
+	gcpPatterns, err := o.processGCPPatterns(cfg, logger)
+	if err != nil {
+		return err
+	}
+
+	openstackPatterns, err := o.processOpenStackPatterns(cfg, logger)
+	if err != nil {
+		return err
+	}
+
+	o.MergedAllowedPatterns = &MergedProviderPatterns{
+		GCP:       gcpPatterns,
+		OpenStack: openstackPatterns,
+	}
+
+	return nil
+}
+
+// processProviderPatterns is a generic function to process and merge allowed patterns for any provider.
+func processProviderPatterns(
+	logger klog.Logger,
+	providerName string,
+	defaultPatterns []allowpattern.Pattern,
+	configPatterns []allowpattern.Pattern,
+	validationContext *allowpattern.ValidationContext,
+	jsonPatterns []string,
+	uriPatterns []string,
+) ([]allowpattern.Pattern, error) {
+	flagPatterns, err := allowpattern.ParseAllowedPatterns(validationContext, jsonPatterns, uriPatterns)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse %s flag allowed patterns: %w", providerName, err)
+	}
+
+	if len(configPatterns) > 0 {
+		logger.Info(fmt.Sprintf("Using custom %s allowed patterns from configuration", providerName))
+		logger.V(6).Info("allowed patterns from configuration", "provider", providerName, "patterns", configPatterns)
+	}
+
+	if len(flagPatterns) > 0 {
+		logger.Info(fmt.Sprintf("Using custom %s allowed patterns from flags", providerName))
+		logger.V(6).Info("allowed patterns from flags", "provider", providerName, "patterns", flagPatterns)
+	}
+
+	var mergedPatterns []allowpattern.Pattern
+
+	mergedPatterns = append(mergedPatterns, defaultPatterns...)
+	mergedPatterns = append(mergedPatterns, configPatterns...)
+	mergedPatterns = append(mergedPatterns, flagPatterns...)
+
+	var normalizedPatterns []allowpattern.Pattern
+
+	for _, pattern := range mergedPatterns {
+		if err := pattern.ValidateWithContext(validationContext); err != nil {
+			return nil, fmt.Errorf("invalid %s allowed pattern: %w", providerName, err)
+		}
+
+		normalized, err := pattern.ToNormalizedPattern()
+		if err != nil {
+			return nil, fmt.Errorf("failed to normalize %s pattern: %w", providerName, err)
+		}
+
+		normalizedPatterns = append(normalizedPatterns, *normalized)
+	}
+
+	if len(normalizedPatterns) > 0 {
+		logger.V(6).Info("final normalized allowed patterns", "provider", providerName, "count", len(normalizedPatterns), "patterns", normalizedPatterns)
+	}
+
+	return normalizedPatterns, nil
+}
+
+// processGCPPatterns processes and merges GCP allowed patterns from defaults, config, and flags.
+func (o *options) processGCPPatterns(cfg *config.Config, logger klog.Logger) ([]allowpattern.Pattern, error) {
+	var configPatterns []allowpattern.Pattern
+	if cfg != nil && cfg.Provider != nil && cfg.Provider.GCP != nil {
 		configPatterns = cfg.Provider.GCP.AllowedPatterns
 	}
 
-	configMap, err := parseAllowedPatterns(configPatterns)
-	if err != nil {
-		return fmt.Errorf("failed to parse config allowed patterns: %w", err)
+	return processProviderPatterns(
+		logger,
+		"GCP",
+		credvalidate.DefaultGCPAllowedPatterns(),
+		configPatterns,
+		credvalidate.GetGCPValidationContext(),
+		o.GCPAllowedPatterns,
+		o.GCPAllowedURIPatterns,
+	)
+}
+
+// processOpenStackPatterns processes and merges OpenStack allowed patterns from defaults, config, and flags.
+// Note: Only the 'authURL' field is supported for OpenStack pattern validation.
+func (o *options) processOpenStackPatterns(cfg *config.Config, logger klog.Logger) ([]allowpattern.Pattern, error) {
+	var configPatterns []allowpattern.Pattern
+	if cfg != nil && cfg.Provider != nil && cfg.Provider.OpenStack != nil {
+		configPatterns = cfg.Provider.OpenStack.AllowedPatterns
 	}
 
-	flagMap, err := parseAllowedPatterns(o.GCPAllowedPatterns)
-	if err != nil {
-		return fmt.Errorf("failed to parse flag allowed patterns: %w", err)
-	}
-
-	mergedMap := make(map[string][]string)
-	for field, values := range defaultMap {
-		mergedMap[field] = append(mergedMap[field], values...)
-	}
-
-	for field, values := range configMap {
-		mergedMap[field] = append(mergedMap[field], values...)
-	}
-
-	for field, values := range flagMap {
-		mergedMap[field] = append(mergedMap[field], values...)
-	}
-
-	o.MergedGCPAllowedPatterns = mergedMap
-
-	return nil
+	return processProviderPatterns(
+		logger,
+		"OpenStack",
+		credvalidate.DefaultOpenStackAllowedPatterns(),
+		configPatterns,
+		credvalidate.GetOpenStackValidationContext(),
+		o.OpenStackAllowedPatterns,
+		o.OpenStackAllowedURIPatterns,
+	)
 }
 
 // Validate validates the provided command options.
@@ -148,7 +242,40 @@ func (o *options) AddFlags(flags *pflag.FlagSet) {
 	flags.BoolVarP(&o.Force, "force", "f", false, "Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.")
 	flags.BoolVarP(&o.ConfirmAccessRestriction, "confirm-access-restriction", "y", o.ConfirmAccessRestriction, "Confirm any access restrictions. Set this flag only if you are completely aware of the access restrictions.")
 	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, fmt.Sprintf("Generate the script to unset the cloud provider CLI environment variables and logout for %s", o.Shell))
-	flags.StringSliceVar(&o.GCPAllowedPatterns, "gcp-allowed-patterns", nil, "Additional allowed patterns for GCP service account fields, in the format 'field=value', e.g., 'universe_domain=googleapis.com'. These are merged with defaults and configuration.")
+	flags.StringSliceVar(&o.GCPAllowedPatterns, "gcp-allowed-patterns", nil,
+		`Additional allowed patterns for GCP credential fields in JSON format.
+Supported fields include: universe_domain, token_uri, auth_uri, auth_provider_x509_cert_url, client_x509_cert_url,
+token_url, service_account_impersonation_url, private_key_id, client_id, client_email, audience.
+Each pattern should be a JSON object with fields like:
+{"field": "universe_domain", "host": "example.com"}
+{"field": "token_uri", "host": "example.com", "path": "/token"}
+{"field": "service_account_impersonation_url", "host": "iamcredentials.googleapis.com", "regexPath": "^/v1/projects/-/serviceAccounts/[^/:]+:generateAccessToken$"}
+{"field": "client_id", "regexValue": "^[0-9]{15,25}$"}
+These are merged with defaults and configuration.`)
+
+	flags.StringSliceVar(&o.GCPAllowedURIPatterns, "gcp-allowed-uri-patterns", nil,
+		`Simplified URI patterns for GCP credential fields in the format 'field=uri'.
+For example:
+"token_uri=https://example.com/token"
+"client_x509_cert_url=https://example.com/{client_email}"
+The URI is parsed and host and path are set accordingly. These are merged with defaults and configuration.`)
+
+	flags.StringSliceVar(&o.OpenStackAllowedPatterns, "openstack-allowed-patterns", nil,
+		`Additional allowed patterns for OpenStack credential fields in JSON format.
+Note: Only the 'authURL' field is supported for OpenStack pattern validation.
+Each pattern should be a JSON object with fields like:
+{"field": "authURL", "host": "keystone.example.com"}
+{"field": "authURL", "host": "keystone.example.com", "path": "/v3"}
+{"field": "authURL", "regexValue": "^https://[a-z0-9.-]+\\.example\\.com(:[0-9]+)?/.*$"}
+These are merged with defaults and configuration.`)
+
+	flags.StringSliceVar(&o.OpenStackAllowedURIPatterns, "openstack-allowed-uri-patterns", nil,
+		`Simplified URI patterns for OpenStack credential fields in the format 'field=uri'.
+Note: Only the 'authURL' field is supported for OpenStack pattern validation.
+For example:
+"authURL=https://keystone.example.com:5000/v3"
+"authURL=https://keystone.example.com/identity/v3"
+The URI is parsed and host and path are set accordingly. These are merged with defaults and configuration.`)
 }
 
 // Run does the actual work of the command.
@@ -270,9 +397,18 @@ func printProviderEnv(
 	messages ac.AccessRestrictionMessages,
 ) error {
 	providerType := shoot.Spec.Provider.Type
+
+	if err := ValidateProviderType(providerType); err != nil {
+		return fmt.Errorf("invalid provider type: %w", err)
+	}
+
 	cli := getProviderCLI(providerType)
 
-	metadata := generateMetadata(o, cli)
+	if err := ValidateCLIName(cli); err != nil {
+		return fmt.Errorf("invalid cli name: %w", err)
+	}
+
+	metadata := generateMetadata(o, cli, credentialsRef.Kind)
 
 	if len(messages) > 0 {
 		metadata["notification"] = messages.String()
@@ -285,6 +421,19 @@ func printProviderEnv(
 
 	if o.Output != "" {
 		return o.PrintObject(data)
+	}
+
+	var filename string
+
+	if providerType == "stackit" {
+		// TODO(maboehm): add full support once the provider extension is open sourced.
+		filename = filepath.Join(o.GardenDir, "templates", "openstack.tmpl")
+	} else {
+		filename = filepath.Join(o.GardenDir, "templates", providerType+".tmpl")
+	}
+
+	if err := o.Template.ParseFiles(filename); err != nil {
+		return fmt.Errorf("failed to generate the cloud provider CLI configuration script: %w", err)
 	}
 
 	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
@@ -308,6 +457,8 @@ func generateData(
 		}
 	}
 
+	p := providerFor(providerType, ctx, o.MergedAllowedPatterns)
+
 	data := make(map[string]interface{})
 
 	switch credentialsRef.GroupVersionKind() {
@@ -321,54 +472,15 @@ func generateData(
 			data[key] = string(value)
 		}
 
-		switch providerType {
-		case "gcp":
-			credentials := make(map[string]interface{})
-
-			serviceaccountJSON, err := validateAndParseGCPServiceAccount(secret, &credentials, o.MergedGCPAllowedPatterns)
+		if p != nil {
+			data, err = p.FromSecret(o, shoot, secret, cloudProfile, configDir)
 			if err != nil {
 				return nil, err
-			}
-
-			data["credentials"] = credentials
-			data["serviceaccount.json"] = string(serviceaccountJSON)
-			data["allowedPatterns"] = o.MergedGCPAllowedPatterns
-		// For now, support type `stackit` as an alias to openstack.
-		// TODO(maboehm): add full support once the provider extension is open sourced.
-		case "stackit":
-			providerType = "openstack"
-			fallthrough
-		case "openstack":
-			authURL, err := getKeyStoneURL(cloudProfile, shoot.Spec.Region)
-			if err != nil {
-				return nil, err
-			}
-
-			data["authURL"] = authURL
-
-			value, ok := data["applicationCredentialSecret"]
-			if ok && value != "" {
-				data["authType"] = "v3applicationcredential"
-				data["authStrategy"] = ""
-				data["tenantName"] = ""
-				data["username"] = ""
-				data["password"] = ""
-			} else {
-				data["authStrategy"] = "keystone"
-				data["authType"] = ""
-				data["applicationCredentialID"] = ""
-				data["applicationCredentialName"] = ""
-				data["applicationCredentialSecret"] = ""
 			}
 		}
 
 	default:
 		return nil, fmt.Errorf("unsupported credentials kind %q", credentialsRef.Kind)
-	}
-
-	filename := filepath.Join(o.GardenDir, "templates", providerType+".tmpl")
-	if err := o.Template.ParseFiles(filename); err != nil {
-		return nil, fmt.Errorf("failed to generate the cloud provider CLI configuration script: %w", err)
 	}
 
 	// baseline reserved fields that any template can use
@@ -379,12 +491,13 @@ func generateData(
 	return data, nil
 }
 
-func generateMetadata(o *options, cli string) map[string]interface{} {
+func generateMetadata(o *options, cli string, credentialKind string) map[string]interface{} {
 	metadata := make(map[string]interface{})
 	metadata["unset"] = o.Unset
 	metadata["commandPath"] = o.CmdPath
 	metadata["cli"] = cli
 	metadata["targetFlags"] = getTargetFlags(o.Target)
+	metadata["credentialKind"] = credentialKind
 
 	if o.Shell != "" {
 		metadata["shell"] = o.Shell
