@@ -34,10 +34,15 @@ func TestCommand(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
+	prev, had := os.LookupEnv("GCTL_SESSION_ID")
 	sessionID := uuid.NewString()
 	Expect(os.Setenv("GCTL_SESSION_ID", sessionID)).To(Succeed())
-})
 
-var _ = AfterSuite(func() {
-	Expect(os.Unsetenv("GCTL_SESSION_ID"))
+	DeferCleanup(func() {
+		if had {
+			_ = os.Setenv("GCTL_SESSION_ID", prev)
+		} else {
+			_ = os.Unsetenv("GCTL_SESSION_ID")
+		}
+	})
 })

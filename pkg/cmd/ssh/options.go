@@ -73,6 +73,9 @@ var (
 	// pollBastionStatusInterval is the time in-between status checks on the bastion object.
 	pollBastionStatusInterval = 5 * time.Second
 
+	// rsaKeyBits is the number of bits to use for RSA key generation.
+	rsaKeyBits = 3072
+
 	// tempFileCreator creates and opens a temporary file.
 	tempFileCreator = func() (*os.File, error) {
 		return os.CreateTemp(os.TempDir(), "gctlv2*")
@@ -468,7 +471,7 @@ func createSSHKeypair(tempDir string, keyName string) (PrivateKeyFile, PublicKey
 
 func createSSHPrivateKey() (*rsa.PrivateKey, error) {
 	// Private Key generation
-	privateKey, err := rsa.GenerateKey(rand.Reader, 3072)
+	privateKey, err := rsa.GenerateKey(rand.Reader, rsaKeyBits)
 	if err != nil {
 		return nil, err
 	}

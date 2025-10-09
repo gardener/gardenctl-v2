@@ -48,9 +48,11 @@ func TestCommand(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	gardenHomeDir = makeTempGardenHomeDir()
+	prevHome, hadHome := os.LookupEnv(envGardenHomeDir)
 	Expect(os.Setenv(envGardenHomeDir, gardenHomeDir)).To(Succeed())
 	configFile = filepath.Join(gardenHomeDir, configName+".yaml")
 	sessionID := uuid.New().String()
+	prevSID, hadSID := os.LookupEnv(envSessionID)
 	Expect(os.Setenv(envSessionID, sessionID)).To(Succeed())
 	sessionDir = filepath.Join(os.TempDir(), "garden", "sessions", sessionID)
 	Expect(os.MkdirAll(sessionDir, os.ModePerm))
@@ -66,11 +68,22 @@ var _ = BeforeSuite(func() {
 		}},
 	}
 	Expect(cfg.Save()).To(Succeed())
+
+	DeferCleanup(func() {
+		if hadSID {
+			_ = os.Setenv(envSessionID, prevSID)
+		} else {
+			_ = os.Unsetenv(envSessionID)
+		}
+		if hadHome {
+			_ = os.Setenv(envGardenHomeDir, prevHome)
+		} else {
+			_ = os.Unsetenv(envGardenHomeDir)
+		}
+	})
 })
 
 var _ = AfterSuite(func() {
-	Expect(os.Unsetenv(envSessionID))
-	Expect(os.Unsetenv(envGardenHomeDir))
 	Expect(os.RemoveAll(gardenHomeDir)).To(Succeed())
 	Expect(os.RemoveAll(sessionDir)).To(Succeed())
 })

@@ -152,8 +152,9 @@ var _ = Describe("SSH Command", func() {
 			return signalChan
 		})
 
-		// do not waste time in tests
-		ssh.SetPollBastionStatusInterval(1 * time.Second)
+		ssh.SetPollBastionStatusInterval(100 * time.Millisecond)
+		ssh.SetKeepAliveInterval(200 * time.Millisecond)
+		ssh.SetRSAKeyBitsForTest(1024)
 
 		cfg = &config.Config{
 			LinkKubeconfig: ptr.To(false),

@@ -51,6 +51,11 @@ func SetWaitForSignal(f func(ctx context.Context, o *SSHOptions, signalChan <-ch
 	waitForSignal = f
 }
 
+// SetRSAKeyBitsForTest sets the RSA key size to use for testing (smaller keys generate faster).
+func SetRSAKeyBitsForTest(bits int) {
+	rsaKeyBits = bits
+}
+
 type TestArguments struct {
 	arguments
 }
