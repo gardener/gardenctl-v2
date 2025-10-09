@@ -468,16 +468,16 @@ func generateData(
 			return nil, err
 		}
 
-		for key, value := range secret.Data {
-			data[key] = string(value)
-		}
-
 		if p != nil {
 			data, err = p.FromSecret(o, shoot, secret, cloudProfile, configDir)
 			if err != nil {
 				return nil, err
 			}
 		}
+
+		// Reserved raw Secret data for out-of-tree templates (unvalidated; use with caution).
+		// Built-in templates must not use this; use provider-validated fields instead.
+		data["unsafeSecretData"] = bytesMapToStringMap(secret.Data)
 
 	default:
 		return nil, fmt.Errorf("unsupported credentials kind %q", credentialsRef.Kind)
@@ -594,4 +594,14 @@ func (o *options) checkAccessRestrictions(cfg *config.Config, gardenName string,
 	messages := ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)
 
 	return messages, nil
+}
+
+// bytesMapToStringMap converts a map[string][]byte to map[string]string.
+func bytesMapToStringMap(b map[string][]byte) map[string]string {
+	out := make(map[string]string, len(b))
+	for k, v := range b {
+		out[k] = string(v)
+	}
+
+	return out
 }
