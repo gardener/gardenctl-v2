@@ -248,6 +248,15 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
+	aborted, err := maybeAbortDueToAccessRestrictions(o, messages)
+	if err != nil {
+		return err
+	}
+
+	if aborted {
+		return nil
+	}
+
 	return printProviderEnv(o, ctx, client, shoot, credentialsRef, cloudProfile, messages)
 }
 
@@ -266,26 +275,7 @@ func printProviderEnv(
 	metadata := generateMetadata(o, cli)
 
 	if len(messages) > 0 {
-		if o.TargetFlags.ShootName() == "" || o.ConfirmAccessRestriction {
-			metadata["notification"] = messages.String()
-		} else {
-			if o.Output != "" {
-				return errors.New(
-					"the cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions. Use the --confirm-access-restriction flag to confirm the access",
-				)
-			}
-
-			s := env.Shell(o.Shell)
-
-			return o.Template.ExecuteTemplate(o.IOStreams.Out, "printf", map[string]interface{}{
-				"format": messages.String() + "\n%s %s\n%s\n",
-				"arguments": []string{
-					"The cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions.",
-					"Use the --confirm-access-restriction flag to confirm the access.",
-					s.Prompt(runtime.GOOS) + s.EvalCommand(fmt.Sprintf("%s --confirm-access-restriction %s", o.CmdPath, o.Shell)),
-				},
-			})
-		}
+		metadata["notification"] = messages.String()
 	}
 
 	data, err := generateData(o, ctx, c, shoot, credentialsRef, cloudProfile, providerType, metadata)
@@ -425,6 +415,40 @@ func getTargetFlags(t target.Target) string {
 	}
 
 	return fmt.Sprintf("--garden %s --seed %s --shoot %s", t.GardenName(), t.SeedName(), t.ShootName())
+}
+
+// maybeAbortDueToAccessRestrictions processes access restriction messages and updates metadata or outputs
+// a confirmation prompt. It returns (aborted=true) when it has already written output and the caller
+// should stop further processing. When no messages or when only metadata is updated, it returns aborted=false.
+func maybeAbortDueToAccessRestrictions(o *options, messages ac.AccessRestrictionMessages) (bool, error) {
+	if len(messages) == 0 {
+		return false, nil
+	}
+
+	if o.TargetFlags.ShootName() == "" || o.ConfirmAccessRestriction {
+		return false, nil
+	}
+
+	if o.Output != "" {
+		return false, errors.New(
+			"the cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions. Use the --confirm-access-restriction flag to confirm the access",
+		)
+	}
+
+	s := env.Shell(o.Shell)
+
+	if err := o.Template.ExecuteTemplate(o.IOStreams.Out, "printf", map[string]interface{}{
+		"format": messages.String() + "\n%s %s\n%s\n",
+		"arguments": []string{
+			"The cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions.",
+			"Use the --confirm-access-restriction flag to confirm the access.",
+			s.Prompt(runtime.GOOS) + s.EvalCommand(fmt.Sprintf("%s --confirm-access-restriction %s", o.CmdPath, o.Shell)),
+		},
+	}); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func getKeyStoneURL(cloudProfile *clientgarden.CloudProfileUnion, region string) (string, error) {
