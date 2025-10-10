@@ -15,7 +15,7 @@ allowedPatterns:
   - https://oauth2.googleapis.com/token
   universe_domain:
   - googleapis.com
-configDir: %s
+configDir: PLACEHOLDER_CONFIG_DIR
 credentials:
   client_email: test@example.org
   project_id: test

@@ -7,7 +7,7 @@
   },
   "clientID": "client-id",
   "clientSecret": "client-secret",
-  "configDir": "%s",
+  "configDir": "PLACEHOLDER_CONFIG_DIR",
   "region": "europe",
   "serviceaccount.json": "{\n  \"type\": \"service_account\",\n  \"project_id\": \"test\",\n  \"client_email\": \"test@example.org\"\n}\n",
   "subscriptionID": "subscription-id",

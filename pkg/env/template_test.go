@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -89,16 +90,16 @@ var _ = Describe("Env Commands - Template", func() {
 	})
 
 	Describe("parsing the kubernetes template", func() {
-		const exportFormat = `export KUBECONFIG='%[2]s';
+		const exportFormat = `export KUBECONFIG='PLACEHOLDER_FILENAME';
 
 # Run this command to configure kubectl for your shell:
-# eval $(gardenctl kubectl-env %[1]s)
+# eval $(gardenctl kubectl-env PLACEHOLDER_SHELL)
 `
 
 		const unsetFormat = `unset KUBECONFIG;
 
 # Run this command to reset the kubectl configuration for your shell:
-# eval $(gardenctl kubectl-env -u %[1]s)
+# eval $(gardenctl kubectl-env -u PLACEHOLDER_SHELL)
 `
 		pathToKubeconfig := "/path/to/.kube/config"
 
@@ -118,7 +119,11 @@ var _ = Describe("Env Commands - Template", func() {
 				metadata["shell"] = shell
 				metadata["unset"] = unset
 				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
-				Expect(out.String()).To(Equal(fmt.Sprintf(format, shell, pathToKubeconfig)))
+				expected := strings.NewReplacer(
+					"PLACEHOLDER_SHELL", shell,
+					"PLACEHOLDER_FILENAME", pathToKubeconfig,
+				).Replace(format)
+				Expect(out.String()).To(Equal(expected))
 			},
 			Entry("export environment variables", false, exportFormat),
 			Entry("unset environment variables", true, unsetFormat),
@@ -126,16 +131,16 @@ var _ = Describe("Env Commands - Template", func() {
 	})
 
 	Describe("parsing the gcp template", func() {
-		const exportFormat = `export GOOGLE_CREDENTIALS='{"client_email":"%[3]s","project_id":"%[4]s"}';
-export GOOGLE_CREDENTIALS_ACCOUNT='%[3]s';
-export CLOUDSDK_CORE_PROJECT='%[4]s';
-export CLOUDSDK_COMPUTE_REGION='%[2]s';
-export CLOUDSDK_CONFIG='%[5]s';
-gcloud auth activate-service-account $GOOGLE_CREDENTIALS_ACCOUNT --key-file <(printf "%%s" "$GOOGLE_CREDENTIALS");
-printf 'Run the following command to revoke access credentials:\n$ eval $(gardenctl provider-env --garden garden --project project --shoot shoot -u %[1]s)\n';
+		const exportFormat = `export GOOGLE_CREDENTIALS='{"client_email":"PLACEHOLDER_CLIENT_EMAIL","project_id":"PLACEHOLDER_PROJECT_ID"}';
+export GOOGLE_CREDENTIALS_ACCOUNT='PLACEHOLDER_CLIENT_EMAIL';
+export CLOUDSDK_CORE_PROJECT='PLACEHOLDER_PROJECT_ID';
+export CLOUDSDK_COMPUTE_REGION='PLACEHOLDER_REGION';
+export CLOUDSDK_CONFIG='PLACEHOLDER_CONFIG_DIR';
+gcloud auth activate-service-account $GOOGLE_CREDENTIALS_ACCOUNT --key-file <(printf "%s" "$GOOGLE_CREDENTIALS");
+printf 'Run the following command to revoke access credentials:\n$ eval $(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)\n';
 
 # Run this command to configure gcloud for your shell:
-# eval $(gardenctl provider-env %[1]s)
+# eval $(gardenctl provider-env PLACEHOLDER_SHELL)
 `
 
 		const unsetFormat = `gcloud auth revoke $GOOGLE_CREDENTIALS_ACCOUNT --verbosity=error;
@@ -146,7 +151,7 @@ unset CLOUDSDK_COMPUTE_REGION;
 unset CLOUDSDK_CONFIG;
 
 # Run this command to reset the gcloud configuration for your shell:
-# eval $(gardenctl provider-env -u %[1]s)
+# eval $(gardenctl provider-env -u PLACEHOLDER_SHELL)
 `
 		var (
 			clientEmail = "john.doe@example.org"
@@ -174,7 +179,14 @@ unset CLOUDSDK_CONFIG;
 				metadata["shell"] = shell
 				metadata["unset"] = unset
 				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
-				Expect(out.String()).To(Equal(fmt.Sprintf(format, shell, region, clientEmail, projectID, configDir)))
+				expected := strings.NewReplacer(
+					"PLACEHOLDER_SHELL", shell,
+					"PLACEHOLDER_REGION", region,
+					"PLACEHOLDER_PROJECT_ID", projectID,
+					"PLACEHOLDER_CONFIG_DIR", configDir,
+					"PLACEHOLDER_CLIENT_EMAIL", clientEmail,
+				).Replace(format)
+				Expect(out.String()).To(Equal(expected))
 			},
 			Entry("export environment variables", false, exportFormat),
 			Entry("unset environment variables", true, unsetFormat),
@@ -182,16 +194,16 @@ unset CLOUDSDK_CONFIG;
 	})
 
 	Describe("parsing the azure template", func() {
-		const exportFormat = `$Env:AZURE_CLIENT_ID = '%[2]s';
-$Env:AZURE_CLIENT_SECRET = '%[3]s';
-$Env:AZURE_TENANT_ID = '%[4]s';
-$Env:AZURE_SUBSCRIPTION_ID = '%[5]s';
-$Env:AZURE_CONFIG_DIR = '%[6]s';
+		const exportFormat = `$Env:AZURE_CLIENT_ID = 'PLACEHOLDER_CLIENT_ID';
+$Env:AZURE_CLIENT_SECRET = 'PLACEHOLDER_CLIENT_SECRET';
+$Env:AZURE_TENANT_ID = 'PLACEHOLDER_TENANT_ID';
+$Env:AZURE_SUBSCRIPTION_ID = 'PLACEHOLDER_SUBSCRIPTION_ID';
+$Env:AZURE_CONFIG_DIR = 'PLACEHOLDER_CONFIG_DIR';
 az login --service-principal --username "$Env:AZURE_CLIENT_ID" --password "$Env:AZURE_CLIENT_SECRET" --tenant "$Env:AZURE_TENANT_ID";
 az account set --subscription "$Env:AZURE_SUBSCRIPTION_ID";
-printf 'Run the following command to log out and remove access to Azure subscriptions:\n$ & gardenctl provider-env --garden garden --project project --shoot shoot -u %[1]s | Invoke-Expression\n';
+printf 'Run the following command to log out and remove access to Azure subscriptions:\n$ & gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL | Invoke-Expression\n';
 # Run this command to configure az for your shell:
-# & gardenctl provider-env %[1]s | Invoke-Expression
+# & gardenctl provider-env PLACEHOLDER_SHELL | Invoke-Expression
 `
 
 		const unsetFormat = `az logout --username "$Env:AZURE_CLIENT_ID";
@@ -201,7 +213,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_TENANT_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_SUBSCRIPTION_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 # Run this command to reset the az configuration for your shell:
-# & gardenctl provider-env -u %[1]s | Invoke-Expression
+# & gardenctl provider-env -u PLACEHOLDER_SHELL | Invoke-Expression
 `
 		var (
 			clientID       = "client"
@@ -232,7 +244,15 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 				metadata["shell"] = shell
 				metadata["unset"] = unset
 				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
-				Expect(out.String()).To(Equal(fmt.Sprintf(format, shell, clientID, clientSecret, tenantID, subscriptionID, configDir)))
+				expected := strings.NewReplacer(
+					"PLACEHOLDER_SHELL", shell,
+					"PLACEHOLDER_CLIENT_ID", clientID,
+					"PLACEHOLDER_CLIENT_SECRET", clientSecret,
+					"PLACEHOLDER_TENANT_ID", tenantID,
+					"PLACEHOLDER_SUBSCRIPTION_ID", subscriptionID,
+					"PLACEHOLDER_CONFIG_DIR", configDir,
+				).Replace(format)
+				Expect(out.String()).To(Equal(expected))
 			},
 			Entry("export environment variables", false, exportFormat),
 			Entry("unset environment variables", true, unsetFormat),
@@ -272,10 +292,10 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 		})
 
 		Context("and the template is valid", func() {
-			const exportFormat = `export TEST_TOKEN='%[2]s';
+			const exportFormat = `export TEST_TOKEN='PLACEHOLDER_TEST_TOKEN';
 
 # Run this command to configure test for your shell:
-# eval $(gardenctl provider-env %[1]s)
+# eval $(gardenctl provider-env PLACEHOLDER_SHELL)
 `
 			var token string
 
@@ -291,7 +311,11 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 			It("should successfully parse the template", func() {
 				Expect(t.ParseFiles(filepath.Join(gardenHomeDir, filename))).To(Succeed())
 				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
-				Expect(out.String()).To(Equal(fmt.Sprintf(exportFormat, shell, token)))
+				expected := strings.NewReplacer(
+					"PLACEHOLDER_SHELL", shell,
+					"PLACEHOLDER_TEST_TOKEN", token,
+				).Replace(exportFormat)
+				Expect(out.String()).To(Equal(expected))
 			})
 		})
 	})

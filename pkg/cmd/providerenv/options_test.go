@@ -322,7 +322,8 @@ var _ = Describe("Env Commands - Options", func() {
 
 					It("does the work when the shoot is targeted via project", func() {
 						Expect(options.Run(factory)).To(Succeed())
-						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.bash"), filepath.Join(sessionDir, ".config", "gcloud"))))
+						expected := strings.NewReplacer("PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "gcloud")).Replace(readTestFile("gcp/export.bash"))
+						Expect(options.String()).To(Equal(expected))
 					})
 
 					It("should print how to reset configuration for powershell", func() {
@@ -348,7 +349,8 @@ var _ = Describe("Env Commands - Options", func() {
 
 						It("does the work when the shoot is targeted via seed", func() {
 							Expect(options.Run(factory)).To(Succeed())
-							Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.seed.bash"), filepath.Join(sessionDir, ".config", "gcloud"))))
+							expected := strings.NewReplacer("PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "gcloud")).Replace(readTestFile("gcp/export.seed.bash"))
+							Expect(options.String()).To(Equal(expected))
 						})
 					})
 
@@ -361,7 +363,8 @@ var _ = Describe("Env Commands - Options", func() {
 
 						It("does the work when the shoot is targeted via seed", func() {
 							Expect(options.Run(factory)).To(Succeed())
-							Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.seed.bash"), filepath.Join(sessionDir, ".config", "gcloud"))))
+							expected := strings.NewReplacer("PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "gcloud")).Replace(readTestFile("gcp/export.seed.bash"))
+							Expect(options.String()).To(Equal(expected))
 						})
 					})
 				})
@@ -530,7 +533,8 @@ var _ = Describe("Env Commands - Options", func() {
 
 				It("should render the template successfully", func() {
 					Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
-					Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.bash"), filepath.Join(sessionDir, ".config", "gcloud"))))
+					expected := strings.NewReplacer("PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "gcloud")).Replace(readTestFile("gcp/export.bash"))
+					Expect(options.String()).To(Equal(expected))
 				})
 			})
 
@@ -747,7 +751,8 @@ var _ = Describe("Env Commands - Options", func() {
 
 					It("should render the json successfully", func() {
 						Expect(options.PrintProviderEnv(shoot, secret, cloudProfile)).To(Succeed())
-						Expect(options.String()).To(Equal(fmt.Sprintf(readTestFile("azure/export.json"), filepath.Join(sessionDir, ".config", "az"))))
+						expected := strings.NewReplacer("PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "az")).Replace(readTestFile("azure/export.json"))
+						Expect(options.String()).To(Equal(expected))
 					})
 				})
 			})

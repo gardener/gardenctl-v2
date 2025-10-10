@@ -8,8 +8,8 @@ package providerenv_test
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
+	"strings"
 
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -206,7 +206,8 @@ var _ = Describe("Env Commands", func() {
 				parent.SetArgs([]string{"provider-env", "--output", "yaml"})
 				Expect(parent.Execute()).To(Succeed())
 				configDir := filepath.Join(sessionDir, ".config", "gcloud")
-				Expect(out.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.yaml"), configDir)))
+				expectedOutput := strings.Replace(readTestFile("gcp/export.yaml"), "PLACEHOLDER_CONFIG_DIR", configDir, 1)
+				Expect(out.String()).To(Equal(expectedOutput))
 			})
 		})
 	})
