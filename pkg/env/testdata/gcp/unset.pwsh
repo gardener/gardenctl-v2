@@ -1,5 +1,4 @@
 gcloud auth revoke $Env:GOOGLE_CREDENTIALS_ACCOUNT --verbosity=error;
-Remove-Item -ErrorAction SilentlyContinue Env:\GOOGLE_CREDENTIALS;
 Remove-Item -ErrorAction SilentlyContinue Env:\GOOGLE_CREDENTIALS_ACCOUNT;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_CORE_PROJECT;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_COMPUTE_REGION;

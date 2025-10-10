@@ -131,12 +131,13 @@ var _ = Describe("Env Commands - Template", func() {
 	})
 
 	Describe("parsing the gcp template", func() {
-		const exportFormat = `export GOOGLE_CREDENTIALS='{"client_email":"PLACEHOLDER_CLIENT_EMAIL","project_id":"PLACEHOLDER_PROJECT_ID"}';
-export GOOGLE_CREDENTIALS_ACCOUNT='PLACEHOLDER_CLIENT_EMAIL';
+		const exportFormat = `export GOOGLE_CREDENTIALS_ACCOUNT='PLACEHOLDER_CLIENT_EMAIL';
 export CLOUDSDK_CORE_PROJECT='PLACEHOLDER_PROJECT_ID';
 export CLOUDSDK_COMPUTE_REGION='PLACEHOLDER_REGION';
 export CLOUDSDK_CONFIG='PLACEHOLDER_CONFIG_DIR';
+GOOGLE_CREDENTIALS='{"client_email":"PLACEHOLDER_CLIENT_EMAIL","project_id":"PLACEHOLDER_PROJECT_ID"}';
 gcloud auth activate-service-account $GOOGLE_CREDENTIALS_ACCOUNT --key-file <(printf "%s" "$GOOGLE_CREDENTIALS");
+unset GOOGLE_CREDENTIALS;
 printf 'Run the following command to revoke access credentials:\n$ eval $(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)\n';
 
 # Run this command to configure gcloud for your shell:
@@ -144,7 +145,6 @@ printf 'Run the following command to revoke access credentials:\n$ eval $(garden
 `
 
 		const unsetFormat = `gcloud auth revoke $GOOGLE_CREDENTIALS_ACCOUNT --verbosity=error;
-unset GOOGLE_CREDENTIALS;
 unset GOOGLE_CREDENTIALS_ACCOUNT;
 unset CLOUDSDK_CORE_PROJECT;
 unset CLOUDSDK_COMPUTE_REGION;
@@ -196,11 +196,12 @@ unset CLOUDSDK_CONFIG;
 
 	Describe("parsing the azure template", func() {
 		const exportFormat = `$Env:AZURE_CLIENT_ID = 'PLACEHOLDER_CLIENT_ID';
-$Env:AZURE_CLIENT_SECRET = 'PLACEHOLDER_CLIENT_SECRET';
 $Env:AZURE_TENANT_ID = 'PLACEHOLDER_TENANT_ID';
 $Env:AZURE_SUBSCRIPTION_ID = 'PLACEHOLDER_SUBSCRIPTION_ID';
 $Env:AZURE_CONFIG_DIR = 'PLACEHOLDER_CONFIG_DIR';
-az login --service-principal --username "$Env:AZURE_CLIENT_ID" --password "$Env:AZURE_CLIENT_SECRET" --tenant "$Env:AZURE_TENANT_ID";
+$AZURE_CLIENT_SECRET = 'PLACEHOLDER_CLIENT_SECRET';
+az login --service-principal --username "$Env:AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$Env:AZURE_TENANT_ID";
+Remove-Variable -Name AZURE_CLIENT_SECRET;
 az account set --subscription "$Env:AZURE_SUBSCRIPTION_ID";
 printf 'Run the following command to log out and remove access to Azure subscriptions:\n$ & gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL | Invoke-Expression\n';
 # Run this command to configure az for your shell:
@@ -209,7 +210,6 @@ printf 'Run the following command to log out and remove access to Azure subscrip
 
 		const unsetFormat = `az logout --username "$Env:AZURE_CLIENT_ID";
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CLIENT_ID;
-Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CLIENT_SECRET;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_TENANT_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_SUBSCRIPTION_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
