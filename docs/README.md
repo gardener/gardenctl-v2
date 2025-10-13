@@ -7,6 +7,7 @@
 ## Usage
 
 * [Targeting](usage/targeting.md)
+* [Configure Cloud Provider CLIs (provider-env)](usage/provider-env.md)
 * [gardenctl help](help/gardenctl.md)
 
 ### Configuration

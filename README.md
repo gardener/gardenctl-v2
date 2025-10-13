@@ -89,7 +89,7 @@ gardens:
 # patterns: ~ # List of regex patterns for pattern targeting
 ```
 
-> [!NOTE]  
+> [!NOTE]
 > - To use the kubeconfigs for **shoot clusters** provided by `gardenctl`, you need to have [gardenlogin](https://github.com/gardener/gardenlogin) installed as a `kubectl` auth plugin.
 > - If your **garden cluster** kubeconfig uses OIDC authentication, ensure that you have the [kubelogin](https://github.com/int128/kubelogin) `kubectl` auth plugin installed.
 
@@ -168,11 +168,7 @@ To load the kubectl configuration for each bash session add the command at the e
 
 ### Configure Cloud Provider CLIs
 
-Generate the cloud provider CLI configuration script for the specified shell. Use together with `eval` to configure your shell. Example for `bash`:
-
-```bash
-eval "$(gardenctl provider-env bash)"
-```
+See the dedicated documentation for usage, options, and OpenStack validation requirements: [Configure Cloud Provider CLIs (provider-env)](docs/usage/provider-env.md)
 
 ### SSH
 
