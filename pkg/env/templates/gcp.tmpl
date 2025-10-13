@@ -1,5 +1,5 @@
 {{define "default"}}{{if .__meta.unset -}}
-gcloud auth revoke $GOOGLE_CREDENTIALS_ACCOUNT --verbosity=error;
+gcloud auth revoke --verbosity=error -- "$GOOGLE_CREDENTIALS_ACCOUNT";
 unset GOOGLE_CREDENTIALS_ACCOUNT;
 unset CLOUDSDK_CORE_PROJECT;
 unset CLOUDSDK_COMPUTE_REGION;
@@ -10,7 +10,7 @@ export CLOUDSDK_CORE_PROJECT={{.credentials.project_id | shellEscape}};
 export CLOUDSDK_COMPUTE_REGION={{.region | shellEscape}};
 export CLOUDSDK_CONFIG={{.configDir | shellEscape}};
 GOOGLE_CREDENTIALS={{.credentials | toJson | shellEscape}};
-gcloud auth activate-service-account $GOOGLE_CREDENTIALS_ACCOUNT --key-file <(printf "%s" "$GOOGLE_CREDENTIALS");
+gcloud auth activate-service-account --key-file <(printf "%s" "$GOOGLE_CREDENTIALS") -- "$GOOGLE_CREDENTIALS_ACCOUNT";
 unset GOOGLE_CREDENTIALS;
 {{end}}{{template "gcp-usage-hint" .__meta}}{{end}}
 
@@ -18,7 +18,7 @@ unset GOOGLE_CREDENTIALS;
 {{define "zsh"}}{{template "default" .}}{{end}}
 
 {{define "fish"}}{{if .__meta.unset -}}
-gcloud auth revoke $GOOGLE_CREDENTIALS_ACCOUNT --verbosity=error;
+gcloud auth revoke --verbosity=error -- "$GOOGLE_CREDENTIALS_ACCOUNT";
 set -e GOOGLE_CREDENTIALS_ACCOUNT;
 set -e CLOUDSDK_CORE_PROJECT;
 set -e CLOUDSDK_COMPUTE_REGION;
@@ -29,12 +29,12 @@ set -gx CLOUDSDK_CORE_PROJECT {{.credentials.project_id | shellEscape}};
 set -gx CLOUDSDK_COMPUTE_REGION {{.region | shellEscape}};
 set -gx CLOUDSDK_CONFIG {{.configDir | shellEscape}};
 set GOOGLE_CREDENTIALS {{.credentials | toJson | shellEscape}};
-gcloud auth activate-service-account $GOOGLE_CREDENTIALS_ACCOUNT --key-file (printf "%s" "$GOOGLE_CREDENTIALS" | psub);
+gcloud auth activate-service-account --key-file (printf "%s" "$GOOGLE_CREDENTIALS" | psub) -- "$GOOGLE_CREDENTIALS_ACCOUNT";
 set -e GOOGLE_CREDENTIALS;
 {{end}}{{template "gcp-usage-hint" .__meta}}{{end}}
 
 {{define "powershell"}}{{if .__meta.unset -}}
-gcloud auth revoke $Env:GOOGLE_CREDENTIALS_ACCOUNT --verbosity=error;
+gcloud auth revoke --verbosity=error -- "$Env:GOOGLE_CREDENTIALS_ACCOUNT";
 Remove-Item -ErrorAction SilentlyContinue Env:\GOOGLE_CREDENTIALS_ACCOUNT;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_CORE_PROJECT;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_COMPUTE_REGION;
@@ -46,7 +46,7 @@ $Env:CLOUDSDK_COMPUTE_REGION = {{.region | shellEscape}};
 $Env:CLOUDSDK_CONFIG = {{.configDir | shellEscape}};
 $GOOGLE_CREDENTIALS = {{.credentials | toJson | shellEscape}};
 function Invoke-WithGoogleCredentials {param([Parameter(Mandatory)] [ScriptBlock] $sb); $f = New-TemporaryFile; try {$GOOGLE_CREDENTIALS | Out-File -Encoding utf8 $f; Invoke-Command -ScriptBlock $sb -ArgumentList $f} finally {Remove-Item -ErrorAction SilentlyContinue $f}};
-Invoke-WithGoogleCredentials {param($f) gcloud auth activate-service-account $Env:GOOGLE_CREDENTIALS_ACCOUNT --key-file $f};
+Invoke-WithGoogleCredentials {param($f) gcloud auth activate-service-account --key-file $f -- "$Env:GOOGLE_CREDENTIALS_ACCOUNT"};
 Remove-Variable -Name GOOGLE_CREDENTIALS;
 {{end}}{{template "gcp-usage-hint" .__meta}}{{end}}
 

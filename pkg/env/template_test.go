@@ -136,7 +136,7 @@ export CLOUDSDK_CORE_PROJECT='PLACEHOLDER_PROJECT_ID';
 export CLOUDSDK_COMPUTE_REGION='PLACEHOLDER_REGION';
 export CLOUDSDK_CONFIG='PLACEHOLDER_CONFIG_DIR';
 GOOGLE_CREDENTIALS='{"client_email":"PLACEHOLDER_CLIENT_EMAIL","project_id":"PLACEHOLDER_PROJECT_ID"}';
-gcloud auth activate-service-account $GOOGLE_CREDENTIALS_ACCOUNT --key-file <(printf "%s" "$GOOGLE_CREDENTIALS");
+gcloud auth activate-service-account --key-file <(printf "%s" "$GOOGLE_CREDENTIALS") -- "$GOOGLE_CREDENTIALS_ACCOUNT";
 unset GOOGLE_CREDENTIALS;
 printf 'Run the following command to revoke access credentials:\n$ eval $(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)\n';
 
@@ -144,7 +144,7 @@ printf 'Run the following command to revoke access credentials:\n$ eval $(garden
 # eval $(gardenctl provider-env PLACEHOLDER_SHELL)
 `
 
-		const unsetFormat = `gcloud auth revoke $GOOGLE_CREDENTIALS_ACCOUNT --verbosity=error;
+		const unsetFormat = `gcloud auth revoke --verbosity=error -- "$GOOGLE_CREDENTIALS_ACCOUNT";
 unset GOOGLE_CREDENTIALS_ACCOUNT;
 unset CLOUDSDK_CORE_PROJECT;
 unset CLOUDSDK_COMPUTE_REGION;
