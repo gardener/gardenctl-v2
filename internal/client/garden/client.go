@@ -83,8 +83,10 @@ type Client interface {
 	// GetCredentialsBinding returns a Gardener credentialsbinding resource
 	GetCredentialsBinding(ctx context.Context, namespace, name string) (*gardensecurityv1alpha1.CredentialsBinding, error)
 
-	// GetCloudProfile returns a CloudProfileUnion resource which encapsulates the result of fetching a CloudProfile or NamespacedCloudProfile, depending on the given cloud profile reference
-	GetCloudProfile(ctx context.Context, ref gardencorev1beta1.CloudProfileReference) (*CloudProfileUnion, error)
+	// GetCloudProfile returns a CloudProfileUnion for the given CloudProfileReference.
+	// For NamespacedCloudProfile references, the namespace parameter is required.
+	// For CloudProfile references, the namespace parameter is ignored.
+	GetCloudProfile(ctx context.Context, ref gardencorev1beta1.CloudProfileReference, namespace string) (*CloudProfileUnion, error)
 
 	// GetNamespace returns a Kubernetes namespace resource
 	GetNamespace(ctx context.Context, name string) (*corev1.Namespace, error)
@@ -488,7 +490,7 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clie
 	return config, nil
 }
 
-func (g *clientImpl) GetCloudProfile(ctx context.Context, ref gardencorev1beta1.CloudProfileReference) (*CloudProfileUnion, error) {
+func (g *clientImpl) GetCloudProfile(ctx context.Context, ref gardencorev1beta1.CloudProfileReference, namespace string) (*CloudProfileUnion, error) {
 	switch ref.Kind {
 	case corev1beta1constants.CloudProfileReferenceKindCloudProfile:
 		cloudProfile := &gardencorev1beta1.CloudProfile{}
@@ -503,8 +505,12 @@ func (g *clientImpl) GetCloudProfile(ctx context.Context, ref gardencorev1beta1.
 		}, nil
 
 	case corev1beta1constants.CloudProfileReferenceKindNamespacedCloudProfile:
+		if namespace == "" {
+			return nil, fmt.Errorf("namespace for NamespacedCloudProfile %q not provided", ref.Name)
+		}
+
 		namespacedCloudProfile := &gardencorev1beta1.NamespacedCloudProfile{}
-		key := types.NamespacedName{Name: ref.Name}
+		key := types.NamespacedName{Namespace: namespace, Name: ref.Name}
 
 		if err := g.c.Get(ctx, key, namespacedCloudProfile); err != nil {
 			return nil, fmt.Errorf("failed to get NamespacedCloudProfile %v: %w", key, err)
