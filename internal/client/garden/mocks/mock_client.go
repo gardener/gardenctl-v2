@@ -78,18 +78,18 @@ func (mr *MockClientMockRecorder) FindShoot(arg0 interface{}, arg1 ...interface{
 }
 
 // GetCloudProfile mocks base method.
-func (m *MockClient) GetCloudProfile(arg0 context.Context, arg1 v1beta1.CloudProfileReference) (*garden.CloudProfileUnion, error) {
+func (m *MockClient) GetCloudProfile(arg0 context.Context, arg1 v1beta1.CloudProfileReference, arg2 string) (*garden.CloudProfileUnion, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCloudProfile", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetCloudProfile", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*garden.CloudProfileUnion)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetCloudProfile indicates an expected call of GetCloudProfile.
-func (mr *MockClientMockRecorder) GetCloudProfile(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetCloudProfile(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCloudProfile", reflect.TypeOf((*MockClient)(nil).GetCloudProfile), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCloudProfile", reflect.TypeOf((*MockClient)(nil).GetCloudProfile), arg0, arg1, arg2)
 }
 
 // GetConfigMap mocks base method.
