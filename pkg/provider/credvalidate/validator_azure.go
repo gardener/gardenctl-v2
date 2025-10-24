@@ -46,8 +46,11 @@ func NewAzureValidator(ctx context.Context) *AzureValidator {
 			RegexValue: ptr.To(guidPattern),
 		},
 		{
-			Field:      "clientSecret",
-			RegexValue: ptr.To(`^[A-Za-z0-9._:~+/=@?\[\]-]+$`),
+			Field: "clientSecret",
+			// Allow all printable ASCII characters from '!' (U+0021) to '~' (U+007E),
+			// This range covers letters (A–Z, a–z), digits (0–9), and punctuation/symbols.
+			// Space (U+0020) and all control characters are not allowed.
+			RegexValue: ptr.To(`^[!-~]+$`),
 		},
 	}
 

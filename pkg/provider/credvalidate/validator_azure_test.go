@@ -91,6 +91,7 @@ var _ = Describe("Azure Validator", func() {
 				Entry("Azure doc example", "Bb2Cc~3Dd4.-Ee5Ff6Gg7Hh8Ii9Jj0_Kk1Ll2Mm3"),
 				Entry("mixed case", "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcd"),
 				Entry("special chars", "AbcdEFghIJklMNopQRstUVwxYZ01234:?._~/-+=@[]"),
+				Entry("only punctuation ASCII !..~", "!@#$%^&*()!@#$%^&*()!@#$%^&*()!@#$%^&*()"),
 				Entry("min length (34 chars)", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
 				Entry("max length (44 chars)", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
 			)
@@ -180,7 +181,6 @@ var _ = Describe("Azure Validator", func() {
 					_, err := validator.ValidateSecret(secret)
 					Expect(err).To(MatchError(ContainSubstring(`pattern mismatch in field "clientSecret": does not match any allowed patterns`)))
 				},
-				Entry("contains punctuation (!@#$ etc.)", "!@#$%^&*()!@#$%^&*()!@#$%^&*()!@#$%^&*()"),
 				Entry("contains whitespace (spaces/tabs/newlines)", "test test test test test test test test  "),
 				Entry("contains unicode/emoji", "secretüwithunicode😀valueeeeeeeeeeee"),
 				Entry("mixed valid and invalid", "validPart!invalid.and~more-1234567890_ "),
