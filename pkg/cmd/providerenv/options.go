@@ -314,7 +314,7 @@ func (o *options) Run(f util.Factory) error {
 		return fmt.Errorf("shoot %q does not reference a cloud profile", o.Target.ShootName())
 	}
 
-	cloudProfile, err := client.GetCloudProfile(ctx, *shoot.Spec.CloudProfile)
+	cloudProfile, err := client.GetCloudProfile(ctx, *shoot.Spec.CloudProfile, shoot.Namespace)
 	if err != nil {
 		return err
 	}

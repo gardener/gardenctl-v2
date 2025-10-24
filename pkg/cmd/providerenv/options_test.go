@@ -315,7 +315,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 				JustBeforeEach(func() {
 					client.EXPECT().GetSecret(ctx, secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name).Return(secret, nil)
-					client.EXPECT().GetCloudProfile(ctx, *shoot.Spec.CloudProfile).Return(cloudProfile, nil)
+					client.EXPECT().GetCloudProfile(ctx, *shoot.Spec.CloudProfile, shoot.Namespace).Return(cloudProfile, nil)
 				})
 
 				Context("and the shoot is targeted via project", func() {
@@ -436,9 +436,9 @@ var _ = Describe("Env Commands - Options", func() {
 						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
 						client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
 						client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName).Return(secretBinding, nil)
-						client.EXPECT().GetSecret(ctx, secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name).Return(nil, err)
-						client.EXPECT().GetCloudProfile(ctx, *shoot.Spec.CloudProfile).Return(cloudProfile, nil)
+						client.EXPECT().GetCloudProfile(ctx, *shoot.Spec.CloudProfile, shoot.Namespace).Return(cloudProfile, nil)
 						manager.EXPECT().Configuration().Return(cfg)
+						client.EXPECT().GetSecret(ctx, secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name).Return(nil, err)
 						Expect(options.Run(factory)).To(BeIdenticalTo(err))
 					})
 
@@ -447,7 +447,7 @@ var _ = Describe("Env Commands - Options", func() {
 						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
 						client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
 						client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName).Return(secretBinding, nil)
-						client.EXPECT().GetCloudProfile(ctx, *shoot.Spec.CloudProfile).Return(nil, err)
+						client.EXPECT().GetCloudProfile(ctx, *shoot.Spec.CloudProfile, shoot.Namespace).Return(nil, err)
 						Expect(options.Run(factory)).To(BeIdenticalTo(err))
 					})
 				})
