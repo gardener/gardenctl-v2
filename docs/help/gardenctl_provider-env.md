@@ -56,7 +56,7 @@ gardenctl provider-env [flags]
   -f, --force                                    Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.
       --garden string                            target the given garden cluster
   -h, --help                                     help for provider-env
-      --openstack-allowed-patterns strings       Additional allowed patterns for OpenStack credential fields in JSON format.
+      --openstack-allowed-patterns stringArray   Additional allowed patterns for OpenStack credential fields in JSON format.
                                                  Note: Only the 'authURL' field is supported for OpenStack pattern validation.
                                                  Each pattern should be a JSON object with fields like:
                                                  {"field": "authURL", "host": "keystone.example.com"}

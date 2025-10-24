@@ -36,7 +36,7 @@ gardenctl provider-env powershell [flags]
       --log-file-max-size uint                   Defines the maximum size a log file can grow to (no effect when -logtostderr=true). Unit is megabytes. If the value is 0, the maximum file size is unlimited. (default 1800)
       --logtostderr                              log to standard error instead of files (default true)
       --one-output                               If true, only write logs to their native severity level (vs also writing to each lower severity level; no effect when -logtostderr=true)
-      --openstack-allowed-patterns strings       Additional allowed patterns for OpenStack credential fields in JSON format.
+      --openstack-allowed-patterns stringArray   Additional allowed patterns for OpenStack credential fields in JSON format.
                                                  Note: Only the 'authURL' field is supported for OpenStack pattern validation.
                                                  Each pattern should be a JSON object with fields like:
                                                  {"field": "authURL", "host": "keystone.example.com"}

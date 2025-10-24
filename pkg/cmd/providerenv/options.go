@@ -210,7 +210,7 @@ func (o *options) AddFlags(flags *pflag.FlagSet) {
 	flags.BoolVarP(&o.ConfirmAccessRestriction, "confirm-access-restriction", "y", o.ConfirmAccessRestriction, "Confirm any access restrictions. Set this flag only if you are completely aware of the access restrictions.")
 	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, fmt.Sprintf("Generate the script to unset the cloud provider CLI environment variables and logout for %s", o.Shell))
 
-	flags.StringSliceVar(&o.OpenStackAllowedPatterns, "openstack-allowed-patterns", nil,
+	flags.StringArrayVar(&o.OpenStackAllowedPatterns, "openstack-allowed-patterns", nil,
 		`Additional allowed patterns for OpenStack credential fields in JSON format.
 Note: Only the 'authURL' field is supported for OpenStack pattern validation.
 Each pattern should be a JSON object with fields like:

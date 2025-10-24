@@ -92,6 +92,49 @@ var _ = Describe("Env Commands", func() {
 			}
 		})
 
+		Context("flag parsing", func() {
+			var zshCmd *cobra.Command
+
+			BeforeEach(func() {
+				// Initialize zshCmd once for the following tests
+				for _, c := range cmd.Commands() {
+					if c.Name() == "zsh" {
+						zshCmd = c
+						break
+					}
+				}
+				Expect(zshCmd).NotTo(BeNil())
+			})
+
+			It("parses a single JSON object with --openstack-allowed-patterns (stringArray)", func() {
+				json := `{"field":"authURL","uri":"https://keystone.example.com:5000/v3"}`
+
+				// Parse flags on the parent command so persistent flags are recognized
+				Expect(cmd.ParseFlags([]string{"--openstack-allowed-patterns", json})).To(Succeed())
+
+				values, err := cmd.PersistentFlags().GetStringArray("openstack-allowed-patterns")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(HaveLen(1))
+				Expect(values[0]).To(Equal(json))
+			})
+
+			It("parses multiple JSON objects via repeated --openstack-allowed-patterns", func() {
+				json1 := `{"field":"authURL","uri":"https://keystone.example.com:5000/v3"}`
+				json2 := `{"field":"authURL","host":"keystone.example.com","path":"/v3"}`
+
+				Expect(cmd.ParseFlags([]string{
+					"--openstack-allowed-patterns", json1,
+					"--openstack-allowed-patterns", json2,
+				})).To(Succeed())
+
+				values, err := cmd.PersistentFlags().GetStringArray("openstack-allowed-patterns")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(HaveLen(2))
+				Expect(values[0]).To(Equal(json1))
+				Expect(values[1]).To(Equal(json2))
+			})
+		})
+
 		Context("command execution", func() {
 			var (
 				ctx               context.Context
