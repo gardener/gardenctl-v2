@@ -14,6 +14,7 @@ import (
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/pkg/provider/common/allowpattern"
+	"github.com/gardener/gardenctl-v2/pkg/provider/credvalidate"
 )
 
 type Provider interface {
@@ -23,12 +24,7 @@ type Provider interface {
 func providerFor(typ string, ctx context.Context, mergedPatterns *MergedProviderPatterns) Provider {
 	switch typ {
 	case "gcp":
-		var patterns []allowpattern.Pattern
-		if mergedPatterns != nil {
-			patterns = mergedPatterns.GCP
-		}
-
-		return newGCPProvider(ctx, patterns)
+		return newGCPProvider(ctx, credvalidate.DefaultGCPAllowedPatterns())
 	case "openstack":
 		var patterns []allowpattern.Pattern
 		if mergedPatterns != nil {

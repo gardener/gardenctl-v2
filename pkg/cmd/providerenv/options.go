@@ -57,10 +57,6 @@ type options struct {
 	// ConfirmAccessRestriction, when set to true, implies the user's understanding of the access restrictions for the targeted shoot.
 	// When set to false and access restrictions are present, the command will terminate with an error.
 	ConfirmAccessRestriction bool
-	// GCPAllowedPatterns is a list of JSON-formatted allowed patterns for GCP credential config fields
-	GCPAllowedPatterns []string
-	// GCPAllowedURIPatterns is a list of simple field=uri patterns for GCP credential config fields
-	GCPAllowedURIPatterns []string
 	// OpenStackAllowedPatterns is a list of JSON-formatted allowed patterns for OpenStack credential config fields
 	OpenStackAllowedPatterns []string
 	// OpenStackAllowedURIPatterns is a list of simple field=uri patterns for OpenStack credential config fields
@@ -70,13 +66,8 @@ type options struct {
 }
 
 // MergedProviderPatterns contains merged allowed patterns for cloud providers that support pattern-based field validation.
-// Currently, only GCP and OpenStack providers support allowed patterns.
+// Currently, only OpenStack supports user-configurable allowed patterns.
 type MergedProviderPatterns struct {
-	// GCP contains the merged allowed patterns for GCP credential fields.
-	// Supported fields include: universe_domain, token_uri, auth_uri, auth_provider_x509_cert_url,
-	// client_x509_cert_url, token_url, service_account_impersonation_url, private_key_id,
-	// client_id, client_email, audience, and others.
-	GCP []allowpattern.Pattern
 	// OpenStack contains the merged allowed patterns for OpenStack credential fields.
 	// Currently, only the 'authURL' field is supported for pattern validation.
 	OpenStack []allowpattern.Pattern
@@ -112,18 +103,12 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error
 
 	cfg := manager.Configuration()
 
-	gcpPatterns, err := o.processGCPPatterns(cfg, logger)
-	if err != nil {
-		return err
-	}
-
 	openstackPatterns, err := o.processOpenStackPatterns(cfg, logger)
 	if err != nil {
 		return err
 	}
 
 	o.MergedAllowedPatterns = &MergedProviderPatterns{
-		GCP:       gcpPatterns,
 		OpenStack: openstackPatterns,
 	}
 
@@ -183,24 +168,6 @@ func processProviderPatterns(
 	return normalizedPatterns, nil
 }
 
-// processGCPPatterns processes and merges GCP allowed patterns from defaults, config, and flags.
-func (o *options) processGCPPatterns(cfg *config.Config, logger klog.Logger) ([]allowpattern.Pattern, error) {
-	var configPatterns []allowpattern.Pattern
-	if cfg != nil && cfg.Provider != nil && cfg.Provider.GCP != nil {
-		configPatterns = cfg.Provider.GCP.AllowedPatterns
-	}
-
-	return processProviderPatterns(
-		logger,
-		"GCP",
-		credvalidate.DefaultGCPAllowedPatterns(),
-		configPatterns,
-		credvalidate.GetGCPValidationContext(),
-		o.GCPAllowedPatterns,
-		o.GCPAllowedURIPatterns,
-	)
-}
-
 // processOpenStackPatterns processes and merges OpenStack allowed patterns from defaults, config, and flags.
 // Note: Only the 'authURL' field is supported for OpenStack pattern validation.
 func (o *options) processOpenStackPatterns(cfg *config.Config, logger klog.Logger) ([]allowpattern.Pattern, error) {
@@ -242,23 +209,6 @@ func (o *options) AddFlags(flags *pflag.FlagSet) {
 	flags.BoolVarP(&o.Force, "force", "f", false, "Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.")
 	flags.BoolVarP(&o.ConfirmAccessRestriction, "confirm-access-restriction", "y", o.ConfirmAccessRestriction, "Confirm any access restrictions. Set this flag only if you are completely aware of the access restrictions.")
 	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, fmt.Sprintf("Generate the script to unset the cloud provider CLI environment variables and logout for %s", o.Shell))
-	flags.StringSliceVar(&o.GCPAllowedPatterns, "gcp-allowed-patterns", nil,
-		`Additional allowed patterns for GCP credential fields in JSON format.
-Supported fields include: universe_domain, token_uri, auth_uri, auth_provider_x509_cert_url, client_x509_cert_url,
-token_url, service_account_impersonation_url, private_key_id, client_id, client_email, audience.
-Each pattern should be a JSON object with fields like:
-{"field": "universe_domain", "host": "example.com"}
-{"field": "token_uri", "host": "example.com", "path": "/token"}
-{"field": "service_account_impersonation_url", "host": "iamcredentials.googleapis.com", "regexPath": "^/v1/projects/-/serviceAccounts/[^/:]+:generateAccessToken$"}
-{"field": "client_id", "regexValue": "^[0-9]{15,25}$"}
-These are merged with defaults and configuration.`)
-
-	flags.StringSliceVar(&o.GCPAllowedURIPatterns, "gcp-allowed-uri-patterns", nil,
-		`Simplified URI patterns for GCP credential fields in the format 'field=uri'.
-For example:
-"token_uri=https://example.com/token"
-"client_x509_cert_url=https://example.com/{client_email}"
-The URI is parsed and host and path are set accordingly. These are merged with defaults and configuration.`)
 
 	flags.StringSliceVar(&o.OpenStackAllowedPatterns, "openstack-allowed-patterns", nil,
 		`Additional allowed patterns for OpenStack credential fields in JSON format.

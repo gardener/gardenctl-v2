@@ -61,16 +61,8 @@ type Garden struct {
 
 // ProviderConfig represents provider-specific configuration options.
 type ProviderConfig struct {
-	// GCP configuration options
-	GCP *GCPConfig `json:"gcp,omitempty"`
 	// OpenStack configuration options
 	OpenStack *OpenStackConfig `json:"openstack,omitempty"`
-}
-
-// GCPConfig represents GCP-specific configuration options.
-type GCPConfig struct {
-	// AllowedPatterns is a list of allowed patterns for GCP credential fields.
-	AllowedPatterns []allowpattern.Pattern `json:"allowedPatterns,omitempty"`
 }
 
 // OpenStackConfig represents OpenStack-specific configuration options.
@@ -144,27 +136,10 @@ func (config *Config) Validate() error {
 
 	// Validate provider config
 	if config.Provider != nil {
-		if config.Provider.GCP != nil {
-			if err := config.Provider.GCP.Validate(); err != nil {
-				return fmt.Errorf("invalid GCP provider configuration: %w", err)
-			}
-		}
-
 		if config.Provider.OpenStack != nil {
 			if err := config.Provider.OpenStack.Validate(); err != nil {
 				return fmt.Errorf("invalid OpenStack provider configuration: %w", err)
 			}
-		}
-	}
-
-	return nil
-}
-
-// Validate validates the GCP configuration.
-func (g *GCPConfig) Validate() error {
-	for i, pattern := range g.AllowedPatterns {
-		if err := pattern.ValidateWithContext(credvalidate.GetGCPValidationContext()); err != nil {
-			return fmt.Errorf("invalid allowed pattern at index %d: %w", i, err)
 		}
 	}
 
