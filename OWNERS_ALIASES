@@ -1,0 +1,11 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+aliases:
+  gardenctl-v2-reviewers:
+  - grolu
+  - klocke-io
+  - petersutter
+  gardenctl-v2-approvers:
+  - grolu
+  - klocke-io
+  - petersutter
