@@ -62,9 +62,9 @@ func NewAzureValidator(ctx context.Context) *AzureValidator {
 // validateAzureClientSecret validates the clientSecret with explicit min/max length
 // and the allowed character pattern to produce clearer error messages.
 func validateAzureClientSecret(v *credvalidate.BaseValidator, field string, val any, allFields map[string]any, nonSensitive bool) error {
-	str, ok := val.(string)
-	if !ok {
-		return credvalidate.NewFieldError(field, "field value must be a string", nil, nonSensitive)
+	str, err := credvalidate.AssertStringWithPrintableCheck(field, val, nonSensitive)
+	if err != nil {
+		return err
 	}
 
 	if err := credvalidate.ValidateFieldMinLength(field, str, clientSecretMinLen, nonSensitive); err != nil {

@@ -64,9 +64,9 @@ func (v *AWSValidator) ValidateSecret(secret *corev1.Secret) (map[string]interfa
 
 // validateAccessKeyID validates the accessKeyID field.
 func validateAccessKeyID(v *credvalidate.BaseValidator, field string, val any, allFields map[string]any, nonSensitive bool) error {
-	str, ok := val.(string)
-	if !ok {
-		return credvalidate.NewFieldError(field, "field value must be a string", nil, nonSensitive)
+	str, err := credvalidate.AssertStringWithPrintableCheck(field, val, nonSensitive)
+	if err != nil {
+		return err
 	}
 
 	if err := credvalidate.ValidateFieldExactLength(field, str, accessKeyLen, nonSensitive); err != nil {
@@ -80,9 +80,9 @@ var _ credvalidate.FieldValidator = validateAccessKeyID
 
 // validateSecretAccessKey validates the secretAccessKey field.
 func validateSecretAccessKey(v *credvalidate.BaseValidator, field string, val any, allFields map[string]any, nonSensitive bool) error {
-	str, ok := val.(string)
-	if !ok {
-		return credvalidate.NewFieldError(field, "field value must be a string", nil, nonSensitive)
+	str, err := credvalidate.AssertStringWithPrintableCheck(field, val, nonSensitive)
+	if err != nil {
+		return err
 	}
 
 	if err := credvalidate.ValidateFieldExactLength(field, str, secretAccessKeyLen, nonSensitive); err != nil {

@@ -362,6 +362,30 @@ var _ = Describe("GCP Validator", func() {
 			)
 		})
 
+		Context("Field length validation", func() {
+			DescribeTable("should fail when fields are too long",
+				func(field string, value string, expectedError string) {
+					jsonData := fmt.Sprintf(`{
+						"type": "service_account",
+						"project_id": "test-project-12345",
+						"%s": "%s"
+					}`, field, value)
+					secret.Data["serviceaccount.json"] = []byte(jsonData)
+					_, err := validator.ValidateSecret(secret)
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring(expectedError)))
+				},
+				Entry("private_key_id too long (41 chars)",
+					"private_key_id", "1234567890abcdef1234567890abcdef123456789",
+					`pattern mismatch in field "private_key_id": does not match any allowed patterns`,
+				),
+				Entry("client_id too long (26 chars)",
+					"client_id", "12345678901234567890123456",
+					`pattern mismatch in field "client_id": does not match any allowed patterns`,
+				),
+			)
+		})
+
 		Context("Disallowed fields", func() {
 			It("should fail with disallowed fields", func() {
 				secret.Data["serviceaccount.json"] = []byte(`{

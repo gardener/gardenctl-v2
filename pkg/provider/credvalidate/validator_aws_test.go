@@ -192,9 +192,22 @@ var _ = Describe("AWS Validator", func() {
 				Entry("invalid characters", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLE@EY"),
 				Entry("spaces", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLE EY"),
 				Entry("special characters", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLE#EY"),
-				Entry("newlines", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLE\nEY"),
-				Entry("tabs", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLE\tEY"),
 				Entry("unicode", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEüE"),
+			)
+		})
+
+		Context("Non-printable character validation", func() {
+			DescribeTable("should fail when fields contain non-printable characters",
+				func(fieldName string, fieldValue string) {
+					secret.Data[fieldName] = []byte(fieldValue)
+					_, err := validator.ValidateSecret(secret)
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("field value contains non-printable character")))
+				},
+				Entry("accessKeyID with null byte",
+					"accessKeyID", "AKIA\x00OSFODNN7EXAMPLE"),
+				Entry("secretAccessKey with null byte",
+					"secretAccessKey", "wJalrXUtnFEMI/K7MDENG/bPxRfi\x00YEXAMPLEKEY"),
 			)
 		})
 	})

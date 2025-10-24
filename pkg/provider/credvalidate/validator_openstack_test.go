@@ -224,12 +224,29 @@ var _ = Describe("OpenStack Validator", func() {
 		})
 
 		Context("Field-specific validation", func() {
-			It("should fail when tenantName is too long", func() {
-				longTenantName := strings.Repeat("a", 65) // 65 characters, exceeds limit
-				secret.Data["tenantName"] = []byte(longTenantName)
-				_, err := validator.ValidateSecret(secret)
-				Expect(err).To(MatchError(ContainSubstring("validation error in field \"tenantName\": field value must be at most 64 characters, got 65")))
-			})
+			DescribeTable("should fail when fields are too long",
+				func(fieldName string, length int, expectedError string) {
+					secret.Data[fieldName] = []byte(strings.Repeat("a", length))
+					_, err := validator.ValidateSecret(secret)
+					Expect(err).To(MatchError(ContainSubstring(expectedError)))
+				},
+				Entry("tenantName",
+					"tenantName", 65,
+					"validation error in field \"tenantName\": field value must be at most 64 characters, got 65",
+				),
+				Entry("domainName",
+					"domainName", 65,
+					"validation error in field \"domainName\": field value must be at most 64 characters, got 65",
+				),
+				Entry("username",
+					"username", 256,
+					"validation error in field \"username\": field value must be at most 255 characters, got 256",
+				),
+				Entry("password",
+					"password", 4097,
+					"validation error in field \"password\": field value must be at most 4096 characters, got 4097",
+				),
+			)
 
 			It("should allow password with spaces", func() {
 				secret.Data["password"] = []byte(" my password with spaces ")
@@ -237,6 +254,71 @@ var _ = Describe("OpenStack Validator", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(creds).To(HaveKeyWithValue("password", " my password with spaces "))
 			})
+		})
+
+		Context("Non-printable character validation", func() {
+			DescribeTable("should fail when fields contain non-printable characters",
+				func(fieldName string, fieldValue string, expectedErrorSubstring string) {
+					secret.Data[fieldName] = []byte(fieldValue)
+					_, err := validator.ValidateSecret(secret)
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring(expectedErrorSubstring)))
+				},
+				Entry("domainName with null byte",
+					"domainName", "default\x00domain", "field value contains non-printable character"),
+				Entry("tenantName with null byte",
+					"tenantName", "project\x00name", "field value contains non-printable character"),
+				Entry("username with null byte",
+					"username", "user\x00name", "field value contains non-printable character"),
+				Entry("password with null byte",
+					"password", "pass\x00word", "field value contains non-printable character"),
+			)
+		})
+
+		Context("Application credential field validation", func() {
+			BeforeEach(func() {
+				secret.Data = map[string][]byte{
+					"domainName":                  []byte("default"),
+					"tenantName":                  []byte("my-project"),
+					"applicationCredentialID":     []byte("app-cred-id"),
+					"applicationCredentialSecret": []byte("app-cred-secret"),
+				}
+			})
+
+			DescribeTable("should fail when application credential fields are too long",
+				func(fieldName string, length int, expectedError string) {
+					secret.Data[fieldName] = []byte(strings.Repeat("a", length))
+					_, err := validator.ValidateSecret(secret)
+					Expect(err).To(MatchError(ContainSubstring(expectedError)))
+				},
+				Entry("applicationCredentialID",
+					"applicationCredentialID", 256,
+					"validation error in field \"applicationCredentialID\": field value must be at most 255 characters, got 256",
+				),
+				Entry("applicationCredentialName",
+					"applicationCredentialName", 256,
+					"validation error in field \"applicationCredentialName\": field value must be at most 255 characters, got 256",
+				),
+				Entry("applicationCredentialSecret",
+					"applicationCredentialSecret", 4097,
+					"validation error in field \"applicationCredentialSecret\": field value must be at most 4096 characters, got 4097",
+				),
+			)
+
+			DescribeTable("should fail when application credential fields contain non-printable characters",
+				func(fieldName string, fieldValue string) {
+					secret.Data[fieldName] = []byte(fieldValue)
+					_, err := validator.ValidateSecret(secret)
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("field value contains non-printable character")))
+				},
+				Entry("applicationCredentialID with null byte",
+					"applicationCredentialID", "id\x00value"),
+				Entry("applicationCredentialName with null byte",
+					"applicationCredentialName", "name\x00value"),
+				Entry("applicationCredentialSecret with null byte",
+					"applicationCredentialSecret", "secret\x00value"),
+			)
 		})
 	})
 

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"unicode"
 	"unicode/utf8"
 
 	"k8s.io/klog/v2"
@@ -121,12 +122,32 @@ func ValidateFieldMaxLength(field, value string, maxLen int, nonSensitive bool) 
 	return nil
 }
 
+// AssertStringWithPrintableCheck validates that a value is a string and contains only printable characters.
+// It returns the string if valid, or an error if the value is not a string or contains non-printable characters.
+func AssertStringWithPrintableCheck(field string, val any, nonSensitive bool) (string, error) {
+	str, ok := val.(string)
+	if !ok {
+		return "", NewFieldError(field, "field value must be a string", nil, nonSensitive)
+	}
+
+	// Check that all runes are printable
+	for i, r := range str {
+		if !unicode.IsPrint(r) {
+			return "", NewFieldErrorWithValue(field,
+				fmt.Sprintf("field value contains non-printable character at position %d (U+%04X)", i, r),
+				str, nil, nonSensitive)
+		}
+	}
+
+	return str, nil
+}
+
 // ValidateStringWithPattern creates a validator that validates a string field against patterns using the provided matcher.
 func ValidateStringWithPattern(matcher PatternMatcher) FieldValidator {
 	return func(v *BaseValidator, field string, val any, allFields map[string]any, nonSensitive bool) error {
-		str, ok := val.(string)
-		if !ok {
-			return NewFieldError(field, "field value must be a string", nil, nonSensitive)
+		str, err := AssertStringWithPrintableCheck(field, val, nonSensitive)
+		if err != nil {
+			return err
 		}
 
 		return v.ValidateFieldPattern(field, str, allFields, matcher, nonSensitive)

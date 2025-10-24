@@ -57,9 +57,9 @@ func (v *HCloudValidator) ValidateSecret(secret *corev1.Secret) (map[string]inte
 
 // validateHCloudToken validates the hcloudToken field.
 func validateHCloudToken(v *credvalidate.BaseValidator, field string, val any, allFields map[string]any, nonSensitive bool) error {
-	str, ok := val.(string)
-	if !ok {
-		return credvalidate.NewFieldError(field, "field value must be a string", nil, nonSensitive)
+	str, err := credvalidate.AssertStringWithPrintableCheck(field, val, nonSensitive)
+	if err != nil {
+		return err
 	}
 
 	if err := credvalidate.ValidateFieldExactLength(field, str, hcloudTokenLen, nonSensitive); err != nil {

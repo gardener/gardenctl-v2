@@ -81,11 +81,11 @@ func DefaultGCPAllowedPatterns() []allowpattern.Pattern {
 		},
 		{
 			Field:      "client_email",
-			RegexValue: ptr.To(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.iam\.gserviceaccount\.com$`),
+			RegexValue: ptr.To(`^[a-z0-9-]{1,100}@[a-z0-9-]{6,30}\.iam\.gserviceaccount\.com$`),
 		},
 		{
 			Field:      "client_email",
-			RegexValue: ptr.To(`^[0-9]+-compute@developer\.gserviceaccount\.com$`),
+			RegexValue: ptr.To(`^[0-9]{1,20}-compute@developer\.gserviceaccount\.com$`),
 		},
 		// URI and domain patterns for other fields
 		{
@@ -155,9 +155,9 @@ var _ credvalidate.FieldValidator = validateServiceAccountJSON
 
 // validateServiceAccountType validates the type field for service accounts.
 func validateServiceAccountType(v *credvalidate.BaseValidator, field string, val any, allFields map[string]any, nonSensitive bool) error {
-	str, ok := val.(string)
-	if !ok {
-		return credvalidate.NewFieldError(field, "field value must be a string", nil, nonSensitive)
+	str, err := credvalidate.AssertStringWithPrintableCheck(field, val, nonSensitive)
+	if err != nil {
+		return err
 	}
 
 	if str != "service_account" {
@@ -171,10 +171,9 @@ var _ credvalidate.FieldValidator = validateServiceAccountType
 
 // validateProjectID validates the project_id field format.
 func validateProjectID(v *credvalidate.BaseValidator, field string, val any, allFields map[string]any, nonSensitive bool) error {
-	str, ok := val.(string)
-
-	if !ok {
-		return credvalidate.NewFieldError(field, "field value must be a string", nil, nonSensitive)
+	str, err := credvalidate.AssertStringWithPrintableCheck(field, val, nonSensitive)
+	if err != nil {
+		return err
 	}
 
 	if !projectIDRegexp.MatchString(str) {

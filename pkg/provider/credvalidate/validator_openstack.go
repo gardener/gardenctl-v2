@@ -16,8 +16,15 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/provider/common/credvalidate"
 )
 
-// tenantNameMaxLen is the maximum length for tenant names as per OpenStack API.
-const tenantNameMaxLen = 64
+const (
+	tenantNameMaxLen                  = 64
+	domainNameMaxLen                  = 64
+	usernameMaxLen                    = 255
+	passwordMaxLen                    = 4096
+	applicationCredentialIDMaxLen     = 255
+	applicationCredentialNameMaxLen   = 255
+	applicationCredentialSecretMaxLen = 4096
+)
 
 // OpenStackValidator implements the common Validator interface for OpenStack.
 type OpenStackValidator struct {
@@ -72,7 +79,7 @@ func (v *OpenStackValidator) validatePasswordAuth(secret *corev1.Secret) (map[st
 	registry := map[string]credvalidate.FieldRule{
 		"domainName": {
 			Required:     true,
-			Validator:    nil,
+			Validator:    validateDomainName,
 			NonSensitive: true,
 		},
 		"tenantName": {
@@ -82,12 +89,12 @@ func (v *OpenStackValidator) validatePasswordAuth(secret *corev1.Secret) (map[st
 		},
 		"username": {
 			Required:     true,
-			Validator:    nil,
+			Validator:    validateUsername,
 			NonSensitive: true,
 		},
 		"password": {
 			Required:     true,
-			Validator:    nil,
+			Validator:    validatePassword,
 			NonSensitive: false,
 		},
 	}
@@ -102,7 +109,7 @@ func (v *OpenStackValidator) validateAppCredentialAuth(secret *corev1.Secret) (m
 	registry := map[string]credvalidate.FieldRule{
 		"domainName": {
 			Required:     false,
-			Validator:    nil,
+			Validator:    validateDomainName,
 			NonSensitive: true,
 		},
 		"tenantName": {
@@ -112,22 +119,22 @@ func (v *OpenStackValidator) validateAppCredentialAuth(secret *corev1.Secret) (m
 		},
 		"applicationCredentialID": {
 			Required:     false, // either ID or Name must be provided
-			Validator:    nil,
+			Validator:    validateApplicationCredentialID,
 			NonSensitive: true,
 		},
 		"applicationCredentialName": {
 			Required:     false, // either ID or Name must be provided
-			Validator:    nil,
+			Validator:    validateApplicationCredentialName,
 			NonSensitive: true,
 		},
 		"applicationCredentialSecret": {
 			Required:     true,
-			Validator:    nil,
+			Validator:    validateApplicationCredentialSecret,
 			NonSensitive: false,
 		},
 		"username": {
 			Required:     false,
-			Validator:    nil,
+			Validator:    validateUsername,
 			NonSensitive: true,
 		},
 	}
@@ -230,11 +237,27 @@ func detectAuthMethod(secret *corev1.Secret) authMethod {
 
 // Field-specific validator functions that implement the credvalidate.FieldValidator interface.
 
+// validateDomainName validates the domainName field.
+func validateDomainName(v *credvalidate.BaseValidator, field string, val any, all map[string]any, nonSensitive bool) error {
+	str, err := credvalidate.AssertStringWithPrintableCheck(field, val, nonSensitive)
+	if err != nil {
+		return err
+	}
+
+	if err := credvalidate.ValidateFieldMaxLength(field, str, domainNameMaxLen, nonSensitive); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+var _ credvalidate.FieldValidator = validateDomainName
+
 // validateTenantName validates the tenantName field.
 func validateTenantName(v *credvalidate.BaseValidator, field string, val any, all map[string]any, nonSensitive bool) error {
-	str, ok := val.(string)
-	if !ok {
-		return credvalidate.NewFieldError(field, "field value must be a string", nil, nonSensitive)
+	str, err := credvalidate.AssertStringWithPrintableCheck(field, val, nonSensitive)
+	if err != nil {
+		return err
 	}
 
 	if err := credvalidate.ValidateFieldMaxLength(field, str, tenantNameMaxLen, nonSensitive); err != nil {
@@ -245,3 +268,83 @@ func validateTenantName(v *credvalidate.BaseValidator, field string, val any, al
 }
 
 var _ credvalidate.FieldValidator = validateTenantName
+
+// validateUsername validates the username field.
+func validateUsername(v *credvalidate.BaseValidator, field string, val any, all map[string]any, nonSensitive bool) error {
+	str, err := credvalidate.AssertStringWithPrintableCheck(field, val, nonSensitive)
+	if err != nil {
+		return err
+	}
+
+	if err := credvalidate.ValidateFieldMaxLength(field, str, usernameMaxLen, nonSensitive); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+var _ credvalidate.FieldValidator = validateUsername
+
+// validatePassword validates the password field.
+func validatePassword(v *credvalidate.BaseValidator, field string, val any, all map[string]any, nonSensitive bool) error {
+	str, err := credvalidate.AssertStringWithPrintableCheck(field, val, nonSensitive)
+	if err != nil {
+		return err
+	}
+
+	if err := credvalidate.ValidateFieldMaxLength(field, str, passwordMaxLen, nonSensitive); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+var _ credvalidate.FieldValidator = validatePassword
+
+// validateApplicationCredentialID validates the applicationCredentialID field.
+func validateApplicationCredentialID(v *credvalidate.BaseValidator, field string, val any, all map[string]any, nonSensitive bool) error {
+	str, err := credvalidate.AssertStringWithPrintableCheck(field, val, nonSensitive)
+	if err != nil {
+		return err
+	}
+
+	if err := credvalidate.ValidateFieldMaxLength(field, str, applicationCredentialIDMaxLen, nonSensitive); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+var _ credvalidate.FieldValidator = validateApplicationCredentialID
+
+// validateApplicationCredentialName validates the applicationCredentialName field.
+func validateApplicationCredentialName(v *credvalidate.BaseValidator, field string, val any, all map[string]any, nonSensitive bool) error {
+	str, err := credvalidate.AssertStringWithPrintableCheck(field, val, nonSensitive)
+	if err != nil {
+		return err
+	}
+
+	if err := credvalidate.ValidateFieldMaxLength(field, str, applicationCredentialNameMaxLen, nonSensitive); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+var _ credvalidate.FieldValidator = validateApplicationCredentialName
+
+// validateApplicationCredentialSecret validates the applicationCredentialSecret field.
+func validateApplicationCredentialSecret(v *credvalidate.BaseValidator, field string, val any, all map[string]any, nonSensitive bool) error {
+	str, err := credvalidate.AssertStringWithPrintableCheck(field, val, nonSensitive)
+	if err != nil {
+		return err
+	}
+
+	if err := credvalidate.ValidateFieldMaxLength(field, str, applicationCredentialSecretMaxLen, nonSensitive); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+var _ credvalidate.FieldValidator = validateApplicationCredentialSecret

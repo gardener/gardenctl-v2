@@ -187,9 +187,22 @@ var _ = Describe("AliCloud Validator", func() {
 				Entry("invalid characters", "1234567890abcdefghijklmnopqr@t"),
 				Entry("spaces", "1234567890abcdefghijklmnopqr t"),
 				Entry("special characters", "1234567890abcdefghijklmnopqr#t"),
-				Entry("newlines", "1234567890abcdefghijklmnopqr\nt"),
-				Entry("tabs", "1234567890abcdefghijklmnopqr\tt"),
 				Entry("unicode", "1234567890abcdefghijklmnopqrü"),
+			)
+		})
+
+		Context("Non-printable character validation", func() {
+			DescribeTable("should fail when fields contain non-printable characters",
+				func(fieldName string, fieldValue string) {
+					secret.Data[fieldName] = []byte(fieldValue)
+					_, err := validator.ValidateSecret(secret)
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("field value contains non-printable character")))
+				},
+				Entry("accessKeyID with null byte",
+					"accessKeyID", "LTAI5tQ8Bqj9\x00KrS5vexample"),
+				Entry("accessKeySecret with null byte",
+					"accessKeySecret", "1234567890abcd\x00efghijklmnopqrst"),
 			)
 		})
 	})

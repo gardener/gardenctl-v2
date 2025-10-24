@@ -186,5 +186,24 @@ var _ = Describe("Azure Validator", func() {
 				Entry("mixed valid and invalid", "validPart!invalid.and~more-1234567890_ "),
 			)
 		})
+
+		Context("Non-printable character validation", func() {
+			DescribeTable("should fail when fields contain non-printable characters",
+				func(fieldName string, fieldValue string) {
+					secret.Data[fieldName] = []byte(fieldValue)
+					_, err := validator.ValidateSecret(secret)
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("field value contains non-printable character")))
+				},
+				Entry("subscriptionID with null byte",
+					"subscriptionID", "12345678-1234-1234-1234-\x0012345678901"),
+				Entry("tenantID with null byte",
+					"tenantID", "87654321-4321-4321-4321-\x00210987654321"),
+				Entry("clientID with null byte",
+					"clientID", "abcdef12-3456-7890-abcd-\x00ef1234567890"),
+				Entry("clientSecret with null byte",
+					"clientSecret", "AbCdE~fGhI.-jKlMnOpQrStUvWxY\x00z0_123456789"),
+			)
+		})
 	})
 })

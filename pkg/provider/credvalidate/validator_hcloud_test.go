@@ -120,11 +120,20 @@ var _ = Describe("HCloud Validator", func() {
 				Entry("invalid characters", "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@2"),
 				Entry("spaces", "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ 2"),
 				Entry("special characters", "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ#2"),
-				Entry("newlines", "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\n2"),
-				Entry("tabs", "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\t2"),
 				Entry("unicode", "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZü"), // ü counts as 2 characters in UTF-8
 				Entry("hyphens", "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-2"),
 				Entry("underscores", "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_2"),
+			)
+
+			DescribeTable("should fail when fields contain non-printable characters",
+				func(fieldName string, fieldValue string) {
+					secret.Data[fieldName] = []byte(fieldValue)
+					_, err := validator.ValidateSecret(secret)
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("field value contains non-printable character")))
+				},
+				Entry("hcloudToken with null byte",
+					"hcloudToken", "1234567890abcdefghijklmnopqrstuvwxyzABCDEF\x00HIJKLMNOPQRSTUV12"),
 			)
 		})
 	})
