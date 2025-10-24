@@ -21,10 +21,6 @@ const (
 	accessKeyLen = 20
 	// AWS Secret Access Keys are always exactly 40 characters.
 	secretAccessKeyLen = 40
-	// AWS Role ARN minimum length as per AWS documentation.
-	roleARNMinLen = 20
-	// AWS Role ARN maximum length as per AWS documentation.
-	roleARNMaxLen = 2048
 )
 
 // AWSValidator implements the common Validator interface for AWS.
@@ -44,10 +40,6 @@ func NewAWSValidator(ctx context.Context) *AWSValidator {
 		{
 			Field:      "secretAccessKey",
 			RegexValue: ptr.To(`^[A-Za-z0-9/+=]{40}$`),
-		},
-		{
-			Field:      "roleARN",
-			RegexValue: ptr.To(`^arn:(?:aws|aws-us-gov|aws-cn|aws-iso|aws-iso-b):iam::\d{12}:role(?:/[\w+=,.@-]+)+$`),
 		},
 	}
 
@@ -101,23 +93,3 @@ func validateSecretAccessKey(v *credvalidate.BaseValidator, field string, val an
 }
 
 var _ credvalidate.FieldValidator = validateSecretAccessKey
-
-// validateRoleARN validates the roleARN field using hardcoded regex validation.
-func validateRoleARN(v *credvalidate.BaseValidator, field string, val any, allFields map[string]any, nonSensitive bool) error {
-	str, ok := val.(string)
-	if !ok {
-		return credvalidate.NewFieldError(field, "field value must be a string", nil, nonSensitive)
-	}
-
-	if err := credvalidate.ValidateFieldMinLength(field, str, roleARNMinLen, nonSensitive); err != nil {
-		return err
-	}
-
-	if err := credvalidate.ValidateFieldMaxLength(field, str, roleARNMaxLen, nonSensitive); err != nil {
-		return err
-	}
-
-	return v.ValidateFieldPattern(field, str, allFields, credvalidate.MatchRegexValuePattern, nonSensitive)
-}
-
-var _ credvalidate.FieldValidator = validateRoleARN
