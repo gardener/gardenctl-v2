@@ -40,34 +40,8 @@ provider:
     - field: authURL
       uri: https://keystone.example.com:5000/v3
 
-- Using the "--openstack-allowed-patterns" command-line flag with JSON objects, e.g., --openstack-allowed-patterns='{"field":"authURL","uri":"https://keystone.example.com:5000/v3"}'
-- Using the "--openstack-allowed-uri-patterns" flag with simple field=uri, e.g., --openstack-allowed-uri-patterns="authURL=https://keystone.example.com:5000/v3"
-
-For shoots of provider type gcp (Google cloud), certain fields in the service account credential configuration are validated against allowed patterns. Each allowed pattern is an object with "field" (the credential field name), and either "uri" (full allowed URI), "host" + optional "path" or "regexPath", or "regexValue" for direct field value validation.
-
-The default allowed patterns include standard Google endpoints for fields like universe_domain, token_uri, etc., and workload identity fields like token_url, service_account_impersonation_url.
-
-You can extend these allowed patterns by:
-- Adding them to the gardenctl configuration file under the "provider.gcp.allowedPatterns" key as a list of objects. For example:
-
-provider:
-  gcp:
-    allowedPatterns:
-    - field: universe_domain
-      host: example.com
-    - field: token_uri
-      uri: https://example.com/token
-    - field: service_account_impersonation_url
-      host: iamcredentials.googleapis.com
-      regexPath: "^/v1/projects/-/serviceAccounts/[^/:]+:generateAccessToken$"
-    - field: client_id
-      regexValue: "^[0-9]{15,25}$"
-
-- Using the "--gcp-allowed-patterns" command-line flag with JSON objects, e.g., --gcp-allowed-patterns='{"field":"universe_domain","host":"example.com"}'
-- Using the "--gcp-allowed-uri-patterns" flag with simple field=uri, e.g., --gcp-allowed-uri-patterns="token_uri=https://example.com/token"
-
-For fields like "client_x509_cert_url", the pattern can include the placeholder "{client_email}" which is replaced with the "client_email" from the credentials during validation.
-
+	- Using the "--openstack-allowed-patterns" command-line flag with JSON objects, e.g., --openstack-allowed-patterns='{"field":"authURL","uri":"https://keystone.example.com:5000/v3"}'
+	- Using the "--openstack-allowed-uri-patterns" flag with simple field=uri, e.g., --openstack-allowed-uri-patterns="authURL=https://keystone.example.com:5000/v3"
 
 ```
 gardenctl provider-env [flags]
@@ -80,20 +54,6 @@ gardenctl provider-env [flags]
       --control-plane                            target control plane of shoot, use together with shoot argument
   -f, --force                                    Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.
       --garden string                            target the given garden cluster
-      --gcp-allowed-patterns strings             Additional allowed patterns for GCP credential fields in JSON format.
-                                                 Supported fields include: universe_domain, token_uri, auth_uri, auth_provider_x509_cert_url, client_x509_cert_url,
-                                                 token_url, service_account_impersonation_url, private_key_id, client_id, client_email, audience.
-                                                 Each pattern should be a JSON object with fields like:
-                                                 {"field": "universe_domain", "host": "example.com"}
-                                                 {"field": "token_uri", "host": "example.com", "path": "/token"}
-                                                 {"field": "service_account_impersonation_url", "host": "iamcredentials.googleapis.com", "regexPath": "^/v1/projects/-/serviceAccounts/[^/:]+:generateAccessToken$"}
-                                                 {"field": "client_id", "regexValue": "^[0-9]{15,25}$"}
-                                                 These are merged with defaults and configuration.
-      --gcp-allowed-uri-patterns strings         Simplified URI patterns for GCP credential fields in the format 'field=uri'.
-                                                 For example:
-                                                 "token_uri=https://example.com/token"
-                                                 "client_x509_cert_url=https://example.com/{client_email}"
-                                                 The URI is parsed and host and path are set accordingly. These are merged with defaults and configuration.
   -h, --help                                     help for provider-env
       --openstack-allowed-patterns strings       Additional allowed patterns for OpenStack credential fields in JSON format.
                                                  Note: Only the 'authURL' field is supported for OpenStack pattern validation.

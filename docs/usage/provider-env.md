@@ -56,3 +56,5 @@ You can augment configuration with flags when running `provider-env`:
   gardenctl provider-env bash \
     --openstack-allowed-uri-patterns="authURL=https://keystone.example.com:5000/v3"
   ```
+
+For GCP, gardenctl uses built-in default validation patterns for standard endpoints; custom configuration via flags or config is not supported.
