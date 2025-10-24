@@ -40,8 +40,9 @@ provider:
     - field: authURL
       uri: https://keystone.example.com:5000/v3
 
-	- Using the "--openstack-allowed-patterns" command-line flag with JSON objects, e.g., --openstack-allowed-patterns='{"field":"authURL","uri":"https://keystone.example.com:5000/v3"}'
-	- Using the "--openstack-allowed-uri-patterns" flag with simple field=uri, e.g., --openstack-allowed-uri-patterns="authURL=https://keystone.example.com:5000/v3"
+- Using the "--openstack-allowed-patterns" command-line flag with JSON objects, e.g., --openstack-allowed-patterns='{"field":"authURL","uri":"https://keystone.example.com:5000/v3"}'
+- Using the "--openstack-allowed-uri-patterns" flag with simple field=uri, e.g., --openstack-allowed-uri-patterns="authURL=https://keystone.example.com:5000/v3"
+
 
 ```
 gardenctl provider-env [flags]
