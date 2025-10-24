@@ -1,17 +1,17 @@
 {{define "default"}}{{if .__meta.unset -}}
 az logout --username "$AZURE_CLIENT_ID";
 unset AZURE_CLIENT_ID;
-unset AZURE_CLIENT_SECRET;
 unset AZURE_TENANT_ID;
 unset AZURE_SUBSCRIPTION_ID;
 unset AZURE_CONFIG_DIR;
 {{else -}}
 export AZURE_CLIENT_ID={{.clientID | shellEscape}};
-export AZURE_CLIENT_SECRET={{.clientSecret | shellEscape}};
 export AZURE_TENANT_ID={{.tenantID | shellEscape}};
 export AZURE_SUBSCRIPTION_ID={{.subscriptionID | shellEscape}};
 export AZURE_CONFIG_DIR={{.configDir | shellEscape}};
+AZURE_CLIENT_SECRET={{.clientSecret | shellEscape}};
 az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID";
+unset AZURE_CLIENT_SECRET;
 az account set --subscription "$AZURE_SUBSCRIPTION_ID";
 {{end}}{{template "azure-usage-hint" .__meta}}{{end}}
 
@@ -21,34 +21,34 @@ az account set --subscription "$AZURE_SUBSCRIPTION_ID";
 {{define "fish"}}{{if .__meta.unset -}}
 az logout --username "$AZURE_CLIENT_ID";
 set -e AZURE_CLIENT_ID;
-set -e AZURE_CLIENT_SECRET;
 set -e AZURE_TENANT_ID;
 set -e AZURE_SUBSCRIPTION_ID;
 set -e AZURE_CONFIG_DIR;
 {{else -}}
 set -gx AZURE_CLIENT_ID {{.clientID | shellEscape}};
-set -gx AZURE_CLIENT_SECRET {{.clientSecret | shellEscape}};
 set -gx AZURE_TENANT_ID {{.tenantID | shellEscape}};
 set -gx AZURE_SUBSCRIPTION_ID {{.subscriptionID | shellEscape}};
 set -gx AZURE_CONFIG_DIR {{.configDir | shellEscape}};
+set AZURE_CLIENT_SECRET {{.clientSecret | shellEscape}};
 az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID";
+set -e AZURE_CLIENT_SECRET;
 az account set --subscription "$AZURE_SUBSCRIPTION_ID";
 {{end}}{{template "azure-usage-hint" .__meta}}{{end}}
 
 {{define "powershell"}}{{if .__meta.unset -}}
 az logout --username "$Env:AZURE_CLIENT_ID";
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CLIENT_ID;
-Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CLIENT_SECRET;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_TENANT_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_SUBSCRIPTION_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 {{else -}}
 $Env:AZURE_CLIENT_ID = {{.clientID | shellEscape}};
-$Env:AZURE_CLIENT_SECRET = {{.clientSecret | shellEscape}};
 $Env:AZURE_TENANT_ID = {{.tenantID | shellEscape}};
 $Env:AZURE_SUBSCRIPTION_ID = {{.subscriptionID | shellEscape}};
 $Env:AZURE_CONFIG_DIR = {{.configDir | shellEscape}};
-az login --service-principal --username "$Env:AZURE_CLIENT_ID" --password "$Env:AZURE_CLIENT_SECRET" --tenant "$Env:AZURE_TENANT_ID";
+$AZURE_CLIENT_SECRET = {{.clientSecret | shellEscape}};
+az login --service-principal --username "$Env:AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$Env:AZURE_TENANT_ID";
+Remove-Variable -Name AZURE_CLIENT_SECRET;
 az account set --subscription "$Env:AZURE_SUBSCRIPTION_ID";
 {{end}}{{template "azure-usage-hint" .__meta}}{{end}}
 

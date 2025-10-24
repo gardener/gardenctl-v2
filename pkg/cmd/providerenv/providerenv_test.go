@@ -8,8 +8,8 @@ package providerenv_test
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
+	"strings"
 
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -90,6 +90,49 @@ var _ = Describe("Env Commands", func() {
 				s := env.Shell(c.Name())
 				Expect(s).To(BeElementOf(env.ValidShells()))
 			}
+		})
+
+		Context("flag parsing", func() {
+			var zshCmd *cobra.Command
+
+			BeforeEach(func() {
+				// Initialize zshCmd once for the following tests
+				for _, c := range cmd.Commands() {
+					if c.Name() == "zsh" {
+						zshCmd = c
+						break
+					}
+				}
+				Expect(zshCmd).NotTo(BeNil())
+			})
+
+			It("parses a single JSON object with --openstack-allowed-patterns (stringArray)", func() {
+				json := `{"field":"authURL","uri":"https://keystone.example.com:5000/v3"}`
+
+				// Parse flags on the parent command so persistent flags are recognized
+				Expect(cmd.ParseFlags([]string{"--openstack-allowed-patterns", json})).To(Succeed())
+
+				values, err := cmd.PersistentFlags().GetStringArray("openstack-allowed-patterns")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(HaveLen(1))
+				Expect(values[0]).To(Equal(json))
+			})
+
+			It("parses multiple JSON objects via repeated --openstack-allowed-patterns", func() {
+				json1 := `{"field":"authURL","uri":"https://keystone.example.com:5000/v3"}`
+				json2 := `{"field":"authURL","host":"keystone.example.com","path":"/v3"}`
+
+				Expect(cmd.ParseFlags([]string{
+					"--openstack-allowed-patterns", json1,
+					"--openstack-allowed-patterns", json2,
+				})).To(Succeed())
+
+				values, err := cmd.PersistentFlags().GetStringArray("openstack-allowed-patterns")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(HaveLen(2))
+				Expect(values[0]).To(Equal(json1))
+				Expect(values[1]).To(Equal(json2))
+			})
 		})
 
 		Context("command execution", func() {
@@ -178,7 +221,7 @@ var _ = Describe("Env Commands", func() {
 						Name:      secretRef.Name,
 					},
 					Data: map[string][]byte{
-						"serviceaccount.json": []byte(readTestFile(provider.Type + "/serviceaccount.json")),
+						"serviceaccount.json": []byte(readTestFile("gcp/serviceaccount.json")),
 					},
 				}
 				cloudProfile = &gardencorev1beta1.CloudProfile{
@@ -206,7 +249,8 @@ var _ = Describe("Env Commands", func() {
 				parent.SetArgs([]string{"provider-env", "--output", "yaml"})
 				Expect(parent.Execute()).To(Succeed())
 				configDir := filepath.Join(sessionDir, ".config", "gcloud")
-				Expect(out.String()).To(Equal(fmt.Sprintf(readTestFile("gcp/export.yaml"), configDir)))
+				expectedOutput := strings.Replace(readTestFile("gcp/export.yaml"), "PLACEHOLDER_CONFIG_DIR", configDir, 1)
+				Expect(out.String()).To(Equal(expectedOutput))
 			})
 		})
 	})

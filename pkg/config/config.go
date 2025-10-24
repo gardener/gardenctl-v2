@@ -21,6 +21,8 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/gardener/gardenctl-v2/pkg/ac"
+	"github.com/gardener/gardenctl-v2/pkg/provider/common/allowpattern"
+	"github.com/gardener/gardenctl-v2/pkg/provider/credvalidate"
 )
 
 // Config holds the gardenctl configuration.
@@ -59,16 +61,14 @@ type Garden struct {
 
 // ProviderConfig represents provider-specific configuration options.
 type ProviderConfig struct {
-	// GCP configuration options
-	GCP *GCPConfig `json:"gcp,omitempty"`
+	// OpenStack configuration options
+	OpenStack *OpenStackConfig `json:"openstack,omitempty"`
 }
 
-// GCPConfig represents GCP-specific configuration options.
-type GCPConfig struct {
-	// AllowedPatterns is a list of allowed patterns for GCP service account fields.
-	// Each entry is a key-value pair where the key matches a credential config field
-	// (e.g., "universe_domain=googleapis.com", "token_uri=https://oauth2.googleapis.com/token").
-	AllowedPatterns []string `json:"allowedPatterns,omitempty"`
+// OpenStackConfig represents OpenStack-specific configuration options.
+type OpenStackConfig struct {
+	// AllowedPatterns is a list of allowed patterns for OpenStack credential fields.
+	AllowedPatterns []allowpattern.Pattern `json:"allowedPatterns,omitempty"`
 }
 
 // LoadFromFile parses a gardenctl config file and returns a Config struct.
@@ -122,13 +122,43 @@ func LoadFromFile(filename string) (*Config, error) {
 		config.LinkKubeconfig = &val
 	}
 
-	config.validate()
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
 
 	return config, nil
 }
 
-// validate checks the config for ambiguous definitions and prints warnings to the user.
-func (config *Config) validate() {
+// Validate validates the entire config.
+func (config *Config) Validate() error {
+	// Validate gardens
+	config.validateGardens()
+
+	// Validate provider config
+	if config.Provider != nil {
+		if config.Provider.OpenStack != nil {
+			if err := config.Provider.OpenStack.Validate(); err != nil {
+				return fmt.Errorf("invalid OpenStack provider configuration: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// Validate validates the OpenStack configuration.
+func (o *OpenStackConfig) Validate() error {
+	for i, pattern := range o.AllowedPatterns {
+		if err := pattern.ValidateWithContext(credvalidate.GetOpenStackValidationContext()); err != nil {
+			return fmt.Errorf("invalid allowed pattern at index %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+// validateGardens checks the config for ambiguous definitions and prints warnings to the user.
+func (config *Config) validateGardens() {
 	seen := make(map[string]bool, len(config.Gardens))
 
 	for i := range config.Gardens {
@@ -136,7 +166,6 @@ func (config *Config) validate() {
 
 		if logged, ok := seen[garden.Name]; ok && !logged {
 			klog.Warningf("identity and alias should be unique but %q was found multiple times in gardenctl configuration", garden.Name)
-
 			seen[garden.Name] = true
 		} else if !ok {
 			seen[garden.Name] = false

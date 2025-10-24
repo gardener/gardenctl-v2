@@ -16,6 +16,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardenctl-v2/pkg/config"
+	"github.com/gardener/gardenctl-v2/pkg/provider/common/allowpattern"
 )
 
 var _ = Describe("Config", func() {
@@ -189,6 +190,43 @@ var _ = Describe("Config", func() {
 			Filename: filename,
 		}
 		Expect(cfg.Save()).NotTo(HaveOccurred())
+	})
+
+	Describe("OpenStackConfig", func() {
+		Describe("Validate", func() {
+			It("should validate empty config", func() {
+				openstackConfig := &config.OpenStackConfig{}
+				err := openstackConfig.Validate()
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should validate config with valid patterns (URI)", func() {
+				openstackConfig := &config.OpenStackConfig{
+					AllowedPatterns: []allowpattern.Pattern{
+						{
+							Field: "authURL",
+							URI:   "https://keystone.example.com:5000/v3",
+						},
+					},
+				}
+				err := openstackConfig.Validate()
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should reject config with invalid pattern (unsupported scheme)", func() {
+				openstackConfig := &config.OpenStackConfig{
+					AllowedPatterns: []allowpattern.Pattern{
+						{
+							Field: "authURL",
+							URI:   "ftp://keystone.example.com/v3", // Invalid: unsupported scheme
+						},
+					},
+				}
+				err := openstackConfig.Validate()
+				Expect(err).To(MatchError(ContainSubstring("invalid allowed pattern at index 0")))
+				Expect(err).To(MatchError(ContainSubstring("invalid value for field authURL: scheme must be one of {https, http}, got \"ftp\"")))
+			})
+		})
 	})
 
 	Describe("#LoadFromFile", func() {

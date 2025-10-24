@@ -2,6 +2,7 @@
   "__meta": {
     "cli": "openstack",
     "commandPath": "gardenctl provider-env",
+    "credentialKind": "Secret",
     "targetFlags": "--garden test --project project --shoot shoot",
     "unset": false
   },
@@ -10,12 +11,19 @@
   "applicationCredentialSecret": "",
   "authStrategy": "keystone",
   "authType": "",
-  "authURL": "keyStoneURL",
+  "authURL": "https://keystone.example.com:5000",
+  "configDir": "PLACEHOLDER_CONFIG_DIR",
   "domainName": "domain",
   "password": "secret",
   "region": "europe",
-  "serviceaccount.json": "{\n  \"type\": \"service_account\",\n  \"project_id\": \"test\",\n  \"client_email\": \"test@example.org\"\n}\n",
   "tenantName": "tenant",
-  "testToken": "token",
+  "unsafeSecretData": {
+    "domainName": "domain",
+    "password": "secret",
+    "serviceaccount.json": "{\n  \"type\": \"service_account\",\n  \"project_id\": \"test-project-12345\",\n  \"client_email\": \"test-service-account@test-project-12345.iam.gserviceaccount.com\"\n}\n",
+    "tenantName": "tenant",
+    "testToken": "token",
+    "username": "user"
+  },
   "username": "user"
 }

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package providerenv
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -26,6 +27,8 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/env"
+	"github.com/gardener/gardenctl-v2/pkg/provider/common/allowpattern"
+	"github.com/gardener/gardenctl-v2/pkg/provider/credvalidate"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
@@ -54,12 +57,20 @@ type options struct {
 	// ConfirmAccessRestriction, when set to true, implies the user's understanding of the access restrictions for the targeted shoot.
 	// When set to false and access restrictions are present, the command will terminate with an error.
 	ConfirmAccessRestriction bool
-	// GCPAllowedPatterns is a list of allowed patterns for GCP service account fields.
-	// Each entry is a key-value pair where the key matches a credential config field
-	// (e.g., "universe_domain=googleapis.com", "token_uri=https://oauth2.googleapis.com/token").
-	GCPAllowedPatterns []string
-	// MergedGCPAllowedPatterns is the merged allowed patterns for GCP from defaults, config, and flags.
-	MergedGCPAllowedPatterns map[string][]string
+	// OpenStackAllowedPatterns is a list of JSON-formatted allowed patterns for OpenStack credential config fields
+	OpenStackAllowedPatterns []string
+	// OpenStackAllowedURIPatterns is a list of simple field=uri patterns for OpenStack credential config fields
+	OpenStackAllowedURIPatterns []string
+	// MergedAllowedPatterns contains the merged allowed patterns for all providers from defaults, config, and flags
+	MergedAllowedPatterns *MergedProviderPatterns
+}
+
+// MergedProviderPatterns contains merged allowed patterns for cloud providers that support pattern-based field validation.
+// Currently, only OpenStack supports user-configurable allowed patterns.
+type MergedProviderPatterns struct {
+	// OpenStack contains the merged allowed patterns for OpenStack credential fields.
+	// Currently, only the 'authURL' field is supported for pattern validation.
+	OpenStack []allowpattern.Pattern
 }
 
 // Complete adapts from the command line args to the data required.
@@ -90,39 +101,90 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error
 		logger.Info("The --force flag is deprecated and will be removed in a future gardenctl version. Please use the --confirm-access-restriction flag instead.")
 	}
 
-	defaultMap := defaultAllowedPatterns()
+	cfg := manager.Configuration()
 
-	var configPatterns []string
-	if cfg := manager.Configuration(); cfg != nil && cfg.Provider != nil && cfg.Provider.GCP != nil {
-		configPatterns = cfg.Provider.GCP.AllowedPatterns
-	}
-
-	configMap, err := parseAllowedPatterns(configPatterns)
+	openstackPatterns, err := o.processOpenStackPatterns(cfg, logger)
 	if err != nil {
-		return fmt.Errorf("failed to parse config allowed patterns: %w", err)
+		return err
 	}
 
-	flagMap, err := parseAllowedPatterns(o.GCPAllowedPatterns)
-	if err != nil {
-		return fmt.Errorf("failed to parse flag allowed patterns: %w", err)
+	o.MergedAllowedPatterns = &MergedProviderPatterns{
+		OpenStack: openstackPatterns,
 	}
-
-	mergedMap := make(map[string][]string)
-	for field, values := range defaultMap {
-		mergedMap[field] = append(mergedMap[field], values...)
-	}
-
-	for field, values := range configMap {
-		mergedMap[field] = append(mergedMap[field], values...)
-	}
-
-	for field, values := range flagMap {
-		mergedMap[field] = append(mergedMap[field], values...)
-	}
-
-	o.MergedGCPAllowedPatterns = mergedMap
 
 	return nil
+}
+
+// processProviderPatterns is a generic function to process and merge allowed patterns for any provider.
+func processProviderPatterns(
+	logger klog.Logger,
+	providerName string,
+	defaultPatterns []allowpattern.Pattern,
+	configPatterns []allowpattern.Pattern,
+	validationContext *allowpattern.ValidationContext,
+	jsonPatterns []string,
+	uriPatterns []string,
+) ([]allowpattern.Pattern, error) {
+	flagPatterns, err := allowpattern.ParseAllowedPatterns(validationContext, jsonPatterns, uriPatterns)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse %s flag allowed patterns: %w", providerName, err)
+	}
+
+	if len(configPatterns) > 0 {
+		logger.Info(fmt.Sprintf("Using custom %s allowed patterns from configuration", providerName))
+		logger.V(6).Info("allowed patterns from configuration", "provider", providerName, "patterns", configPatterns)
+	}
+
+	if len(flagPatterns) > 0 {
+		logger.Info(fmt.Sprintf("Using custom %s allowed patterns from flags", providerName))
+		logger.V(6).Info("allowed patterns from flags", "provider", providerName, "patterns", flagPatterns)
+	}
+
+	var mergedPatterns []allowpattern.Pattern
+
+	mergedPatterns = append(mergedPatterns, defaultPatterns...)
+	mergedPatterns = append(mergedPatterns, configPatterns...)
+	mergedPatterns = append(mergedPatterns, flagPatterns...)
+
+	var normalizedPatterns []allowpattern.Pattern
+
+	for _, pattern := range mergedPatterns {
+		if err := pattern.ValidateWithContext(validationContext); err != nil {
+			return nil, fmt.Errorf("invalid %s allowed pattern: %w", providerName, err)
+		}
+
+		normalized, err := pattern.ToNormalizedPattern()
+		if err != nil {
+			return nil, fmt.Errorf("failed to normalize %s pattern: %w", providerName, err)
+		}
+
+		normalizedPatterns = append(normalizedPatterns, *normalized)
+	}
+
+	if len(normalizedPatterns) > 0 {
+		logger.V(6).Info("final normalized allowed patterns", "provider", providerName, "count", len(normalizedPatterns), "patterns", normalizedPatterns)
+	}
+
+	return normalizedPatterns, nil
+}
+
+// processOpenStackPatterns processes and merges OpenStack allowed patterns from defaults, config, and flags.
+// Note: Only the 'authURL' field is supported for OpenStack pattern validation.
+func (o *options) processOpenStackPatterns(cfg *config.Config, logger klog.Logger) ([]allowpattern.Pattern, error) {
+	var configPatterns []allowpattern.Pattern
+	if cfg != nil && cfg.Provider != nil && cfg.Provider.OpenStack != nil {
+		configPatterns = cfg.Provider.OpenStack.AllowedPatterns
+	}
+
+	return processProviderPatterns(
+		logger,
+		"OpenStack",
+		credvalidate.DefaultOpenStackAllowedPatterns(),
+		configPatterns,
+		credvalidate.GetOpenStackValidationContext(),
+		o.OpenStackAllowedPatterns,
+		o.OpenStackAllowedURIPatterns,
+	)
 }
 
 // Validate validates the provided command options.
@@ -147,7 +209,23 @@ func (o *options) AddFlags(flags *pflag.FlagSet) {
 	flags.BoolVarP(&o.Force, "force", "f", false, "Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.")
 	flags.BoolVarP(&o.ConfirmAccessRestriction, "confirm-access-restriction", "y", o.ConfirmAccessRestriction, "Confirm any access restrictions. Set this flag only if you are completely aware of the access restrictions.")
 	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, fmt.Sprintf("Generate the script to unset the cloud provider CLI environment variables and logout for %s", o.Shell))
-	flags.StringSliceVar(&o.GCPAllowedPatterns, "gcp-allowed-patterns", nil, "Additional allowed patterns for GCP service account fields, in the format 'field=value', e.g., 'universe_domain=googleapis.com'. These are merged with defaults and configuration.")
+
+	flags.StringArrayVar(&o.OpenStackAllowedPatterns, "openstack-allowed-patterns", nil,
+		`Additional allowed patterns for OpenStack credential fields in JSON format.
+Note: Only the 'authURL' field is supported for OpenStack pattern validation.
+Each pattern should be a JSON object with fields like:
+{"field": "authURL", "host": "keystone.example.com"}
+{"field": "authURL", "host": "keystone.example.com", "path": "/v3"}
+{"field": "authURL", "regexValue": "^https://[a-z0-9.-]+\\.example\\.com(:[0-9]+)?/.*$"}
+These are merged with defaults and configuration.`)
+
+	flags.StringSliceVar(&o.OpenStackAllowedURIPatterns, "openstack-allowed-uri-patterns", nil,
+		`Simplified URI patterns for OpenStack credential fields in the format 'field=uri'.
+Note: Only the 'authURL' field is supported for OpenStack pattern validation.
+For example:
+"authURL=https://keystone.example.com:5000/v3"
+"authURL=https://keystone.example.com/identity/v3"
+The URI is parsed and host and path are set accordingly. These are merged with defaults and configuration.`)
 }
 
 // Run does the actual work of the command.
@@ -209,10 +287,7 @@ func (o *options) Run(f util.Factory) error {
 		return fmt.Errorf("shoot %q is not bound to a cloud provider credential", o.Target.ShootName())
 	}
 
-	var (
-		secretName      string
-		secretNamespace string
-	)
+	var credentialsRef corev1.ObjectReference
 
 	if shoot.Spec.SecretBindingName != nil && *shoot.Spec.SecretBindingName != "" {
 		secretBinding, err := client.GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName)
@@ -220,22 +295,19 @@ func (o *options) Run(f util.Factory) error {
 			return err
 		}
 
-		secretName = secretBinding.SecretRef.Name
-		secretNamespace = secretBinding.SecretRef.Namespace
+		credentialsRef = corev1.ObjectReference{
+			APIVersion: "v1",
+			Kind:       "Secret",
+			Namespace:  secretBinding.SecretRef.Namespace,
+			Name:       secretBinding.SecretRef.Name,
+		}
 	} else {
-		// TODO: This code should eventually support credentials of type workload identity
 		credentialsBinding, err := client.GetCredentialsBinding(ctx, shoot.Namespace, *shoot.Spec.CredentialsBindingName)
 		if err != nil {
 			return err
 		}
 
-		secretName = credentialsBinding.CredentialsRef.Name
-		secretNamespace = credentialsBinding.CredentialsRef.Namespace
-	}
-
-	secret, err := client.GetSecret(ctx, secretNamespace, secretName)
-	if err != nil {
-		return err
+		credentialsRef = credentialsBinding.CredentialsRef
 	}
 
 	if shoot.Spec.CloudProfile == nil {
@@ -253,39 +325,46 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	return printProviderEnv(o, shoot, secret, cloudProfile, messages)
-}
-
-func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *clientgarden.CloudProfileUnion, messages ac.AccessRestrictionMessages) error {
-	providerType := shoot.Spec.Provider.Type
-	cli := getProviderCLI(providerType)
-
-	metadata := generateMetadata(o, cli)
-
-	if len(messages) > 0 {
-		if o.TargetFlags.ShootName() == "" || o.ConfirmAccessRestriction {
-			metadata["notification"] = messages.String()
-		} else {
-			if o.Output != "" {
-				return errors.New(
-					"the cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions. Use the --confirm-access-restriction flag to confirm the access",
-				)
-			}
-
-			s := env.Shell(o.Shell)
-
-			return o.Template.ExecuteTemplate(o.IOStreams.Out, "printf", map[string]interface{}{
-				"format": messages.String() + "\n%s %s\n%s\n",
-				"arguments": []string{
-					"The cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions.",
-					"Use the --confirm-access-restriction flag to confirm the access.",
-					s.Prompt(runtime.GOOS) + s.EvalCommand(fmt.Sprintf("%s --confirm-access-restriction %s", o.CmdPath, o.Shell)),
-				},
-			})
-		}
+	aborted, err := maybeAbortDueToAccessRestrictions(o, messages)
+	if err != nil {
+		return err
 	}
 
-	data, err := generateData(o, shoot, secret, cloudProfile, providerType, metadata)
+	if aborted {
+		return nil
+	}
+
+	return printProviderEnv(o, ctx, client, shoot, credentialsRef, cloudProfile, messages)
+}
+
+func printProviderEnv(
+	o *options,
+	ctx context.Context,
+	c clientgarden.Client,
+	shoot *gardencorev1beta1.Shoot,
+	credentialsRef corev1.ObjectReference,
+	cloudProfile *clientgarden.CloudProfileUnion,
+	messages ac.AccessRestrictionMessages,
+) error {
+	providerType := shoot.Spec.Provider.Type
+
+	if err := ValidateProviderType(providerType); err != nil {
+		return fmt.Errorf("invalid provider type: %w", err)
+	}
+
+	cli := getProviderCLI(providerType)
+
+	if err := ValidateCLIName(cli); err != nil {
+		return fmt.Errorf("invalid cli name: %w", err)
+	}
+
+	metadata := generateMetadata(o, cli, credentialsRef.Kind)
+
+	if len(messages) > 0 {
+		metadata["notification"] = messages.String()
+	}
+
+	data, err := generateData(o, ctx, c, shoot, credentialsRef, cloudProfile, providerType, cli, metadata)
 	if err != nil {
 		return err
 	}
@@ -294,92 +373,81 @@ func printProviderEnv(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1
 		return o.PrintObject(data)
 	}
 
+	var filename string
+
+	if providerType == "stackit" {
+		// TODO(maboehm): add full support once the provider extension is open sourced.
+		filename = filepath.Join(o.GardenDir, "templates", "openstack.tmpl")
+	} else {
+		filename = filepath.Join(o.GardenDir, "templates", providerType+".tmpl")
+	}
+
+	if err := o.Template.ParseFiles(filename); err != nil {
+		return fmt.Errorf("failed to generate the cloud provider CLI configuration script: %w", err)
+	}
+
 	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
 }
 
-func generateData(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cloudProfile *clientgarden.CloudProfileUnion, providerType string, metadata map[string]interface{}) (map[string]interface{}, error) {
-	data := map[string]interface{}{
-		"__meta": metadata,
-		"region": shoot.Spec.Region,
-	}
-
-	for key, value := range secret.Data {
-		data[key] = string(value)
-	}
-
-	switch providerType {
-	case "azure":
-		if !o.Unset {
-			configDir, err := createProviderConfigDir(o.SessionDir, providerType)
-			if err != nil {
-				return nil, err
-			}
-
-			data["configDir"] = configDir
+func generateData(
+	o *options,
+	ctx context.Context,
+	c clientgarden.Client,
+	shoot *gardencorev1beta1.Shoot,
+	credentialsRef corev1.ObjectReference,
+	cloudProfile *clientgarden.CloudProfileUnion,
+	providerType string,
+	cli string,
+	metadata map[string]interface{},
+) (map[string]interface{}, error) {
+	configDir := filepath.Join(o.SessionDir, ".config", cli)
+	if !o.Unset {
+		if err := os.MkdirAll(configDir, 0o700); err != nil {
+			return nil, fmt.Errorf("failed to create %s configuration directory: %w", cli, err)
 		}
-	case "gcp":
-		credentials := make(map[string]interface{})
+	}
 
-		serviceaccountJSON, err := validateAndParseGCPServiceAccount(secret, &credentials, o.MergedGCPAllowedPatterns)
+	p := providerFor(providerType, ctx, o.MergedAllowedPatterns)
+
+	data := make(map[string]interface{})
+
+	switch credentialsRef.GroupVersionKind() {
+	case corev1.SchemeGroupVersion.WithKind("Secret"):
+		secret, err := c.GetSecret(ctx, credentialsRef.Namespace, credentialsRef.Name)
 		if err != nil {
 			return nil, err
 		}
 
-		if !o.Unset {
-			configDir, err := createProviderConfigDir(o.SessionDir, providerType)
+		if p != nil {
+			data, err = p.FromSecret(o, shoot, secret, cloudProfile, configDir)
 			if err != nil {
 				return nil, err
 			}
-
-			data["configDir"] = configDir
 		}
 
-		data["credentials"] = credentials
-		data["serviceaccount.json"] = string(serviceaccountJSON)
-		data["allowedPatterns"] = o.MergedGCPAllowedPatterns
-	// For now, support type `stackit` as an alias to openstack.
-	// TODO(maboehm): add full support once the provider extension is open sourced.
-	case "stackit":
-		providerType = "openstack"
-		fallthrough
-	case "openstack":
-		authURL, err := getKeyStoneURL(cloudProfile, shoot.Spec.Region)
-		if err != nil {
-			return nil, err
-		}
+		// Reserved raw Secret data for out-of-tree templates (unvalidated; use with caution).
+		// Built-in templates must not use this; use provider-validated fields instead.
+		data["unsafeSecretData"] = bytesMapToStringMap(secret.Data)
 
-		data["authURL"] = authURL
-
-		value, ok := data["applicationCredentialSecret"]
-		if ok && value != "" {
-			data["authType"] = "v3applicationcredential"
-			data["authStrategy"] = ""
-			data["tenantName"] = ""
-			data["username"] = ""
-			data["password"] = ""
-		} else {
-			data["authStrategy"] = "keystone"
-			data["authType"] = ""
-			data["applicationCredentialID"] = ""
-			data["applicationCredentialName"] = ""
-			data["applicationCredentialSecret"] = ""
-		}
+	default:
+		return nil, fmt.Errorf("unsupported credentials kind %q", credentialsRef.Kind)
 	}
 
-	filename := filepath.Join(o.GardenDir, "templates", providerType+".tmpl")
-	if err := o.Template.ParseFiles(filename); err != nil {
-		return nil, fmt.Errorf("failed to generate the cloud provider CLI configuration script: %w", err)
-	}
+	// baseline reserved fields that any template can use
+	data["__meta"] = metadata
+	data["region"] = shoot.Spec.Region
+	data["configDir"] = configDir
 
 	return data, nil
 }
 
-func generateMetadata(o *options, cli string) map[string]interface{} {
+func generateMetadata(o *options, cli string, credentialKind string) map[string]interface{} {
 	metadata := make(map[string]interface{})
 	metadata["unset"] = o.Unset
 	metadata["commandPath"] = o.CmdPath
 	metadata["cli"] = cli
 	metadata["targetFlags"] = getTargetFlags(o.Target)
+	metadata["credentialKind"] = credentialKind
 
 	if o.Shell != "" {
 		metadata["shell"] = o.Shell
@@ -410,6 +478,40 @@ func getTargetFlags(t target.Target) string {
 	return fmt.Sprintf("--garden %s --seed %s --shoot %s", t.GardenName(), t.SeedName(), t.ShootName())
 }
 
+// maybeAbortDueToAccessRestrictions processes access restriction messages and updates metadata or outputs
+// a confirmation prompt. It returns (aborted=true) when it has already written output and the caller
+// should stop further processing. When no messages or when only metadata is updated, it returns aborted=false.
+func maybeAbortDueToAccessRestrictions(o *options, messages ac.AccessRestrictionMessages) (bool, error) {
+	if len(messages) == 0 {
+		return false, nil
+	}
+
+	if o.TargetFlags.ShootName() == "" || o.ConfirmAccessRestriction {
+		return false, nil
+	}
+
+	if o.Output != "" {
+		return false, errors.New(
+			"the cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions. Use the --confirm-access-restriction flag to confirm the access",
+		)
+	}
+
+	s := env.Shell(o.Shell)
+
+	if err := o.Template.ExecuteTemplate(o.IOStreams.Out, "printf", map[string]interface{}{
+		"format": messages.String() + "\n%s %s\n%s\n",
+		"arguments": []string{
+			"The cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions.",
+			"Use the --confirm-access-restriction flag to confirm the access.",
+			s.Prompt(runtime.GOOS) + s.EvalCommand(fmt.Sprintf("%s --confirm-access-restriction %s", o.CmdPath, o.Shell)),
+		},
+	}); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func getKeyStoneURL(cloudProfile *clientgarden.CloudProfileUnion, region string) (string, error) {
 	config, err := cloudProfile.GetOpenstackProviderConfig()
 	if err != nil {
@@ -429,18 +531,6 @@ func getKeyStoneURL(cloudProfile *clientgarden.CloudProfileUnion, region string)
 	return "", fmt.Errorf("cannot find keystone URL for region %q in cloudprofile %q", region, cloudProfile.GetObjectMeta().Name)
 }
 
-func createProviderConfigDir(sessionDir string, providerType string) (string, error) {
-	cli := getProviderCLI(providerType)
-	configDir := filepath.Join(sessionDir, ".config", cli)
-
-	err := os.MkdirAll(configDir, 0o700)
-	if err != nil {
-		return "", fmt.Errorf("failed to create %s configuration directory: %w", cli, err)
-	}
-
-	return configDir, nil
-}
-
 func (o *options) checkAccessRestrictions(cfg *config.Config, gardenName string, shoot *gardencorev1beta1.Shoot) (ac.AccessRestrictionMessages, error) {
 	if cfg == nil {
 		return nil, errors.New("garden configuration is required")
@@ -454,4 +544,14 @@ func (o *options) checkAccessRestrictions(cfg *config.Config, gardenName string,
 	messages := ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)
 
 	return messages, nil
+}
+
+// bytesMapToStringMap converts a map[string][]byte to map[string]string.
+func bytesMapToStringMap(b map[string][]byte) map[string]string {
+	out := make(map[string]string, len(b))
+	for k, v := range b {
+		out[k] = string(v)
+	}
+
+	return out
 }

@@ -1,4 +1,4 @@
-export OS_AUTH_URL='keyStoneURL';
+export OS_AUTH_URL='https://keystone.example.com:5000';
 export OS_PROJECT_DOMAIN_NAME='domain';
 export OS_USER_DOMAIN_NAME='domain';
 export OS_REGION_NAME='europe';

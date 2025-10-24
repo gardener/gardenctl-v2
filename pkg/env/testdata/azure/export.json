@@ -2,15 +2,22 @@
   "__meta": {
     "cli": "az",
     "commandPath": "gardenctl provider-env",
+    "credentialKind": "Secret",
     "targetFlags": "--garden test --project project --shoot shoot",
     "unset": false
   },
-  "clientID": "client-id",
-  "clientSecret": "client-secret",
-  "configDir": "%s",
+  "clientID": "12345678-1234-1234-1234-123456789012",
+  "clientSecret": "AbCdE~fGhI.-jKlMnOpQrStUvWxYz0_123456789",
+  "configDir": "PLACEHOLDER_CONFIG_DIR",
   "region": "europe",
-  "serviceaccount.json": "{\n  \"type\": \"service_account\",\n  \"project_id\": \"test\",\n  \"client_email\": \"test@example.org\"\n}\n",
-  "subscriptionID": "subscription-id",
-  "tenantID": "tenant-id",
-  "testToken": "token"
+  "subscriptionID": "abcdef12-3456-7890-abcd-ef1234567890",
+  "tenantID": "87654321-4321-4321-4321-210987654321",
+  "unsafeSecretData": {
+    "clientID": "12345678-1234-1234-1234-123456789012",
+    "clientSecret": "AbCdE~fGhI.-jKlMnOpQrStUvWxYz0_123456789",
+    "serviceaccount.json": "{\n  \"type\": \"service_account\",\n  \"project_id\": \"test-project-12345\",\n  \"client_email\": \"test-service-account@test-project-12345.iam.gserviceaccount.com\"\n}\n",
+    "subscriptionID": "abcdef12-3456-7890-abcd-ef1234567890",
+    "tenantID": "87654321-4321-4321-4321-210987654321",
+    "testToken": "token"
+  }
 }

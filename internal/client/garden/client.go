@@ -31,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -46,7 +47,7 @@ var decoder runtime.Decoder
 func init() {
 	extensionsScheme := runtime.NewScheme()
 	utilruntime.Must(openstackinstall.AddToScheme(extensionsScheme))
-	decoder = serializer.NewCodecFactory(extensionsScheme).UniversalDecoder()
+	decoder = serializer.NewCodecFactory(extensionsScheme, serializer.EnableStrict).UniversalDecoder()
 }
 
 //go:generate mockgen -destination=./mocks/mock_client.go -package=mocks github.com/gardener/gardenctl-v2/internal/client/garden Client
@@ -556,7 +557,7 @@ func (u *CloudProfileUnion) GetObjectMeta() metav1.ObjectMeta {
 }
 
 func (u *CloudProfileUnion) GetOpenstackProviderConfig() (*openstackv1alpha1.CloudProfileConfig, error) {
-	const apiVersion = "core.gardener.cloud/v1alpha1.CloudProfileUnion"
+	apiVersion := gardencorev1beta1.SchemeGroupVersion.String()
 
 	providerConfig := u.GetCloudProfileSpec().ProviderConfig
 	if providerConfig == nil {
@@ -569,21 +570,22 @@ func (u *CloudProfileUnion) GetOpenstackProviderConfig() (*openstackv1alpha1.Clo
 	case providerConfig.Object != nil:
 		var ok bool
 		if cloudProfileConfig, ok = providerConfig.Object.(*openstackv1alpha1.CloudProfileConfig); !ok {
-			return nil, fmt.Errorf("cannot cast providerConfig of %s %s", apiVersion, u.GetObjectMeta().Name)
+			return nil, fmt.Errorf("cannot assert providerConfig of %s %s to *openstackv1alpha1.CloudProfileConfig", apiVersion, u.GetObjectMeta().Name)
 		}
 
 	case providerConfig.Raw != nil:
-		cloudProfileConfig = &openstackv1alpha1.CloudProfileConfig{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: openstackv1alpha1.SchemeGroupVersion.String(),
-				Kind:       "CloudProfileConfig",
-			},
+		cloudProfileConfig = &openstackv1alpha1.CloudProfileConfig{}
+
+		expectedGVK := schema.GroupVersionKind{
+			Group:   openstackv1alpha1.SchemeGroupVersion.Group,
+			Version: openstackv1alpha1.SchemeGroupVersion.Version,
+			Kind:    "CloudProfileConfig",
 		}
-		if _, _, err := decoder.Decode(providerConfig.Raw, nil, cloudProfileConfig); err != nil {
+		if _, _, err := decoder.Decode(providerConfig.Raw, &expectedGVK, cloudProfileConfig); err != nil {
 			return nil, fmt.Errorf("cannot decode providerConfig of %s %s", apiVersion, u.GetObjectMeta().Name)
 		}
 	default:
-		return nil, fmt.Errorf("providerConfig of %s %s contains neither raw data nor u decoded object", apiVersion, u.GetObjectMeta().Name)
+		return nil, fmt.Errorf("providerConfig of %s %s contains neither raw data nor a decoded object", apiVersion, u.GetObjectMeta().Name)
 	}
 
 	return cloudProfileConfig, nil
