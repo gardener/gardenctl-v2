@@ -192,81 +192,40 @@ var _ = Describe("Config", func() {
 		Expect(cfg.Save()).NotTo(HaveOccurred())
 	})
 
-	Describe("GCPConfig", func() {
+	Describe("OpenStackConfig", func() {
 		Describe("Validate", func() {
 			It("should validate empty config", func() {
-				gcpConfig := &config.GCPConfig{}
-				err := gcpConfig.Validate()
+				openstackConfig := &config.OpenStackConfig{}
+				err := openstackConfig.Validate()
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("should validate config with valid patterns", func() {
-				gcpConfig := &config.GCPConfig{
+			It("should validate config with valid patterns (URI)", func() {
+				openstackConfig := &config.OpenStackConfig{
 					AllowedPatterns: []allowpattern.Pattern{
 						{
-							Field: "token_uri",
-							URI:   "https://oauth2.googleapis.com/token",
-						},
-						{
-							Field: "universe_domain",
-							Host:  ptr.To("googleapis.com"),
-							Path:  ptr.To(""),
+							Field: "authURL",
+							URI:   "https://keystone.example.com:5000/v3",
 						},
 					},
 				}
-				err := gcpConfig.Validate()
+				err := openstackConfig.Validate()
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("should reject config with invalid pattern", func() {
-				gcpConfig := &config.GCPConfig{
+			It("should reject config with invalid pattern (unsupported scheme)", func() {
+				openstackConfig := &config.OpenStackConfig{
 					AllowedPatterns: []allowpattern.Pattern{
 						{
-							Field: "token_uri",
-							URI:   "http://oauth2.googleapis.com/token", // Invalid: HTTP instead of HTTPS
+							Field: "authURL",
+							URI:   "ftp://keystone.example.com/v3", // Invalid: unsupported scheme
 						},
 					},
 				}
-				err := gcpConfig.Validate()
+				err := openstackConfig.Validate()
 				Expect(err).To(MatchError(ContainSubstring("invalid allowed pattern at index 0")))
-				Expect(err).To(MatchError(ContainSubstring("invalid value for field token_uri: scheme must be one of {https}, got \"http\"")))
+				Expect(err).To(MatchError(ContainSubstring("invalid value for field authURL: scheme must be one of {https, http}, got \"ftp\"")))
 			})
-		})
-	})
-
-	Describe("Config with GCP provider", func() {
-		It("should validate config with valid GCP provider configuration", func() {
-			cfg := &config.Config{
-				Provider: &config.ProviderConfig{
-					GCP: &config.GCPConfig{
-						AllowedPatterns: []allowpattern.Pattern{
-							{
-								Field: "token_uri",
-								URI:   "https://oauth2.googleapis.com/token",
-							},
-						},
-					},
-				},
-			}
-			err := cfg.Validate()
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should reject config with invalid GCP provider configuration", func() {
-			cfg := &config.Config{
-				Provider: &config.ProviderConfig{
-					GCP: &config.GCPConfig{
-						AllowedPatterns: []allowpattern.Pattern{
-							{
-								Field: "token_uri",
-								URI:   "http://oauth2.googleapis.com/token", // Invalid: HTTP instead of HTTPS
-							},
-						},
-					},
-				},
-			}
-			err := cfg.Validate()
-			Expect(err).To(MatchError(ContainSubstring("invalid GCP provider configuration")))
 		})
 	})
 
