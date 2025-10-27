@@ -204,9 +204,9 @@ var _ = Describe("Env Commands - Options", func() {
 				region                 string
 				provider               *gardencorev1beta1.Provider
 				secretRef              *corev1.SecretReference
-				// secretRef              *corev1.SecretReference
-				cloudProfileRef    *gardencorev1beta1.CloudProfileReference
-				shoot              *gardencorev1beta1.Shoot
+				cloudProfileRef        *gardencorev1beta1.CloudProfileReference
+				shoot                  *gardencorev1beta1.Shoot
+				//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
 				secretBinding      *gardencorev1beta1.SecretBinding
 				credentialsBinding *gardensecurityv1alpha1.CredentialsBinding
 				cloudProfile       *clientgarden.CloudProfileUnion
@@ -251,12 +251,13 @@ var _ = Describe("Env Commands - Options", func() {
 						Namespace: "garden-" + t.ProjectName(),
 					},
 					Spec: gardencorev1beta1.ShootSpec{
-						CloudProfile:      cloudProfileRef,
-						Region:            region,
-						SecretBindingName: &secretBindingName,
-						Provider:          *provider.DeepCopy(),
+						CloudProfile:           cloudProfileRef,
+						Region:                 region,
+						CredentialsBindingName: &credentialsBindingName,
+						Provider:               *provider.DeepCopy(),
 					},
 				}
+				//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
 				secretBinding = &gardencorev1beta1.SecretBinding{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      secretBindingName,
@@ -320,6 +321,9 @@ var _ = Describe("Env Commands - Options", func() {
 
 				Context("and the shoot is targeted via project", func() {
 					JustBeforeEach(func() {
+						//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
+						shoot.Spec.SecretBindingName = &secretBindingName
+						//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
 						client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName).Return(secretBinding, nil)
 						currentTarget := t.WithSeedName("")
 						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
@@ -349,6 +353,10 @@ var _ = Describe("Env Commands - Options", func() {
 
 					Context("and the shoot uses secret binding", func() {
 						JustBeforeEach(func() {
+							shoot.Spec.CredentialsBindingName = nil
+							//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
+							shoot.Spec.SecretBindingName = &secretBindingName
+							//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
 							client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName).Return(secretBinding, nil)
 						})
 
@@ -361,8 +369,6 @@ var _ = Describe("Env Commands - Options", func() {
 
 					Context("and the shoot uses credentials binding", func() {
 						JustBeforeEach(func() {
-							shoot.Spec.SecretBindingName = nil
-							shoot.Spec.CredentialsBindingName = &credentialsBindingName
 							client.EXPECT().GetCredentialsBinding(ctx, shoot.Namespace, *shoot.Spec.CredentialsBindingName).Return(credentialsBinding, nil)
 						})
 
@@ -423,11 +429,11 @@ var _ = Describe("Env Commands - Options", func() {
 						Expect(options.Run(factory)).To(BeIdenticalTo(err))
 					})
 
-					It("should fail with GetSecretBindingError", func() {
+					It("should fail with GetCredentialsBindingError", func() {
 						currentTarget := t.WithSeedName("")
 						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
 						client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
-						client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName).Return(nil, err)
+						client.EXPECT().GetCredentialsBinding(ctx, shoot.Namespace, *shoot.Spec.CredentialsBindingName).Return(nil, err)
 						Expect(options.Run(factory)).To(BeIdenticalTo(err))
 					})
 
@@ -435,10 +441,10 @@ var _ = Describe("Env Commands - Options", func() {
 						currentTarget := t.WithSeedName("")
 						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
 						client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
-						client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName).Return(secretBinding, nil)
+						client.EXPECT().GetCredentialsBinding(ctx, shoot.Namespace, *shoot.Spec.CredentialsBindingName).Return(credentialsBinding, nil)
 						client.EXPECT().GetCloudProfile(ctx, *shoot.Spec.CloudProfile, shoot.Namespace).Return(cloudProfile, nil)
 						manager.EXPECT().Configuration().Return(cfg)
-						client.EXPECT().GetSecret(ctx, secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name).Return(nil, err)
+						client.EXPECT().GetSecret(ctx, credentialsBinding.CredentialsRef.Namespace, credentialsBinding.CredentialsRef.Name).Return(nil, err)
 						Expect(options.Run(factory)).To(BeIdenticalTo(err))
 					})
 
@@ -446,7 +452,7 @@ var _ = Describe("Env Commands - Options", func() {
 						currentTarget := t.WithSeedName("")
 						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
 						client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
-						client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName).Return(secretBinding, nil)
+						client.EXPECT().GetCredentialsBinding(ctx, shoot.Namespace, *shoot.Spec.CredentialsBindingName).Return(credentialsBinding, nil)
 						client.EXPECT().GetCloudProfile(ctx, *shoot.Spec.CloudProfile, shoot.Namespace).Return(nil, err)
 						Expect(options.Run(factory)).To(BeIdenticalTo(err))
 					})

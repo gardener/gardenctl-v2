@@ -14,6 +14,7 @@ import (
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -137,20 +138,20 @@ var _ = Describe("Env Commands", func() {
 
 		Context("command execution", func() {
 			var (
-				ctx               context.Context
-				cfg               *config.Config
-				t                 target.Target
-				secretBindingName string
-				cloudProfileName  string
-				region            string
-				provider          *gardencorev1beta1.Provider
-				secretRef         *corev1.SecretReference
-				project           *gardencorev1beta1.Project
-				shoot             *gardencorev1beta1.Shoot
-				secretBinding     *gardencorev1beta1.SecretBinding
-				cloudProfile      *gardencorev1beta1.CloudProfile
-				providerConfig    *openstackv1alpha1.CloudProfileConfig
-				secret            *corev1.Secret
+				ctx                    context.Context
+				cfg                    *config.Config
+				t                      target.Target
+				credentialsBindingName string
+				cloudProfileName       string
+				region                 string
+				provider               *gardencorev1beta1.Provider
+				secretRef              *corev1.SecretReference
+				project                *gardencorev1beta1.Project
+				shoot                  *gardencorev1beta1.Shoot
+				credentialsBinding     *gardensecurityv1alpha1.CredentialsBinding
+				cloudProfile           *gardencorev1beta1.CloudProfile
+				providerConfig         *openstackv1alpha1.CloudProfileConfig
+				secret                 *corev1.Secret
 			)
 
 			BeforeEach(func() {
@@ -172,7 +173,7 @@ var _ = Describe("Env Commands", func() {
 				ctx = context.Background()
 				factory.EXPECT().Context().Return(ctx).AnyTimes()
 
-				secretBindingName = "secret-binding"
+				credentialsBindingName = "credentials-binding"
 				cloudProfileName = "cloud-profile"
 				region = "europe"
 				provider = &gardencorev1beta1.Provider{
@@ -203,17 +204,22 @@ var _ = Describe("Env Commands", func() {
 							Kind: corev1beta1constants.CloudProfileReferenceKindCloudProfile,
 							Name: cloudProfileName,
 						},
-						Region:            region,
-						SecretBindingName: &secretBindingName,
-						Provider:          *provider.DeepCopy(),
+						Region:                 region,
+						CredentialsBindingName: &credentialsBindingName,
+						Provider:               *provider.DeepCopy(),
 					},
 				}
-				secretBinding = &gardencorev1beta1.SecretBinding{
+				credentialsBinding = &gardensecurityv1alpha1.CredentialsBinding{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      secretBindingName,
+						Name:      credentialsBindingName,
 						Namespace: shoot.Namespace,
 					},
-					SecretRef: *secretRef.DeepCopy(),
+					CredentialsRef: corev1.ObjectReference{
+						Kind:       "Secret",
+						APIVersion: corev1.SchemeGroupVersion.String(),
+						Namespace:  secretRef.Namespace,
+						Name:       secretRef.Name,
+					},
 				}
 				secret = &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
@@ -239,7 +245,7 @@ var _ = Describe("Env Commands", func() {
 
 				client := clientgarden.NewClient(
 					nil,
-					fake.NewClientWithObjects(project, shoot, secretBinding, secret, cloudProfile),
+					fake.NewClientWithObjects(project, shoot, credentialsBinding, secret, cloudProfile),
 					t.GardenName(),
 				)
 				manager.EXPECT().GardenClient(t.GardenName()).Return(client, nil)
