@@ -152,9 +152,10 @@ func mapLegacyKey(key string) string {
 }
 
 // CheckAccessRestrictions returns a list of access restriction messages for a given shoot cluster.
-func CheckAccessRestrictions(accessRestrictions []AccessRestriction, shoot *gardencorev1beta1.Shoot) (messages AccessRestrictionMessages) {
+func CheckAccessRestrictions(accessRestrictions []AccessRestriction, shoot *gardencorev1beta1.Shoot) AccessRestrictionMessages {
+	messages := AccessRestrictionMessages{}
 	if len(shoot.Spec.AccessRestrictions) == 0 {
-		return
+		return messages
 	}
 
 	for _, accessRestriction := range accessRestrictions {

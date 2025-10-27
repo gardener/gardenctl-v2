@@ -26,6 +26,7 @@ func NewCmdVersion(f util.Factory, o *VersionOptions) *cobra.Command {
 			if err := o.Complete(f, cmd, args); err != nil {
 				return fmt.Errorf("failed to complete command options: %w", err)
 			}
+
 			if err := o.Validate(); err != nil {
 				return err
 			}

@@ -66,6 +66,7 @@ gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path
 			}
 
 			var completions []string
+
 			for _, nodeName := range nodeNames {
 				if strings.HasPrefix(nodeName, toComplete) {
 					completions = append(completions, nodeName)
