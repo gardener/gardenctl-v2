@@ -12,16 +12,30 @@ import (
 
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
+	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
+	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func NewClientWithObjects(objs ...client.Object) client.Client {
-	return Wrap(fakeclient.NewClientBuilder().WithObjects(objs...).Build())
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(gardencorev1beta1.AddToScheme(scheme))
+	utilruntime.Must(gardensecurityv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(operationsv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(seedmanagementv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(machinev1alpha1.AddToScheme(scheme))
+
+	return Wrap(fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build())
 }
 
 func Wrap(client client.Client) client.Client {
