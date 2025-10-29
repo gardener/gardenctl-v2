@@ -34,9 +34,22 @@ You can configure allowed patterns via the gardenctl configuration file or via c
 
 ### Configure via gardenctl config
 
-Add patterns under `provider.openstack.allowedPatterns` in your `gardenctl` config file (default: `~/.garden/gardenctl-v2.yaml`). Use either a full `uri`, or a `host` with optional `path`/`port`, or restrict `scheme`.
+Use the `gardenctl config set-openstack-authurl` command to configure allowed OpenStack auth endpoints:
 
-Example (full URI):
+```bash
+# Set allowed authURL (replaces existing patterns)
+gardenctl config set-openstack-authurl --uri-pattern https://keystone.example.com:5000/v3
+
+# Set multiple authURLs (replaces existing patterns)
+gardenctl config set-openstack-authurl \
+  --uri-pattern https://keystone.example.com:5000/v3 \
+  --uri-pattern https://keystone.another.com/v3
+
+# Clear all authURL patterns
+gardenctl config set-openstack-authurl --clear
+```
+
+Alternatively, you can manually edit the config file at `~/.garden/gardenctl-v2.yaml`:
 
 ```yaml
 provider:

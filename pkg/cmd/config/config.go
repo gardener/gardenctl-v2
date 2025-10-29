@@ -32,6 +32,7 @@ The loading order follows these rules:
 	cmd.AddCommand(NewCmdConfigView(f, ioStreams))
 	cmd.AddCommand(NewCmdConfigSetGarden(f, ioStreams))
 	cmd.AddCommand(NewCmdConfigDeleteGarden(f, ioStreams))
+	cmd.AddCommand(NewCmdConfigSetOpenStackAuthURL(f, ioStreams))
 
 	return cmd
 }
