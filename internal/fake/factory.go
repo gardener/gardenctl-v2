@@ -10,6 +10,7 @@ import (
 	"context"
 	"os"
 
+	"github.com/google/uuid"
 	"k8s.io/utils/ptr"
 
 	internalclient "github.com/gardener/gardenctl-v2/internal/client"
@@ -44,6 +45,9 @@ type Factory struct {
 
 	// GardenTempDirectory is the base directory for temporary data.
 	GardenTempDirectory string
+
+	// SessionID is the session identifier for this factory instance.
+	SessionID string
 }
 
 var _ util.Factory = &Factory{}
@@ -65,12 +69,16 @@ func NewFakeFactory(cfg *config.Config, clock util.Clock, clientProvider interna
 
 	targetFlags := target.NewTargetFlags("", "", "", "", false)
 
+	// Generate a unique session ID for this factory instance
+	sessionID := uuid.New().String()
+
 	return &Factory{
 		Config:             cfg,
 		ClockImpl:          clock,
 		ClientProviderImpl: clientProvider,
 		TargetProviderImpl: targetProvider,
 		TargetFlagsImpl:    targetFlags,
+		SessionID:          sessionID,
 	}
 }
 
@@ -98,6 +106,10 @@ func (f *Factory) GardenHomeDir() string {
 
 func (f *Factory) GardenTempDir() string {
 	return f.GardenTempDirectory
+}
+
+func (f *Factory) GetSessionID() (string, error) {
+	return f.SessionID, nil
 }
 
 func (f *Factory) Clock() util.Clock {

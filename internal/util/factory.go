@@ -44,6 +44,10 @@ type Factory interface {
 	GardenHomeDir() string
 	// GardenTempDir returns the base directory for temporary data (e.g., /tmp/garden), including session directories and SSH known hosts files.
 	GardenTempDir() string
+	// GetSessionID returns the session ID for the current shell session.
+	// The session ID is derived from the GCTL_SESSION_ID environment variable,
+	// or extracted from TERM_SESSION_ID as a fallback.
+	GetSessionID() (string, error)
 	// Manager returns the target manager used to read and change the currently targeted system.
 	Manager() (target.Manager, error)
 	// PublicIPs returns the current host's public IP addresses. It's
@@ -96,7 +100,7 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	sid, err := getSessionID()
+	sid, err := f.GetSessionID()
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +200,10 @@ func callIPify(ctx context.Context, domain string) (*net.IP, error) {
 	return &netIP, nil
 }
 
-func getSessionID() (string, error) {
+// GetSessionID returns the session ID from environment variables.
+// It first checks GCTL_SESSION_ID, then falls back to extracting from TERM_SESSION_ID.
+// The session ID must be alphanumeric with underscores and dashes, 1-128 characters long.
+func (f *FactoryImpl) GetSessionID() (string, error) {
 	if value, ok := os.LookupEnv(envSessionID); ok {
 		if sidRegexp.MatchString(value) {
 			return value, nil
