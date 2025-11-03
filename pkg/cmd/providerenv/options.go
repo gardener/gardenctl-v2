@@ -131,12 +131,12 @@ func processProviderPatterns(
 	}
 
 	if len(configPatterns) > 0 {
-		logger.Info(fmt.Sprintf("Using custom %s allowed patterns from configuration", providerName))
+		logger.V(4).Info("Using custom allowed patterns from configuration", "provider", providerName)
 		logger.V(6).Info("allowed patterns from configuration", "provider", providerName, "patterns", configPatterns)
 	}
 
 	if len(flagPatterns) > 0 {
-		logger.Info(fmt.Sprintf("Using custom %s allowed patterns from flags", providerName))
+		logger.V(4).Info("Using custom %s allowed patterns from flags", "provider", providerName)
 		logger.V(6).Info("allowed patterns from flags", "provider", providerName, "patterns", flagPatterns)
 	}
 
