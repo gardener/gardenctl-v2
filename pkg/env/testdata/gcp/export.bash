@@ -1,10 +1,12 @@
-export GOOGLE_CREDENTIALS_ACCOUNT='test-service-account@test-project-12345.iam.gserviceaccount.com';
-export CLOUDSDK_CORE_PROJECT='test-project-12345';
-export CLOUDSDK_COMPUTE_REGION='europe';
+export GOOGLE_CREDENTIALS_ACCOUNT=$(< 'PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-client_email.txt');
+export CLOUDSDK_CORE_PROJECT=$(< 'PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-project_id.txt');
+export CLOUDSDK_COMPUTE_REGION=$(< 'PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-region.txt');
 export CLOUDSDK_CONFIG='PLACEHOLDER_CONFIG_DIR';
-GOOGLE_CREDENTIALS='{"client_email":"test-service-account@test-project-12345.iam.gserviceaccount.com","project_id":"test-project-12345","type":"service_account"}';
-gcloud auth activate-service-account --key-file <(printf "%s" "$GOOGLE_CREDENTIALS") -- "$GOOGLE_CREDENTIALS_ACCOUNT";
-unset GOOGLE_CREDENTIALS;
+gcloud auth activate-service-account --key-file 'PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-credentials.txt' -- "$GOOGLE_CREDENTIALS_ACCOUNT";
+rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-client_email.txt';
+rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-credentials.txt';
+rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-project_id.txt';
+rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-region.txt';
 printf 'Run the following command to revoke access credentials:\n$ eval $(gardenctl provider-env --garden test --project project --shoot shoot -u bash)\n';
 
 # Run this command to configure gcloud for your shell:

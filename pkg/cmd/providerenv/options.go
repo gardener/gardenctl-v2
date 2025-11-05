@@ -41,6 +41,8 @@ type options struct {
 	Shell string
 	// GardenDir is the configuration directory of gardenctl.
 	GardenDir string
+	// SessionID is the session ID for the current shell session.
+	SessionID string
 	// SessionDir is the session directory of gardenctl.
 	SessionDir string
 	// CmdPath is the path of the called command.
@@ -86,6 +88,13 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error
 	o.CmdPath = cmd.Parent().CommandPath()
 	o.GardenDir = f.GardenHomeDir()
 	o.Template = env.NewTemplate("helpers")
+
+	sessionID, err := f.GetSessionID()
+	if err != nil {
+		return err
+	}
+
+	o.SessionID = sessionID
 
 	manager, err := f.Manager()
 	if err != nil {
@@ -392,6 +401,15 @@ func printProviderEnv(
 	return o.Template.ExecuteTemplate(o.IOStreams.Out, o.Shell, data)
 }
 
+// convertValueToString converts provider data values to strings for writing to temp files.
+func convertValueToString(value interface{}) string {
+	if value == nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%v", value)
+}
+
 func generateData(
 	o *options,
 	ctx context.Context,
@@ -414,6 +432,38 @@ func generateData(
 
 	data := make(map[string]interface{})
 
+	// Canonical target for deterministic file naming
+	canonicalTarget := CanonicalTarget{
+		Garden:    o.Target.GardenName(),
+		Namespace: shoot.Namespace,
+		Shoot:     shoot.Name,
+	}
+
+	var (
+		dataWriter DataWriter
+		err        error
+	)
+
+	if o.Unset {
+		cleanupWriter, err := NewCleanupDataWriter(o.SessionID, o.SessionDir, canonicalTarget)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create cleanup data writer: %w", err)
+		}
+
+		if err := cleanupWriter.CleanupExisting(); err != nil {
+			return nil, fmt.Errorf("failed to clean up temporary files: %w", err)
+		}
+
+		dataWriter = cleanupWriter
+	} else {
+		dataWriter, err = NewTempDataWriter(o.SessionID, o.SessionDir, canonicalTarget)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create temporary data writer: %w", err)
+		}
+	}
+
+	var providerData map[string]interface{}
+
 	switch credentialsRef.GroupVersionKind() {
 	case corev1.SchemeGroupVersion.WithKind("Secret"):
 		secret, err := c.GetSecret(ctx, credentialsRef.Namespace, credentialsRef.Name)
@@ -422,7 +472,7 @@ func generateData(
 		}
 
 		if p != nil {
-			data, err = p.FromSecret(o, shoot, secret, cloudProfile, configDir)
+			providerData, err = p.FromSecret(o, shoot, secret, cloudProfile, configDir)
 			if err != nil {
 				return nil, err
 			}
@@ -436,10 +486,21 @@ func generateData(
 		return nil, fmt.Errorf("unsupported credentials kind %q", credentialsRef.Kind)
 	}
 
+	for key, value := range providerData {
+		strValue := convertValueToString(value)
+		if _, err := dataWriter.WriteField(key, strValue); err != nil {
+			return nil, fmt.Errorf("failed to write provider data field %q: %w", key, err)
+		}
+	}
+
+	if _, err := dataWriter.WriteField("region", shoot.Spec.Region); err != nil {
+		return nil, fmt.Errorf("failed to write region: %w", err)
+	}
+
 	// baseline reserved fields that any template can use
 	data["__meta"] = metadata
-	data["region"] = shoot.Spec.Region
 	data["configDir"] = configDir
+	data["dataFiles"] = dataWriter.GetAllFilePaths()
 
 	return data, nil
 }

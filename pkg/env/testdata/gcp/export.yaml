@@ -5,11 +5,11 @@ __meta:
   targetFlags: --garden test --project project --shoot shoot
   unset: false
 configDir: PLACEHOLDER_CONFIG_DIR
-credentials:
-  client_email: test-service-account@test-project-12345.iam.gserviceaccount.com
-  project_id: test-project-12345
-  type: service_account
-region: europe
+dataFiles:
+  client_email: PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-client_email.txt
+  credentials: PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-credentials.txt
+  project_id: PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-project_id.txt
+  region: PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-region.txt
 unsafeSecretData:
   serviceaccount.json: |
     {

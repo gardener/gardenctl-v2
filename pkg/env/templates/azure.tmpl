@@ -5,14 +5,16 @@ unset AZURE_TENANT_ID;
 unset AZURE_SUBSCRIPTION_ID;
 unset AZURE_CONFIG_DIR;
 {{else -}}
-export AZURE_CLIENT_ID={{.clientID | shellEscape}};
-export AZURE_TENANT_ID={{.tenantID | shellEscape}};
-export AZURE_SUBSCRIPTION_ID={{.subscriptionID | shellEscape}};
+export AZURE_CLIENT_ID=$(< {{.dataFiles.clientID | shellEscape}});
+export AZURE_TENANT_ID=$(< {{.dataFiles.tenantID | shellEscape}});
+export AZURE_SUBSCRIPTION_ID=$(< {{.dataFiles.subscriptionID | shellEscape}});
 export AZURE_CONFIG_DIR={{.configDir | shellEscape}};
-AZURE_CLIENT_SECRET={{.clientSecret | shellEscape}};
+AZURE_CLIENT_SECRET=$(< {{.dataFiles.clientSecret | shellEscape}});
 az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID";
 unset AZURE_CLIENT_SECRET;
 az account set --subscription "$AZURE_SUBSCRIPTION_ID";
+{{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
+{{end -}}
 {{end}}{{template "azure-usage-hint" .__meta}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
@@ -25,14 +27,16 @@ set -e AZURE_TENANT_ID;
 set -e AZURE_SUBSCRIPTION_ID;
 set -e AZURE_CONFIG_DIR;
 {{else -}}
-set -gx AZURE_CLIENT_ID {{.clientID | shellEscape}};
-set -gx AZURE_TENANT_ID {{.tenantID | shellEscape}};
-set -gx AZURE_SUBSCRIPTION_ID {{.subscriptionID | shellEscape}};
+set -gx AZURE_CLIENT_ID (cat -- {{.dataFiles.clientID | shellEscape}});
+set -gx AZURE_TENANT_ID (cat -- {{.dataFiles.tenantID | shellEscape}});
+set -gx AZURE_SUBSCRIPTION_ID (cat -- {{.dataFiles.subscriptionID | shellEscape}});
 set -gx AZURE_CONFIG_DIR {{.configDir | shellEscape}};
-set AZURE_CLIENT_SECRET {{.clientSecret | shellEscape}};
+set AZURE_CLIENT_SECRET (cat -- {{.dataFiles.clientSecret | shellEscape}});
 az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID";
 set -e AZURE_CLIENT_SECRET;
 az account set --subscription "$AZURE_SUBSCRIPTION_ID";
+{{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
+{{end -}}
 {{end}}{{template "azure-usage-hint" .__meta}}{{end}}
 
 {{define "powershell"}}{{if .__meta.unset -}}
@@ -42,14 +46,16 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_TENANT_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_SUBSCRIPTION_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 {{else -}}
-$Env:AZURE_CLIENT_ID = {{.clientID | shellEscape}};
-$Env:AZURE_TENANT_ID = {{.tenantID | shellEscape}};
-$Env:AZURE_SUBSCRIPTION_ID = {{.subscriptionID | shellEscape}};
+$Env:AZURE_CLIENT_ID = Get-Content -Raw {{.dataFiles.clientID | shellEscape}};
+$Env:AZURE_TENANT_ID = Get-Content -Raw {{.dataFiles.tenantID | shellEscape}};
+$Env:AZURE_SUBSCRIPTION_ID = Get-Content -Raw {{.dataFiles.subscriptionID | shellEscape}};
 $Env:AZURE_CONFIG_DIR = {{.configDir | shellEscape}};
-$AZURE_CLIENT_SECRET = {{.clientSecret | shellEscape}};
+$AZURE_CLIENT_SECRET = Get-Content -Raw {{.dataFiles.clientSecret | shellEscape}};
 az login --service-principal --username "$Env:AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$Env:AZURE_TENANT_ID";
 Remove-Variable -Name AZURE_CLIENT_SECRET;
 az account set --subscription "$Env:AZURE_SUBSCRIPTION_ID";
+{{range $key, $path := .dataFiles}}Remove-Item -Force -ErrorAction SilentlyContinue {{$path | shellEscape}};
+{{end -}}
 {{end}}{{template "azure-usage-hint" .__meta}}{{end}}
 
 {{define "azure-usage-hint"}}{{if not .unset}}{{template "revoke-hint" .}}{{end}}{{template "usage-hint" .}}{{end}}

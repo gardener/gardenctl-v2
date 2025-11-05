@@ -6,17 +6,20 @@
     "targetFlags": "--garden test --project project --shoot shoot",
     "unset": false
   },
-  "applicationCredentialID": "",
-  "applicationCredentialName": "",
-  "applicationCredentialSecret": "",
-  "authStrategy": "keystone",
-  "authType": "",
-  "authURL": "https://keystone.example.com:5000",
   "configDir": "PLACEHOLDER_CONFIG_DIR",
-  "domainName": "domain",
-  "password": "secret",
-  "region": "europe",
-  "tenantName": "tenant",
+  "dataFiles": {
+    "applicationCredentialID": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-applicationCredentialID.txt",
+    "applicationCredentialName": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-applicationCredentialName.txt",
+    "applicationCredentialSecret": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-applicationCredentialSecret.txt",
+    "authStrategy": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-authStrategy.txt",
+    "authType": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-authType.txt",
+    "authURL": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-authURL.txt",
+    "domainName": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-domainName.txt",
+    "password": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-password.txt",
+    "region": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-region.txt",
+    "tenantName": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-tenantName.txt",
+    "username": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-username.txt"
+  },
   "unsafeSecretData": {
     "domainName": "domain",
     "password": "secret",
@@ -24,6 +27,5 @@
     "tenantName": "tenant",
     "testToken": "token",
     "username": "user"
-  },
-  "username": "user"
+  }
 }

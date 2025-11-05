@@ -52,6 +52,7 @@ var _ = Describe("Env Commands", func() {
 		factory = utilmocks.NewMockFactory(ctrl)
 
 		manager = targetmocks.NewMockManager(ctrl)
+		factory.EXPECT().GetSessionID().Return("test-session-id", nil).AnyTimes()
 		factory.EXPECT().Manager().Return(manager, nil).AnyTimes()
 
 		targetFlags := target.NewTargetFlags("", "", "", "", false)
@@ -255,7 +256,13 @@ var _ = Describe("Env Commands", func() {
 				parent.SetArgs([]string{"provider-env", "--output", "yaml"})
 				Expect(parent.Execute()).To(Succeed())
 				configDir := filepath.Join(sessionDir, ".config", "gcloud")
-				expectedOutput := strings.Replace(readTestFile("gcp/export.yaml"), "PLACEHOLDER_CONFIG_DIR", configDir, 1)
+				hash := computeTestHash("test-session-id", t.GardenName(), shoot.Namespace, t.ShootName())
+				replacer := strings.NewReplacer(
+					"PLACEHOLDER_CONFIG_DIR", configDir,
+					"PLACEHOLDER_SESSION_DIR", sessionDir,
+					"PLACEHOLDER_HASH", hash,
+				)
+				expectedOutput := replacer.Replace(readTestFile("gcp/export.yaml"))
 				Expect(out.String()).To(Equal(expectedOutput))
 			})
 		})

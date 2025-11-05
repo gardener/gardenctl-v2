@@ -36,20 +36,6 @@ func (p *OpenStackProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoo
 		return nil, err
 	}
 
-	// choose auth strategy based on presence of application credential secret
-	if v := validatedFields["applicationCredentialSecret"]; v != nil && v.(string) != "" {
-		validatedFields["authType"] = "v3applicationcredential"
-		validatedFields["authStrategy"] = ""
-		validatedFields["tenantName"] = ""
-		validatedFields["password"] = ""
-	} else {
-		validatedFields["authStrategy"] = "keystone"
-		validatedFields["authType"] = ""
-		validatedFields["applicationCredentialID"] = ""
-		validatedFields["applicationCredentialName"] = ""
-		validatedFields["applicationCredentialSecret"] = ""
-	}
-
 	authURL, err := getKeyStoneURL(cp, shoot.Spec.Region)
 	if err != nil {
 		return nil, err
@@ -60,7 +46,29 @@ func (p *OpenStackProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoo
 		return nil, fmt.Errorf("invalid authURL from cloud profile: %w", err)
 	}
 
-	validatedFields["authURL"] = authURL
+	// Ensure all fields are present that are expected by the template
+	templateFields := map[string]interface{}{
+		"authURL":                     authURL,
+		"domainName":                  validatedFields["domainName"],
+		"tenantName":                  validatedFields["tenantName"],
+		"username":                    validatedFields["username"],
+		"password":                    validatedFields["password"],
+		"applicationCredentialID":     validatedFields["applicationCredentialID"],
+		"applicationCredentialName":   validatedFields["applicationCredentialName"],
+		"applicationCredentialSecret": validatedFields["applicationCredentialSecret"],
+	}
 
-	return validatedFields, nil
+	// Set auth type and strategy based on authentication method
+	appCredSecret, _ := templateFields["applicationCredentialSecret"].(string)
+	if appCredSecret != "" {
+		// Application credential auth
+		templateFields["authType"] = "v3applicationcredential"
+		templateFields["authStrategy"] = ""
+	} else {
+		// Password auth
+		templateFields["authStrategy"] = "keystone"
+		templateFields["authType"] = ""
+	}
+
+	return templateFields, nil
 }

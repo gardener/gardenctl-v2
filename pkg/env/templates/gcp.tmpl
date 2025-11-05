@@ -5,13 +5,13 @@ unset CLOUDSDK_CORE_PROJECT;
 unset CLOUDSDK_COMPUTE_REGION;
 unset CLOUDSDK_CONFIG;
 {{else -}}
-export GOOGLE_CREDENTIALS_ACCOUNT={{.credentials.client_email | shellEscape}};
-export CLOUDSDK_CORE_PROJECT={{.credentials.project_id | shellEscape}};
-export CLOUDSDK_COMPUTE_REGION={{.region | shellEscape}};
+export GOOGLE_CREDENTIALS_ACCOUNT=$(< {{.dataFiles.client_email | shellEscape}});
+export CLOUDSDK_CORE_PROJECT=$(< {{.dataFiles.project_id | shellEscape}});
+export CLOUDSDK_COMPUTE_REGION=$(< {{.dataFiles.region | shellEscape}});
 export CLOUDSDK_CONFIG={{.configDir | shellEscape}};
-GOOGLE_CREDENTIALS={{.credentials | toJson | shellEscape}};
-gcloud auth activate-service-account --key-file <(printf "%s" "$GOOGLE_CREDENTIALS") -- "$GOOGLE_CREDENTIALS_ACCOUNT";
-unset GOOGLE_CREDENTIALS;
+gcloud auth activate-service-account --key-file {{.dataFiles.credentials | shellEscape}} -- "$GOOGLE_CREDENTIALS_ACCOUNT";
+{{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
+{{end -}}
 {{end}}{{template "gcp-usage-hint" .__meta}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
@@ -24,13 +24,13 @@ set -e CLOUDSDK_CORE_PROJECT;
 set -e CLOUDSDK_COMPUTE_REGION;
 set -e CLOUDSDK_CONFIG;
 {{else -}}
-set -gx GOOGLE_CREDENTIALS_ACCOUNT {{.credentials.client_email | shellEscape}};
-set -gx CLOUDSDK_CORE_PROJECT {{.credentials.project_id | shellEscape}};
-set -gx CLOUDSDK_COMPUTE_REGION {{.region | shellEscape}};
+set -gx GOOGLE_CREDENTIALS_ACCOUNT (cat -- {{.dataFiles.client_email | shellEscape}});
+set -gx CLOUDSDK_CORE_PROJECT (cat -- {{.dataFiles.project_id | shellEscape}});
+set -gx CLOUDSDK_COMPUTE_REGION (cat -- {{.dataFiles.region | shellEscape}});
 set -gx CLOUDSDK_CONFIG {{.configDir | shellEscape}};
-set GOOGLE_CREDENTIALS {{.credentials | toJson | shellEscape}};
-gcloud auth activate-service-account --key-file (printf "%s" "$GOOGLE_CREDENTIALS" | psub) -- "$GOOGLE_CREDENTIALS_ACCOUNT";
-set -e GOOGLE_CREDENTIALS;
+gcloud auth activate-service-account --key-file {{.dataFiles.credentials | shellEscape}} -- "$GOOGLE_CREDENTIALS_ACCOUNT";
+{{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
+{{end -}}
 {{end}}{{template "gcp-usage-hint" .__meta}}{{end}}
 
 {{define "powershell"}}{{if .__meta.unset -}}
@@ -40,14 +40,13 @@ Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_CORE_PROJECT;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_COMPUTE_REGION;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_CONFIG;
 {{else -}}
-$Env:GOOGLE_CREDENTIALS_ACCOUNT = {{.credentials.client_email | shellEscape}};
-$Env:CLOUDSDK_CORE_PROJECT = {{.credentials.project_id | shellEscape}};
-$Env:CLOUDSDK_COMPUTE_REGION = {{.region | shellEscape}};
+$Env:GOOGLE_CREDENTIALS_ACCOUNT = Get-Content -Raw {{.dataFiles.client_email | shellEscape}};
+$Env:CLOUDSDK_CORE_PROJECT = Get-Content -Raw {{.dataFiles.project_id | shellEscape}};
+$Env:CLOUDSDK_COMPUTE_REGION = Get-Content -Raw {{.dataFiles.region | shellEscape}};
 $Env:CLOUDSDK_CONFIG = {{.configDir | shellEscape}};
-$GOOGLE_CREDENTIALS = {{.credentials | toJson | shellEscape}};
-function Invoke-WithGoogleCredentials {param([Parameter(Mandatory)] [ScriptBlock] $sb); $f = New-TemporaryFile; try {$GOOGLE_CREDENTIALS | Out-File -Encoding utf8 $f; Invoke-Command -ScriptBlock $sb -ArgumentList $f} finally {Remove-Item -ErrorAction SilentlyContinue $f}};
-Invoke-WithGoogleCredentials {param($f) gcloud auth activate-service-account --key-file $f -- "$Env:GOOGLE_CREDENTIALS_ACCOUNT"};
-Remove-Variable -Name GOOGLE_CREDENTIALS;
+gcloud auth activate-service-account --key-file {{.dataFiles.credentials | shellEscape}} -- "$Env:GOOGLE_CREDENTIALS_ACCOUNT";
+{{range $key, $path := .dataFiles}}Remove-Item -Force -ErrorAction SilentlyContinue {{$path | shellEscape}};
+{{end -}}
 {{end}}{{template "gcp-usage-hint" .__meta}}{{end}}
 
 {{define "gcp-usage-hint"}}{{if not .unset}}{{template "revoke-hint" .}}{{end}}{{template "usage-hint" .}}{{end}}
