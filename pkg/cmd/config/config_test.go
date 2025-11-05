@@ -26,13 +26,13 @@ var _ = Describe("Config Command", func() {
 			cmd = cmdconfig.NewCmdConfig(factory, streams)
 		})
 
-		It("should have 3 subcommands", func() {
+		It("should have 4 subcommands", func() {
 			Expect(cmd.Use).To(Equal("config"))
 			subCommands := []string{}
 			for _, c := range cmd.Commands() {
 				subCommands = append(subCommands, c.Name())
 			}
-			Expect(subCommands).To(Equal([]string{"delete-garden", "set-garden", "view"}))
+			Expect(subCommands).To(Equal([]string{"delete-garden", "set-garden", "set-openstack-authurl", "view"}))
 		})
 
 		Describe("Execute Subcommands", func() {
@@ -89,6 +89,21 @@ var _ = Describe("Config Command", func() {
 				Expect(cfg.GardenNames()).To(Equal([]string{
 					gardenIdentity1,
 				}))
+				c, err := config.LoadFromFile(cfg.Filename)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(c).To(BeEquivalentTo(cfg))
+			})
+
+			It("should successfully run subcommand set-openstack-authurl", func() {
+				cmd.SetArgs([]string{
+					"set-openstack-authurl",
+					"--uri-pattern=https://keystone.example.com:5000/v3",
+				})
+				Expect(cmd.Execute()).To(Succeed())
+
+				Expect(cfg.Provider).NotTo(BeNil())
+				Expect(cfg.Provider.OpenStack).NotTo(BeNil())
+				Expect(cfg.Provider.OpenStack.AllowedPatterns).To(HaveLen(1))
 				c, err := config.LoadFromFile(cfg.Filename)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(c).To(BeEquivalentTo(cfg))

@@ -27,21 +27,13 @@ for the respective provider in the "templates" folder of the gardenctl home dire
 Please refer to the templates of the already supported cloud providers which can be found
 here https://github.com/gardener/gardenctl-v2/tree/master/pkg/cmd/env/templates.
 
-For shoots of provider type openstack, the authURL field in the credential configuration is validated against allowed patterns. Each allowed pattern is an object with "field" (set to "authURL"), and either "uri" (full allowed URI), "host" + optional "path" and "port", or "scheme" for protocol validation.
+For shoots of provider type openstack, the authURL field must be validated against allowed patterns.
+There are no built-in default allowed patterns for OpenStack because auth endpoints are installation-specific,
+so you must explicitly configure allowed authURL patterns.
 
-Note: Only the 'authURL' field is supported for OpenStack pattern validation. There are no built-in default allowed patterns for OpenStack because auth endpoints are installation-specific, so you must explicitly configure allowed authURL patterns.
-
-You can configure these allowed patterns by:
-- Adding them to the gardenctl configuration file under the "provider.openstack.allowedPatterns" key as a list of objects. For example:
-
-provider:
-  openstack:
-    allowedPatterns:
-    - field: authURL
-      uri: https://keystone.example.com:5000/v3
-
-- Using the "--openstack-allowed-patterns" command-line flag with JSON objects, e.g., --openstack-allowed-patterns='{"field":"authURL","uri":"https://keystone.example.com:5000/v3"}'
-- Using the "--openstack-allowed-uri-patterns" flag with simple field=uri, e.g., --openstack-allowed-uri-patterns="authURL=https://keystone.example.com:5000/v3"
+Use 'gardenctl config set-openstack-authurl --uri-pattern https://keystone.example.com:5000/v3' to configure allowed auth URLs.
+See 'gardenctl config set-openstack-authurl --help' for more details.
+Alternatively, you can use the --openstack-allowed-patterns or --openstack-allowed-uri-patterns flags for runtime overrides.
 
 
 ```

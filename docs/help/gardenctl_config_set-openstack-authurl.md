@@ -1,20 +1,40 @@
-## gardenctl config
+## gardenctl config set-openstack-authurl
 
-Modify gardenctl configuration file using subcommands
+Configure allowed OpenStack auth URLs
 
 ### Synopsis
 
-Modify gardenctl files using subcommands like "gardenctl config set-garden my-garden"
+Configure allowed OpenStack auth URLs for provider environment validation.
 
-The loading order follows these rules:
-1. If the --config flag is set, then only that file is loaded.
-2. If $GCTL_HOME environment variable is set, then it is used as primary search path for the config file. The secondary search path of the home directory is ${HOME}/.garden/.
-3. If $GCTL_CONFIG_NAME environment variable is set, then it is used as config filename. Otherwise, the config filename will default to gardenctl-v2. The config name must not include the file extension
+This command allows you to set one or more OpenStack auth URLs that will be allowed
+when using the provider-env command. By default, setting new URIs will replace any
+existing authURL patterns in the configuration.
+
+```
+gardenctl config set-openstack-authurl [flags]
+```
+
+### Examples
+
+```
+# Set single authURL (replaces existing)
+gardenctl config set-openstack-authurl --uri-pattern https://keystone.example.com:5000/v3
+
+# Set multiple authURLs (replaces existing)
+gardenctl config set-openstack-authurl \
+  --uri-pattern https://keystone.example.com:5000/v3 \
+  --uri-pattern https://keystone.another.com/v3
+
+# Clear all authURL patterns
+gardenctl config set-openstack-authurl --clear
+```
 
 ### Options
 
 ```
-  -h, --help   help for config
+      --clear                     Clear all OpenStack authURL patterns from the configuration
+  -h, --help                      help for set-openstack-authurl
+      --uri-pattern stringArray   OpenStack auth URL to allow. May be specified multiple times. Setting URIs will replace any existing authURL patterns.
 ```
 
 ### Options inherited from parent commands
@@ -38,9 +58,5 @@ The loading order follows these rules:
 
 ### SEE ALSO
 
-* [gardenctl](gardenctl.md)	 - Gardenctl is a utility to interact with Gardener installations
-* [gardenctl config delete-garden](gardenctl_config_delete-garden.md)	 - Delete the specified Garden from the gardenctl configuration
-* [gardenctl config set-garden](gardenctl_config_set-garden.md)	 - Modify or add a Garden to the gardenctl configuration
-* [gardenctl config set-openstack-authurl](gardenctl_config_set-openstack-authurl.md)	 - Configure allowed OpenStack auth URLs
-* [gardenctl config view](gardenctl_config_view.md)	 - Print the gardenctl configuration
+* [gardenctl config](gardenctl_config.md)	 - Modify gardenctl configuration file using subcommands
 

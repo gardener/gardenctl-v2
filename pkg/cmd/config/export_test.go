@@ -52,3 +52,15 @@ func NewDeleteGardenOptions() *DeleteGardenOptions {
 		},
 	}
 }
+
+type SetOpenStackAuthURLOptions struct {
+	setOpenStackAuthURLOptions
+}
+
+func NewSetOpenStackAuthURLOptions() *SetOpenStackAuthURLOptions {
+	return &SetOpenStackAuthURLOptions{
+		setOpenStackAuthURLOptions: setOpenStackAuthURLOptions{
+			Options: base.Options{},
+		},
+	}
+}
