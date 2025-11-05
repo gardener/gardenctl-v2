@@ -88,11 +88,11 @@ var _ = Describe("OpenStack Validator", func() {
 				creds, err := validator.ValidateSecret(secret)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(creds).To(HaveKeyWithValue("domainName", "default"))
-				Expect(creds).To(HaveKeyWithValue("tenantName", "my-project"))
 				Expect(creds).To(HaveKeyWithValue("applicationCredentialID", "app-cred-id"))
 				Expect(creds).To(HaveKeyWithValue("applicationCredentialSecret", "app-cred-secret"))
 				Expect(creds).NotTo(HaveKey("username"))
 				Expect(creds).NotTo(HaveKey("password"))
+				Expect(creds).NotTo(HaveKey("tenantName"))
 			})
 
 			It("should succeed with both application credential ID and name", func() {
@@ -107,15 +107,15 @@ var _ = Describe("OpenStack Validator", func() {
 				creds, err := validator.ValidateSecret(secret)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(creds).To(HaveKeyWithValue("domainName", "default"))
-				Expect(creds).To(HaveKeyWithValue("tenantName", "my-project"))
 				Expect(creds).To(HaveKeyWithValue("applicationCredentialID", "app-cred-id"))
 				Expect(creds).To(HaveKeyWithValue("applicationCredentialName", "app-cred-name"))
 				Expect(creds).To(HaveKeyWithValue("applicationCredentialSecret", "app-cred-secret"))
 				Expect(creds).NotTo(HaveKey("username"))
 				Expect(creds).NotTo(HaveKey("password"))
+				Expect(creds).NotTo(HaveKey("tenantName"))
 			})
 
-			It("should succeed with application credentials using name and username", func() {
+			It("should succeed with application credentials using name", func() {
 				secret.Data = map[string][]byte{
 					"domainName":                  []byte("default"),
 					"tenantName":                  []byte("my-project"),
@@ -127,11 +127,11 @@ var _ = Describe("OpenStack Validator", func() {
 				creds, err := validator.ValidateSecret(secret)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(creds).To(HaveKeyWithValue("domainName", "default"))
-				Expect(creds).To(HaveKeyWithValue("tenantName", "my-project"))
-				Expect(creds).To(HaveKeyWithValue("username", "myuser"))
 				Expect(creds).To(HaveKeyWithValue("applicationCredentialName", "app-cred-name"))
 				Expect(creds).To(HaveKeyWithValue("applicationCredentialSecret", "app-cred-secret"))
 				Expect(creds).NotTo(HaveKey("password"))
+				Expect(creds).NotTo(HaveKey("username"))
+				Expect(creds).NotTo(HaveKey("tenantName"))
 			})
 
 			DescribeTable("should succeed with various valid tenant names",
@@ -166,6 +166,10 @@ var _ = Describe("OpenStack Validator", func() {
 					func(s *corev1.Secret) { delete(s.Data, "tenantName") },
 					"validation error in field \"tenantName\": required field is missing",
 				),
+				Entry("missing username",
+					func(s *corev1.Secret) { delete(s.Data, "username") },
+					"validation error in field \"username\": required field is missing",
+				),
 			)
 		})
 
@@ -183,6 +187,10 @@ var _ = Describe("OpenStack Validator", func() {
 				Entry("empty tenantName",
 					func(s *corev1.Secret) { s.Data["tenantName"] = []byte("") },
 					"validation error in field \"tenantName\": required field cannot be empty",
+				),
+				Entry("empty username",
+					func(s *corev1.Secret) { s.Data["username"] = []byte("") },
+					"validation error in field \"username\": required field cannot be empty",
 				),
 			)
 
@@ -215,7 +223,6 @@ var _ = Describe("OpenStack Validator", func() {
 			It("should fail when application credentials are incomplete (missing ID and name)", func() {
 				secret.Data = map[string][]byte{
 					"domainName":                  []byte("default"),
-					"tenantName":                  []byte("my-project"),
 					"applicationCredentialSecret": []byte("app-secret"),
 				}
 				_, err := validator.ValidateSecret(secret)
@@ -279,7 +286,6 @@ var _ = Describe("OpenStack Validator", func() {
 			BeforeEach(func() {
 				secret.Data = map[string][]byte{
 					"domainName":                  []byte("default"),
-					"tenantName":                  []byte("my-project"),
 					"applicationCredentialID":     []byte("app-cred-id"),
 					"applicationCredentialSecret": []byte("app-cred-secret"),
 				}
