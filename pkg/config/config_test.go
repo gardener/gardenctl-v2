@@ -256,5 +256,103 @@ var _ = Describe("Config", func() {
 			Expect(cfg.Filename).To(Equal(filename))
 			Expect(cfg.Gardens).To(BeNil())
 		})
+
+		It("should reject config with invalid garden name ($)", func() {
+			filename := filepath.Join(gardenHomeDir, "gardenctl-v2.yaml")
+			cfgData := `gardens:
+- identity: garden$test
+  kubeconfig: /path/to/kubeconfig
+`
+			Expect(os.WriteFile(filename, []byte(cfgData), 0o600)).To(Succeed())
+
+			_, err := config.LoadFromFile(filename)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("invalid garden name \"garden$test\"")))
+		})
+
+		It("should reject config with garden name starting with hyphen", func() {
+			filename := filepath.Join(gardenHomeDir, "gardenctl-v2.yaml")
+			cfgData := `gardens:
+- identity: -garden
+  kubeconfig: /path/to/kubeconfig
+`
+			Expect(os.WriteFile(filename, []byte(cfgData), 0o600)).To(Succeed())
+
+			_, err := config.LoadFromFile(filename)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("invalid garden name \"-garden\"")))
+			Expect(err).To(MatchError(ContainSubstring("must start and end with an alphanumeric character")))
+		})
+
+		It("should reject config with invalid garden alias ($)", func() {
+			filename := filepath.Join(gardenHomeDir, "gardenctl-v2.yaml")
+			cfgData := `gardens:
+- identity: my-garden
+  name: Invalid$Alias
+  kubeconfig: /path/to/kubeconfig
+`
+			Expect(os.WriteFile(filename, []byte(cfgData), 0o600)).To(Succeed())
+
+			_, err := config.LoadFromFile(filename)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("invalid garden alias \"Invalid$Alias\"")))
+			Expect(err).To(MatchError(ContainSubstring("must contain only alphanumeric characters, underscore or hyphen")))
+		})
+
+		It("should accept config with valid garden names", func() {
+			filename := filepath.Join(gardenHomeDir, "gardenctl-v2.yaml")
+			cfgData := `gardens:
+- identity: my-garden
+  name: my_alias
+  kubeconfig: /path/to/kubeconfig
+- identity: garden123
+  kubeconfig: /path/to/kubeconfig2
+`
+			Expect(os.WriteFile(filename, []byte(cfgData), 0o600)).To(Succeed())
+
+			cfg, err := config.LoadFromFile(filename)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.Gardens).To(HaveLen(2))
+		})
+	})
+
+	Describe("validating garden name", func() {
+		It("should accept valid garden names", func() {
+			Expect(config.ValidateGardenName("foo")).To(Succeed())
+			Expect(config.ValidateGardenName("my-garden")).To(Succeed())
+			Expect(config.ValidateGardenName("my_garden")).To(Succeed())
+			Expect(config.ValidateGardenName("MyGarden")).To(Succeed())
+			Expect(config.ValidateGardenName("garden123")).To(Succeed())
+			Expect(config.ValidateGardenName("test-garden-123")).To(Succeed())
+			Expect(config.ValidateGardenName("test_garden_123")).To(Succeed())
+			Expect(config.ValidateGardenName("test-garden_123")).To(Succeed())
+			Expect(config.ValidateGardenName("a")).To(Succeed())
+			Expect(config.ValidateGardenName("1")).To(Succeed())
+
+			// Underscore alone does not start/end with alphanumeric, so it should fail
+			// Expect(config.ValidateGardenName("_")).To(Succeed())
+		})
+
+		It("should reject garden names starting with hyphen", func() {
+			Expect(config.ValidateGardenName("-garden")).To(MatchError("garden name must start and end with an alphanumeric character"))
+			Expect(config.ValidateGardenName("-test")).To(MatchError("garden name must start and end with an alphanumeric character"))
+		})
+
+		It("should reject garden names ending with hyphen", func() {
+			Expect(config.ValidateGardenName("garden-")).To(MatchError("garden name must start and end with an alphanumeric character"))
+			Expect(config.ValidateGardenName("test-")).To(MatchError("garden name must start and end with an alphanumeric character"))
+		})
+
+		It("should reject garden names with invalid characters", func() {
+			Expect(config.ValidateGardenName("my.garden")).To(MatchError("garden name must contain only alphanumeric characters, underscore or hyphen"))
+			Expect(config.ValidateGardenName("my garden")).To(MatchError("garden name must contain only alphanumeric characters, underscore or hyphen"))
+			Expect(config.ValidateGardenName("my@garden")).To(MatchError("garden name must contain only alphanumeric characters, underscore or hyphen"))
+		})
+
+		It("should reject garden names starting or ending with underscore", func() {
+			Expect(config.ValidateGardenName("_garden")).To(MatchError("garden name must start and end with an alphanumeric character"))
+			Expect(config.ValidateGardenName("garden_")).To(MatchError("garden name must start and end with an alphanumeric character"))
+			Expect(config.ValidateGardenName("_")).To(MatchError("garden name must start and end with an alphanumeric character"))
+		})
 	})
 })

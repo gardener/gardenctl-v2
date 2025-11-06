@@ -132,7 +132,9 @@ func LoadFromFile(filename string) (*Config, error) {
 // Validate validates the entire config.
 func (config *Config) Validate() error {
 	// Validate gardens
-	config.validateGardens()
+	if err := config.validateGardens(); err != nil {
+		return err
+	}
 
 	// Validate provider config
 	if config.Provider != nil {
@@ -157,12 +159,26 @@ func (o *OpenStackConfig) Validate() error {
 	return nil
 }
 
-// validateGardens checks the config for ambiguous definitions and prints warnings to the user.
-func (config *Config) validateGardens() {
+// validateGardens checks the config for valid garden names and ambiguous definitions.
+func (config *Config) validateGardens() error {
 	seen := make(map[string]bool, len(config.Gardens))
 
 	for i := range config.Gardens {
 		garden := config.Gardens[i]
+
+		if garden.Name == "" {
+			return fmt.Errorf("garden at index %d has an empty name", i)
+		}
+
+		if err := ValidateGardenName(garden.Name); err != nil {
+			return fmt.Errorf("invalid garden name %q: %w", garden.Name, err)
+		}
+
+		if garden.Alias != "" {
+			if err := ValidateGardenName(garden.Alias); err != nil {
+				return fmt.Errorf("invalid garden alias %q for garden %q: %w", garden.Alias, garden.Name, err)
+			}
+		}
 
 		if logged, ok := seen[garden.Name]; ok && !logged {
 			klog.Warningf("identity and alias should be unique but %q was found multiple times in gardenctl configuration", garden.Name)
@@ -181,6 +197,8 @@ func (config *Config) validateGardens() {
 			}
 		}
 	}
+
+	return nil
 }
 
 // SymlinkTargetKubeconfig indicates if the kubeconfig of the current target should be always symlinked.
@@ -419,4 +437,26 @@ func matchPattern(patterns []string, value string) (*PatternMatch, error) {
 	}
 
 	return nil, nil
+}
+
+var (
+	// allowedCharsPattern checks if the string contains only alphanumeric characters, underscore or hyphen.
+	allowedCharsPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+	// startsAndEndsWithAlphanumericPattern checks if the string starts and ends with an alphanumeric character.
+	startsAndEndsWithAlphanumericPattern = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9_-]*[a-zA-Z0-9])?$`)
+)
+
+// ValidateGardenName validates that a garden name follows the naming rules:
+// 1. Must contain only alphanumeric characters, underscore or hyphen
+// 2. Must start and end with an alphanumeric character.
+func ValidateGardenName(name string) error {
+	if !allowedCharsPattern.MatchString(name) {
+		return errors.New("garden name must contain only alphanumeric characters, underscore or hyphen")
+	}
+
+	if !startsAndEndsWithAlphanumericPattern.MatchString(name) {
+		return errors.New("garden name must start and end with an alphanumeric character")
+	}
+
+	return nil
 }
