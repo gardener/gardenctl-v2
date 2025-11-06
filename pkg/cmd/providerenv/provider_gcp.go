@@ -44,6 +44,8 @@ func (p *GCPProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, sec
 	}
 
 	return map[string]interface{}{
-		"credentials": credentialsMap,
+		"credentials":  serviceaccountJSON,
+		"client_email": credentialsMap["client_email"],
+		"project_id":   credentialsMap["project_id"],
 	}, nil
 }

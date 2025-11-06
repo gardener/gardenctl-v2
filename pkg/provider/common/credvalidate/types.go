@@ -66,7 +66,11 @@ func NewPatternMismatchErrorWithValues(field, message, actualValue, expectedValu
 func (e *PatternMismatchError) Error() string {
 	// Only show values if field is marked non-sensitive in context or if unsafe debug is enabled
 	if e.ActualValue != "" && (e.NonSensitive || UnsafeDebugEnabled()) {
-		return fmt.Sprintf("pattern mismatch in field %q: %s (actual: %q, expected: %q)", e.Field, e.Message, e.ActualValue, e.ExpectedValue)
+		if e.ExpectedValue != "" {
+			return fmt.Sprintf("pattern mismatch in field %q: %s (actual: %q, expected: %q)", e.Field, e.Message, e.ActualValue, e.ExpectedValue)
+		}
+
+		return fmt.Sprintf("pattern mismatch in field %q: %s (actual: %q)", e.Field, e.Message, e.ActualValue)
 	}
 	// Default: redacted message
 	return fmt.Sprintf("pattern mismatch in field %q: %s", e.Field, e.Message)

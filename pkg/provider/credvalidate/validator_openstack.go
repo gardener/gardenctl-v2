@@ -112,11 +112,6 @@ func (v *OpenStackValidator) validateAppCredentialAuth(secret *corev1.Secret) (m
 			Validator:    validateDomainName,
 			NonSensitive: true,
 		},
-		"tenantName": {
-			Required:     false,
-			Validator:    validateTenantName,
-			NonSensitive: true,
-		},
 		"applicationCredentialID": {
 			Required:     false, // either ID or Name must be provided
 			Validator:    validateApplicationCredentialID,
@@ -131,11 +126,6 @@ func (v *OpenStackValidator) validateAppCredentialAuth(secret *corev1.Secret) (m
 			Required:     true,
 			Validator:    validateApplicationCredentialSecret,
 			NonSensitive: false,
-		},
-		"username": {
-			Required:     false,
-			Validator:    validateUsername,
-			NonSensitive: true,
 		},
 	}
 

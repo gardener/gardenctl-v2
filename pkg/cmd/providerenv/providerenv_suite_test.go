@@ -7,6 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package providerenv_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -72,4 +75,12 @@ func removeTempFile(filename string) {
 	if !os.IsNotExist(err) {
 		Expect(err).NotTo(HaveOccurred())
 	}
+}
+
+// computeTestHash computes the same hash as used in the implementation for temp file naming.
+func computeTestHash(sessionID, garden, namespace, shoot string) string {
+	targetKey := fmt.Sprintf("%s|%s|%s", garden, namespace, shoot)
+	hash := sha256.Sum256([]byte(sessionID + "|" + targetKey))
+
+	return hex.EncodeToString(hash[:8])
 }

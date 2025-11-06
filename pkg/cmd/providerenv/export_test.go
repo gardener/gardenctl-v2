@@ -26,6 +26,16 @@ var (
 	GetTargetFlags = getTargetFlags
 )
 
+// GetSuffix returns the suffix field from TempDataWriter for testing.
+func (t *TempDataWriter) GetSuffix() string {
+	return t.suffix
+}
+
+// GetSuffix returns the suffix field from CleanupDataWriter for testing.
+func (c *CleanupDataWriter) GetSuffix() string {
+	return c.suffix
+}
+
 type TestOptions struct {
 	options
 	out *util.SafeBytesBuffer

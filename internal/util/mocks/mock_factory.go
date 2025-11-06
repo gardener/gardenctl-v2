@@ -92,6 +92,21 @@ func (mr *MockFactoryMockRecorder) GardenTempDir() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GardenTempDir", reflect.TypeOf((*MockFactory)(nil).GardenTempDir))
 }
 
+// GetSessionID mocks base method.
+func (m *MockFactory) GetSessionID() (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSessionID")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSessionID indicates an expected call of GetSessionID.
+func (mr *MockFactoryMockRecorder) GetSessionID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSessionID", reflect.TypeOf((*MockFactory)(nil).GetSessionID))
+}
+
 // Manager mocks base method.
 func (m *MockFactory) Manager() (target.Manager, error) {
 	m.ctrl.T.Helper()

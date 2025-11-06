@@ -3,9 +3,11 @@ unset AWS_ACCESS_KEY_ID;
 unset AWS_SECRET_ACCESS_KEY;
 unset AWS_DEFAULT_REGION;
 {{else -}}
-export AWS_ACCESS_KEY_ID={{.accessKeyID | shellEscape}};
-export AWS_SECRET_ACCESS_KEY={{.secretAccessKey | shellEscape}};
-export AWS_DEFAULT_REGION={{.region | shellEscape}};
+export AWS_ACCESS_KEY_ID=$(< {{.dataFiles.accessKeyID | shellEscape}});
+export AWS_SECRET_ACCESS_KEY=$(< {{.dataFiles.secretAccessKey | shellEscape}});
+export AWS_DEFAULT_REGION=$(< {{.dataFiles.region | shellEscape}});
+{{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
+{{end -}}
 {{end}}{{template "usage-hint" .__meta}}{{end}}
 
 {{define "bash"}}{{template "default" .}}{{end}}
@@ -16,9 +18,11 @@ set -e AWS_ACCESS_KEY_ID;
 set -e AWS_SECRET_ACCESS_KEY;
 set -e AWS_DEFAULT_REGION;
 {{else -}}
-set -gx AWS_ACCESS_KEY_ID {{.accessKeyID | shellEscape}};
-set -gx AWS_SECRET_ACCESS_KEY {{.secretAccessKey | shellEscape}};
-set -gx AWS_DEFAULT_REGION {{.region | shellEscape}};
+set -gx AWS_ACCESS_KEY_ID (cat -- {{.dataFiles.accessKeyID | shellEscape}});
+set -gx AWS_SECRET_ACCESS_KEY (cat -- {{.dataFiles.secretAccessKey | shellEscape}});
+set -gx AWS_DEFAULT_REGION (cat -- {{.dataFiles.region | shellEscape}});
+{{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
+{{end -}}
 {{end}}{{template "usage-hint" .__meta}}{{end}}
 
 {{define "powershell"}}{{if .__meta.unset -}}
@@ -26,8 +30,9 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AWS_ACCESS_KEY_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AWS_SECRET_ACCESS_KEY;
 Remove-Item -ErrorAction SilentlyContinue Env:\AWS_DEFAULT_REGION;
 {{else -}}
-$Env:AWS_ACCESS_KEY_ID = {{.accessKeyID | shellEscape}};
-$Env:AWS_SECRET_ACCESS_KEY = {{.secretAccessKey | shellEscape}};
-$Env:AWS_DEFAULT_REGION = {{.region | shellEscape}};
+$Env:AWS_ACCESS_KEY_ID = Get-Content -Raw {{.dataFiles.accessKeyID | shellEscape}};
+$Env:AWS_SECRET_ACCESS_KEY = Get-Content -Raw {{.dataFiles.secretAccessKey | shellEscape}};
+$Env:AWS_DEFAULT_REGION = Get-Content -Raw {{.dataFiles.region | shellEscape}};
+{{range $key, $path := .dataFiles}}Remove-Item -Force -ErrorAction SilentlyContinue {{$path | shellEscape}};
+{{end -}}
 {{end}}{{template "usage-hint" .__meta}}{{end}}
-

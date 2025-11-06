@@ -131,13 +131,15 @@ var _ = Describe("Env Commands - Template", func() {
 	})
 
 	Describe("parsing the gcp template", func() {
-		const exportFormat = `export GOOGLE_CREDENTIALS_ACCOUNT='PLACEHOLDER_CLIENT_EMAIL';
-export CLOUDSDK_CORE_PROJECT='PLACEHOLDER_PROJECT_ID';
-export CLOUDSDK_COMPUTE_REGION='PLACEHOLDER_REGION';
+		const exportFormat = `export GOOGLE_CREDENTIALS_ACCOUNT=$(< 'PLACEHOLDER_CLIENT_EMAIL_FILE');
+export CLOUDSDK_CORE_PROJECT=$(< 'PLACEHOLDER_PROJECT_ID_FILE');
+export CLOUDSDK_COMPUTE_REGION=$(< 'PLACEHOLDER_REGION_FILE');
 export CLOUDSDK_CONFIG='PLACEHOLDER_CONFIG_DIR';
-GOOGLE_CREDENTIALS='{"client_email":"PLACEHOLDER_CLIENT_EMAIL","project_id":"PLACEHOLDER_PROJECT_ID"}';
-gcloud auth activate-service-account --key-file <(printf "%s" "$GOOGLE_CREDENTIALS") -- "$GOOGLE_CREDENTIALS_ACCOUNT";
-unset GOOGLE_CREDENTIALS;
+gcloud auth activate-service-account --key-file 'PLACEHOLDER_CREDENTIALS_FILE' -- "$GOOGLE_CREDENTIALS_ACCOUNT";
+rm -f -- 'PLACEHOLDER_CLIENT_EMAIL_FILE';
+rm -f -- 'PLACEHOLDER_CREDENTIALS_FILE';
+rm -f -- 'PLACEHOLDER_PROJECT_ID_FILE';
+rm -f -- 'PLACEHOLDER_REGION_FILE';
 printf 'Run the following command to revoke access credentials:\n$ eval $(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)\n';
 
 # Run this command to configure gcloud for your shell:
@@ -154,9 +156,11 @@ unset CLOUDSDK_CONFIG;
 # eval $(gardenctl provider-env -u PLACEHOLDER_SHELL)
 `
 		var (
-			clientEmail = "john.doe@example.org"
-			projectID   = "test"
-			configDir   = "config-dir"
+			clientEmailFile = "/tmp/client_email.txt"
+			projectIDFile   = "/tmp/project_id.txt"
+			regionFile      = "/tmp/region.txt"
+			credentialsFile = "/tmp/credentials.txt"
+			configDir       = "config-dir"
 		)
 
 		BeforeEach(func() {
@@ -167,12 +171,13 @@ unset CLOUDSDK_CONFIG;
 		})
 
 		JustBeforeEach(func() {
-			data["credentials"] = map[string]interface{}{
-				"client_email": clientEmail,
-				"project_id":   projectID,
+			data["dataFiles"] = map[string]interface{}{
+				"client_email": clientEmailFile,
+				"project_id":   projectIDFile,
+				"region":       regionFile,
+				"credentials":  credentialsFile,
 			}
 			data["configDir"] = configDir
-			data["project_id"] = projectID
 		})
 
 		DescribeTable("executing the bash template",
@@ -182,9 +187,10 @@ unset CLOUDSDK_CONFIG;
 				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
 				expected := strings.NewReplacer(
 					"PLACEHOLDER_SHELL", shell,
-					"PLACEHOLDER_REGION", region,
-					"PLACEHOLDER_PROJECT_ID", projectID,
-					"PLACEHOLDER_CLIENT_EMAIL", clientEmail,
+					"PLACEHOLDER_CLIENT_EMAIL_FILE", clientEmailFile,
+					"PLACEHOLDER_PROJECT_ID_FILE", projectIDFile,
+					"PLACEHOLDER_REGION_FILE", regionFile,
+					"PLACEHOLDER_CREDENTIALS_FILE", credentialsFile,
 					"PLACEHOLDER_CONFIG_DIR", configDir,
 				).Replace(format)
 				Expect(out.String()).To(Equal(expected))
@@ -195,14 +201,18 @@ unset CLOUDSDK_CONFIG;
 	})
 
 	Describe("parsing the azure template", func() {
-		const exportFormat = `$Env:AZURE_CLIENT_ID = 'PLACEHOLDER_CLIENT_ID';
-$Env:AZURE_TENANT_ID = 'PLACEHOLDER_TENANT_ID';
-$Env:AZURE_SUBSCRIPTION_ID = 'PLACEHOLDER_SUBSCRIPTION_ID';
+		const exportFormat = `$Env:AZURE_CLIENT_ID = Get-Content -Raw 'PLACEHOLDER_CLIENT_ID_FILE';
+$Env:AZURE_TENANT_ID = Get-Content -Raw 'PLACEHOLDER_TENANT_ID_FILE';
+$Env:AZURE_SUBSCRIPTION_ID = Get-Content -Raw 'PLACEHOLDER_SUBSCRIPTION_ID_FILE';
 $Env:AZURE_CONFIG_DIR = 'PLACEHOLDER_CONFIG_DIR';
-$AZURE_CLIENT_SECRET = 'PLACEHOLDER_CLIENT_SECRET';
+$AZURE_CLIENT_SECRET = Get-Content -Raw 'PLACEHOLDER_CLIENT_SECRET_FILE';
 az login --service-principal --username "$Env:AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$Env:AZURE_TENANT_ID";
 Remove-Variable -Name AZURE_CLIENT_SECRET;
 az account set --subscription "$Env:AZURE_SUBSCRIPTION_ID";
+Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_CLIENT_ID_FILE';
+Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_CLIENT_SECRET_FILE';
+Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_SUBSCRIPTION_ID_FILE';
+Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_TENANT_ID_FILE';
 printf 'Run the following command to log out and remove access to Azure subscriptions:\n$ & gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL | Invoke-Expression\n';
 # Run this command to configure az for your shell:
 # & gardenctl provider-env PLACEHOLDER_SHELL | Invoke-Expression
@@ -217,11 +227,11 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 # & gardenctl provider-env -u PLACEHOLDER_SHELL | Invoke-Expression
 `
 		var (
-			clientID       = "client"
-			clientSecret   = "secret"
-			tenantID       = "tenant"
-			subscriptionID = "subscription"
-			configDir      = "config-dir"
+			clientIDFile       = "/tmp/clientID.txt"
+			clientSecretFile   = "/tmp/clientSecret.txt"
+			tenantIDFile       = "/tmp/tenantID.txt"
+			subscriptionIDFile = "/tmp/subscriptionID.txt"
+			configDir          = "config-dir"
 		)
 
 		BeforeEach(func() {
@@ -233,10 +243,12 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 		})
 
 		JustBeforeEach(func() {
-			data["clientID"] = clientID
-			data["clientSecret"] = clientSecret
-			data["tenantID"] = tenantID
-			data["subscriptionID"] = subscriptionID
+			data["dataFiles"] = map[string]interface{}{
+				"clientID":       clientIDFile,
+				"clientSecret":   clientSecretFile,
+				"tenantID":       tenantIDFile,
+				"subscriptionID": subscriptionIDFile,
+			}
 			data["configDir"] = configDir
 		})
 
@@ -247,10 +259,10 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
 				expected := strings.NewReplacer(
 					"PLACEHOLDER_SHELL", shell,
-					"PLACEHOLDER_CLIENT_ID", clientID,
-					"PLACEHOLDER_CLIENT_SECRET", clientSecret,
-					"PLACEHOLDER_TENANT_ID", tenantID,
-					"PLACEHOLDER_SUBSCRIPTION_ID", subscriptionID,
+					"PLACEHOLDER_CLIENT_ID_FILE", clientIDFile,
+					"PLACEHOLDER_CLIENT_SECRET_FILE", clientSecretFile,
+					"PLACEHOLDER_TENANT_ID_FILE", tenantIDFile,
+					"PLACEHOLDER_SUBSCRIPTION_ID_FILE", subscriptionIDFile,
 					"PLACEHOLDER_CONFIG_DIR", configDir,
 				).Replace(format)
 				Expect(out.String()).To(Equal(expected))

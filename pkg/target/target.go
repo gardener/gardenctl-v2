@@ -10,6 +10,7 @@ import (
 	"errors"
 
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
+	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
@@ -94,6 +95,24 @@ func newTargetImpl(gardenName, projectName, seedName, shootName string, controlP
 func (t *targetImpl) Validate() error {
 	if len(t.Project) > 0 && len(t.Seed) > 0 {
 		return errors.New("seed and project must not be configured at the same time")
+	}
+
+	if t.Shoot != "" {
+		if errs := apivalidation.NameIsDNSLabel(t.Shoot, false); len(errs) > 0 {
+			return errors.New("shoot name is invalid: " + errs[0])
+		}
+	}
+
+	if t.Project != "" {
+		if errs := apivalidation.NameIsDNSSubdomain(t.Project, false); len(errs) > 0 {
+			return errors.New("project name is invalid: " + errs[0])
+		}
+	}
+
+	if t.Seed != "" {
+		if errs := apivalidation.NameIsDNSLabel(t.Seed, false); len(errs) > 0 {
+			return errors.New("seed name is invalid: " + errs[0])
+		}
 	}
 
 	return nil
