@@ -17,7 +17,7 @@ The generated script:
 - Uses a temporary session directory so your default CLI configs are not modified
 - Supports `--unset` to clean up and log out/revoke credentials
 
-Ensure the respective provider CLI is installed on your system. See the in-command help for links.
+Ensure the respective provider CLI is installed on your system. See the in-command [help](https://github.com/gardener/gardenctl-v2/blob/master/docs/help/gardenctl_provider-env.md#synopsis) for links.
 
 ## Overriding templates or adding custom providers
 
