@@ -68,7 +68,9 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 					Expect(o.Validate()).To(matcher)
 				},
 				Entry("when garden is foo", "foo", Succeed()),
+				Entry("when garden is my-garden", "my-garden", Succeed()),
 				Entry("when garden empty", "", MatchError("garden identity is required")),
+				Entry("when garden starts with hyphen", "-garden", MatchError("invalid garden name \"-garden\": garden name must start and end with an alphanumeric character")),
 			)
 
 			DescribeTable("Validating Pattern Flag",
@@ -84,6 +86,22 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 				Entry("when all patterns are valid", []string{"^shoot--(?P<project>.+)--(?P<shoot>.+)$`"}, Succeed()),
 				Entry("when a pattern is not a valid regular expression", []string{"("}, MatchError(MatchRegexp(`^pattern\[0\] is not a valid regular expression`))),
 				Entry("when a pattern has an invalid subexpression name", []string{"^shoot--(?P<cluster>.+)$`"}, MatchError("pattern[0] contains an invalid subexpression \"cluster\"")),
+			)
+
+			DescribeTable("Validating Alias Flag",
+				func(alias string, shouldSetAlias bool, matcher types.GomegaMatcher) {
+					o := cmdconfig.NewSetGardenOptions()
+					o.Name = "foo"
+					if shouldSetAlias {
+						Expect(o.Alias.Set(alias)).To(Succeed())
+					}
+					Expect(o.Validate()).To(matcher)
+				},
+				Entry("when alias is not set", "", false, Succeed()),
+				Entry("when alias is bar", "bar", true, Succeed()),
+				Entry("when alias is my-alias", "my-alias", true, Succeed()),
+				Entry("when alias is set but empty", "", true, MatchError("invalid garden alias \"\": garden name must contain only alphanumeric characters, underscore or hyphen")),
+				Entry("when alias starts with hyphen", "-alias", true, MatchError("invalid garden alias \"-alias\": garden name must start and end with an alphanumeric character")),
 			)
 		})
 

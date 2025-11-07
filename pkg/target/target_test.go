@@ -71,6 +71,12 @@ var _ = Describe("Target", func() {
 			Expect(target.NewTarget("a", "", "seed-", "").Validate()).NotTo(Succeed())     // ends with dash
 			Expect(target.NewTarget("a", "", "seed.name", "").Validate()).NotTo(Succeed()) // contains dot
 			Expect(target.NewTarget("a", "", "seed name", "").Validate()).NotTo(Succeed()) // contains space
+
+			// valid garden name
+			Expect(target.NewTarget("my-garden", "b", "", "d").Validate()).To(Succeed())
+
+			// invalid garden name (starts with hyphen)
+			Expect(target.NewTarget("-invalid", "b", "", "d").Validate()).NotTo(Succeed())
 		})
 	})
 })

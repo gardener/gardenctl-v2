@@ -96,6 +96,16 @@ func (o *setGardenOptions) Validate() error {
 		return errors.New("garden identity is required")
 	}
 
+	if err := config.ValidateGardenName(o.Name); err != nil {
+		return fmt.Errorf("invalid garden name %q: %w", o.Name, err)
+	}
+
+	if o.Alias.Provided() {
+		if err := config.ValidateGardenName(o.Alias.Value()); err != nil {
+			return fmt.Errorf("invalid garden alias %q: %w", o.Alias.Value(), err)
+		}
+	}
+
 	return validatePatterns(o.Patterns)
 }
 

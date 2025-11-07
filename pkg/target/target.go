@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
 /*
@@ -95,6 +96,12 @@ func newTargetImpl(gardenName, projectName, seedName, shootName string, controlP
 func (t *targetImpl) Validate() error {
 	if len(t.Project) > 0 && len(t.Seed) > 0 {
 		return errors.New("seed and project must not be configured at the same time")
+	}
+
+	if t.Garden != "" {
+		if err := config.ValidateGardenName(t.Garden); err != nil {
+			return err
+		}
 	}
 
 	if t.Shoot != "" {
