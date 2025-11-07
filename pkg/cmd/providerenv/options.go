@@ -54,6 +54,7 @@ type options struct {
 	// Template is the script template
 	Template env.Template
 	// Force generates the script even if there are access restrictions to be confirmed
+	//
 	// Deprecated: Use ConfirmAccessRestriction instead
 	Force bool
 	// ConfirmAccessRestriction, when set to true, implies the user's understanding of the access restrictions for the targeted shoot.

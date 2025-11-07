@@ -35,6 +35,7 @@ const (
 	// ShootProjectConfigMapSuffixCACluster is a constant for a shoot project config map with suffix 'ca-cluster'.
 	ShootProjectConfigMapSuffixCACluster = "ca-cluster"
 	// ShootProjectSecretSuffixCACluster is a constant for a shoot project secret with suffix 'ca-cluster'.
+	//
 	// Deprecated: This constant is deprecated in favor of ShootProjectConfigMapSuffixCACluster.
 	ShootProjectSecretSuffixCACluster = "ca-cluster"
 	// DataKeyCertificateCA is the key in a secret or config map data holding the CA certificate.
