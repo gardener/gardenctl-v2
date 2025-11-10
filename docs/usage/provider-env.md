@@ -17,7 +17,7 @@ The generated script:
 - Uses a temporary session directory so your default CLI configs are not modified
 - Supports `--unset` to clean up and log out/revoke credentials
 
-Ensure the respective provider CLI is installed on your system. See the in-command [help](https://github.com/gardener/gardenctl-v2/blob/master/docs/help/gardenctl_provider-env.md#synopsis) for links.
+Ensure the respective provider CLI is installed on your system. See the `gardenctl provider-env` [help](https://github.com/gardener/gardenctl-v2/blob/master/docs/help/gardenctl_provider-env.md#synopsis) for links.
 
 ## Overriding templates or adding custom providers
 
@@ -25,16 +25,16 @@ To override templates or add support for an out-of-tree provider, place a templa
 
 ## OpenStack: Allowed `authURL` patterns (required)
 
-> [!NOTE]
-> - For Shoots with provider type `openstack`, `gardenctl` validates the `authURL` from the credentials against a list of allowed patterns.
-> - You must configure these allowed patterns; otherwise `provider-env` will fail with a validation error for OpenStack.
-> - There are no built-in defaults because OpenStack auth endpoints are installation-specific.
+For Shoots with provider type `openstack`, `gardenctl` validates the `authURL` (the OpenStack Keystone authentication endpoint) from the credentials against a list of allowed patterns.  
+You can configure allowed patterns via the gardenctl configuration file or via command-line flags.  
 
-You can configure allowed patterns via the gardenctl configuration file or via command-line flags.
+> [!NOTE]
+> - **You must configure** these allowed patterns; otherwise `provider-env` will fail with a validation error for OpenStack.  
+> - There are **no built-in defaults** because OpenStack auth endpoints are installation-specific.
 
 ### Configure via gardenctl config
 
-Use the `gardenctl config set-openstack-authurl` command to configure allowed OpenStack auth endpoints:
+Use the `gardenctl config set-openstack-authurl` command to configure allowed OpenStack auth endpoints. Example:
 
 ```bash
 # Set allowed authURL (replaces existing patterns)
