@@ -42,7 +42,7 @@ The other install methods do this for you.
 
 # set operating system and architecture
 os=darwin # choose between darwin, linux, windows
-arch=amd64 # choose between amd64, arm64
+arch=arm64 # choose between amd64, arm64
 
 # Get latest version. Alternatively set your desired version
 version=$(curl -s https://raw.githubusercontent.com/gardener/gardenctl-v2/master/LATEST)
