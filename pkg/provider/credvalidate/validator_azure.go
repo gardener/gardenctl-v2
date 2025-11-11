@@ -8,7 +8,11 @@ package credvalidate
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
 
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 
@@ -87,6 +91,26 @@ func (v *AzureValidator) ValidateSecret(secret *corev1.Secret) (map[string]inter
 		"tenantID":       {Required: true, Validator: credvalidate.ValidateStringWithPattern(credvalidate.MatchRegexValuePattern), NonSensitive: true},
 		"clientID":       {Required: true, Validator: credvalidate.ValidateStringWithPattern(credvalidate.MatchRegexValuePattern), NonSensitive: true},
 		"clientSecret":   {Required: true, Validator: validateAzureClientSecret, NonSensitive: false},
+	}
+
+	return v.ValidateWithRegistry(fields, registry, credvalidate.Permissive)
+}
+
+// ValidateWorkloadIdentityConfig validates Azure workload identity configuration using the common framework.
+func (v *AzureValidator) ValidateWorkloadIdentityConfig(wi *gardensecurityv1alpha1.WorkloadIdentity) (map[string]interface{}, error) {
+	if wi.Spec.TargetSystem.ProviderConfig == nil || wi.Spec.TargetSystem.ProviderConfig.Raw == nil {
+		return nil, errors.New("providerConfig is missing")
+	}
+
+	fields := make(map[string]interface{})
+	if err := json.Unmarshal(wi.Spec.TargetSystem.ProviderConfig.Raw, &fields); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Azure workload identity config: %w", err)
+	}
+
+	registry := map[string]credvalidate.FieldRule{
+		"clientID":       {Required: true, Validator: credvalidate.ValidateStringWithPattern(credvalidate.MatchRegexValuePattern), NonSensitive: true},
+		"tenantID":       {Required: true, Validator: credvalidate.ValidateStringWithPattern(credvalidate.MatchRegexValuePattern), NonSensitive: true},
+		"subscriptionID": {Required: true, Validator: credvalidate.ValidateStringWithPattern(credvalidate.MatchRegexValuePattern), NonSensitive: true},
 	}
 
 	return v.ValidateWithRegistry(fields, registry, credvalidate.Permissive)

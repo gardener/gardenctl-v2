@@ -8,7 +8,9 @@ package credvalidate
 
 import (
 	"context"
+	"errors"
 
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 
@@ -51,6 +53,12 @@ func (v *HCloudValidator) ValidateSecret(secret *corev1.Secret) (map[string]inte
 	}
 
 	return v.ValidateWithRegistry(fields, registry, credvalidate.Permissive)
+}
+
+// ValidateWorkloadIdentityConfig validates HCloud workload identity configuration.
+// HCloud does not support workload identity, so this always returns an error.
+func (v *HCloudValidator) ValidateWorkloadIdentityConfig(wi *gardensecurityv1alpha1.WorkloadIdentity) (map[string]interface{}, error) {
+	return nil, errors.New("workload identity not supported for hcloud")
 }
 
 // Field-specific validator functions that implement the credvalidate.FieldValidator interface.
