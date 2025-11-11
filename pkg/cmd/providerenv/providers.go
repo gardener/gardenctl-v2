@@ -19,7 +19,7 @@ import (
 
 type Provider interface {
 	// FromSecret validates and extracts credential data from a Kubernetes Secret.
-	FromSecret(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cp *clientgarden.CloudProfileUnion, configDir string) (map[string]interface{}, error)
+	FromSecret(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cp *clientgarden.CloudProfileUnion) (map[string]interface{}, error)
 }
 
 func providerFor(typ string, ctx context.Context, mergedPatterns *MergedProviderPatterns) Provider {
