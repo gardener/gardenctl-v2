@@ -112,7 +112,7 @@ gk
 		It("should execute the fish subcommand", func() {
 			cmd.SetArgs([]string{"fish"})
 			Expect(cmd.Execute()).To(Succeed())
-			Expect(out.String()).To(Equal(`if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ];
+			Expect(out.String()).To(Equal(`if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]
   set -gx GCTL_SESSION_ID (uuidgen)
 end
 alias g=gardenctl
