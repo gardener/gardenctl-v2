@@ -131,12 +131,11 @@ var _ = Describe("Env Commands - Template", func() {
 	})
 
 	Describe("parsing the gcp template", func() {
-		const exportFormat = `export GOOGLE_CREDENTIALS_ACCOUNT=$(< 'PLACEHOLDER_CLIENT_EMAIL_FILE');
-export CLOUDSDK_CORE_PROJECT=$(< 'PLACEHOLDER_PROJECT_ID_FILE');
+		const exportFormat = `export CLOUDSDK_CORE_PROJECT=$(< 'PLACEHOLDER_PROJECT_ID_FILE');
 export CLOUDSDK_COMPUTE_REGION=$(< 'PLACEHOLDER_REGION_FILE');
 export CLOUDSDK_CONFIG='PLACEHOLDER_CONFIG_DIR';
-gcloud auth activate-service-account --key-file 'PLACEHOLDER_CREDENTIALS_FILE' -- "$GOOGLE_CREDENTIALS_ACCOUNT";
-rm -f -- 'PLACEHOLDER_CLIENT_EMAIL_FILE';
+gcloud auth login --cred-file 'PLACEHOLDER_CREDENTIALS_FILE';
+export GOOGLE_CREDENTIALS_ACCOUNT=$(gcloud auth list --filter=status:ACTIVE --format='value(account)');
 rm -f -- 'PLACEHOLDER_CREDENTIALS_FILE';
 rm -f -- 'PLACEHOLDER_PROJECT_ID_FILE';
 rm -f -- 'PLACEHOLDER_REGION_FILE';
@@ -156,7 +155,6 @@ unset CLOUDSDK_CONFIG;
 # eval $(gardenctl provider-env -u PLACEHOLDER_SHELL)
 `
 		var (
-			clientEmailFile = "/tmp/client_email.txt"
 			projectIDFile   = "/tmp/project_id.txt"
 			regionFile      = "/tmp/region.txt"
 			credentialsFile = "/tmp/credentials.txt"
@@ -172,10 +170,9 @@ unset CLOUDSDK_CONFIG;
 
 		JustBeforeEach(func() {
 			data["dataFiles"] = map[string]interface{}{
-				"client_email": clientEmailFile,
-				"project_id":   projectIDFile,
-				"region":       regionFile,
-				"credentials":  credentialsFile,
+				"project_id":  projectIDFile,
+				"region":      regionFile,
+				"credentials": credentialsFile,
 			}
 			data["configDir"] = configDir
 		})
@@ -187,7 +184,6 @@ unset CLOUDSDK_CONFIG;
 				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
 				expected := strings.NewReplacer(
 					"PLACEHOLDER_SHELL", shell,
-					"PLACEHOLDER_CLIENT_EMAIL_FILE", clientEmailFile,
 					"PLACEHOLDER_PROJECT_ID_FILE", projectIDFile,
 					"PLACEHOLDER_REGION_FILE", regionFile,
 					"PLACEHOLDER_CREDENTIALS_FILE", credentialsFile,
@@ -198,6 +194,54 @@ unset CLOUDSDK_CONFIG;
 			Entry("export environment variables", false, exportFormat),
 			Entry("unset environment variables", true, unsetFormat),
 		)
+
+		Context("with workload identity credentials", func() {
+			const exportFormatWorkloadIdentity = `export CLOUDSDK_CORE_PROJECT=$(< 'PLACEHOLDER_PROJECT_ID_FILE');
+export CLOUDSDK_COMPUTE_REGION=$(< 'PLACEHOLDER_REGION_FILE');
+export CLOUDSDK_CONFIG='PLACEHOLDER_CONFIG_DIR';
+gcloud auth login --cred-file 'PLACEHOLDER_CREDENTIALS_FILE';
+export GOOGLE_CREDENTIALS_ACCOUNT=$(gcloud auth list --filter=status:ACTIVE --format='value(account)');
+rm -f -- 'PLACEHOLDER_AUDIENCES_FILE';
+rm -f -- 'PLACEHOLDER_CREDENTIALS_FILE';
+rm -f -- 'PLACEHOLDER_PROJECT_ID_FILE';
+rm -f -- 'PLACEHOLDER_REGION_FILE';
+rm -f -- 'PLACEHOLDER_SUBJECT_FILE';
+rm -f -- 'PLACEHOLDER_TOKEN_FILE';
+printf 'Run the following command to revoke access credentials:\n$ eval $(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)\n';
+
+# Run this command to configure gcloud for your shell:
+# eval $(gardenctl provider-env PLACEHOLDER_SHELL)
+`
+			var (
+				tokenFile     = "/tmp/token.txt"
+				subjectFile   = "/tmp/subject.txt"
+				audiencesFile = "/tmp/audiences.txt"
+			)
+
+			JustBeforeEach(func() {
+				// Add workload identity specific files
+				data["dataFiles"].(map[string]interface{})["token"] = tokenFile
+				data["dataFiles"].(map[string]interface{})["subject"] = subjectFile
+				data["dataFiles"].(map[string]interface{})["audiences"] = audiencesFile
+			})
+
+			It("should render template with workload identity fields", func() {
+				metadata["shell"] = shell
+				metadata["unset"] = false
+				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
+				expected := strings.NewReplacer(
+					"PLACEHOLDER_SHELL", shell,
+					"PLACEHOLDER_PROJECT_ID_FILE", projectIDFile,
+					"PLACEHOLDER_REGION_FILE", regionFile,
+					"PLACEHOLDER_CREDENTIALS_FILE", credentialsFile,
+					"PLACEHOLDER_CONFIG_DIR", configDir,
+					"PLACEHOLDER_TOKEN_FILE", tokenFile,
+					"PLACEHOLDER_SUBJECT_FILE", subjectFile,
+					"PLACEHOLDER_AUDIENCES_FILE", audiencesFile,
+				).Replace(exportFormatWorkloadIdentity)
+				Expect(out.String()).To(Equal(expected))
+			})
+		})
 	})
 
 	Describe("parsing the azure template", func() {

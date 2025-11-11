@@ -37,11 +37,25 @@ func computeFileSuffix(sessionID string, target CanonicalTarget) string {
 	return hex.EncodeToString(hash[:8]) // Use first 8 bytes (16 hex chars)
 }
 
+// computeFieldFilePath generates the file path for a given field and suffix.
+// This is the single source of truth for path generation used by both
+// TempDataWriter and CleanupDataWriter.
+func computeFieldFilePath(dataDir, suffix, field string) string {
+	// Use suffix as prefix to make filename unpredictable (defense against CWD manipulation)
+	filename := suffix + "-" + field + ".txt"
+	return filepath.Join(dataDir, filename)
+}
+
 // DataWriter is an interface for managing temporary credential data files.
 type DataWriter interface {
 	// WriteField writes a field value to a temporary file and returns its path.
 	// For CleanupDataWriter, this is a no-op that returns an empty string.
 	WriteField(field string, value string) (string, error)
+
+	// ComputeFilePath generates the deterministic file path for a field.
+	// This is a pure computation that returns where the field data would be stored,
+	// regardless of whether files will be written or cleaned up.
+	ComputeFilePath(field string) string
 
 	// GetAllFilePaths returns a map of all field names to their file paths.
 	// For CleanupDataWriter, this returns an empty map.
@@ -90,6 +104,11 @@ func NewTempDataWriter(sessionID, sessionDir string, target CanonicalTarget) (*T
 	}, nil
 }
 
+// ComputeFilePath generates the deterministic file path for a given field.
+func (t *TempDataWriter) ComputeFilePath(field string) string {
+	return computeFieldFilePath(t.dataDir, t.suffix, field)
+}
+
 // WriteField writes a field value to a temporary file and returns its path.
 // Files are created with 0600 permissions (owner read/write only).
 // The directory is created on the first call to WriteField (lazy initialization).
@@ -103,9 +122,7 @@ func (t *TempDataWriter) WriteField(field string, value string) (string, error) 
 		t.dirCreated = true
 	}
 
-	// Use suffix as prefix to make filename unpredictable (defense against CWD manipulation)
-	filename := t.suffix + "-" + field + ".txt"
-	filepath := filepath.Join(t.dataDir, filename)
+	filepath := t.ComputeFilePath(field)
 
 	// Write file with restrictive permissions (owner read/write only)
 	// This will overwrite any existing file from a previous run
@@ -159,6 +176,13 @@ func NewCleanupDataWriter(sessionID, sessionDir string, target CanonicalTarget) 
 // This allows the calling code to use the same logic for both TempDataWriter and CleanupDataWriter.
 func (c *CleanupDataWriter) WriteField(field string, value string) (string, error) {
 	return "", nil
+}
+
+// ComputeFilePath generates the deterministic file path for a given field.
+// This allows cleanup operations to identify which files to remove and enables
+// providers to generate valid configuration paths even during unset operations.
+func (c *CleanupDataWriter) ComputeFilePath(field string) string {
+	return computeFieldFilePath(c.dataDir, c.suffix, field)
 }
 
 // GetAllFilePaths returns an empty map for CleanupDataWriter.

@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
@@ -43,9 +44,39 @@ func (p *GCPProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, sec
 		return nil, err
 	}
 
-	return map[string]interface{}{
-		"credentials":  serviceaccountJSON,
-		"client_email": credentialsMap["client_email"],
-		"project_id":   credentialsMap["project_id"],
-	}, nil
+	templateFields := map[string]interface{}{
+		"credentials": serviceaccountJSON,
+		"project_id":  credentialsMap["project_id"],
+	}
+
+	return templateFields, nil
+}
+
+func (p *GCPProvider) FromWorkloadIdentity(o *options, wi *gardensecurityv1alpha1.WorkloadIdentity, dataWriter DataWriter) (map[string]interface{}, error) {
+	validatedConfig, err := p.validator.ValidateWorkloadIdentityConfig(wi)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get path for baseline token field to embed in credentials JSON.
+	tokenFilePath := dataWriter.ComputeFilePath(FieldToken)
+
+	credentialsConfig := validatedConfig["credentialsConfig"].(map[string]interface{})
+
+	credentialsConfig["credential_source"] = map[string]interface{}{
+		"file":   tokenFilePath,
+		"format": map[string]interface{}{"type": "text"},
+	}
+
+	credentialsJSON, err := json.Marshal(credentialsConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	templateFields := map[string]interface{}{
+		"credentials": string(credentialsJSON),
+		"project_id":  validatedConfig["projectID"].(string),
+	}
+
+	return templateFields, nil
 }

@@ -13,8 +13,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
@@ -60,6 +62,9 @@ type options struct {
 	// ConfirmAccessRestriction, when set to true, implies the user's understanding of the access restrictions for the targeted shoot.
 	// When set to false and access restrictions are present, the command will terminate with an error.
 	ConfirmAccessRestriction bool
+	// WorkloadIdentityTokenExpiration sets the requested validity duration for workload identity tokens.
+	// The actual expiration might be capped by the server.
+	WorkloadIdentityTokenExpiration time.Duration
 	// OpenStackAllowedPatterns is a list of JSON-formatted allowed patterns for OpenStack credential config fields
 	OpenStackAllowedPatterns []string
 	// OpenStackAllowedURIPatterns is a list of simple field=uri patterns for OpenStack credential config fields
@@ -77,6 +82,11 @@ type MergedProviderPatterns struct {
 }
 
 const (
+	// Baseline reserved fields for WorkloadIdentity credential kind.
+	FieldToken     = "token"
+	FieldSubject   = "subject"
+	FieldAudiences = "audiences"
+
 	// Baseline reserved fields for all templates.
 	FieldRegion    = "region"
 	FieldConfigDir = "configDir"
@@ -226,7 +236,8 @@ func (o *options) Validate() error {
 func (o *options) AddFlags(flags *pflag.FlagSet) {
 	flags.BoolVarP(&o.Force, "force", "f", false, "Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.")
 	flags.BoolVarP(&o.ConfirmAccessRestriction, "confirm-access-restriction", "y", o.ConfirmAccessRestriction, "Confirm any access restrictions. Set this flag only if you are completely aware of the access restrictions.")
-	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, fmt.Sprintf("Generate the script to unset the cloud provider CLI environment variables and logout for %s", o.Shell))
+	flags.BoolVarP(&o.Unset, "unset", "u", o.Unset, "Generate the script to unset the cloud provider CLI environment variables and logout.")
+	flags.DurationVar(&o.WorkloadIdentityTokenExpiration, "workload-identity-token-expiration", o.WorkloadIdentityTokenExpiration, "Requested expiration for workload identity tokens. The server may enforce a maximum.")
 
 	flags.StringArrayVar(&o.OpenStackAllowedPatterns, "openstack-allowed-patterns", nil,
 		`Additional allowed patterns for OpenStack credential fields in JSON format.
@@ -478,7 +489,7 @@ func generateData(
 		}
 
 		if p != nil {
-			providerData, err = p.FromSecret(o, shoot, secret, cloudProfile, configDir)
+			providerData, err = p.FromSecret(o, shoot, secret, cloudProfile)
 			if err != nil {
 				return nil, err
 			}
@@ -487,6 +498,34 @@ func generateData(
 		// Reserved raw Secret data for out-of-tree templates (unvalidated; use with caution).
 		// Built-in templates must not use this; use provider-validated fields instead.
 		data["unsafeSecretData"] = bytesMapToStringMap(secret.Data)
+
+	case gardensecurityv1alpha1.SchemeGroupVersion.WithKind("WorkloadIdentity"):
+		workloadIdentity, err := c.GetWorkloadIdentity(ctx, credentialsRef.Namespace, credentialsRef.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		if workloadIdentity.Spec.TargetSystem.Type != providerType {
+			return nil, fmt.Errorf("unexpected target system type %s for workload identity %s. Expected: %s",
+				workloadIdentity.Spec.TargetSystem.Type, workloadIdentity.Name, providerType)
+		}
+
+		tokenRequest, err := c.CreateWorkloadIdentityToken(ctx, credentialsRef.Namespace, credentialsRef.Name, o.WorkloadIdentityTokenExpiration)
+		if err != nil {
+			return nil, err
+		}
+
+		if p != nil {
+			providerData, err = p.FromWorkloadIdentity(o, workloadIdentity, dataWriter)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// baseline reserved fields that any template can use for Workload Identity credential kind
+		providerData[FieldSubject] = workloadIdentity.Status.Sub
+		providerData[FieldAudiences] = workloadIdentity.Spec.Audiences
+		providerData[FieldToken] = tokenRequest.Status.Token
 
 	default:
 		return nil, fmt.Errorf("unsupported credentials kind %q", credentialsRef.Kind)

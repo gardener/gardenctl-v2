@@ -8,6 +8,7 @@ package providerenv_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -566,443 +567,421 @@ var _ = Describe("Env Commands - Options", func() {
 						},
 					},
 				}
-				credentialsRef = corev1.ObjectReference{
-					APIVersion: "v1",
-					Kind:       "Secret",
-					Namespace:  secret.Namespace,
-					Name:       secret.Name,
-				}
 				options.GardenDir = gardenHomeDir
 				options.SessionDir = sessionDir
 			})
 
-			Context("when configuring the shell", func() {
+			Context("with Secret credentials", func() {
 				BeforeEach(func() {
-					unset = false
-
-					// Initialize options with Complete() to set up default patterns
-					factory := utilmocks.NewMockFactory(ctrl)
-					manager := targetmocks.NewMockManager(ctrl)
-					factory.EXPECT().GetSessionID().Return("test-session-id", nil)
-					factory.EXPECT().Manager().Return(manager, nil)
-					factory.EXPECT().TargetFlags().Return(tf)
-					factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
-					factory.EXPECT().Context().Return(ctx)
-					manager.EXPECT().SessionDir().Return(sessionDir)
-					manager.EXPECT().Configuration().Return(cfg)
-					Expect(options.Complete(factory, mockCmd, nil)).To(Succeed())
-				})
-
-				It("should render the template successfully", func() {
-					client := gardenclientmocks.NewMockClient(ctrl)
-					client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
-					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
-					hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
-					expected := strings.NewReplacer(
-						"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "gcloud"),
-						"PLACEHOLDER_SESSION_DIR", sessionDir,
-						"PLACEHOLDER_HASH", hash,
-					).Replace(readTestFile("gcp/export.bash"))
-					Expect(options.String()).To(Equal(expected))
-				})
-			})
-
-			Context("when resetting the shell configuration", func() {
-				BeforeEach(func() {
-					unset = true
-					shell = "powershell"
-
-					// Initialize options with Complete() to set up default patterns
-					factory := utilmocks.NewMockFactory(ctrl)
-					manager := targetmocks.NewMockManager(ctrl)
-					factory.EXPECT().GetSessionID().Return("test-session-id", nil)
-					factory.EXPECT().Manager().Return(manager, nil)
-					factory.EXPECT().TargetFlags().Return(tf)
-					factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
-					factory.EXPECT().Context().Return(ctx)
-					manager.EXPECT().SessionDir().Return(sessionDir)
-					manager.EXPECT().Configuration().Return(cfg)
-					Expect(options.Complete(factory, mockCmd, nil)).To(Succeed())
-				})
-
-				It("should render the template successfully", func() {
-					client := gardenclientmocks.NewMockClient(ctrl)
-					client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
-					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
-					Expect(options.String()).To(Equal(readTestFile("gcp/unset.pwsh")))
-				})
-			})
-
-			Context("when JSON input is invalid", func() {
-				JustBeforeEach(func() {
-					secret.Data["serviceaccount.json"] = []byte("{")
-				})
-
-				It("should fail to render the template with JSON parse error", func() {
-					client := gardenclientmocks.NewMockClient(ctrl)
-					client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
-					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(ContainSubstring("unexpected end of JSON input")))
-				})
-			})
-
-			Context("when the shell is invalid", func() {
-				BeforeEach(func() {
-					shell = "cmd"
-
-					// Initialize options with Complete() to set up default patterns
-					factory := utilmocks.NewMockFactory(ctrl)
-					manager := targetmocks.NewMockManager(ctrl)
-					factory.EXPECT().GetSessionID().Return("test-session-id", nil)
-					factory.EXPECT().Manager().Return(manager, nil)
-					factory.EXPECT().TargetFlags().Return(tf)
-					factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
-					factory.EXPECT().Context().Return(ctx)
-					manager.EXPECT().SessionDir().Return(sessionDir)
-					manager.EXPECT().Configuration().Return(cfg)
-					Expect(options.Complete(factory, mockCmd, nil)).To(Succeed())
-				})
-
-				It("should fail to render the template with JSON parse error", func() {
-					client := gardenclientmocks.NewMockClient(ctrl)
-					client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
-					noTemplateFmt := "template: no template %q associated with template %q"
-					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(fmt.Sprintf(noTemplateFmt, shell, "base")))
-				})
-			})
-
-			Context("when the cloudprovider template is found in garden home dir", func() {
-				var filename string
-
-				BeforeEach(func() {
-					providerType = "test"
-					filename = filepath.Join("templates", providerType+".tmpl")
-					writeTempFile(filename, readTestFile("templates/"+providerType+".tmpl"))
-				})
-
-				AfterEach(func() {
-					removeTempFile(filename)
-				})
-
-				It("should render the template successfully", func() {
-					client := gardenclientmocks.NewMockClient(ctrl)
-					client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
-					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
-					Expect(options.String()).To(Equal(readTestFile("test/export.bash")))
-				})
-			})
-
-			Context("when the cloudprovider template is not found", func() {
-				BeforeEach(func() {
-					providerType = "not-found"
-				})
-
-				It("should fail to render the template with a not supported error", func() {
-					client := gardenclientmocks.NewMockClient(ctrl)
-					client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
-					message := "failed to generate the cloud provider CLI configuration script"
-					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(MatchRegexp(message)))
-				})
-			})
-
-			Context("when the cloudprovider template could not be parsed", func() {
-				var filename string
-
-				BeforeEach(func() {
-					providerType = "fail"
-					filename = filepath.Join("templates", providerType+".tmpl")
-					writeTempFile(filename, "{{define \"bash\"}}\nexport TEST_TOKEN={{.testToken | quote}};")
-				})
-
-				AfterEach(func() {
-					removeTempFile(filename)
-				})
-
-				It("should fail to render the template with a not supported error", func() {
-					client := gardenclientmocks.NewMockClient(ctrl)
-					client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
-					message := "failed to generate the cloud provider CLI configuration script"
-					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(MatchRegexp(message)))
-				})
-			})
-
-			Context("when the configuration directory could not be created", func() {
-				It("should fail a mkdir error", func() {
-					client := gardenclientmocks.NewMockClient(ctrl)
-					options.SessionDir = string([]byte{0})
-					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(MatchRegexp("^failed to create gcloud configuration directory:")))
-				})
-			})
-
-			Context("when the cloudprovider is openstack", func() {
-				const (
-					username   = "user"
-					password   = "secret"
-					tenantName = "tenant"
-					domainName = "domain"
-				)
-
-				BeforeEach(func() {
-					providerType = "openstack"
-					providerConfig = &openstackv1alpha1.CloudProfileConfig{KeyStoneURL: "https://keystone.example.com:5000"}
-
-					factory := utilmocks.NewMockFactory(ctrl)
-					manager := targetmocks.NewMockManager(ctrl)
-					factory.EXPECT().GetSessionID().Return("test-session-id", nil)
-					factory.EXPECT().Manager().Return(manager, nil)
-					factory.EXPECT().TargetFlags().Return(tf)
-					factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
-					factory.EXPECT().Context().Return(ctx)
-					manager.EXPECT().SessionDir().Return(sessionDir)
-					manager.EXPECT().Configuration().Return(cfg)
-					Expect(options.Complete(factory, mockCmd, nil)).To(Succeed())
-
-					options.MergedAllowedPatterns = &providerenv.MergedProviderPatterns{
-						OpenStack: []allowpattern.Pattern{
-							{Field: "authURL", URI: "https://keystone.example.com:5000"},
-						},
+					credentialsRef = corev1.ObjectReference{
+						APIVersion: "v1",
+						Kind:       "Secret",
+						Namespace:  namespace,
+						Name:       secretName,
 					}
 				})
 
-				JustBeforeEach(func() {
-					secret.Data["username"] = []byte(username)
-					secret.Data["password"] = []byte(password)
-					secret.Data["tenantName"] = []byte(tenantName)
-					secret.Data["domainName"] = []byte(domainName)
-				})
-
-				It("should render the template successfully", func() {
-					client := gardenclientmocks.NewMockClient(ctrl)
-					client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
-					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
-					hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
-					expected := strings.NewReplacer(
-						"PLACEHOLDER_SESSION_DIR", sessionDir,
-						"PLACEHOLDER_HASH", hash,
-					).Replace(readTestFile("openstack/export.bash"))
-					Expect(options.String()).To(Equal(expected))
-				})
-
-				It("should fail with invalid provider config", func() {
-					client := gardenclientmocks.NewMockClient(ctrl)
-					client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
-					cloudProfile.GetCloudProfileSpec().ProviderConfig = nil
-					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(MatchRegexp("^failed to get openstack provider config:")))
-				})
-
-				Context("when applicationCredentialSecret is empty", func() {
-					JustBeforeEach(func() {
-						secret.Data["applicationCredentialID"] = []byte("app-cred-id")
-						secret.Data["applicationCredentialName"] = []byte("app-cred-name")
-						secret.Data["applicationCredentialSecret"] = []byte("")
-					})
-
-					It("should use keystone authentication instead of application credentials", func() {
-						client := gardenclientmocks.NewMockClient(ctrl)
-						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
-						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
-						output := options.String()
-						hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
-						providerEnvDir := filepath.Join(sessionDir, "provider-env")
-
-						authStrategyPath := filepath.Join(providerEnvDir, hash+"-authStrategy.txt")
-						usernamePath := filepath.Join(providerEnvDir, hash+"-username.txt")
-						passwordPath := filepath.Join(providerEnvDir, hash+"-password.txt")
-						authTypePath := filepath.Join(providerEnvDir, hash+"-authType.txt")
-						appCredIDPath := filepath.Join(providerEnvDir, hash+"-applicationCredentialID.txt")
-						appCredNamePath := filepath.Join(providerEnvDir, hash+"-applicationCredentialName.txt")
-						appCredSecretPath := filepath.Join(providerEnvDir, hash+"-applicationCredentialSecret.txt")
-
-						Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_AUTH_STRATEGY=$(< '%s');", authStrategyPath)))
-						Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_USERNAME=$(< '%s');", usernamePath)))
-						Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_PASSWORD=$(< '%s');", passwordPath)))
-						Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_AUTH_TYPE=$(< '%s');", authTypePath)))
-						Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_ID=$(< '%s');", appCredIDPath)))
-						Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_NAME=$(< '%s');", appCredNamePath)))
-						Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_SECRET=$(< '%s');", appCredSecretPath)))
-
-						Expect(os.ReadFile(authStrategyPath)).To(Equal([]byte("keystone")))
-						Expect(os.ReadFile(usernamePath)).To(Equal([]byte("user")))
-						Expect(os.ReadFile(passwordPath)).To(Equal([]byte("secret")))
-						Expect(os.ReadFile(authTypePath)).To(Equal([]byte("")))
-						Expect(os.ReadFile(appCredIDPath)).To(Equal([]byte("")))
-						Expect(os.ReadFile(appCredNamePath)).To(Equal([]byte("")))
-						Expect(os.ReadFile(appCredSecretPath)).To(Equal([]byte("")))
-					})
-				})
-
-				Context("when applicationCredentialSecret has a valid value", func() {
-					JustBeforeEach(func() {
-						// Remove password-based auth fields when using application credentials
-						delete(secret.Data, "username")
-						delete(secret.Data, "password")
-						secret.Data["applicationCredentialSecret"] = []byte("app-cred-secret")
-					})
-
-					Context("when applicationCredentialID is provided", func() {
-						JustBeforeEach(func() {
-							secret.Data["applicationCredentialID"] = []byte("app-cred-id")
-						})
-
-						It("should use application credential authentication with ID", func() {
-							client := gardenclientmocks.NewMockClient(ctrl)
-							client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
-							Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
-							output := options.String()
-							hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
-							providerEnvDir := filepath.Join(sessionDir, "provider-env")
-
-							authTypePath := filepath.Join(providerEnvDir, hash+"-authType.txt")
-							applicationCredentialIDPath := filepath.Join(providerEnvDir, hash+"-applicationCredentialID.txt")
-							applicationCredentialNamePath := filepath.Join(providerEnvDir, hash+"-applicationCredentialName.txt")
-							applicationCredentialSecretPath := filepath.Join(providerEnvDir, hash+"-applicationCredentialSecret.txt")
-							authStrategyPath := filepath.Join(providerEnvDir, hash+"-authStrategy.txt")
-							tenantNamePath := filepath.Join(providerEnvDir, hash+"-tenantName.txt")
-							usernamePath := filepath.Join(providerEnvDir, hash+"-username.txt")
-							passwordPath := filepath.Join(providerEnvDir, hash+"-password.txt")
-
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_AUTH_TYPE=$(< '%s');", authTypePath)))
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_ID=$(< '%s');", applicationCredentialIDPath)))
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_NAME=$(< '%s');", applicationCredentialNamePath)))
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_SECRET=$(< '%s');", applicationCredentialSecretPath)))
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_AUTH_STRATEGY=$(< '%s');", authStrategyPath)))
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_TENANT_NAME=$(< '%s');", tenantNamePath)))
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_USERNAME=$(< '%s');", usernamePath)))
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_PASSWORD=$(< '%s');", passwordPath)))
-
-							Expect(os.ReadFile(authTypePath)).To(Equal([]byte("v3applicationcredential")))
-							Expect(os.ReadFile(applicationCredentialIDPath)).To(Equal([]byte("app-cred-id")))
-							Expect(os.ReadFile(applicationCredentialNamePath)).To(Equal([]byte("")))
-							Expect(os.ReadFile(applicationCredentialSecretPath)).To(Equal([]byte("app-cred-secret")))
-							Expect(os.ReadFile(authStrategyPath)).To(Equal([]byte("")))
-							Expect(os.ReadFile(tenantNamePath)).To(Equal([]byte("")))
-							Expect(os.ReadFile(usernamePath)).To(Equal([]byte("")))
-							Expect(os.ReadFile(passwordPath)).To(Equal([]byte("")))
-						})
-					})
-
-					Context("when applicationCredentialName is provided", func() {
-						JustBeforeEach(func() {
-							secret.Data["applicationCredentialName"] = []byte("app-cred-name")
-							secret.Data["username"] = []byte("user") // username is required when using applicationCredentialName
-						})
-
-						It("should use application credential authentication with name", func() {
-							client := gardenclientmocks.NewMockClient(ctrl)
-							client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
-							Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
-							output := options.String()
-							hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
-							providerEnvDir := filepath.Join(sessionDir, "provider-env")
-
-							authTypePath := filepath.Join(providerEnvDir, hash+"-authType.txt")
-							applicationCredentialIDPath := filepath.Join(providerEnvDir, hash+"-applicationCredentialID.txt")
-							applicationCredentialNamePath := filepath.Join(providerEnvDir, hash+"-applicationCredentialName.txt")
-							applicationCredentialSecretPath := filepath.Join(providerEnvDir, hash+"-applicationCredentialSecret.txt")
-							authStrategyPath := filepath.Join(providerEnvDir, hash+"-authStrategy.txt")
-							tenantNamePath := filepath.Join(providerEnvDir, hash+"-tenantName.txt")
-							usernamePath := filepath.Join(providerEnvDir, hash+"-username.txt")
-							passwordPath := filepath.Join(providerEnvDir, hash+"-password.txt")
-
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_AUTH_TYPE=$(< '%s');", authTypePath)))
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_ID=$(< '%s');", applicationCredentialIDPath)))
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_NAME=$(< '%s');", applicationCredentialNamePath)))
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_SECRET=$(< '%s');", applicationCredentialSecretPath)))
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_AUTH_STRATEGY=$(< '%s');", authStrategyPath)))
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_TENANT_NAME=$(< '%s');", tenantNamePath)))
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_USERNAME=$(< '%s');", usernamePath)))
-							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_PASSWORD=$(< '%s');", passwordPath)))
-
-							Expect(os.ReadFile(authTypePath)).To(Equal([]byte("v3applicationcredential")))
-							Expect(os.ReadFile(applicationCredentialIDPath)).To(Equal([]byte("")))
-							Expect(os.ReadFile(applicationCredentialNamePath)).To(Equal([]byte("app-cred-name")))
-							Expect(os.ReadFile(applicationCredentialSecretPath)).To(Equal([]byte("app-cred-secret")))
-							Expect(os.ReadFile(authStrategyPath)).To(Equal([]byte("")))
-							Expect(os.ReadFile(tenantNamePath)).To(Equal([]byte("")))
-							Expect(os.ReadFile(usernamePath)).To(Equal([]byte("")))
-							Expect(os.ReadFile(passwordPath)).To(Equal([]byte("")))
-						})
-					})
-				})
-
-				Context("output is json", func() {
+				Context("when configuring the shell", func() {
 					BeforeEach(func() {
-						output = "json"
-						shell = ""
+						unset = false
+
+						// Initialize options with Complete() to set up default patterns
+						factory := utilmocks.NewMockFactory(ctrl)
+						manager := targetmocks.NewMockManager(ctrl)
+						factory.EXPECT().GetSessionID().Return("test-session-id", nil)
+						factory.EXPECT().Manager().Return(manager, nil)
+						factory.EXPECT().TargetFlags().Return(tf)
+						factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
+						factory.EXPECT().Context().Return(ctx)
+						manager.EXPECT().SessionDir().Return(sessionDir)
+						manager.EXPECT().Configuration().Return(cfg)
+						Expect(options.Complete(factory, mockCmd, nil)).To(Succeed())
 					})
 
-					It("should render the json successfully", func() {
+					It("should render the template successfully", func() {
 						client := gardenclientmocks.NewMockClient(ctrl)
 						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
 						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
 						hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
 						expected := strings.NewReplacer(
-							"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "openstack"),
+							"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "gcloud"),
 							"PLACEHOLDER_SESSION_DIR", sessionDir,
 							"PLACEHOLDER_HASH", hash,
-						).Replace(readTestFile("openstack/export.json"))
+						).Replace(readTestFile("gcp/export.bash"))
 						Expect(options.String()).To(Equal(expected))
 					})
 				})
-			})
 
-			Context("when the cloudprovider is azure", func() {
-				const (
-					clientID       = "12345678-1234-1234-1234-123456789012"
-					clientSecret   = "AbCdE~fGhI.-jKlMnOpQrStUvWxYz0_123456789"
-					tenantID       = "87654321-4321-4321-4321-210987654321"
-					subscriptionID = "abcdef12-3456-7890-abcd-ef1234567890"
-				)
-
-				BeforeEach(func() {
-					shell = "fish"
-					providerType = "azure"
-
-					factory := utilmocks.NewMockFactory(ctrl)
-					manager := targetmocks.NewMockManager(ctrl)
-					factory.EXPECT().GetSessionID().Return("test-session-id", nil)
-					factory.EXPECT().Manager().Return(manager, nil)
-					factory.EXPECT().TargetFlags().Return(tf)
-					factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
-					factory.EXPECT().Context().Return(ctx)
-					manager.EXPECT().SessionDir().Return(sessionDir)
-					manager.EXPECT().Configuration().Return(cfg)
-					Expect(options.Complete(factory, mockCmd, nil)).To(Succeed())
-				})
-
-				JustBeforeEach(func() {
-					secret.Data["clientID"] = []byte(clientID)
-					secret.Data["clientSecret"] = []byte(clientSecret)
-					secret.Data["tenantID"] = []byte(tenantID)
-					secret.Data["subscriptionID"] = []byte(subscriptionID)
-				})
-
-				It("should render the template successfully", func() {
-					client := gardenclientmocks.NewMockClient(ctrl)
-					client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
-					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
-					hash := computeTestHash("test-session-id", "test", namespace, shootName)
-					replacer := strings.NewReplacer(
-						"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "az"),
-						"PLACEHOLDER_SESSION_DIR", sessionDir,
-						"PLACEHOLDER_HASH", hash,
-					)
-					expected := replacer.Replace(readTestFile("azure/export.fish"))
-					Expect(options.String()).To(Equal(expected))
-				})
-
-				It("should fail with mkdir error", func() {
-					client := gardenclientmocks.NewMockClient(ctrl)
-					options.SessionDir = string([]byte{0})
-					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(MatchRegexp("^failed to create az configuration directory:")))
-				})
-
-				Context("output is json", func() {
+				Context("when resetting the shell configuration", func() {
 					BeforeEach(func() {
-						output = "json"
-						shell = ""
+						unset = true
+						shell = "powershell"
+
+						// Initialize options with Complete() to set up default patterns
+						factory := utilmocks.NewMockFactory(ctrl)
+						manager := targetmocks.NewMockManager(ctrl)
+						factory.EXPECT().GetSessionID().Return("test-session-id", nil)
+						factory.EXPECT().Manager().Return(manager, nil)
+						factory.EXPECT().TargetFlags().Return(tf)
+						factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
+						factory.EXPECT().Context().Return(ctx)
+						manager.EXPECT().SessionDir().Return(sessionDir)
+						manager.EXPECT().Configuration().Return(cfg)
+						Expect(options.Complete(factory, mockCmd, nil)).To(Succeed())
 					})
 
-					It("should render the json successfully", func() {
+					It("should render the template successfully", func() {
+						client := gardenclientmocks.NewMockClient(ctrl)
+						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+						Expect(options.String()).To(Equal(readTestFile("gcp/unset.pwsh")))
+					})
+				})
+
+				Context("when JSON input is invalid", func() {
+					JustBeforeEach(func() {
+						secret.Data["serviceaccount.json"] = []byte("{")
+					})
+
+					It("should fail to render the template with JSON parse error", func() {
+						client := gardenclientmocks.NewMockClient(ctrl)
+						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(ContainSubstring("unexpected end of JSON input")))
+					})
+				})
+
+				Context("when the shell is invalid", func() {
+					BeforeEach(func() {
+						shell = "cmd"
+
+						// Initialize options with Complete() to set up default patterns
+						factory := utilmocks.NewMockFactory(ctrl)
+						manager := targetmocks.NewMockManager(ctrl)
+						factory.EXPECT().GetSessionID().Return("test-session-id", nil)
+						factory.EXPECT().Manager().Return(manager, nil)
+						factory.EXPECT().TargetFlags().Return(tf)
+						factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
+						factory.EXPECT().Context().Return(ctx)
+						manager.EXPECT().SessionDir().Return(sessionDir)
+						manager.EXPECT().Configuration().Return(cfg)
+						Expect(options.Complete(factory, mockCmd, nil)).To(Succeed())
+					})
+
+					It("should fail to render the template with JSON parse error", func() {
+						client := gardenclientmocks.NewMockClient(ctrl)
+						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+						noTemplateFmt := "template: no template %q associated with template %q"
+						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(fmt.Sprintf(noTemplateFmt, shell, "base")))
+					})
+				})
+
+				Context("when the cloudprovider template is found in garden home dir", func() {
+					var filename string
+
+					BeforeEach(func() {
+						providerType = "test"
+						filename = filepath.Join("templates", providerType+".tmpl")
+						writeTempFile(filename, readTestFile("templates/"+providerType+".tmpl"))
+					})
+
+					AfterEach(func() {
+						removeTempFile(filename)
+					})
+
+					It("should render the template successfully", func() {
+						client := gardenclientmocks.NewMockClient(ctrl)
+						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+						Expect(options.String()).To(Equal(readTestFile("test/export.bash")))
+					})
+				})
+
+				Context("when the cloudprovider template is not found", func() {
+					BeforeEach(func() {
+						providerType = "not-found"
+					})
+
+					It("should fail to render the template with a not supported error", func() {
+						client := gardenclientmocks.NewMockClient(ctrl)
+						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+						message := "failed to generate the cloud provider CLI configuration script"
+						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(MatchRegexp(message)))
+					})
+				})
+
+				Context("when the cloudprovider template could not be parsed", func() {
+					var filename string
+
+					BeforeEach(func() {
+						providerType = "fail"
+						filename = filepath.Join("templates", providerType+".tmpl")
+						writeTempFile(filename, "{{define \"bash\"}}\nexport TEST_TOKEN={{.testToken | quote}};")
+					})
+
+					AfterEach(func() {
+						removeTempFile(filename)
+					})
+
+					It("should fail to render the template with a not supported error", func() {
+						client := gardenclientmocks.NewMockClient(ctrl)
+						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+						message := "failed to generate the cloud provider CLI configuration script"
+						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(MatchRegexp(message)))
+					})
+				})
+
+				Context("when the configuration directory could not be created", func() {
+					It("should fail a mkdir error", func() {
+						client := gardenclientmocks.NewMockClient(ctrl)
+						options.SessionDir = string([]byte{0})
+						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(MatchRegexp("^failed to create gcloud configuration directory:")))
+					})
+				})
+
+				Context("when the cloudprovider is openstack", func() {
+					const (
+						username   = "user"
+						password   = "secret"
+						tenantName = "tenant"
+						domainName = "domain"
+					)
+
+					BeforeEach(func() {
+						providerType = "openstack"
+						providerConfig = &openstackv1alpha1.CloudProfileConfig{KeyStoneURL: "https://keystone.example.com:5000"}
+
+						factory := utilmocks.NewMockFactory(ctrl)
+						manager := targetmocks.NewMockManager(ctrl)
+						factory.EXPECT().GetSessionID().Return("test-session-id", nil)
+						factory.EXPECT().Manager().Return(manager, nil)
+						factory.EXPECT().TargetFlags().Return(tf)
+						factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
+						factory.EXPECT().Context().Return(ctx)
+						manager.EXPECT().SessionDir().Return(sessionDir)
+						manager.EXPECT().Configuration().Return(cfg)
+						Expect(options.Complete(factory, mockCmd, nil)).To(Succeed())
+
+						options.MergedAllowedPatterns = &providerenv.MergedProviderPatterns{
+							OpenStack: []allowpattern.Pattern{
+								{Field: "authURL", URI: "https://keystone.example.com:5000"},
+							},
+						}
+					})
+
+					JustBeforeEach(func() {
+						secret.Data["username"] = []byte(username)
+						secret.Data["password"] = []byte(password)
+						secret.Data["tenantName"] = []byte(tenantName)
+						secret.Data["domainName"] = []byte(domainName)
+					})
+
+					It("should render the template successfully", func() {
+						client := gardenclientmocks.NewMockClient(ctrl)
+						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+						hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
+						expected := strings.NewReplacer(
+							"PLACEHOLDER_SESSION_DIR", sessionDir,
+							"PLACEHOLDER_HASH", hash,
+						).Replace(readTestFile("openstack/export.bash"))
+						Expect(options.String()).To(Equal(expected))
+					})
+
+					It("should fail with invalid provider config", func() {
+						client := gardenclientmocks.NewMockClient(ctrl)
+						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+						cloudProfile.GetCloudProfileSpec().ProviderConfig = nil
+						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(MatchRegexp("^failed to get openstack provider config:")))
+					})
+
+					Context("when applicationCredentialSecret is empty", func() {
+						JustBeforeEach(func() {
+							secret.Data["applicationCredentialID"] = []byte("app-cred-id")
+							secret.Data["applicationCredentialName"] = []byte("app-cred-name")
+							secret.Data["applicationCredentialSecret"] = []byte("")
+						})
+
+						It("should use keystone authentication instead of application credentials", func() {
+							client := gardenclientmocks.NewMockClient(ctrl)
+							client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+							Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+							output := options.String()
+							hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
+							providerEnvDir := filepath.Join(sessionDir, "provider-env")
+
+							authStrategyPath := filepath.Join(providerEnvDir, hash+"-authStrategy.txt")
+							usernamePath := filepath.Join(providerEnvDir, hash+"-username.txt")
+							passwordPath := filepath.Join(providerEnvDir, hash+"-password.txt")
+							authTypePath := filepath.Join(providerEnvDir, hash+"-authType.txt")
+							appCredIDPath := filepath.Join(providerEnvDir, hash+"-applicationCredentialID.txt")
+							appCredNamePath := filepath.Join(providerEnvDir, hash+"-applicationCredentialName.txt")
+							appCredSecretPath := filepath.Join(providerEnvDir, hash+"-applicationCredentialSecret.txt")
+
+							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_AUTH_STRATEGY=$(< '%s');", authStrategyPath)))
+							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_USERNAME=$(< '%s');", usernamePath)))
+							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_PASSWORD=$(< '%s');", passwordPath)))
+							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_AUTH_TYPE=$(< '%s');", authTypePath)))
+							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_ID=$(< '%s');", appCredIDPath)))
+							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_NAME=$(< '%s');", appCredNamePath)))
+							Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_SECRET=$(< '%s');", appCredSecretPath)))
+
+							Expect(os.ReadFile(authStrategyPath)).To(Equal([]byte("keystone")))
+							Expect(os.ReadFile(usernamePath)).To(Equal([]byte("user")))
+							Expect(os.ReadFile(passwordPath)).To(Equal([]byte("secret")))
+							Expect(os.ReadFile(authTypePath)).To(Equal([]byte("")))
+							Expect(os.ReadFile(appCredIDPath)).To(Equal([]byte("")))
+							Expect(os.ReadFile(appCredNamePath)).To(Equal([]byte("")))
+							Expect(os.ReadFile(appCredSecretPath)).To(Equal([]byte("")))
+						})
+					})
+
+					Context("when applicationCredentialSecret has a valid value", func() {
+						JustBeforeEach(func() {
+							// Remove password-based auth fields when using application credentials
+							delete(secret.Data, "username")
+							delete(secret.Data, "password")
+							secret.Data["applicationCredentialSecret"] = []byte("app-cred-secret")
+						})
+
+						Context("when applicationCredentialID is provided", func() {
+							JustBeforeEach(func() {
+								secret.Data["applicationCredentialID"] = []byte("app-cred-id")
+							})
+
+							It("should use application credential authentication with ID", func() {
+								client := gardenclientmocks.NewMockClient(ctrl)
+								client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+								Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+								output := options.String()
+								hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
+								providerEnvDir := filepath.Join(sessionDir, "provider-env")
+
+								authTypePath := filepath.Join(providerEnvDir, hash+"-authType.txt")
+								applicationCredentialIDPath := filepath.Join(providerEnvDir, hash+"-applicationCredentialID.txt")
+								applicationCredentialNamePath := filepath.Join(providerEnvDir, hash+"-applicationCredentialName.txt")
+								applicationCredentialSecretPath := filepath.Join(providerEnvDir, hash+"-applicationCredentialSecret.txt")
+								authStrategyPath := filepath.Join(providerEnvDir, hash+"-authStrategy.txt")
+								tenantNamePath := filepath.Join(providerEnvDir, hash+"-tenantName.txt")
+								usernamePath := filepath.Join(providerEnvDir, hash+"-username.txt")
+								passwordPath := filepath.Join(providerEnvDir, hash+"-password.txt")
+
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_AUTH_TYPE=$(< '%s');", authTypePath)))
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_ID=$(< '%s');", applicationCredentialIDPath)))
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_NAME=$(< '%s');", applicationCredentialNamePath)))
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_SECRET=$(< '%s');", applicationCredentialSecretPath)))
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_AUTH_STRATEGY=$(< '%s');", authStrategyPath)))
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_TENANT_NAME=$(< '%s');", tenantNamePath)))
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_USERNAME=$(< '%s');", usernamePath)))
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_PASSWORD=$(< '%s');", passwordPath)))
+
+								Expect(os.ReadFile(authTypePath)).To(Equal([]byte("v3applicationcredential")))
+								Expect(os.ReadFile(applicationCredentialIDPath)).To(Equal([]byte("app-cred-id")))
+								Expect(os.ReadFile(applicationCredentialNamePath)).To(Equal([]byte("")))
+								Expect(os.ReadFile(applicationCredentialSecretPath)).To(Equal([]byte("app-cred-secret")))
+								Expect(os.ReadFile(authStrategyPath)).To(Equal([]byte("")))
+								Expect(os.ReadFile(tenantNamePath)).To(Equal([]byte("")))
+								Expect(os.ReadFile(usernamePath)).To(Equal([]byte("")))
+								Expect(os.ReadFile(passwordPath)).To(Equal([]byte("")))
+							})
+						})
+
+						Context("when applicationCredentialName is provided", func() {
+							JustBeforeEach(func() {
+								secret.Data["applicationCredentialName"] = []byte("app-cred-name")
+								secret.Data["username"] = []byte("user") // username is required when using applicationCredentialName
+							})
+
+							It("should use application credential authentication with name", func() {
+								client := gardenclientmocks.NewMockClient(ctrl)
+								client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+								Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+								output := options.String()
+								hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
+								providerEnvDir := filepath.Join(sessionDir, "provider-env")
+
+								authTypePath := filepath.Join(providerEnvDir, hash+"-authType.txt")
+								applicationCredentialIDPath := filepath.Join(providerEnvDir, hash+"-applicationCredentialID.txt")
+								applicationCredentialNamePath := filepath.Join(providerEnvDir, hash+"-applicationCredentialName.txt")
+								applicationCredentialSecretPath := filepath.Join(providerEnvDir, hash+"-applicationCredentialSecret.txt")
+								authStrategyPath := filepath.Join(providerEnvDir, hash+"-authStrategy.txt")
+								tenantNamePath := filepath.Join(providerEnvDir, hash+"-tenantName.txt")
+								usernamePath := filepath.Join(providerEnvDir, hash+"-username.txt")
+								passwordPath := filepath.Join(providerEnvDir, hash+"-password.txt")
+
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_AUTH_TYPE=$(< '%s');", authTypePath)))
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_ID=$(< '%s');", applicationCredentialIDPath)))
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_NAME=$(< '%s');", applicationCredentialNamePath)))
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_APPLICATION_CREDENTIAL_SECRET=$(< '%s');", applicationCredentialSecretPath)))
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_AUTH_STRATEGY=$(< '%s');", authStrategyPath)))
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_TENANT_NAME=$(< '%s');", tenantNamePath)))
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_USERNAME=$(< '%s');", usernamePath)))
+								Expect(output).To(ContainSubstring(fmt.Sprintf("export OS_PASSWORD=$(< '%s');", passwordPath)))
+
+								Expect(os.ReadFile(authTypePath)).To(Equal([]byte("v3applicationcredential")))
+								Expect(os.ReadFile(applicationCredentialIDPath)).To(Equal([]byte("")))
+								Expect(os.ReadFile(applicationCredentialNamePath)).To(Equal([]byte("app-cred-name")))
+								Expect(os.ReadFile(applicationCredentialSecretPath)).To(Equal([]byte("app-cred-secret")))
+								Expect(os.ReadFile(authStrategyPath)).To(Equal([]byte("")))
+								Expect(os.ReadFile(tenantNamePath)).To(Equal([]byte("")))
+								Expect(os.ReadFile(usernamePath)).To(Equal([]byte("")))
+								Expect(os.ReadFile(passwordPath)).To(Equal([]byte("")))
+							})
+						})
+					})
+
+					Context("output is json", func() {
+						BeforeEach(func() {
+							output = "json"
+							shell = ""
+						})
+
+						It("should render the json successfully", func() {
+							client := gardenclientmocks.NewMockClient(ctrl)
+							client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+							Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+							hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
+							expected := strings.NewReplacer(
+								"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "openstack"),
+								"PLACEHOLDER_SESSION_DIR", sessionDir,
+								"PLACEHOLDER_HASH", hash,
+							).Replace(readTestFile("openstack/export.json"))
+							Expect(options.String()).To(Equal(expected))
+						})
+					})
+				})
+
+				Context("when the cloudprovider is azure", func() {
+					const (
+						clientID       = "12345678-1234-1234-1234-123456789012"
+						clientSecret   = "AbCdE~fGhI.-jKlMnOpQrStUvWxYz0_123456789"
+						tenantID       = "87654321-4321-4321-4321-210987654321"
+						subscriptionID = "abcdef12-3456-7890-abcd-ef1234567890"
+					)
+
+					BeforeEach(func() {
+						shell = "fish"
+						providerType = "azure"
+
+						factory := utilmocks.NewMockFactory(ctrl)
+						manager := targetmocks.NewMockManager(ctrl)
+						factory.EXPECT().GetSessionID().Return("test-session-id", nil)
+						factory.EXPECT().Manager().Return(manager, nil)
+						factory.EXPECT().TargetFlags().Return(tf)
+						factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
+						factory.EXPECT().Context().Return(ctx)
+						manager.EXPECT().SessionDir().Return(sessionDir)
+						manager.EXPECT().Configuration().Return(cfg)
+						Expect(options.Complete(factory, mockCmd, nil)).To(Succeed())
+					})
+
+					JustBeforeEach(func() {
+						secret.Data["clientID"] = []byte(clientID)
+						secret.Data["clientSecret"] = []byte(clientSecret)
+						secret.Data["tenantID"] = []byte(tenantID)
+						secret.Data["subscriptionID"] = []byte(subscriptionID)
+					})
+
+					It("should render the template successfully", func() {
 						client := gardenclientmocks.NewMockClient(ctrl)
 						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
 						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
@@ -1012,9 +991,152 @@ var _ = Describe("Env Commands - Options", func() {
 							"PLACEHOLDER_SESSION_DIR", sessionDir,
 							"PLACEHOLDER_HASH", hash,
 						)
-						expected := replacer.Replace(readTestFile("azure/export.json"))
+						expected := replacer.Replace(readTestFile("azure/export.fish"))
 						Expect(options.String()).To(Equal(expected))
 					})
+
+					It("should fail with mkdir error", func() {
+						client := gardenclientmocks.NewMockClient(ctrl)
+						options.SessionDir = string([]byte{0})
+						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(MatchRegexp("^failed to create az configuration directory:")))
+					})
+
+					Context("output is json", func() {
+						BeforeEach(func() {
+							output = "json"
+							shell = ""
+						})
+
+						It("should render the json successfully", func() {
+							client := gardenclientmocks.NewMockClient(ctrl)
+							client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+							Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+							hash := computeTestHash("test-session-id", "test", namespace, shootName)
+							replacer := strings.NewReplacer(
+								"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "az"),
+								"PLACEHOLDER_SESSION_DIR", sessionDir,
+								"PLACEHOLDER_HASH", hash,
+							)
+							expected := replacer.Replace(readTestFile("azure/export.json"))
+							Expect(options.String()).To(Equal(expected))
+						})
+					})
+				})
+			})
+
+			Context("with WorkloadIdentity credentials", func() {
+				var (
+					workloadIdentity  *gardensecurityv1alpha1.WorkloadIdentity
+					credentialsConfig map[string]interface{}
+				)
+
+				BeforeEach(func() {
+					credentialsRef = corev1.ObjectReference{
+						Kind:       "WorkloadIdentity",
+						APIVersion: gardensecurityv1alpha1.SchemeGroupVersion.String(),
+						Namespace:  namespace,
+						Name:       "wi-gcp",
+					}
+
+					credentialsConfig = map[string]interface{}{
+						"type":                              "external_account",
+						"audience":                          "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/my-pool/providers/my-provider",
+						"subject_token_type":                "urn:ietf:params:oauth:token-type:jwt",
+						"service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/my-sa@project.iam.gserviceaccount.com:generateAccessToken",
+						"token_url":                         "https://sts.googleapis.com/v1/token",
+					}
+
+					providerConfigRaw := map[string]interface{}{
+						"projectID":         "my-gcp-project",
+						"credentialsConfig": credentialsConfig,
+					}
+
+					providerConfigBytes, _ := json.Marshal(providerConfigRaw)
+
+					workloadIdentity = &gardensecurityv1alpha1.WorkloadIdentity{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Name:      "wi-gcp",
+						},
+						Spec: gardensecurityv1alpha1.WorkloadIdentitySpec{
+							Audiences: []string{"sts.googleapis.com"},
+							TargetSystem: gardensecurityv1alpha1.TargetSystem{
+								Type: "gcp",
+								ProviderConfig: &runtime.RawExtension{
+									Raw: providerConfigBytes,
+								},
+							},
+						},
+						Status: gardensecurityv1alpha1.WorkloadIdentityStatus{
+							Sub: "subject-123",
+						},
+					}
+
+					// Initialize options with Complete() to set up defaults and session ID
+					factory := utilmocks.NewMockFactory(ctrl)
+					manager := targetmocks.NewMockManager(ctrl)
+					factory.EXPECT().GetSessionID().Return("test-session-id", nil)
+					factory.EXPECT().Manager().Return(manager, nil)
+					factory.EXPECT().TargetFlags().Return(tf)
+					factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
+					factory.EXPECT().Context().Return(ctx)
+					manager.EXPECT().SessionDir().Return(sessionDir)
+					manager.EXPECT().Configuration().Return(cfg)
+					Expect(options.Complete(factory, mockCmd, nil)).To(Succeed())
+				})
+
+				It("should render provider-env script and files for workload identity", func() {
+					client := gardenclientmocks.NewMockClient(ctrl)
+					// CloudProfile is not used for GCP WI provider data generation, but pass it along
+					client.EXPECT().CreateWorkloadIdentityToken(ctx, workloadIdentity.Namespace, workloadIdentity.Name, gomock.Any()).Return(&gardensecurityv1alpha1.TokenRequest{
+						Status: gardensecurityv1alpha1.TokenRequestStatus{
+							Token:               "test-jwt-token",
+							ExpirationTimestamp: metav1.Now(),
+						},
+					}, nil)
+					client.EXPECT().GetWorkloadIdentity(ctx, workloadIdentity.Namespace, workloadIdentity.Name).Return(workloadIdentity, nil)
+
+					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+
+					hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
+					expected := strings.NewReplacer(
+						"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "gcloud"),
+						"PLACEHOLDER_SESSION_DIR", sessionDir,
+						"PLACEHOLDER_HASH", hash,
+					).Replace(readTestFile("gcp/export_wi.bash"))
+					Expect(options.String()).To(Equal(expected))
+
+					providerEnvDir := filepath.Join(sessionDir, "provider-env")
+					credentialsPath := filepath.Join(providerEnvDir, hash+"-credentials.txt")
+					projectIDPath := filepath.Join(providerEnvDir, hash+"-project_id.txt")
+					tokenPath := filepath.Join(providerEnvDir, hash+"-token.txt")
+					subjectPath := filepath.Join(providerEnvDir, hash+"-subject.txt")
+					audiencesPath := filepath.Join(providerEnvDir, hash+"-audiences.txt")
+
+					// Verify baseline files
+					proj, _ := os.ReadFile(projectIDPath)
+					Expect(string(proj)).To(Equal("my-gcp-project"))
+					tok, _ := os.ReadFile(tokenPath)
+					Expect(string(tok)).To(Equal("test-jwt-token"))
+					sub, _ := os.ReadFile(subjectPath)
+					Expect(string(sub)).To(Equal("subject-123"))
+					aud, _ := os.ReadFile(audiencesPath)
+					Expect(string(aud)).To(Equal("[sts.googleapis.com]"))
+
+					// Verify credentials JSON content and credential_source points to token file
+					credBytes, _ := os.ReadFile(credentialsPath)
+					var credMap map[string]interface{}
+					Expect(json.Unmarshal(credBytes, &credMap)).To(Succeed())
+					Expect(credMap["type"]).To(Equal("external_account"))
+					Expect(credMap["audience"]).To(Equal(credentialsConfig["audience"]))
+					Expect(credMap["token_url"]).To(Equal("https://sts.googleapis.com/v1/token"))
+					Expect(credMap["service_account_impersonation_url"]).To(Equal("https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/my-sa@project.iam.gserviceaccount.com:generateAccessToken"))
+					cs, ok := credMap["credential_source"].(map[string]interface{})
+					Expect(ok).To(BeTrue())
+					Expect(cs["file"]).To(Equal(tokenPath))
+					format, ok := cs["format"].(map[string]interface{})
+					Expect(ok).To(BeTrue())
+					Expect(format["type"]).To(Equal("text"))
 				})
 			})
 		})
