@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/gardener/gardenctl-v2/pkg/provider/common/allowpattern"
@@ -86,6 +87,10 @@ type Validator interface {
 	// ValidateSecret validates credentials from a Kubernetes secret.
 	// Returns a map containing only the validated key-value pairs.
 	ValidateSecret(secret *corev1.Secret) (map[string]interface{}, error)
+
+	// ValidateWorkloadIdentityConfig validates workload identity configuration.
+	// Returns a map containing only the validated configuration fields.
+	ValidateWorkloadIdentityConfig(wi *gardensecurityv1alpha1.WorkloadIdentity) (map[string]interface{}, error)
 }
 
 // FieldValidator validates individual fields. The last parameter indicates
