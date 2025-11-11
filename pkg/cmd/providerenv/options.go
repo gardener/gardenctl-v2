@@ -76,6 +76,14 @@ type MergedProviderPatterns struct {
 	OpenStack []allowpattern.Pattern
 }
 
+const (
+	// Baseline reserved fields for all templates.
+	FieldRegion    = "region"
+	FieldConfigDir = "configDir"
+	FieldDataFiles = "dataFiles"
+	FieldMeta      = "__meta"
+)
+
 // Complete adapts from the command line args to the data required.
 func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error {
 	ctx := f.Context()
@@ -494,14 +502,14 @@ func generateData(
 		}
 	}
 
-	if _, err := dataWriter.WriteField("region", shoot.Spec.Region); err != nil {
+	if _, err := dataWriter.WriteField(FieldRegion, shoot.Spec.Region); err != nil {
 		return nil, fmt.Errorf("failed to write region: %w", err)
 	}
 
 	// baseline reserved fields that any template can use
-	data["__meta"] = metadata
-	data["configDir"] = configDir
-	data["dataFiles"] = dataWriter.GetAllFilePaths()
+	data[FieldMeta] = metadata
+	data[FieldConfigDir] = configDir
+	data[FieldDataFiles] = dataWriter.GetAllFilePaths()
 
 	return data, nil
 }
