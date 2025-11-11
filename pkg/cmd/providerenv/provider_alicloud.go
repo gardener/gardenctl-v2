@@ -28,6 +28,6 @@ func newAliCloudProvider(ctx context.Context) *AliCloudProvider {
 	return &AliCloudProvider{validator: validator}
 }
 
-func (p *AliCloudProvider) FromSecret(_ *options, _ *gardencorev1beta1.Shoot, secret *corev1.Secret, _ *clientgarden.CloudProfileUnion, _ string) (map[string]interface{}, error) {
+func (p *AliCloudProvider) FromSecret(_ *options, _ *gardencorev1beta1.Shoot, secret *corev1.Secret, _ *clientgarden.CloudProfileUnion) (map[string]interface{}, error) {
 	return p.validator.ValidateSecret(secret)
 }

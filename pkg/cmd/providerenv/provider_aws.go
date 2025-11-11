@@ -28,6 +28,6 @@ func newAWSProvider(ctx context.Context) *AWSProvider {
 	return &AWSProvider{validator: validator}
 }
 
-func (p *AWSProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cp *clientgarden.CloudProfileUnion, configDir string) (map[string]interface{}, error) {
+func (p *AWSProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cp *clientgarden.CloudProfileUnion) (map[string]interface{}, error) {
 	return p.validator.ValidateSecret(secret)
 }

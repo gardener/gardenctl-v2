@@ -30,7 +30,7 @@ func newOpenStackProvider(ctx context.Context, allowedPatterns []allowpattern.Pa
 	return &OpenStackProvider{validator: validator}
 }
 
-func (p *OpenStackProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cp *clientgarden.CloudProfileUnion, configDir string) (map[string]interface{}, error) {
+func (p *OpenStackProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cp *clientgarden.CloudProfileUnion) (map[string]interface{}, error) {
 	validatedFields, err := p.validator.ValidateSecret(secret)
 	if err != nil {
 		return nil, err
