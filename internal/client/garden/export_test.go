@@ -22,3 +22,5 @@ func (e *ExecPluginConfig) ToRuntimeObject() runtime.Object {
 func ValidateObjectMetadata(obj metav1.Object) error {
 	return validateObjectMetadata(obj)
 }
+
+var ValidateJWTFormat = validateJWTFormat
