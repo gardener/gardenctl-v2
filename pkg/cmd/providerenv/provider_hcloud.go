@@ -28,6 +28,6 @@ func newHCloudProvider(ctx context.Context) *HCloudProvider {
 	return &HCloudProvider{validator: validator}
 }
 
-func (p *HCloudProvider) FromSecret(_ *options, _ *gardencorev1beta1.Shoot, secret *corev1.Secret, _ *clientgarden.CloudProfileUnion, _ string) (map[string]interface{}, error) {
+func (p *HCloudProvider) FromSecret(_ *options, _ *gardencorev1beta1.Shoot, secret *corev1.Secret, _ *clientgarden.CloudProfileUnion) (map[string]interface{}, error) {
 	return p.validator.ValidateSecret(secret)
 }

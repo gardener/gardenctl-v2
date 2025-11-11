@@ -28,6 +28,6 @@ func newAzureProvider(ctx context.Context) *AzureProvider {
 	return &AzureProvider{validator: validator}
 }
 
-func (p *AzureProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cp *clientgarden.CloudProfileUnion, configDir string) (map[string]interface{}, error) {
+func (p *AzureProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cp *clientgarden.CloudProfileUnion) (map[string]interface{}, error) {
 	return p.validator.ValidateSecret(secret)
 }
