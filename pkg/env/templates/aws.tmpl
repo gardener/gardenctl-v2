@@ -2,7 +2,19 @@
 unset AWS_ACCESS_KEY_ID;
 unset AWS_SECRET_ACCESS_KEY;
 unset AWS_DEFAULT_REGION;
+unset AWS_WEB_IDENTITY_TOKEN_FILE;
+unset AWS_ROLE_ARN;
+{{else if eq .__meta.credentialKind "WorkloadIdentity" -}}
+unset AWS_ACCESS_KEY_ID;
+unset AWS_SECRET_ACCESS_KEY;
+export AWS_WEB_IDENTITY_TOKEN_FILE=$(< {{.dataFiles.token | shellEscape}});
+export AWS_ROLE_ARN=$(< {{.dataFiles.roleARN | shellEscape}});
+export AWS_DEFAULT_REGION=$(< {{.dataFiles.region | shellEscape}});
+{{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
+{{end -}}
 {{else -}}
+unset AWS_WEB_IDENTITY_TOKEN_FILE;
+unset AWS_ROLE_ARN;
 export AWS_ACCESS_KEY_ID=$(< {{.dataFiles.accessKeyID | shellEscape}});
 export AWS_SECRET_ACCESS_KEY=$(< {{.dataFiles.secretAccessKey | shellEscape}});
 export AWS_DEFAULT_REGION=$(< {{.dataFiles.region | shellEscape}});
@@ -17,7 +29,19 @@ export AWS_DEFAULT_REGION=$(< {{.dataFiles.region | shellEscape}});
 set -e AWS_ACCESS_KEY_ID;
 set -e AWS_SECRET_ACCESS_KEY;
 set -e AWS_DEFAULT_REGION;
+set -e AWS_WEB_IDENTITY_TOKEN_FILE;
+set -e AWS_ROLE_ARN;
+{{else if eq .__meta.credentialKind "WorkloadIdentity" -}}
+set -e AWS_ACCESS_KEY_ID;
+set -e AWS_SECRET_ACCESS_KEY;
+set -gx AWS_WEB_IDENTITY_TOKEN_FILE (cat -- {{.dataFiles.token | shellEscape}});
+set -gx AWS_ROLE_ARN (cat -- {{.dataFiles.roleARN | shellEscape}});
+set -gx AWS_DEFAULT_REGION (cat -- {{.dataFiles.region | shellEscape}});
+{{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
+{{end -}}
 {{else -}}
+set -e AWS_WEB_IDENTITY_TOKEN_FILE;
+set -e AWS_ROLE_ARN;
 set -gx AWS_ACCESS_KEY_ID (cat -- {{.dataFiles.accessKeyID | shellEscape}});
 set -gx AWS_SECRET_ACCESS_KEY (cat -- {{.dataFiles.secretAccessKey | shellEscape}});
 set -gx AWS_DEFAULT_REGION (cat -- {{.dataFiles.region | shellEscape}});
@@ -29,7 +53,19 @@ set -gx AWS_DEFAULT_REGION (cat -- {{.dataFiles.region | shellEscape}});
 Remove-Item -ErrorAction SilentlyContinue Env:\AWS_ACCESS_KEY_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AWS_SECRET_ACCESS_KEY;
 Remove-Item -ErrorAction SilentlyContinue Env:\AWS_DEFAULT_REGION;
+Remove-Item -ErrorAction SilentlyContinue Env:\AWS_WEB_IDENTITY_TOKEN_FILE;
+Remove-Item -ErrorAction SilentlyContinue Env:\AWS_ROLE_ARN;
+{{else if eq .__meta.credentialKind "WorkloadIdentity" -}}
+Remove-Item -ErrorAction SilentlyContinue Env:\AWS_ACCESS_KEY_ID;
+Remove-Item -ErrorAction SilentlyContinue Env:\AWS_SECRET_ACCESS_KEY;
+$Env:AWS_WEB_IDENTITY_TOKEN_FILE = Get-Content -Raw {{.dataFiles.token | shellEscape}};
+$Env:AWS_ROLE_ARN = Get-Content -Raw {{.dataFiles.roleARN | shellEscape}};
+$Env:AWS_DEFAULT_REGION = Get-Content -Raw {{.dataFiles.region | shellEscape}};
+{{range $key, $path := .dataFiles}}Remove-Item -Force -ErrorAction SilentlyContinue {{$path | shellEscape}};
+{{end -}}
 {{else -}}
+Remove-Item -ErrorAction SilentlyContinue Env:\AWS_WEB_IDENTITY_TOKEN_FILE;
+Remove-Item -ErrorAction SilentlyContinue Env:\AWS_ROLE_ARN;
 $Env:AWS_ACCESS_KEY_ID = Get-Content -Raw {{.dataFiles.accessKeyID | shellEscape}};
 $Env:AWS_SECRET_ACCESS_KEY = Get-Content -Raw {{.dataFiles.secretAccessKey | shellEscape}};
 $Env:AWS_DEFAULT_REGION = Get-Content -Raw {{.dataFiles.region | shellEscape}};
