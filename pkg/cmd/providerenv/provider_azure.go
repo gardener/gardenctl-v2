@@ -10,6 +10,7 @@ import (
 	"context"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
@@ -30,4 +31,8 @@ func newAzureProvider(ctx context.Context) *AzureProvider {
 
 func (p *AzureProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cp *clientgarden.CloudProfileUnion) (map[string]interface{}, error) {
 	return p.validator.ValidateSecret(secret)
+}
+
+func (p *AzureProvider) FromWorkloadIdentity(o *options, wi *gardensecurityv1alpha1.WorkloadIdentity, dataWriter DataWriter) (map[string]interface{}, error) {
+	return p.validator.ValidateWorkloadIdentityConfig(wi)
 }

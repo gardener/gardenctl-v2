@@ -22,6 +22,7 @@ func testStrictHTTPSContext() *allowpattern.ValidationContext {
 			"record_id": true,
 			"client_id": true,
 			"email":     true,
+			"audience":  true,
 		},
 		StrictHTTPS: true,
 	}
@@ -128,6 +129,7 @@ var _ = Describe("Pattern", func() {
 				err := pattern.ValidateWithContext(testStrictHTTPSContext())
 				Expect(err).To(MatchError(ContainSubstring("regexValue is not allowed for field endpoint, only allowed for:")))
 				Expect(err).To(MatchError(ContainSubstring("email")))
+				Expect(err).To(MatchError(ContainSubstring("audience")))
 				Expect(err).To(MatchError(ContainSubstring("record_id")))
 				Expect(err).To(MatchError(ContainSubstring("client_id")))
 			})
@@ -142,6 +144,7 @@ var _ = Describe("Pattern", func() {
 				Expect(err).To(MatchError(ContainSubstring("record_id")))
 				Expect(err).To(MatchError(ContainSubstring("client_id")))
 				Expect(err).To(MatchError(ContainSubstring("email")))
+				Expect(err).To(MatchError(ContainSubstring("audience")))
 			})
 
 			It("should reject regexValue combined with other fields", func() {
