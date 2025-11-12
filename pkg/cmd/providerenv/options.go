@@ -300,7 +300,6 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
 	if (shoot.Spec.SecretBindingName == nil || *shoot.Spec.SecretBindingName == "") &&
 		(shoot.Spec.CredentialsBindingName == nil || *shoot.Spec.CredentialsBindingName == "") {
 		return fmt.Errorf("shoot %q is not bound to a cloud provider credential", o.Target.ShootName())
@@ -308,9 +307,7 @@ func (o *options) Run(f util.Factory) error {
 
 	var credentialsRef corev1.ObjectReference
 
-	//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
 	if shoot.Spec.SecretBindingName != nil && *shoot.Spec.SecretBindingName != "" {
-		//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
 		secretBinding, err := client.GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName)
 		if err != nil {
 			return err
