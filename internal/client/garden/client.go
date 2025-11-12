@@ -75,7 +75,6 @@ type Client interface {
 	GetShootClientConfig(ctx context.Context, namespace, name string) (clientcmd.ClientConfig, error)
 
 	// GetSecretBinding returns a Gardener secretbinding resource
-	//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
 	GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error)
 
 	// GetCredentialsBinding returns a Gardener credentialsbinding resource
@@ -305,10 +304,7 @@ func (g *clientImpl) GetNamespace(ctx context.Context, name string) (*corev1.Nam
 }
 
 // GetSecretBinding returns a Gardener secretbinding resource.
-//
-//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
 func (g *clientImpl) GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error) {
-	//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
 	secretBinding := &gardencorev1beta1.SecretBinding{}
 	key := types.NamespacedName{Namespace: namespace, Name: name}
 
