@@ -38,6 +38,13 @@ linters:
       - third_party$
       - builtin$
       - examples$
+    rules:
+      - linters: # SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
+          - staticcheck
+        text: "SecretBinding is deprecated"
+      - linters: # SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
+          - staticcheck
+        text: "SecretBindingName is deprecated"
 formatters:
   enable:
     - gofumpt
@@ -56,4 +63,3 @@ formatters:
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-
