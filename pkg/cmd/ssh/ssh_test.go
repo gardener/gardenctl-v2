@@ -1011,5 +1011,88 @@ var _ = Describe("SSH Options", func() {
 
 			Expect(o.Validate()).NotTo(Succeed())
 		})
+
+		DescribeTable("user validation - valid cases",
+			func(user string) {
+				o.User = user
+				Expect(o.Validate()).To(Succeed())
+			},
+			Entry("user with exactly maximum length (32 chars)", "abcdefghijklmnopqrstuvwxyz123456"),
+			Entry("user starting with lowercase letter", "gardener"),
+			Entry("user starting with underscore", "_gardener"),
+			Entry("user with lowercase letters, digits, underscores, and hyphens", "user_name-123"),
+			Entry("user with all valid characters", "a0_-z9"),
+			Entry("user with single character", "a"),
+			Entry("user with underscore only", "_"),
+		)
+
+		DescribeTable("user validation - invalid cases",
+			func(user string, expectedError string) {
+				o.User = user
+				Expect(o.Validate()).To(MatchError(expectedError))
+			},
+			Entry("empty user", "", "user must not be empty"),
+			Entry("user exceeding maximum length (33 chars)", "abcdefghijklmnopqrstuvwxyz1234567", fmt.Sprintf("user must not exceed %d characters", ssh.MaxUsernameLength)),
+			Entry("user starting with uppercase letter", "Gardener", "user must start with a lowercase letter or underscore, followed by lowercase letters, digits, underscores, or hyphens"),
+			Entry("user starting with digit", "1user", "user must start with a lowercase letter or underscore, followed by lowercase letters, digits, underscores, or hyphens"),
+			Entry("user with @ character", "user@domain", "user must start with a lowercase letter or underscore, followed by lowercase letters, digits, underscores, or hyphens"),
+			Entry("user with spaces", "user name", "user must start with a lowercase letter or underscore, followed by lowercase letters, digits, underscores, or hyphens"),
+			Entry("user with dot", "user.name", "user must start with a lowercase letter or underscore, followed by lowercase letters, digits, underscores, or hyphens"),
+			Entry("user starting with hyphen", "-user", "user must start with a lowercase letter or underscore, followed by lowercase letters, digits, underscores, or hyphens"),
+			Entry("user with uppercase letters in middle", "userNAME", "user must start with a lowercase letter or underscore, followed by lowercase letters, digits, underscores, or hyphens"),
+		)
+
+		DescribeTable("bastion port validation - valid cases",
+			func(port string) {
+				o.BastionPort = port
+				Expect(o.Validate()).To(Succeed())
+			},
+			Entry("empty bastion port", ""),
+			Entry("valid bastion port 22", "22"),
+			Entry("minimum valid port 1", "1"),
+			Entry("maximum valid port 65535", "65535"),
+			Entry("common SSH port 2222", "2222"),
+		)
+
+		DescribeTable("bastion port validation - invalid cases",
+			func(port string, expectedError string) {
+				o.BastionPort = port
+				Expect(o.Validate()).To(MatchError(expectedError))
+			},
+			Entry("port 0", "0", "bastion port must be a valid port number between 1 and 65535"),
+			Entry("port exceeding maximum 65536", "65536", "bastion port must be a valid port number between 1 and 65535"),
+			Entry("negative port", "-1", "bastion port must be a valid port number between 1 and 65535"),
+			Entry("non-numeric port", "abc", "bastion port must be a valid port number between 1 and 65535"),
+			Entry("port with spaces", "22 ", "bastion port must be a valid port number between 1 and 65535"),
+			Entry("empty string with spaces", " ", "bastion port must be a valid port number between 1 and 65535"),
+		)
+
+		DescribeTable("bastion name validation - valid cases",
+			func(name string) {
+				o.BastionName = name
+				Expect(o.Validate()).To(Succeed())
+			},
+			Entry("empty bastion name", ""),
+			Entry("valid bastion name", "test-bastion"),
+			Entry("bastion name with lowercase letters and hyphens", "my-test-bastion-123"),
+			Entry("bastion name with single character", "a"),
+			Entry("bastion name with digits only", "123"),
+			Entry("bastion name at maximum length (63 chars)", "a12345678901234567890123456789012345678901234567890123456789012"),
+		)
+
+		DescribeTable("bastion name validation - invalid cases",
+			func(name string) {
+				o.BastionName = name
+				Expect(o.Validate()).To(MatchError(ContainSubstring("bastion name is invalid")))
+			},
+			Entry("bastion name starting with hyphen", "-bastion"),
+			Entry("bastion name ending with hyphen", "bastion-"),
+			Entry("bastion name with uppercase letters", "TestBastion"),
+			Entry("bastion name with dots", "test.bastion"),
+			Entry("bastion name exceeding DNS label length (64 chars)", "a123456789012345678901234567890123456789012345678901234567890123"),
+			Entry("bastion name with underscore", "test_bastion"),
+			Entry("bastion name with special characters", "test@bastion"),
+			Entry("bastion name with spaces", "test bastion"),
+		)
 	})
 })
