@@ -25,6 +25,7 @@ import (
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
+	"github.com/google/uuid"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -129,12 +130,21 @@ func NewClient(config clientcmd.ClientConfig, client client.Client, name string)
 	}
 }
 
+// validateObjectMetadata performs a basic sanity check on the object's metadata.
+func validateObjectMetadata(obj metav1.Object) error {
+	return uuid.Validate(string(obj.GetUID()))
+}
+
 func (g *clientImpl) GetProject(ctx context.Context, name string) (*gardencorev1beta1.Project, error) {
 	project := &gardencorev1beta1.Project{}
 	key := types.NamespacedName{Name: name}
 
 	if err := g.c.Get(ctx, key, project); err != nil {
 		return nil, fmt.Errorf("failed to get project %v: %w", key, err)
+	}
+
+	if err := validateObjectMetadata(project); err != nil {
+		return nil, err
 	}
 
 	return project, nil
@@ -153,6 +163,10 @@ func (g *clientImpl) GetProjectByNamespace(ctx context.Context, namespace string
 		return nil, errors.New("failed to fetch project by namespace")
 	}
 
+	if err := validateObjectMetadata(&projectList.Items[0]); err != nil {
+		return nil, err
+	}
+
 	return &projectList.Items[0], nil
 }
 
@@ -160,6 +174,12 @@ func (g *clientImpl) ListProjects(ctx context.Context, opts ...client.ListOption
 	projectList := &gardencorev1beta1.ProjectList{}
 	if err := g.c.List(ctx, projectList, opts...); err != nil {
 		return nil, fmt.Errorf("failed to list projects: %w", err)
+	}
+
+	for i := range projectList.Items {
+		if err := validateObjectMetadata(&projectList.Items[i]); err != nil {
+			return nil, err
+		}
 	}
 
 	return projectList, nil
@@ -173,6 +193,10 @@ func (g *clientImpl) GetSeed(ctx context.Context, name string) (*gardencorev1bet
 		return nil, fmt.Errorf("failed to get seed %s: %w", name, err)
 	}
 
+	if err := validateObjectMetadata(seed); err != nil {
+		return nil, err
+	}
+
 	return seed, nil
 }
 
@@ -180,6 +204,12 @@ func (g *clientImpl) ListSeeds(ctx context.Context, opts ...client.ListOption) (
 	seedList := &gardencorev1beta1.SeedList{}
 	if err := g.c.List(ctx, seedList, opts...); err != nil {
 		return nil, fmt.Errorf("failed to list seeds: %w", err)
+	}
+
+	for i := range seedList.Items {
+		if err := validateObjectMetadata(&seedList.Items[i]); err != nil {
+			return nil, err
+		}
 	}
 
 	return seedList, nil
@@ -191,6 +221,10 @@ func (g *clientImpl) GetShoot(ctx context.Context, namespace, name string) (*gar
 
 	if err := g.c.Get(ctx, key, shoot); err != nil {
 		return nil, fmt.Errorf("failed to get shoot %v: %w", key, err)
+	}
+
+	if err := validateObjectMetadata(shoot); err != nil {
+		return nil, err
 	}
 
 	return shoot, nil
@@ -215,6 +249,10 @@ func (g *clientImpl) FindShoot(ctx context.Context, opts ...client.ListOption) (
 
 	if len(shootList.Items) > 1 || remainingItemCount > 0 {
 		return nil, fmt.Errorf("multiple shoots found matching the given list options %q, please target a project or seed to make your choice unambiguous", opts)
+	}
+
+	if err := validateObjectMetadata(&shootList.Items[0]); err != nil {
+		return nil, err
 	}
 
 	return &shootList.Items[0], nil
@@ -243,6 +281,12 @@ func (g *clientImpl) ListShoots(ctx context.Context, opts ...client.ListOption) 
 		return nil, fmt.Errorf("failed to list shoots with list options %q: %w", opts, err)
 	}
 
+	for i := range shootList.Items {
+		if err := validateObjectMetadata(&shootList.Items[i]); err != nil {
+			return nil, err
+		}
+	}
+
 	return shootList, nil
 }
 
@@ -253,6 +297,10 @@ func (g *clientImpl) GetNamespace(ctx context.Context, name string) (*corev1.Nam
 
 	if err := g.c.Get(ctx, key, namespace); err != nil {
 		return nil, fmt.Errorf("failed to get namespace %v: %w", key, err)
+	}
+
+	if err := validateObjectMetadata(namespace); err != nil {
+		return nil, err
 	}
 
 	return namespace, nil
@@ -270,6 +318,10 @@ func (g *clientImpl) GetSecretBinding(ctx context.Context, namespace, name strin
 		return nil, fmt.Errorf("failed to get secretbinding %v: %w", key, err)
 	}
 
+	if err := validateObjectMetadata(secretBinding); err != nil {
+		return nil, err
+	}
+
 	return secretBinding, nil
 }
 
@@ -280,6 +332,10 @@ func (g *clientImpl) GetCredentialsBinding(ctx context.Context, namespace, name 
 
 	if err := g.c.Get(ctx, key, credentialsBinding); err != nil {
 		return nil, fmt.Errorf("failed to get credentialsbinding %v: %w", key, err)
+	}
+
+	if err := validateObjectMetadata(credentialsBinding); err != nil {
+		return nil, err
 	}
 
 	return credentialsBinding, nil
@@ -294,6 +350,10 @@ func (g *clientImpl) GetSecret(ctx context.Context, namespace, name string) (*co
 		return nil, fmt.Errorf("failed to get secret %v: %w", key, err)
 	}
 
+	if err := validateObjectMetadata(secret); err != nil {
+		return nil, err
+	}
+
 	return secret, nil
 }
 
@@ -306,6 +366,10 @@ func (g *clientImpl) GetConfigMap(ctx context.Context, namespace, name string) (
 		return nil, fmt.Errorf("failed to get configmap %v: %w", key, err)
 	}
 
+	if err := validateObjectMetadata(cm); err != nil {
+		return nil, err
+	}
+
 	return cm, nil
 }
 
@@ -314,6 +378,10 @@ func (g *clientImpl) GetShootOfManagedSeed(ctx context.Context, name string) (*s
 	key := types.NamespacedName{Namespace: "garden", Name: name} // Currently, managed seeds are restricted to the garden namespace
 
 	if err := g.c.Get(ctx, key, managedSeed); err != nil {
+		return nil, err
+	}
+
+	if err := validateObjectMetadata(managedSeed); err != nil {
 		return nil, err
 	}
 
@@ -336,11 +404,25 @@ func (g *clientImpl) ListBastions(ctx context.Context, opts ...client.ListOption
 		return nil, fmt.Errorf("failed to list bastions with list options %q: %w", opts, err)
 	}
 
+	for i := range bastionList.Items {
+		if err := validateObjectMetadata(&bastionList.Items[i]); err != nil {
+			return nil, err
+		}
+	}
+
 	return bastionList, nil
 }
 
 func (g *clientImpl) PatchBastion(ctx context.Context, newBastion, oldBastion *operationsv1alpha1.Bastion) error {
-	return g.c.Patch(ctx, newBastion, client.MergeFrom(oldBastion))
+	if err := g.c.Patch(ctx, newBastion, client.MergeFrom(oldBastion)); err != nil {
+		return err
+	}
+
+	if err := validateObjectMetadata(newBastion); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (g *clientImpl) CurrentUser(ctx context.Context) (string, error) {
@@ -505,6 +587,10 @@ func (g *clientImpl) GetCloudProfile(ctx context.Context, ref gardencorev1beta1.
 			return nil, fmt.Errorf("failed to get CloudProfile %v: %w", key, err)
 		}
 
+		if err := validateObjectMetadata(cloudProfile); err != nil {
+			return nil, err
+		}
+
 		return &CloudProfileUnion{
 			CloudProfile: cloudProfile,
 		}, nil
@@ -519,6 +605,10 @@ func (g *clientImpl) GetCloudProfile(ctx context.Context, ref gardencorev1beta1.
 
 		if err := g.c.Get(ctx, key, namespacedCloudProfile); err != nil {
 			return nil, fmt.Errorf("failed to get NamespacedCloudProfile %v: %w", key, err)
+		}
+
+		if err := validateObjectMetadata(namespacedCloudProfile); err != nil {
+			return nil, err
 		}
 
 		return &CloudProfileUnion{

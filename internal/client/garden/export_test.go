@@ -6,7 +6,10 @@ SPDX-License-Identifier: Apache-2.0
 
 package garden
 
-import "k8s.io/apimachinery/pkg/runtime"
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+)
 
 type ExecPluginConfig struct {
 	execPluginConfig
@@ -14,4 +17,8 @@ type ExecPluginConfig struct {
 
 func (e *ExecPluginConfig) ToRuntimeObject() runtime.Object {
 	return &e.execPluginConfig
+}
+
+func ValidateObjectMetadata(obj metav1.Object) error {
+	return validateObjectMetadata(obj)
 }

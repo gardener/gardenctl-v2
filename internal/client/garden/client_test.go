@@ -19,6 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	clientauthenticationv1 "k8s.io/client-go/pkg/apis/clientauthentication/v1"
 	clientauthenticationv1beta1 "k8s.io/client-go/pkg/apis/clientauthentication/v1beta1"
 	"k8s.io/client-go/tools/clientcmd"
@@ -54,6 +55,105 @@ var _ = Describe("Client", func() {
 		gardenClient clientgarden.Client
 	)
 
+	Describe("validateObjectMetadata", func() {
+		Context("when UID is a valid UUID", func() {
+			It("should not return an error", func() {
+				obj := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						UID: types.UID("550e8400-e29b-41d4-a716-446655440000"),
+					},
+				}
+				Expect(clientgarden.ValidateObjectMetadata(obj)).To(Succeed())
+			})
+		})
+
+		Context("when UID is invalid", func() {
+			It("should return an error for path traversal attempts", func() {
+				obj := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						UID: types.UID("../../etc/passwd"),
+					},
+				}
+				Expect(clientgarden.ValidateObjectMetadata(obj)).To(HaveOccurred())
+			})
+
+			It("should return an error for empty UID", func() {
+				obj := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						UID: types.UID(""),
+					},
+				}
+				Expect(clientgarden.ValidateObjectMetadata(obj)).To(HaveOccurred())
+			})
+
+			It("should return an error for malformed UUIDs", func() {
+				obj := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						UID: types.UID("not-a-uuid"),
+					},
+				}
+				Expect(clientgarden.ValidateObjectMetadata(obj)).To(HaveOccurred())
+			})
+		})
+	})
+
+	Describe("GetShoot", func() {
+		const (
+			shootName      = "test-shoot"
+			shootNamespace = "garden-test"
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+		})
+
+		Context("when UID is a valid UUID", func() {
+			It("should return the shoot without error", func() {
+				shoot := &gardencorev1beta1.Shoot{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      shootName,
+						Namespace: shootNamespace,
+						UID:       types.UID("550e8400-e29b-41d4-a716-446655440000"),
+					},
+				}
+
+				gardenClient = clientgarden.NewClient(
+					nil,
+					fake.NewClientWithObjects(shoot),
+					gardenName,
+				)
+
+				result, err := gardenClient.GetShoot(ctx, shootNamespace, shootName)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).NotTo(BeNil())
+				Expect(result.UID).To(Equal(shoot.UID))
+			})
+		})
+
+		Context("when UID is invalid", func() {
+			It("should fail with a validation error", func() {
+				shoot := &gardencorev1beta1.Shoot{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      shootName,
+						Namespace: shootNamespace,
+						UID:       types.UID("not-a-uuid"),
+					},
+				}
+
+				gardenClient = clientgarden.NewClient(
+					nil,
+					fake.NewClientWithObjects(shoot),
+					gardenName,
+				)
+
+				result, err := gardenClient.GetShoot(ctx, shootNamespace, shootName)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("invalid UUID")))
+				Expect(result).To(BeNil())
+			})
+		})
+	})
+
 	Describe("GetSeedClientConfig", func() {
 		BeforeEach(func() {
 			ctx = context.Background()
@@ -68,6 +168,7 @@ var _ = Describe("Client", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "seed-1.oidc",
 					Namespace: "garden",
+					UID:       "00000000-0000-0000-0000-000000000000",
 				},
 				Data: map[string][]byte{
 					"kubeconfig": seed1Kubeconfig,
@@ -77,6 +178,7 @@ var _ = Describe("Client", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "seed-2.login",
 					Namespace: "garden",
+					UID:       "00000000-0000-0000-0000-000000000000",
 				},
 				Data: map[string][]byte{
 					"kubeconfig": seed2Kubeconfig,
@@ -117,6 +219,7 @@ var _ = Describe("Client", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "managedSeed",
 					Namespace: "garden",
+					UID:       "00000000-0000-0000-0000-000000000000",
 				},
 				Spec: seedmanagementv1alpha1.ManagedSeedSpec{
 					Shoot: &seedmanagementv1alpha1.Shoot{
@@ -159,6 +262,7 @@ var _ = Describe("Client", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      shootName,
 					Namespace: namespace,
+					UID:       "00000000-0000-0000-0000-000000000000",
 				},
 				Spec: gardencorev1beta1.ShootSpec{
 					Kubernetes: gardencorev1beta1.Kubernetes{
@@ -196,6 +300,7 @@ var _ = Describe("Client", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      testShoot1.Name + ".ca-cluster",
 					Namespace: testShoot1.Namespace,
+					UID:       "00000000-0000-0000-0000-000000000000",
 				},
 				Data: map[string]string{
 					"ca.crt": string(ca.CertificatePEM),

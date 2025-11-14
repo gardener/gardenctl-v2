@@ -76,6 +76,7 @@ var _ = Describe("Target flags", func() {
 			testProject1 = &gardencorev1beta1.Project{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "prod1",
+					UID:  "00000000-0000-0000-0000-000000000000",
 				},
 				Spec: gardencorev1beta1.ProjectSpec{
 					Namespace: ptr.To("garden-prod1"),
@@ -85,6 +86,7 @@ var _ = Describe("Target flags", func() {
 			testProject2 = &gardencorev1beta1.Project{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "prod2",
+					UID:  "00000000-0000-0000-0000-000000000000",
 				},
 				Spec: gardencorev1beta1.ProjectSpec{
 					Namespace: ptr.To("garden-prod2"),
@@ -94,12 +96,14 @@ var _ = Describe("Target flags", func() {
 			testSeed1 = &gardencorev1beta1.Seed{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-seed1",
+					UID:  "00000000-0000-0000-0000-000000000000",
 				},
 			}
 
 			testSeed2 = &gardencorev1beta1.Seed{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-seed2",
+					UID:  "00000000-0000-0000-0000-000000000000",
 				},
 			}
 
@@ -107,6 +111,7 @@ var _ = Describe("Target flags", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      shootName,
 					Namespace: *testProject1.Spec.Namespace,
+					UID:       "00000000-0000-0000-0000-000000000000",
 				},
 				Spec: gardencorev1beta1.ShootSpec{
 					SeedName: ptr.To(testSeed1.Name),
@@ -117,6 +122,7 @@ var _ = Describe("Target flags", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-shoot2",
 					Namespace: *testProject1.Spec.Namespace,
+					UID:       "00000000-0000-0000-0000-000000000000",
 				},
 				Spec: gardencorev1beta1.ShootSpec{
 					SeedName: ptr.To(testSeed1.Name),
@@ -127,6 +133,7 @@ var _ = Describe("Target flags", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-shoot3",
 					Namespace: *testProject2.Spec.Namespace,
+					UID:       "00000000-0000-0000-0000-000000000000",
 				},
 				Spec: gardencorev1beta1.ShootSpec{
 					SeedName: ptr.To(testSeed1.Name),

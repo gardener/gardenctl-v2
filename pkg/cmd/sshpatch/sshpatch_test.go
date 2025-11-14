@@ -96,6 +96,7 @@ var _ = Describe("SSH Patch Command", func() {
 		testProject = &gardencorev1beta1.Project{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "prod1",
+				UID:  "00000000-0000-0000-0000-000000000000",
 			},
 			Spec: gardencorev1beta1.ProjectSpec{
 				Namespace: ptr.To("garden-prod1"),
@@ -105,6 +106,7 @@ var _ = Describe("SSH Patch Command", func() {
 		testSeed = &gardencorev1beta1.Seed{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: seedName,
+				UID:  "00000000-0000-0000-0000-000000000000",
 			},
 		}
 
@@ -112,6 +114,7 @@ var _ = Describe("SSH Patch Command", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      shootName,
 				Namespace: *testProject.Spec.Namespace,
+				UID:       "00000000-0000-0000-0000-000000000000",
 			},
 			Spec: gardencorev1beta1.ShootSpec{
 				SeedName: ptr.To(testSeed.Name),

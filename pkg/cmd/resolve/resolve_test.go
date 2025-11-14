@@ -44,7 +44,7 @@ var _ = Describe("Resolve Command", func() {
 		ctrl.Finish()
 	})
 
-	Describe("given a ProviderEnv instance", func() {
+	Describe("given a Resolve instance", func() {
 		var (
 			ctx     context.Context
 			cfg     *config.Config
@@ -88,6 +88,7 @@ var _ = Describe("Resolve Command", func() {
 			project = &gardencorev1beta1.Project{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: t.ProjectName(),
+					UID:  "00000000-0000-0000-0000-000000000000",
 				},
 				Spec: gardencorev1beta1.ProjectSpec{
 					Namespace: ptr.To(namespace),
@@ -97,6 +98,7 @@ var _ = Describe("Resolve Command", func() {
 			seed = &gardencorev1beta1.Seed{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: t.SeedName(),
+					UID:  "00000000-0000-0000-0000-000000000000",
 				},
 			}
 
@@ -104,6 +106,7 @@ var _ = Describe("Resolve Command", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      t.ShootName(),
 					Namespace: namespace,
+					UID:       "00000000-0000-0000-0000-000000000000",
 				},
 				Spec: gardencorev1beta1.ShootSpec{
 					SeedName: ptr.To(seed.Name),
