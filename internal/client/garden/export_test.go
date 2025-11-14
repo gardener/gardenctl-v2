@@ -15,3 +15,6 @@ type ExecPluginConfig struct {
 func (e *ExecPluginConfig) ToRuntimeObject() runtime.Object {
 	return &e.execPluginConfig
 }
+
+// ValidateJWTFormat exports the private validateJWTFormat function for testing.
+var ValidateJWTFormat = validateJWTFormat
