@@ -19,6 +19,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -39,6 +40,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -61,7 +63,14 @@ const (
 	DefaultUsername = "gardener"
 	// SSHPort is the TCP port on a bastion instance that allows incoming SSH.
 	SSHPort = 22
+	// MaxUsernameLength is the maximum allowed username length.
+	MaxUsernameLength = 32
 )
+
+// allowedUsernameRegex defines the allowed username pattern.
+// Usernames must start with a lowercase letter or underscore, followed by lowercase letters,
+// digits, underscores, or hyphens.
+var allowedUsernameRegex = regexp.MustCompile(`^[a-z_][a-z0-9_-]*$`)
 
 // wrappers used for unit tests only.
 var (
@@ -418,6 +427,27 @@ func (o *SSHOptions) Validate() error {
 
 	if o.User == "" {
 		return errors.New("user must not be empty")
+	}
+
+	if len(o.User) > MaxUsernameLength {
+		return fmt.Errorf("user must not exceed %d characters", MaxUsernameLength)
+	}
+
+	if !allowedUsernameRegex.MatchString(o.User) {
+		return fmt.Errorf("user must start with a lowercase letter or underscore, followed by lowercase letters, digits, underscores, or hyphens")
+	}
+
+	if o.BastionPort != "" {
+		port, err := strconv.Atoi(o.BastionPort)
+		if err != nil || port < 1 || port > 65535 {
+			return fmt.Errorf("bastion port must be a valid port number between 1 and 65535")
+		}
+	}
+
+	if o.BastionName != "" {
+		if errs := apivalidation.NameIsDNSLabel(o.BastionName, false); len(errs) > 0 {
+			return fmt.Errorf("bastion name is invalid: %s", errs[0])
+		}
 	}
 
 	content, err := os.ReadFile(o.SSHPublicKeyFile.String())
