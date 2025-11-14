@@ -63,6 +63,7 @@ var _ = Describe("Target Unset Command", func() {
 		project = &gardencorev1beta1.Project{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: projectName,
+				UID:  "00000000-0000-0000-0000-000000000000",
 			},
 			Spec: gardencorev1beta1.ProjectSpec{
 				Namespace: ptr.To(namespace),
@@ -72,6 +73,7 @@ var _ = Describe("Target Unset Command", func() {
 		seed = &gardencorev1beta1.Seed{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: seedName,
+				UID:  "00000000-0000-0000-0000-000000000000",
 			},
 		}
 
@@ -79,6 +81,7 @@ var _ = Describe("Target Unset Command", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      shootName,
 				Namespace: namespace,
+				UID:       "00000000-0000-0000-0000-000000000000",
 			},
 		}
 
