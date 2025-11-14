@@ -304,7 +304,7 @@ var _ = Describe("Client", func() {
 	})
 
 	Describe("CurrentUser", func() {
-		It("Should return the user when a token is used", func() {
+		It("Should return the user", func() {
 			user := "an-arbitrary-user"
 
 			config := fake.NewTokenConfig("garden")
@@ -312,11 +312,9 @@ var _ = Describe("Client", func() {
 			cic := createInterceptingClient{
 				Client: fake.NewClientWithObjects(),
 				createInterceptor: func(ctx context.Context, object client.Object, option ...client.CreateOption) error {
-					if tr, ok := object.(*authenticationv1.TokenReview); ok { // patch the TokenReview
-
+					if tr, ok := object.(*authenticationv1.SelfSubjectReview); ok { // patch the TokenReview
 						tr.Name = "foo" // must be set or else the fake client will error because no name was provided
-						tr.Status.Authenticated = true
-						tr.Status.User = authenticationv1.UserInfo{
+						tr.Status.UserInfo = authenticationv1.UserInfo{
 							Username: user,
 						}
 					}
@@ -335,28 +333,6 @@ var _ = Describe("Client", func() {
 
 			Expect(err).To(BeNil())
 			Expect(username).To(Equal(user))
-		})
-
-		It("Should return the user when a client certificate is used", func() {
-			userCN := "client-cn"
-
-			caCert, err := fake.NewCaCert()
-			Expect(err).NotTo(HaveOccurred())
-
-			generatedClientCert, err := fake.NewClientCert(caCert, userCN, nil)
-			Expect(err).NotTo(HaveOccurred())
-
-			config := fake.NewCertConfig("client-cert", generatedClientCert.CertificatePEM)
-
-			gardenClient = clientgarden.NewClient(
-				clientcmd.NewDefaultClientConfig(*config, nil),
-				nil, // no client needed for this test
-				gardenName,
-			)
-
-			username, err := gardenClient.CurrentUser(ctx)
-			Expect(err).To(BeNil())
-			Expect(username).To(Equal(userCN))
 		})
 	})
 })
