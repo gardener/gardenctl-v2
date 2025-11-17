@@ -34,12 +34,7 @@ func providerFor(typ string, ctx context.Context, mergedPatterns *MergedProvider
 
 		return newOpenStackProvider(ctx, patterns)
 	case "stackit":
-		var patterns []allowpattern.Pattern
-		if mergedPatterns != nil {
-			patterns = mergedPatterns.OpenStack
-		}
-
-		return newOpenStackProvider(ctx, patterns)
+		return newSTACKITProvider(ctx)
 	case "aws":
 		return newAWSProvider(ctx)
 	case "azure":
