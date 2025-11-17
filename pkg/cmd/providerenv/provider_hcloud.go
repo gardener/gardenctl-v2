@@ -34,6 +34,6 @@ func (p *HCloudProvider) FromSecret(_ *options, _ *gardencorev1beta1.Shoot, secr
 	return p.validator.ValidateSecret(secret)
 }
 
-func (p *HCloudProvider) FromWorkloadIdentity(*options, *gardensecurityv1alpha1.WorkloadIdentity, DataWriter) (map[string]interface{}, error) {
+func (p *HCloudProvider) FromWorkloadIdentity(*options, *gardensecurityv1alpha1.WorkloadIdentity, string, string) (map[string]interface{}, error) {
 	return nil, errors.New("workload identity not supported for hcloud")
 }

@@ -75,6 +75,6 @@ func (p *OpenStackProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoo
 	return templateFields, nil
 }
 
-func (p *OpenStackProvider) FromWorkloadIdentity(*options, *gardensecurityv1alpha1.WorkloadIdentity, DataWriter) (map[string]interface{}, error) {
+func (p *OpenStackProvider) FromWorkloadIdentity(*options, *gardensecurityv1alpha1.WorkloadIdentity, string, string) (map[string]interface{}, error) {
 	return nil, errors.New("workload identity not supported for openstack")
 }
