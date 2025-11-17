@@ -62,7 +62,7 @@ func (p *STACKITProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot,
 	return templateFields, nil
 }
 
-func (p *STACKITProvider) FromWorkloadIdentity(*options, *gardensecurityv1alpha1.WorkloadIdentity, DataWriter) (map[string]interface{}, error) {
+func (p *STACKITProvider) FromWorkloadIdentity(*options, *gardensecurityv1alpha1.WorkloadIdentity, string, string) (map[string]interface{}, error) {
 	return nil, errors.New("workload identity not supported for stackit")
 }
 

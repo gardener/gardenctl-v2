@@ -568,8 +568,10 @@ func generateData(
 			return nil, err
 		}
 
+		token := tokenRequest.Status.Token
+
 		if p != nil {
-			providerData, err = p.FromWorkloadIdentity(o, workloadIdentity, dataWriter)
+			providerData, err = p.FromWorkloadIdentity(o, workloadIdentity, token, configDir)
 			if err != nil {
 				return nil, err
 			}
@@ -578,7 +580,7 @@ func generateData(
 		// baseline reserved fields that any template can use for Workload Identity credential kind
 		providerData[FieldSubject] = workloadIdentity.Status.Sub
 		providerData[FieldAudiences] = workloadIdentity.Spec.Audiences
-		providerData[FieldToken] = tokenRequest.Status.Token
+		providerData[FieldToken] = token
 
 	default:
 		return nil, fmt.Errorf("unsupported credentials kind %q", credentialsRef.Kind)
