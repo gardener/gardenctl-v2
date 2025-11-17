@@ -53,6 +53,7 @@ func createTestShoot(name string, namespace string, seedName *string) *gardencor
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			UID:       "00000000-0000-0000-0000-000000000000",
 		},
 		Spec: gardencorev1beta1.ShootSpec{
 			SeedName: seedName,
@@ -126,6 +127,7 @@ var _ = Describe("Target Manager", func() {
 		prod1Project = &gardencorev1beta1.Project{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "prod1",
+				UID:  "00000000-0000-0000-0000-000000000000",
 			},
 			Spec: gardencorev1beta1.ProjectSpec{
 				Namespace: ptr.To("garden-prod1"),
@@ -135,6 +137,7 @@ var _ = Describe("Target Manager", func() {
 		prod2Project = &gardencorev1beta1.Project{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "prod2",
+				UID:  "00000000-0000-0000-0000-000000000000",
 			},
 			Spec: gardencorev1beta1.ProjectSpec{
 				Namespace: ptr.To("garden-prod2"),
@@ -144,6 +147,7 @@ var _ = Describe("Target Manager", func() {
 		unreadyProject = &gardencorev1beta1.Project{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "unready-project",
+				UID:  "00000000-0000-0000-0000-000000000000",
 			},
 		}
 
@@ -154,6 +158,7 @@ var _ = Describe("Target Manager", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-seed.login",
 				Namespace: "garden",
+				UID:       "00000000-0000-0000-0000-000000000000",
 			},
 			Data: map[string][]byte{
 				"kubeconfig": testSeedKubeconfig,
@@ -163,12 +168,14 @@ var _ = Describe("Target Manager", func() {
 		seed = &gardencorev1beta1.Seed{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-seed",
+				UID:  "00000000-0000-0000-0000-000000000000",
 			},
 		}
 
 		namespace = &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: *prod1Project.Spec.Namespace,
+				UID:  "00000000-0000-0000-0000-000000000000",
 				Labels: map[string]string{
 					"project.gardener.cloud/name": prod1Project.Name,
 				},
@@ -192,6 +199,7 @@ var _ = Describe("Target Manager", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      prod1GoldenShoot.Name + ".ca-cluster",
 				Namespace: *prod1Project.Spec.Namespace,
+				UID:       "00000000-0000-0000-0000-000000000000",
 			},
 			Data: map[string]string{
 				"ca.crt": string(ca.CertificatePEM),

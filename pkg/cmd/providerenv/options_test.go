@@ -252,6 +252,7 @@ var _ = Describe("Env Commands - Options", func() {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      t.ShootName(),
 						Namespace: "garden-" + t.ProjectName(),
+						UID:       "00000000-0000-0000-0000-000000000000",
 					},
 					Spec: gardencorev1beta1.ShootSpec{
 						CloudProfile:           cloudProfileRef,
@@ -265,6 +266,7 @@ var _ = Describe("Env Commands - Options", func() {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      secretBindingName,
 						Namespace: shoot.Namespace,
+						UID:       "00000000-0000-0000-0000-000000000000",
 					},
 					SecretRef: *secretRef.DeepCopy(),
 				}
@@ -272,6 +274,7 @@ var _ = Describe("Env Commands - Options", func() {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      credentialsBindingName,
 						Namespace: shoot.Namespace,
+						UID:       "00000000-0000-0000-0000-000000000000",
 					},
 					CredentialsRef: corev1.ObjectReference{
 						Kind:       "Secret",
@@ -284,6 +287,7 @@ var _ = Describe("Env Commands - Options", func() {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: secretRef.Namespace,
 						Name:      secretRef.Name,
+						UID:       "00000000-0000-0000-0000-000000000000",
 					},
 					Data: map[string][]byte{
 						"serviceaccount.json": []byte(readTestFile("gcp/serviceaccount.json")),
@@ -293,6 +297,7 @@ var _ = Describe("Env Commands - Options", func() {
 					CloudProfile: &gardencorev1beta1.CloudProfile{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: cloudProfileName,
+							UID:  "00000000-0000-0000-0000-000000000000",
 						},
 						Spec: gardencorev1beta1.CloudProfileSpec{
 							Type: provider.Type,
@@ -530,6 +535,7 @@ var _ = Describe("Env Commands - Options", func() {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      shootName,
 						Namespace: namespace,
+						UID:       "00000000-0000-0000-0000-000000000000",
 					},
 					Spec: gardencorev1beta1.ShootSpec{
 						CloudProfile: cloudProfileRef,
@@ -543,6 +549,7 @@ var _ = Describe("Env Commands - Options", func() {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      secretName,
 						Namespace: namespace,
+						UID:       "00000000-0000-0000-0000-000000000000",
 					},
 					Data: map[string][]byte{
 						"serviceaccount.json": []byte(serviceaccountJSON),
@@ -554,6 +561,7 @@ var _ = Describe("Env Commands - Options", func() {
 					CloudProfile: &gardencorev1beta1.CloudProfile{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: cloudProfileName,
+							UID:  "00000000-0000-0000-0000-000000000000",
 						},
 						Spec: gardencorev1beta1.CloudProfileSpec{
 							Type: providerType,

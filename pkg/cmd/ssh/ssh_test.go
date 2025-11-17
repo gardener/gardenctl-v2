@@ -167,6 +167,7 @@ var _ = Describe("SSH Command", func() {
 		testProject = &gardencorev1beta1.Project{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "prod1",
+				UID:  "00000000-0000-0000-0000-000000000000",
 			},
 			Spec: gardencorev1beta1.ProjectSpec{
 				Namespace: ptr.To("garden-prod1"),
@@ -176,6 +177,7 @@ var _ = Describe("SSH Command", func() {
 		testSeed = &gardencorev1beta1.Seed{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-seed",
+				UID:  "00000000-0000-0000-0000-000000000000",
 			},
 		}
 
@@ -183,6 +185,7 @@ var _ = Describe("SSH Command", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-shoot",
 				Namespace: *testProject.Spec.Namespace,
+				UID:       "00000000-0000-0000-0000-000000000000",
 			},
 			Spec: gardencorev1beta1.ShootSpec{
 				SeedName: ptr.To(testSeed.Name),
@@ -212,6 +215,7 @@ var _ = Describe("SSH Command", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s.ssh-keypair", testShoot.Name),
 				Namespace: *testProject.Spec.Namespace,
+				UID:       "00000000-0000-0000-0000-000000000000",
 			},
 			Data: map[string][]byte{
 				"data": []byte("not-used"),
@@ -224,6 +228,7 @@ var _ = Describe("SSH Command", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-seed.login",
 				Namespace: "garden",
+				UID:       "00000000-0000-0000-0000-000000000000",
 			},
 			Data: map[string][]byte{
 				"kubeconfig": testSeedKubeconfig,
@@ -242,6 +247,7 @@ var _ = Describe("SSH Command", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      testShoot.Name + ".ca-cluster",
 				Namespace: testShoot.Namespace,
+				UID:       "00000000-0000-0000-0000-000000000000",
 			},
 			Data: map[string]string{
 				"ca.crt": string(ca.CertificatePEM),
@@ -265,6 +271,7 @@ var _ = Describe("SSH Command", func() {
 		testNode = &corev1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "node1",
+				UID:  "00000000-0000-0000-0000-000000000000",
 			},
 			Status: corev1.NodeStatus{
 				Addresses: []corev1.NodeAddress{{
@@ -278,6 +285,7 @@ var _ = Describe("SSH Command", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "machine1",
 				Namespace: "shoot--prod1--test-shoot",
+				UID:       "00000000-0000-0000-0000-000000000000",
 				Labels:    map[string]string{machinev1alpha1.NodeLabelKey: "node1"},
 			},
 		}
@@ -286,6 +294,7 @@ var _ = Describe("SSH Command", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "monitoring1",
 				Namespace: "shoot--prod1--test-shoot",
+				UID:       "00000000-0000-0000-0000-000000000000",
 				Labels:    map[string]string{machinev1alpha1.NodeLabelKey: "monitoring1"},
 			},
 		}

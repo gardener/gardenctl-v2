@@ -146,6 +146,7 @@ var _ = Describe("Resolve Command - Options", func() {
 			project = &gardencorev1beta1.Project{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: projectName,
+					UID:  "00000000-0000-0000-0000-000000000000",
 				},
 				Spec: gardencorev1beta1.ProjectSpec{
 					Namespace: ptr.To(namespace),
@@ -155,6 +156,7 @@ var _ = Describe("Resolve Command - Options", func() {
 			projectGarden = &gardencorev1beta1.Project{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "garden",
+					UID:  "00000000-0000-0000-0000-000000000000",
 				},
 				Spec: gardencorev1beta1.ProjectSpec{
 					Namespace: ptr.To("garden"),
@@ -164,12 +166,14 @@ var _ = Describe("Resolve Command - Options", func() {
 			seed = &gardencorev1beta1.Seed{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: seedName,
+					UID:  "00000000-0000-0000-0000-000000000000",
 				},
 			}
 
 			soil = &gardencorev1beta1.Seed{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: soilName,
+					UID:  "00000000-0000-0000-0000-000000000000",
 				},
 			}
 
@@ -178,6 +182,7 @@ var _ = Describe("Resolve Command - Options", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      seedName,
 					Namespace: "garden",
+					UID:       "00000000-0000-0000-0000-000000000000",
 				},
 				Spec: gardencorev1beta1.ShootSpec{
 					SeedName: ptr.To(soil.Name),
@@ -188,6 +193,7 @@ var _ = Describe("Resolve Command - Options", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      shootName,
 					Namespace: namespace,
+					UID:       "00000000-0000-0000-0000-000000000000",
 				},
 				Spec: gardencorev1beta1.ShootSpec{
 					SeedName: ptr.To(seed.Name),
