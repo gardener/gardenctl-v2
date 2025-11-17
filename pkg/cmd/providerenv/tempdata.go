@@ -28,22 +28,13 @@ func getDataDir(sessionDir string) string {
 	return filepath.Join(sessionDir, "provider-env")
 }
 
-// computeFileSuffix creates a deterministic suffix from session ID and canonical target.
+// computeFilePrefix creates a deterministic prefix from session ID and canonical target.
 // This ensures the same target always produces the same files, preventing accumulation.
-func computeFileSuffix(sessionID string, target CanonicalTarget) string {
+func computeFilePrefix(sessionID string, target CanonicalTarget) string {
 	targetKey := fmt.Sprintf("%s|%s|%s", target.Garden, target.Namespace, target.Shoot)
 	hash := sha256.Sum256([]byte(sessionID + "|" + targetKey))
 
 	return hex.EncodeToString(hash[:8]) // Use first 8 bytes (16 hex chars)
-}
-
-// computeFieldFilePath generates the file path for a given field and suffix.
-// This is the single source of truth for path generation used by both
-// TempDataWriter and CleanupDataWriter.
-func computeFieldFilePath(dataDir, suffix, field string) string {
-	// Use suffix as prefix to make filename unpredictable (defense against CWD manipulation)
-	filename := suffix + "-" + field + ".txt"
-	return filepath.Join(dataDir, filename)
 }
 
 // DataWriter is an interface for managing temporary credential data files.
@@ -51,11 +42,6 @@ type DataWriter interface {
 	// WriteField writes a field value to a temporary file and returns its path.
 	// For CleanupDataWriter, this is a no-op that returns an empty string.
 	WriteField(field string, value string) (string, error)
-
-	// ComputeFilePath generates the deterministic file path for a field.
-	// This is a pure computation that returns where the field data would be stored,
-	// regardless of whether files will be written or cleaned up.
-	ComputeFilePath(field string) string
 
 	// GetAllFilePaths returns a map of all field names to their file paths.
 	// For CleanupDataWriter, this returns an empty map.
@@ -69,7 +55,7 @@ type DataWriter interface {
 type TempDataWriter struct {
 	sessionDir string
 	dataDir    string            // provider-env directory
-	suffix     string            // deterministic suffix for this session+target
+	prefix     string            // deterministic prefix for this session+target
 	files      map[string]string // field name -> filepath mapping
 	dirCreated bool              // tracks if directory has been created
 }
@@ -81,32 +67,27 @@ var _ DataWriter = &TempDataWriter{}
 // an empty map, as templates don't need file paths during unset operations.
 type CleanupDataWriter struct {
 	dataDir string
-	suffix  string
+	prefix  string
 }
 
 var _ DataWriter = &CleanupDataWriter{}
 
 // NewTempDataWriter creates a new TempDataWriter with deterministic file naming.
-// The file structure is: ${sessionDir}/provider-env/${suffix}-${fieldname}.txt
-// The suffix is derived from a hash of the session ID and canonical target, ensuring
+// The file structure is: ${sessionDir}/provider-env/.${prefix}-${fieldname}.txt
+// The prefix is derived from a hash of the session ID and canonical target, ensuring
 // that the same target always produces the same files (avoiding accumulation of obsolete files).
 // The directory is created lazily when the first file is written.
 func NewTempDataWriter(sessionID, sessionDir string, target CanonicalTarget) (*TempDataWriter, error) {
 	dataDir := getDataDir(sessionDir)
-	suffix := computeFileSuffix(sessionID, target)
+	prefix := computeFilePrefix(sessionID, target)
 
 	return &TempDataWriter{
 		sessionDir: sessionDir,
 		dataDir:    dataDir,
-		suffix:     suffix,
+		prefix:     prefix,
 		files:      make(map[string]string),
 		dirCreated: false,
 	}, nil
-}
-
-// ComputeFilePath generates the deterministic file path for a given field.
-func (t *TempDataWriter) ComputeFilePath(field string) string {
-	return computeFieldFilePath(t.dataDir, t.suffix, field)
 }
 
 // WriteField writes a field value to a temporary file and returns its path.
@@ -122,7 +103,8 @@ func (t *TempDataWriter) WriteField(field string, value string) (string, error) 
 		t.dirCreated = true
 	}
 
-	filepath := t.ComputeFilePath(field)
+	filename := fmt.Sprintf("%s-%s.txt", t.prefix, field)
+	filepath := filepath.Join(t.dataDir, filename)
 
 	// Write file with restrictive permissions (owner read/write only)
 	// This will overwrite any existing file from a previous run
@@ -162,11 +144,11 @@ func (t *TempDataWriter) GetAllFilePaths() map[string]string {
 // perform the cleanup.
 func NewCleanupDataWriter(sessionID, sessionDir string, target CanonicalTarget) (*CleanupDataWriter, error) {
 	dataDir := getDataDir(sessionDir)
-	suffix := computeFileSuffix(sessionID, target)
+	prefix := computeFilePrefix(sessionID, target)
 
 	writer := &CleanupDataWriter{
 		dataDir: dataDir,
-		suffix:  suffix,
+		prefix:  prefix,
 	}
 
 	return writer, nil
@@ -176,13 +158,6 @@ func NewCleanupDataWriter(sessionID, sessionDir string, target CanonicalTarget) 
 // This allows the calling code to use the same logic for both TempDataWriter and CleanupDataWriter.
 func (c *CleanupDataWriter) WriteField(field string, value string) (string, error) {
 	return "", nil
-}
-
-// ComputeFilePath generates the deterministic file path for a given field.
-// This allows cleanup operations to identify which files to remove and enables
-// providers to generate valid configuration paths even during unset operations.
-func (c *CleanupDataWriter) ComputeFilePath(field string) string {
-	return computeFieldFilePath(c.dataDir, c.suffix, field)
 }
 
 // GetAllFilePaths returns an empty map for CleanupDataWriter.
@@ -197,21 +172,21 @@ func (c *CleanupDataWriter) DataDirectory() string {
 	return c.dataDir
 }
 
-// CleanupExisting removes all temporary files with this writer's suffix.
+// CleanupExisting removes all temporary files with this writer's prefix.
 // This should be called explicitly after creating the CleanupDataWriter to
 // ensure leftover files from previous runs are removed.
 func (c *CleanupDataWriter) CleanupExisting() error {
 	return c.cleanup()
 }
 
-// cleanup removes all temporary files with this writer's suffix.
+// cleanup removes all temporary files with this writer's prefix.
 func (c *CleanupDataWriter) cleanup() error {
-	if c.dataDir == "" || c.suffix == "" {
+	if c.dataDir == "" || c.prefix == "" {
 		return nil
 	}
 
-	// Use glob pattern to find all files with this suffix
-	pattern := filepath.Join(c.dataDir, c.suffix+"-*.txt")
+	// Use glob pattern to find all files with this prefix
+	pattern := filepath.Join(c.dataDir, fmt.Sprintf("%s-*.txt", c.prefix))
 
 	matches, err := filepath.Glob(pattern)
 	if err != nil {

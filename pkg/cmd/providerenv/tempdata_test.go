@@ -51,7 +51,7 @@ var _ = Describe("TempDataWriter", func() {
 	})
 
 	Describe("NewTempDataWriter", func() {
-		It("should create a new TempDataWriter with deterministic suffix", func() {
+		It("should create a new TempDataWriter with deterministic prefix", func() {
 			writer, err = providerenv.NewTempDataWriter(sessionID, sessionDir, canonicalTarget)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(writer).NotTo(BeNil())
@@ -62,19 +62,19 @@ var _ = Describe("TempDataWriter", func() {
 			Expect(os.IsNotExist(err)).To(BeTrue(), "directory should not exist until first write")
 		})
 
-		It("should create the same suffix for the same target", func() {
+		It("should create the same prefix for the same target", func() {
 			writer1, err := providerenv.NewTempDataWriter(sessionID, sessionDir, canonicalTarget)
 			Expect(err).NotTo(HaveOccurred())
 
 			writer2, err := providerenv.NewTempDataWriter(sessionID, sessionDir, canonicalTarget)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Should have same data directory and suffix (deterministic)
+			// Should have same data directory and prefix (deterministic)
 			Expect(writer1.DataDirectory()).To(Equal(writer2.DataDirectory()))
-			Expect(writer1.GetSuffix()).To(Equal(writer2.GetSuffix()))
+			Expect(writer1.GetPrefix()).To(Equal(writer2.GetPrefix()))
 		})
 
-		It("should create different suffixes for different targets", func() {
+		It("should create different prefixes for different targets", func() {
 			target1 := providerenv.CanonicalTarget{Garden: "garden1", Namespace: "garden-project1", Shoot: "shoot1"}
 			target2 := providerenv.CanonicalTarget{Garden: "garden2", Namespace: "garden-project2", Shoot: "shoot2"}
 
@@ -84,11 +84,11 @@ var _ = Describe("TempDataWriter", func() {
 			writer2, err := providerenv.NewTempDataWriter(sessionID, sessionDir, target2)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Different targets should have different suffixes
-			Expect(writer1.GetSuffix()).NotTo(Equal(writer2.GetSuffix()))
+			// Different targets should have different prefixes
+			Expect(writer1.GetPrefix()).NotTo(Equal(writer2.GetPrefix()))
 		})
 
-		It("should create different suffixes for different sessionIDs with same target", func() {
+		It("should create different prefixes for different sessionIDs with same target", func() {
 			sessionID1 := "session1"
 			sessionID2 := "session2"
 
@@ -98,8 +98,8 @@ var _ = Describe("TempDataWriter", func() {
 			writer2, err := providerenv.NewTempDataWriter(sessionID2, sessionDir, canonicalTarget)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Different sessionIDs should have different suffixes
-			Expect(writer1.GetSuffix()).NotTo(Equal(writer2.GetSuffix()))
+			// Different sessionIDs should have different prefixes
+			Expect(writer1.GetPrefix()).NotTo(Equal(writer2.GetPrefix()))
 		})
 	})
 
@@ -114,7 +114,7 @@ var _ = Describe("TempDataWriter", func() {
 			path1, err := writer.WriteField("field1", "value1")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(path1).To(ContainSubstring("field1.txt"))
-			Expect(path1).To(ContainSubstring(writer.GetSuffix()))
+			Expect(path1).To(ContainSubstring(writer.GetPrefix()))
 
 			// Write second field with special characters
 			specialValue := "value with\nnewlines\tand\n$special 'chars' \"quotes\""
@@ -291,15 +291,15 @@ var _ = Describe("CleanupDataWriter", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should use the same suffix as TempDataWriter for the same target", func() {
+		It("should use the same prefix as TempDataWriter for the same target", func() {
 			tempWriter, err := providerenv.NewTempDataWriter(sessionID, sessionDir, canonicalTarget)
 			Expect(err).NotTo(HaveOccurred())
 
 			cleanupWriter, err := providerenv.NewCleanupDataWriter(sessionID, sessionDir, canonicalTarget)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Should have same suffix (so they clean up the same files)
-			Expect(cleanupWriter.GetSuffix()).To(Equal(tempWriter.GetSuffix()))
+			// Should have same prefix (so they clean up the same files)
+			Expect(cleanupWriter.GetPrefix()).To(Equal(tempWriter.GetPrefix()))
 		})
 	})
 
