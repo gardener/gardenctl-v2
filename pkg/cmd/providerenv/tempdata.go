@@ -103,7 +103,7 @@ func (t *TempDataWriter) WriteField(field string, value string) (string, error) 
 		t.dirCreated = true
 	}
 
-	filename := fmt.Sprintf("%s-%s.txt", t.prefix, field)
+	filename := fmt.Sprintf(".%s-%s.txt", t.prefix, field)
 	filepath := filepath.Join(t.dataDir, filename)
 
 	// Write file with restrictive permissions (owner read/write only)
@@ -186,7 +186,7 @@ func (c *CleanupDataWriter) cleanup() error {
 	}
 
 	// Use glob pattern to find all files with this prefix
-	pattern := filepath.Join(c.dataDir, fmt.Sprintf("%s-*.txt", c.prefix))
+	pattern := filepath.Join(c.dataDir, fmt.Sprintf(".%s-*.txt", c.prefix))
 
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
