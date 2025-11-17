@@ -33,6 +33,6 @@ func (p *AzureProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, s
 	return p.validator.ValidateSecret(secret)
 }
 
-func (p *AzureProvider) FromWorkloadIdentity(o *options, wi *gardensecurityv1alpha1.WorkloadIdentity, dataWriter DataWriter) (map[string]interface{}, error) {
+func (p *AzureProvider) FromWorkloadIdentity(o *options, wi *gardensecurityv1alpha1.WorkloadIdentity, token, configDir string) (map[string]interface{}, error) {
 	return p.validator.ValidateWorkloadIdentityConfig(wi)
 }

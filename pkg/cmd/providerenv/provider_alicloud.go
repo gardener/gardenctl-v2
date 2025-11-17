@@ -34,6 +34,6 @@ func (p *AliCloudProvider) FromSecret(_ *options, _ *gardencorev1beta1.Shoot, se
 	return p.validator.ValidateSecret(secret)
 }
 
-func (p *AliCloudProvider) FromWorkloadIdentity(*options, *gardensecurityv1alpha1.WorkloadIdentity, DataWriter) (map[string]interface{}, error) {
+func (p *AliCloudProvider) FromWorkloadIdentity(*options, *gardensecurityv1alpha1.WorkloadIdentity, string, string) (map[string]interface{}, error) {
 	return nil, errors.New("workload identity not supported for alicloud")
 }

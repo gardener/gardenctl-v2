@@ -9,6 +9,8 @@ package providerenv
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"path/filepath"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
@@ -52,14 +54,19 @@ func (p *GCPProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, sec
 	return templateFields, nil
 }
 
-func (p *GCPProvider) FromWorkloadIdentity(o *options, wi *gardensecurityv1alpha1.WorkloadIdentity, dataWriter DataWriter) (map[string]interface{}, error) {
+func (p *GCPProvider) FromWorkloadIdentity(o *options, wi *gardensecurityv1alpha1.WorkloadIdentity, token, configDir string) (map[string]interface{}, error) {
 	validatedConfig, err := p.validator.ValidateWorkloadIdentityConfig(wi)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get path for baseline token field to embed in credentials JSON.
-	tokenFilePath := dataWriter.ComputeFilePath(FieldToken)
+	// Only delete the token file when the unset flag is set; gcloud does not keep a separate copy of this token file.
+	tokenFileName := fmt.Sprintf(".%s-web-identity-token", computeWorkloadIdentityFilePrefix(o.SessionID, wi))
+
+	tokenFilePath := filepath.Join(configDir, tokenFileName)
+	if err := writeOrRemoveToken(o.Unset, tokenFilePath, []byte(token)); err != nil {
+		return nil, err
+	}
 
 	credentialsConfig := validatedConfig["credentialsConfig"].(map[string]interface{})
 

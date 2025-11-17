@@ -1057,6 +1057,7 @@ var _ = Describe("Env Commands - Options", func() {
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
 							Name:      "wi-gcp",
+							UID:       "00000000-0000-0000-0000-000000000000",
 						},
 						Spec: gardensecurityv1alpha1.WorkloadIdentitySpec{
 							Audiences: []string{"sts.googleapis.com"},
@@ -1098,6 +1099,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
 
+					tokenHashPrefix := computeTestWorkloadIdentityHash("test-session-id", string(workloadIdentity.UID))
 					hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
 					expected := strings.NewReplacer(
 						"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "gcloud"),
@@ -1106,12 +1108,13 @@ var _ = Describe("Env Commands - Options", func() {
 					).Replace(readTestFile("gcp/export_wi.bash"))
 					Expect(options.String()).To(Equal(expected))
 
+					configDir := filepath.Join(sessionDir, ".config", "gcloud")
+					tokenPath := filepath.Join(configDir, "."+tokenHashPrefix+"-web-identity-token")
 					providerEnvDir := filepath.Join(sessionDir, "provider-env")
-					credentialsPath := filepath.Join(providerEnvDir, hash+"-credentials.txt")
-					projectIDPath := filepath.Join(providerEnvDir, hash+"-project_id.txt")
-					tokenPath := filepath.Join(providerEnvDir, hash+"-token.txt")
-					subjectPath := filepath.Join(providerEnvDir, hash+"-subject.txt")
-					audiencesPath := filepath.Join(providerEnvDir, hash+"-audiences.txt")
+					credentialsPath := filepath.Join(providerEnvDir, "."+hash+"-credentials.txt")
+					projectIDPath := filepath.Join(providerEnvDir, "."+hash+"-project_id.txt")
+					subjectPath := filepath.Join(providerEnvDir, "."+hash+"-subject.txt")
+					audiencesPath := filepath.Join(providerEnvDir, "."+hash+"-audiences.txt")
 
 					// Verify baseline files
 					proj, _ := os.ReadFile(projectIDPath)
@@ -1137,6 +1140,70 @@ var _ = Describe("Env Commands - Options", func() {
 					format, ok := cs["format"].(map[string]interface{})
 					Expect(ok).To(BeTrue())
 					Expect(format["type"]).To(Equal("text"))
+				})
+
+				It("should remove token and credential files when unset is true", func() {
+					client := gardenclientmocks.NewMockClient(ctrl)
+
+					// First, create files by calling PrintProviderEnv without unset (to simulate files from a previous run)
+					client.EXPECT().CreateWorkloadIdentityToken(ctx, workloadIdentity.Namespace, workloadIdentity.Name, gomock.Any()).Return(&gardensecurityv1alpha1.TokenRequest{
+						Status: gardensecurityv1alpha1.TokenRequestStatus{
+							Token:               "test-jwt-token",
+							ExpirationTimestamp: metav1.Now(),
+						},
+					}, nil)
+					client.EXPECT().GetWorkloadIdentity(ctx, workloadIdentity.Namespace, workloadIdentity.Name).Return(workloadIdentity, nil)
+
+					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+
+					tokenHashPrefix := computeTestWorkloadIdentityHash("test-session-id", string(workloadIdentity.UID))
+					hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
+					configDir := filepath.Join(sessionDir, ".config", "gcloud")
+					tokenPath := filepath.Join(configDir, "."+tokenHashPrefix+"-web-identity-token")
+					providerEnvDir := filepath.Join(sessionDir, "provider-env")
+					credentialsPath := filepath.Join(providerEnvDir, "."+hash+"-credentials.txt")
+					projectIDPath := filepath.Join(providerEnvDir, "."+hash+"-project_id.txt")
+					subjectPath := filepath.Join(providerEnvDir, "."+hash+"-subject.txt")
+					audiencesPath := filepath.Join(providerEnvDir, "."+hash+"-audiences.txt")
+
+					// Verify files exist
+					_, err := os.Stat(tokenPath)
+					Expect(err).NotTo(HaveOccurred())
+					_, err = os.Stat(credentialsPath)
+					Expect(err).NotTo(HaveOccurred())
+					_, err = os.Stat(projectIDPath)
+					Expect(err).NotTo(HaveOccurred())
+					_, err = os.Stat(subjectPath)
+					Expect(err).NotTo(HaveOccurred())
+					_, err = os.Stat(audiencesPath)
+					Expect(err).NotTo(HaveOccurred())
+
+					// Now set unset to true and call PrintProviderEnv again
+					options.Unset = true
+					// Even when unset is true, the code still needs to fetch the WorkloadIdentity and create a token
+					client.EXPECT().CreateWorkloadIdentityToken(ctx, workloadIdentity.Namespace, workloadIdentity.Name, gomock.Any()).Return(&gardensecurityv1alpha1.TokenRequest{
+						Status: gardensecurityv1alpha1.TokenRequestStatus{
+							Token:               "test-jwt-token-unset",
+							ExpirationTimestamp: metav1.Now(),
+						},
+					}, nil)
+					client.EXPECT().GetWorkloadIdentity(ctx, workloadIdentity.Namespace, workloadIdentity.Name).Return(workloadIdentity, nil)
+
+					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+
+					// Verify that the token file is removed
+					_, err = os.Stat(tokenPath)
+					Expect(os.IsNotExist(err)).To(BeTrue(), "token file should be removed")
+
+					// Verify that all credential temp files written with the dataWriter are removed
+					_, err = os.Stat(credentialsPath)
+					Expect(os.IsNotExist(err)).To(BeTrue(), "credentials file should be removed")
+					_, err = os.Stat(projectIDPath)
+					Expect(os.IsNotExist(err)).To(BeTrue(), "project_id file should be removed")
+					_, err = os.Stat(subjectPath)
+					Expect(os.IsNotExist(err)).To(BeTrue(), "subject file should be removed")
+					_, err = os.Stat(audiencesPath)
+					Expect(os.IsNotExist(err)).To(BeTrue(), "audiences file should be removed")
 				})
 			})
 		})
