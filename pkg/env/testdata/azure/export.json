@@ -8,11 +8,11 @@
   },
   "configDir": "PLACEHOLDER_CONFIG_DIR",
   "dataFiles": {
-    "clientID": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-clientID.txt",
-    "clientSecret": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-clientSecret.txt",
-    "region": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-region.txt",
-    "subscriptionID": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-subscriptionID.txt",
-    "tenantID": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-tenantID.txt"
+    "clientID": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-clientID.txt",
+    "clientSecret": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-clientSecret.txt",
+    "region": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-region.txt",
+    "subscriptionID": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-subscriptionID.txt",
+    "tenantID": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-tenantID.txt"
   },
   "unsafeSecretData": {
     "clientID": "12345678-1234-1234-1234-123456789012",

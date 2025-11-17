@@ -8,17 +8,17 @@
   },
   "configDir": "PLACEHOLDER_CONFIG_DIR",
   "dataFiles": {
-    "applicationCredentialID": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-applicationCredentialID.txt",
-    "applicationCredentialName": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-applicationCredentialName.txt",
-    "applicationCredentialSecret": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-applicationCredentialSecret.txt",
-    "authStrategy": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-authStrategy.txt",
-    "authType": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-authType.txt",
-    "authURL": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-authURL.txt",
-    "domainName": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-domainName.txt",
-    "password": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-password.txt",
-    "region": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-region.txt",
-    "tenantName": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-tenantName.txt",
-    "username": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-username.txt"
+    "applicationCredentialID": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-applicationCredentialID.txt",
+    "applicationCredentialName": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-applicationCredentialName.txt",
+    "applicationCredentialSecret": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-applicationCredentialSecret.txt",
+    "authStrategy": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-authStrategy.txt",
+    "authType": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-authType.txt",
+    "authURL": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-authURL.txt",
+    "domainName": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-domainName.txt",
+    "password": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-password.txt",
+    "region": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-region.txt",
+    "tenantName": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-tenantName.txt",
+    "username": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-username.txt"
   },
   "unsafeSecretData": {
     "domainName": "domain",

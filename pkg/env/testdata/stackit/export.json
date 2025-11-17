@@ -8,17 +8,17 @@
   },
   "configDir": "PLACEHOLDER_CONFIG_DIR",
   "dataFiles": {
-    "authStrategy": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-authStrategy.txt",
-    "authURL": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-authURL.txt",
-    "domainName": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-domainName.txt",
-    "password": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-password.txt",
-    "projectId": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-projectId.txt",
-    "region": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-region.txt",
-    "serviceaccount": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-serviceaccount.txt",
-    "stackitCliProfile": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-stackitCliProfile.txt",
-    "stackitRegion": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-stackitRegion.txt",
-    "tenantName": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-tenantName.txt",
-    "username": "PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-username.txt"
+    "authStrategy": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-authStrategy.txt",
+    "authURL": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-authURL.txt",
+    "domainName": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-domainName.txt",
+    "password": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-password.txt",
+    "projectId": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-projectId.txt",
+    "region": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-region.txt",
+    "serviceaccount": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-serviceaccount.txt",
+    "stackitCliProfile": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-stackitCliProfile.txt",
+    "stackitRegion": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-stackitRegion.txt",
+    "tenantName": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-tenantName.txt",
+    "username": "PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-username.txt"
   },
   "unsafeSecretData": {
     "project-id": "PLACEHOLDER_PROJECT_ID",
