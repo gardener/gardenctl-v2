@@ -16,7 +16,7 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/provider/common/credvalidate"
 )
 
-// STACKITValidator implements the common Validator interface for OpenStack.
+// STACKITValidator implements the common validator interface for STACKIT.
 type STACKITValidator struct {
 	openstack *OpenStackValidator
 	stackit   *credvalidate.BaseValidator
@@ -45,8 +45,8 @@ func (v *STACKITValidator) ValidateSecret(secret *corev1.Secret) (map[string]int
 		return nil, err
 	}
 
-	// The secret is validated against the openstack validation. To get unknown fields removed.
-	// But the error is ignored as openstack is optional in provider stackit and will be removed in the future.
+	// The secret is validated against the OpenStack validation in order to get unknown fields removed.
+	// But the error is ignored as OpensStack is optional in provider STACKIT and will be removed in the future.
 	validatedValuesOpenstack, _ := v.openstack.ValidateSecret(secret)
 	maps.Copy(validatedValues, validatedValuesOpenstack)
 

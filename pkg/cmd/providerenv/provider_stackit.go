@@ -63,10 +63,10 @@ func (p *STACKITProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot,
 	return templateFields, nil
 }
 
-// getKeyStoneURLInSTACKIT returns the keyStoneURL like the getKeyStoneURL for openstack. As the ProviderConfig in
-// Cloudprofile is using stackit.provider.extensions.gardener.cloud as APIGroup this is needs to be done in a
-// dedicated function. This is using map[string]interface{} instead of the api object because the
-// gardener-extension-provider-stackit is not yet opensource (and the openstack parts will be removed in the future).
+// getKeyStoneURLInSTACKIT returns the keyStoneURL like the getKeyStoneURL for OpenStack. As the ProviderConfig in
+// Cloudprofile is using stackit.provider.extensions.gardener.cloud as APIGroup, this is needed to be done in a
+// dedicated function. This is using map[string]interface{} instead of the API object because the
+// gardener-extension-provider-stackit is not yet opensource (and the OpenStack parts will be removed in the future).
 func getKeyStoneURLInSTACKIT(cloudProfile *clientgarden.CloudProfileUnion) (string, error) {
 	providerConfig := cloudProfile.GetCloudProfileSpec().ProviderConfig
 	if providerConfig == nil {
@@ -76,7 +76,7 @@ func getKeyStoneURLInSTACKIT(cloudProfile *clientgarden.CloudProfileUnion) (stri
 	var cloudProfileConfig map[string]interface{}
 
 	if yaml.Unmarshal(providerConfig.Raw, &cloudProfileConfig) != nil {
-		return "", fmt.Errorf("fail to unmarshal providerConfig in %s", cloudProfile.GetObjectMeta().Name)
+		return "", fmt.Errorf("failed to unmarshal providerConfig in %s", cloudProfile.GetObjectMeta().Name)
 	}
 
 	keystoneURL, ok := cloudProfileConfig["keystoneURL"].(string)
