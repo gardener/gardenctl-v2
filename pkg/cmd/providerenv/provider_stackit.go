@@ -48,15 +48,16 @@ func (p *STACKITProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot,
 	}
 
 	templateFields := map[string]interface{}{
-		"authURL":        authURL,
-		"domainName":     validatedFields["domainName"],
-		"tenantName":     validatedFields["tenantName"],
-		"username":       validatedFields["username"],
-		"password":       validatedFields["password"],
-		"authStrategy":   "keystone",
-		"projectId":      validatedFields["project-id"],
-		"serviceaccount": validatedFields["serviceaccount.json"],
-		"stackitRegion":  region,
+		"authURL":           authURL,
+		"domainName":        validatedFields["domainName"],
+		"tenantName":        validatedFields["tenantName"],
+		"username":          validatedFields["username"],
+		"password":          validatedFields["password"],
+		"authStrategy":      "keystone",
+		"projectId":         validatedFields["project-id"],
+		"serviceaccount":    validatedFields["serviceaccount.json"],
+		"stackitRegion":     region,
+		"stackitCliProfile": o.Target.GardenName(),
 	}
 
 	return templateFields, nil
