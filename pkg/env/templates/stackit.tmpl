@@ -54,7 +54,7 @@ set -gx OS_USERNAME (cat -- {{.dataFiles.username | shellEscape}});
 set -gx OS_PASSWORD (cat -- {{.dataFiles.password | shellEscape}});
 set -gx STACKIT_PROJECT_ID (cat -- {{.dataFiles.projectId | shellEscape}});
 set -gx STACKIT_REGION (cat -- {{.dataFiles.stackitRegion | shellEscape}});
-stackit config profile create $(< {{.dataFiles.stackitCliProfile | shellEscape}}) --no-set --empty --ignore-existing;
+stackit config profile create (cat -- {{.dataFiles.stackitCliProfile | shellEscape}}) --no-set --empty --ignore-existing;
 set -gx STACKIT_CLI_PROFILE (cat -- {{.dataFiles.stackitCliProfile | shellEscape}});
 stackit auth activate-service-account --service-account-key-path {{.dataFiles.serviceaccount | shellEscape}};
 {{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
@@ -84,7 +84,7 @@ $Env:OS_USERNAME = Get-Content -Raw {{.dataFiles.username | shellEscape}};
 $Env:OS_PASSWORD = Get-Content -Raw {{.dataFiles.password | shellEscape}};
 $Env:STACKIT_PROJECT_ID = Get-Content -Raw {{.dataFiles.projectId | shellEscape}};
 $Env:STACKIT_REGION = Get-Content -Raw {{.dataFiles.stackitRegion | shellEscape}};
-stackit config profile create $(< {{.dataFiles.stackitCliProfile | shellEscape}}) --no-set --empty --ignore-existing;
+stackit config profile create (Get-Content -Raw {{.dataFiles.stackitRegion | shellEscape}}) --no-set --empty --ignore-existing;
 $Env:STACKIT_CLI_PROFILE = Get-Content -Raw {{.dataFiles.stackitCliProfile | shellEscape}};
 stackit auth activate-service-account --service-account-key-path {{.dataFiles.serviceaccount | shellEscape}}:
 {{range $key, $path := .dataFiles}}Remove-Item -Force -ErrorAction SilentlyContinue {{$path | shellEscape}};
