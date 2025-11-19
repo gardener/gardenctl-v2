@@ -839,7 +839,7 @@ func (o *SSHOptions) bastionIngressPolicies(logger klog.Logger, providerType str
 					return nil, fmt.Errorf("GCP only supports IPv4: %s", cidr)
 				}
 
-				logger.Info("GCP only supports IPv4, skipped CIDR: %s", "cidr", cidr)
+				logger.Info("GCP only supports IPv4, skipped CIDR", "cidr", cidr)
 
 				continue // skip
 			}
