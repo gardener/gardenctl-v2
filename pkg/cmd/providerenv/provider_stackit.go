@@ -11,8 +11,8 @@ import (
 	"fmt"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	"go.yaml.in/yaml/v3"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/yaml"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/pkg/provider/credvalidate"
