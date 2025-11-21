@@ -8,8 +8,8 @@ package providerenv
 
 import "os"
 
-// writeOrRemoveToken writes token contents to the specified path, or removes the file if unset is true.
-func writeOrRemoveToken(unset bool, path string, contents []byte) error {
+// writeOrRemoveFile writes contents to the specified path, or removes the file if unset is true.
+func writeOrRemoveFile(unset bool, path string, contents []byte) error {
 	if unset {
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			return err
