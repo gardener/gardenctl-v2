@@ -386,14 +386,7 @@ func printProviderEnv(
 		return o.PrintObject(data)
 	}
 
-	var filename string
-
-	if providerType == "stackit" {
-		// TODO(maboehm): add full support once the provider extension is open sourced.
-		filename = filepath.Join(o.GardenDir, "templates", "openstack.tmpl")
-	} else {
-		filename = filepath.Join(o.GardenDir, "templates", providerType+".tmpl")
-	}
+	filename := filepath.Join(o.GardenDir, "templates", providerType+".tmpl")
 
 	if err := o.Template.ParseFiles(filename); err != nil {
 		return fmt.Errorf("failed to generate the cloud provider CLI configuration script: %w", err)
