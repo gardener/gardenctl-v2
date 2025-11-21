@@ -64,7 +64,7 @@ func (p *GCPProvider) FromWorkloadIdentity(o *options, wi *gardensecurityv1alpha
 	tokenFileName := fmt.Sprintf(".%s-web-identity-token", computeWorkloadIdentityFilePrefix(o.SessionID, wi))
 
 	tokenFilePath := filepath.Join(configDir, tokenFileName)
-	if err := writeOrRemoveToken(o.Unset, tokenFilePath, []byte(token)); err != nil {
+	if err := writeOrRemoveFile(o.Unset, tokenFilePath, []byte(token)); err != nil {
 		return nil, err
 	}
 
