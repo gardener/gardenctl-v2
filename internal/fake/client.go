@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -105,6 +106,10 @@ func (w *clientWrapper) List(ctx context.Context, list client.ObjectList, opts .
 }
 
 func (w *clientWrapper) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	if obj.GetUID() == "" {
+		obj.SetUID(uuid.NewUUID())
+	}
+
 	return w.delegate.Create(ctx, obj, opts...)
 }
 

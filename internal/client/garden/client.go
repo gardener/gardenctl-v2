@@ -92,6 +92,8 @@ type Client interface {
 	// GetShootOfManagedSeed returns shoot of seed using ManagedSeed resource. An error is returned if it is not a managed seed or the referenced shoot is nil
 	GetShootOfManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.Shoot, error)
 
+	// GetBastion returns a Gardener bastion resource by namespace and name
+	GetBastion(ctx context.Context, namespace, name string) (*operationsv1alpha1.Bastion, error)
 	// ListBastions returns all Gardener bastion resources, filtered by a list option
 	ListBastions(ctx context.Context, opts ...client.ListOption) (*operationsv1alpha1.BastionList, error)
 	// PatchBastion patches an existing bastion to match newBastion using the merge patch strategy
@@ -384,6 +386,21 @@ func (g *clientImpl) GetShootOfManagedSeed(ctx context.Context, name string) (*s
 	}
 
 	return managedSeed.Spec.Shoot, nil
+}
+
+func (g *clientImpl) GetBastion(ctx context.Context, namespace, name string) (*operationsv1alpha1.Bastion, error) {
+	bastion := &operationsv1alpha1.Bastion{}
+	key := types.NamespacedName{Namespace: namespace, Name: name}
+
+	if err := g.c.Get(ctx, key, bastion); err != nil {
+		return nil, fmt.Errorf("failed to get bastion %v: %w", key, err)
+	}
+
+	if err := validateObjectMetadata(bastion); err != nil {
+		return nil, err
+	}
+
+	return bastion, nil
 }
 
 func (g *clientImpl) ListBastions(ctx context.Context, opts ...client.ListOption) (*operationsv1alpha1.BastionList, error) {

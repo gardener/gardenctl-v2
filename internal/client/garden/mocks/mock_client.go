@@ -77,6 +77,21 @@ func (mr *MockClientMockRecorder) FindShoot(arg0 interface{}, arg1 ...interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindShoot", reflect.TypeOf((*MockClient)(nil).FindShoot), varargs...)
 }
 
+// GetBastion mocks base method.
+func (m *MockClient) GetBastion(arg0 context.Context, arg1, arg2 string) (*v1alpha1.Bastion, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBastion", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*v1alpha1.Bastion)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBastion indicates an expected call of GetBastion.
+func (mr *MockClientMockRecorder) GetBastion(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBastion", reflect.TypeOf((*MockClient)(nil).GetBastion), arg0, arg1, arg2)
+}
+
 // GetCloudProfile mocks base method.
 func (m *MockClient) GetCloudProfile(arg0 context.Context, arg1 v1beta1.CloudProfileReference, arg2 string) (*garden.CloudProfileUnion, error) {
 	m.ctrl.T.Helper()
