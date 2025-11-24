@@ -45,11 +45,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
@@ -457,6 +459,10 @@ func (o *SSHOptions) Validate() error {
 		}
 	}
 
+	if err := validateBastionHost(o.BastionHost); err != nil {
+		return fmt.Errorf("invalid bastion-host: %w", err)
+	}
+
 	content, err := os.ReadFile(o.SSHPublicKeyFile.String())
 	if err != nil {
 		return fmt.Errorf("invalid SSH public key file: %w", err)
@@ -479,6 +485,32 @@ func (o *SSHOptions) Validate() error {
 		}
 
 		o.sshPrivateKeyBytes = privateKeyBytes
+	}
+
+	return nil
+}
+
+// validateBastionHost validates a user-provided bastion host override.
+func validateBastionHost(host string) error {
+	if host == "" {
+		return nil
+	}
+
+	if ip := net.ParseIP(host); ip != nil {
+		// Note: Loopback and link-local addresses are allowed for jumphost tunnels and local garden setups.
+		if ip.IsUnspecified() {
+			return fmt.Errorf("unspecified addresses are not allowed for bastion: %q", host)
+		}
+
+		if ip.IsMulticast() {
+			return fmt.Errorf("multicast addresses are not allowed for bastion: %q", host)
+		}
+
+		return nil
+	}
+
+	if errs := validation.IsDNS1123Subdomain(host); len(errs) > 0 {
+		return fmt.Errorf("bastion hostname does not conform to DNS naming rules: %s: %q", strings.Join(errs, "; "), host)
 	}
 
 	return nil

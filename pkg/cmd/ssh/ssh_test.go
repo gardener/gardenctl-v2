@@ -95,7 +95,7 @@ var _ = Describe("SSH Command", func() {
 		gardenKubeconfigFile = "/not/a/real/kubeconfig"
 		bastionName          = "test-bastion"
 		bastionHostname      = "example.invalid"
-		bastionIP            = "0.0.0.0"
+		bastionIP            = "192.0.2.1"
 		nodeHostname         = "example.host.invalid"
 	)
 
@@ -724,7 +724,7 @@ var _ = Describe("SSH Command", func() {
 			var info ssh.ConnectInformation
 			Expect(json.Unmarshal([]byte(out.String()), &info)).To(Succeed())
 			Expect(info.Bastion.Name).To(Equal(bastionName))
-			Expect(info.Bastion.PreferredAddress).To(Equal("0.0.0.0"))
+			Expect(info.Bastion.PreferredAddress).To(Equal(bastionIP))
 			Expect(info.Bastion.SSHPrivateKeyFile).To(Equal(options.SSHPrivateKeyFile))
 			Expect(info.Bastion.SSHPublicKeyFile).To(Equal(options.SSHPublicKeyFile))
 			Expect(info.Nodes).To(ConsistOf([]ssh.Node{
@@ -1276,5 +1276,29 @@ var _ = Describe("SSH Options", func() {
 				Expect(ssh.ValidateSSHPublicKey(ecPublicKeyFile)).To(Succeed())
 			})
 		})
+	})
+
+	Describe("validateBastionHost", func() {
+		DescribeTable("bastion host validation - valid cases",
+			func(host string) {
+				Expect(ssh.ValidateBastionHost(host)).To(Succeed())
+			},
+			Entry("empty host", ""),
+			Entry("valid IP", "192.0.2.1"),
+			Entry("valid hostname", "bastion.example.com"),
+			Entry("loopback IP", "127.0.0.1"),
+			Entry("localhost", "localhost"),
+			Entry("link-local IP", "169.254.0.1"),
+		)
+
+		DescribeTable("bastion host validation - invalid cases",
+			func(host string, expectedError string) {
+				Expect(ssh.ValidateBastionHost(host)).To(MatchError(ContainSubstring(expectedError)))
+			},
+			Entry("unspecified IP", "0.0.0.0", "unspecified addresses are not allowed"),
+			Entry("multicast IP", "224.0.0.1", "multicast addresses are not allowed"),
+			Entry("hostname containing semicolon", "bastion;example.com", "does not conform to DNS naming rules"),
+			Entry("hostname not conforming to DNS rules", "INVALID_HOST", "does not conform to DNS naming rules"),
+		)
 	})
 })

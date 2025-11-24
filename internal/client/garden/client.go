@@ -10,6 +10,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"strings"
 
 	openstackinstall "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/install"
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
@@ -30,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -388,6 +391,45 @@ func (g *clientImpl) GetShootOfManagedSeed(ctx context.Context, name string) (*s
 	return managedSeed.Spec.Shoot, nil
 }
 
+// validateBastionIngress validates the bastion ingress information.
+func validateBastionIngress(ingress *corev1.LoadBalancerIngress) error {
+	if ingress == nil {
+		return nil
+	}
+
+	if ingress.IP == "" && ingress.Hostname == "" {
+		return nil
+	}
+
+	if ingress.IP != "" {
+		ip := net.ParseIP(ingress.IP)
+		if ip == nil {
+			return fmt.Errorf("invalid bastion IP address format: %q", ingress.IP)
+		}
+
+		// Note: Loopback and link-local addresses are allowed for jumphost tunnels and local garden setups.
+		if ip.IsUnspecified() {
+			return fmt.Errorf("unspecified addresses are not allowed for bastion: %q", ingress.IP)
+		}
+
+		if ip.IsMulticast() {
+			return fmt.Errorf("multicast addresses are not allowed for bastion: %q", ingress.IP)
+		}
+	}
+
+	if ingress.Hostname != "" {
+		if errs := validation.IsDNS1123Subdomain(ingress.Hostname); len(errs) > 0 {
+			return fmt.Errorf("bastion hostname does not conform to DNS naming rules: %s: %q", strings.Join(errs, "; "), ingress.Hostname)
+		}
+
+		if net.ParseIP(ingress.Hostname) != nil {
+			return fmt.Errorf("bastion hostname appears to be an IP address, should use IP field instead: %q", ingress.Hostname)
+		}
+	}
+
+	return nil
+}
+
 func (g *clientImpl) GetBastion(ctx context.Context, namespace, name string) (*operationsv1alpha1.Bastion, error) {
 	bastion := &operationsv1alpha1.Bastion{}
 	key := types.NamespacedName{Namespace: namespace, Name: name}
@@ -397,6 +439,10 @@ func (g *clientImpl) GetBastion(ctx context.Context, namespace, name string) (*o
 	}
 
 	if err := validateObjectMetadata(bastion); err != nil {
+		return nil, err
+	}
+
+	if err := validateBastionIngress(bastion.Status.Ingress); err != nil {
 		return nil, err
 	}
 
@@ -414,8 +460,12 @@ func (g *clientImpl) ListBastions(ctx context.Context, opts ...client.ListOption
 		return nil, fmt.Errorf("failed to list bastions with list options %q: %w", opts, err)
 	}
 
-	for i := range bastionList.Items {
-		if err := validateObjectMetadata(&bastionList.Items[i]); err != nil {
+	for _, bastion := range bastionList.Items {
+		if err := validateObjectMetadata(&bastion); err != nil {
+			return nil, err
+		}
+
+		if err := validateBastionIngress(bastion.Status.Ingress); err != nil {
 			return nil, err
 		}
 	}
@@ -429,6 +479,10 @@ func (g *clientImpl) PatchBastion(ctx context.Context, newBastion, oldBastion *o
 	}
 
 	if err := validateObjectMetadata(newBastion); err != nil {
+		return err
+	}
+
+	if err := validateBastionIngress(newBastion.Status.Ingress); err != nil {
 		return err
 	}
 
