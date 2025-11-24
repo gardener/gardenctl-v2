@@ -56,6 +56,8 @@ func SetRSAKeyBitsForTest(bits int) {
 	rsaKeyBits = bits
 }
 
+var ValidateBastionHost = validateBastionHost
+
 type TestArguments struct {
 	arguments
 }
