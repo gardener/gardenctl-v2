@@ -736,11 +736,11 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	}
 
 	// continuously keep the bastion alive by renewing its annotation
-	go keepBastionAlive(ctx, cancel, gardenClient.RuntimeClient(), bastion.DeepCopy())
+	go keepBastionAlive(ctx, cancel, gardenClient, bastion.DeepCopy())
 
 	logger.Info("Waiting for bastion to be ready…", "waitTimeout", o.WaitTimeout)
 
-	err = waitForBastion(ctx, o, gardenClient.RuntimeClient(), bastion)
+	bastion, err = waitForBastion(ctx, o, gardenClient, bastion)
 	if wait.Interrupted(err) {
 		return errors.New("timed out waiting for the bastion to be ready")
 	} else if err != nil {
@@ -1051,10 +1051,11 @@ func preferredBastionAddress(bastionHostOverride string, bastion *operationsv1al
 	return ""
 }
 
-func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Client, bastion *operationsv1alpha1.Bastion) error {
+func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient clientgarden.Client, bastion *operationsv1alpha1.Bastion) (*operationsv1alpha1.Bastion, error) {
 	var (
 		lastCheckErr    error
 		privateKeyBytes []byte
+		updatedBastion  *operationsv1alpha1.Bastion
 		err             error
 	)
 
@@ -1063,23 +1064,24 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 	if o.SSHPrivateKeyFile != "" {
 		privateKeyBytes, err = os.ReadFile(o.SSHPrivateKeyFile.String())
 		if err != nil {
-			return fmt.Errorf("failed to read SSH private key from %q: %w", o.SSHPrivateKeyFile, err)
+			return nil, fmt.Errorf("failed to read SSH private key from %q: %w", o.SSHPrivateKeyFile, err)
 		}
 	}
 
 	hostKeyCallback, err := o.HostKeyCallbackFactory.New(o.BastionStrictHostKeyChecking, o.BastionUserKnownHostsFiles, o.IOStreams)
 	if err != nil {
-		return fmt.Errorf("could not create hostkey callback: %w", err)
+		return nil, fmt.Errorf("could not create hostkey callback: %w", err)
 	}
 
 	waitErr := wait.PollUntilContextTimeout(ctx, pollBastionStatusInterval, o.WaitTimeout, false, func(ctx context.Context) (bool, error) {
-		key := client.ObjectKeyFromObject(bastion)
+		var err error
 
-		if err := gardenClient.Get(ctx, key, bastion); err != nil {
+		updatedBastion, err = gardenClient.GetBastion(ctx, bastion.Namespace, bastion.Name)
+		if err != nil {
 			return false, err
 		}
 
-		switch cond := corev1beta1helper.GetCondition(bastion.Status.Conditions, operationsv1alpha1.BastionReady); {
+		switch cond := corev1beta1helper.GetCondition(updatedBastion.Status.Conditions, operationsv1alpha1.BastionReady); {
 		case cond == nil:
 			return false, nil
 		case cond.Status != gardencorev1beta1.ConditionTrue:
@@ -1094,7 +1096,7 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 			return true, nil
 		}
 
-		bastionPreferredAddress := preferredBastionAddress(o.BastionHost, bastion)
+		bastionPreferredAddress := preferredBastionAddress(o.BastionHost, updatedBastion)
 
 		lastCheckErr = bastionAvailabilityChecker(
 			bastionPreferredAddress,
@@ -1111,10 +1113,10 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 	})
 
 	if wait.Interrupted(waitErr) {
-		return fmt.Errorf("timed out waiting for the bastion to become ready: %w", lastCheckErr)
+		return nil, fmt.Errorf("timed out waiting for the bastion to become ready: %w", lastCheckErr)
 	}
 
-	return waitErr
+	return updatedBastion, waitErr
 }
 
 func getShootNode(ctx context.Context, o *SSHOptions, shootClient client.Client) (*corev1.Node, error) {
@@ -1172,7 +1174,7 @@ func getKeepAliveInterval() time.Duration {
 	return keepAliveInterval
 }
 
-func keepBastionAlive(ctx context.Context, cancel context.CancelFunc, gardenClient client.Client, bastion *operationsv1alpha1.Bastion) {
+func keepBastionAlive(ctx context.Context, cancel context.CancelFunc, gardenClient clientgarden.Client, bastion *operationsv1alpha1.Bastion) {
 	logger := klog.FromContext(ctx).WithValues("bastion", klog.KObj(bastion))
 
 	ticker := time.NewTicker(getKeepAliveInterval())
@@ -1185,12 +1187,8 @@ func keepBastionAlive(ctx context.Context, cancel context.CancelFunc, gardenClie
 
 		case <-ticker.C:
 			// re-fetch current bastion
-			key := types.NamespacedName{Name: bastion.Name, Namespace: bastion.Namespace}
-
-			// reset annotations so that we fetch the actual current state
-			bastion.Annotations = map[string]string{}
-
-			if err := gardenClient.Get(ctx, key, bastion); err != nil {
+			updatedBastion, err := gardenClient.GetBastion(ctx, bastion.Namespace, bastion.Name)
+			if err != nil {
 				if apierrors.IsNotFound(err) {
 					logger.Error(err, "Can't keep bastion alive. Bastion is already gone.")
 					cancel()
@@ -1204,15 +1202,15 @@ func keepBastionAlive(ctx context.Context, cancel context.CancelFunc, gardenClie
 			}
 
 			// add the keepalive annotation
-			oldBastion := bastion.DeepCopy()
+			oldBastion := updatedBastion.DeepCopy()
 
-			if bastion.Annotations == nil {
-				bastion.Annotations = map[string]string{}
+			if updatedBastion.Annotations == nil {
+				updatedBastion.Annotations = map[string]string{}
 			}
 
-			bastion.Annotations[corev1beta1constants.GardenerOperation] = corev1beta1constants.GardenerOperationKeepalive
+			updatedBastion.Annotations[corev1beta1constants.GardenerOperation] = corev1beta1constants.GardenerOperationKeepalive
 
-			if err := gardenClient.Patch(ctx, bastion, client.MergeFrom(oldBastion)); err != nil {
+			if err := gardenClient.PatchBastion(ctx, updatedBastion, oldBastion); err != nil {
 				logger.Error(err, "Failed to keep bastion alive.")
 			}
 		}
