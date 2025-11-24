@@ -120,6 +120,10 @@ func (w *clientWrapper) Patch(ctx context.Context, obj client.Object, patch clie
 	return w.delegate.Patch(ctx, obj, patch, opts...)
 }
 
+func (w *clientWrapper) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
+	return w.delegate.Apply(ctx, obj, opts...)
+}
+
 func (w *clientWrapper) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
 	return w.delegate.DeleteAllOf(ctx, obj, opts...)
 }
