@@ -82,7 +82,6 @@ clusters: null
 contexts: null
 current-context: ""
 kind: Config
-preferences: {}
 users: null
 `))
 		})
@@ -154,7 +153,6 @@ clusters: null
 contexts: null
 current-context: ""
 kind: Config
-preferences: {}
 users: null
 `))
 				})
@@ -169,7 +167,6 @@ users: null
 						Expect(options.String()).To(Equal(`{
     "kind": "Config",
     "apiVersion": "v1",
-    "preferences": {},
     "clusters": null,
     "users": null,
     "contexts": null,
@@ -204,7 +201,6 @@ contexts:
   name: context2
 current-context: context2
 kind: Config
-preferences: {}
 users:
 - name: user2
   user:
