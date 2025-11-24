@@ -5,11 +5,11 @@ unset CLOUDSDK_CORE_PROJECT;
 unset CLOUDSDK_COMPUTE_REGION;
 unset CLOUDSDK_CONFIG;
 {{else -}}
-export GOOGLE_CREDENTIALS_ACCOUNT=$(< {{.dataFiles.client_email | shellEscape}});
 export CLOUDSDK_CORE_PROJECT=$(< {{.dataFiles.project_id | shellEscape}});
 export CLOUDSDK_COMPUTE_REGION=$(< {{.dataFiles.region | shellEscape}});
 export CLOUDSDK_CONFIG={{.configDir | shellEscape}};
-gcloud auth activate-service-account --key-file {{.dataFiles.credentials | shellEscape}} -- "$GOOGLE_CREDENTIALS_ACCOUNT";
+gcloud auth login --cred-file {{.dataFiles.credentials | shellEscape}};
+export GOOGLE_CREDENTIALS_ACCOUNT=$(gcloud auth list --filter=status:ACTIVE --format='value(account)');
 {{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
 {{end -}}
 {{end}}{{template "gcp-usage-hint" .__meta}}{{end}}
@@ -24,11 +24,11 @@ set -e CLOUDSDK_CORE_PROJECT;
 set -e CLOUDSDK_COMPUTE_REGION;
 set -e CLOUDSDK_CONFIG;
 {{else -}}
-set -gx GOOGLE_CREDENTIALS_ACCOUNT (cat -- {{.dataFiles.client_email | shellEscape}});
 set -gx CLOUDSDK_CORE_PROJECT (cat -- {{.dataFiles.project_id | shellEscape}});
 set -gx CLOUDSDK_COMPUTE_REGION (cat -- {{.dataFiles.region | shellEscape}});
 set -gx CLOUDSDK_CONFIG {{.configDir | shellEscape}};
-gcloud auth activate-service-account --key-file {{.dataFiles.credentials | shellEscape}} -- "$GOOGLE_CREDENTIALS_ACCOUNT";
+gcloud auth login --cred-file {{.dataFiles.credentials | shellEscape}};
+set -gx GOOGLE_CREDENTIALS_ACCOUNT (gcloud auth list --filter=status:ACTIVE --format='value(account)');
 {{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
 {{end -}}
 {{end}}{{template "gcp-usage-hint" .__meta}}{{end}}
@@ -40,11 +40,11 @@ Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_CORE_PROJECT;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_COMPUTE_REGION;
 Remove-Item -ErrorAction SilentlyContinue Env:\CLOUDSDK_CONFIG;
 {{else -}}
-$Env:GOOGLE_CREDENTIALS_ACCOUNT = Get-Content -Raw {{.dataFiles.client_email | shellEscape}};
 $Env:CLOUDSDK_CORE_PROJECT = Get-Content -Raw {{.dataFiles.project_id | shellEscape}};
 $Env:CLOUDSDK_COMPUTE_REGION = Get-Content -Raw {{.dataFiles.region | shellEscape}};
 $Env:CLOUDSDK_CONFIG = {{.configDir | shellEscape}};
-gcloud auth activate-service-account --key-file {{.dataFiles.credentials | shellEscape}} -- "$Env:GOOGLE_CREDENTIALS_ACCOUNT";
+gcloud auth login --cred-file {{.dataFiles.credentials | shellEscape}};
+$Env:GOOGLE_CREDENTIALS_ACCOUNT = gcloud auth list --filter=status:ACTIVE --format='value(account)';
 {{range $key, $path := .dataFiles}}Remove-Item -Force -ErrorAction SilentlyContinue {{$path | shellEscape}};
 {{end -}}
 {{end}}{{template "gcp-usage-hint" .__meta}}{{end}}

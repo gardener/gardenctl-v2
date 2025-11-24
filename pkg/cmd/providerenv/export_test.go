@@ -26,14 +26,14 @@ var (
 	GetTargetFlags = getTargetFlags
 )
 
-// GetSuffix returns the suffix field from TempDataWriter for testing.
-func (t *TempDataWriter) GetSuffix() string {
-	return t.suffix
+// GetPrefix returns the prefix field from TempDataWriter for testing.
+func (t *TempDataWriter) GetPrefix() string {
+	return t.prefix
 }
 
-// GetSuffix returns the suffix field from CleanupDataWriter for testing.
-func (c *CleanupDataWriter) GetSuffix() string {
-	return c.suffix
+// GetPrefix returns the prefix field from CleanupDataWriter for testing.
+func (c *CleanupDataWriter) GetPrefix() string {
+	return c.prefix
 }
 
 type TestOptions struct {

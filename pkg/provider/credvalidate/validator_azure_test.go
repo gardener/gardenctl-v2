@@ -8,12 +8,15 @@ package credvalidate_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/gardenctl-v2/pkg/provider/credvalidate"
 )
@@ -203,6 +206,128 @@ var _ = Describe("Azure Validator", func() {
 					"clientID", "abcdef12-3456-7890-abcd-\x00ef1234567890"),
 				Entry("clientSecret with null byte",
 					"clientSecret", "AbCdE~fGhI.-jKlMnOpQrStUvWxY\x00z0_123456789"),
+			)
+		})
+	})
+
+	Describe("Workload Identity Validation", func() {
+		var workloadIdentity *gardensecurityv1alpha1.WorkloadIdentity
+
+		Context("Valid configurations", func() {
+			It("should succeed with valid configuration", func() {
+				workloadIdentity = &gardensecurityv1alpha1.WorkloadIdentity{
+					Spec: gardensecurityv1alpha1.WorkloadIdentitySpec{
+						TargetSystem: gardensecurityv1alpha1.TargetSystem{
+							Type: "azure",
+							ProviderConfig: &runtime.RawExtension{
+								Raw: []byte(`{"clientID":"12345678-1234-1234-1234-123456789012","tenantID":"87654321-4321-4321-4321-210987654321","subscriptionID":"abcdef12-3456-7890-abcd-ef1234567890"}`),
+							},
+						},
+					},
+				}
+				validatedConfig, err := validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(validatedConfig["clientID"]).To(Equal("12345678-1234-1234-1234-123456789012"))
+				Expect(validatedConfig["tenantID"]).To(Equal("87654321-4321-4321-4321-210987654321"))
+				Expect(validatedConfig["subscriptionID"]).To(Equal("abcdef12-3456-7890-abcd-ef1234567890"))
+			})
+
+			DescribeTable("should succeed with different valid GUIDs",
+				func(guid string) {
+					configBytes, _ := json.Marshal(map[string]string{"clientID": guid, "tenantID": guid, "subscriptionID": guid})
+					workloadIdentity = &gardensecurityv1alpha1.WorkloadIdentity{
+						Spec: gardensecurityv1alpha1.WorkloadIdentitySpec{
+							TargetSystem: gardensecurityv1alpha1.TargetSystem{
+								Type:           "azure",
+								ProviderConfig: &runtime.RawExtension{Raw: configBytes},
+							},
+						},
+					}
+					_, err := validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+					Expect(err).NotTo(HaveOccurred())
+				},
+				Entry("standard GUID", "12345678-1234-1234-1234-123456789012"),
+				Entry("uppercase GUID", "ABCDEF12-3456-7890-ABCD-EF1234567890"),
+				Entry("all zeros", "00000000-0000-0000-0000-000000000000"),
+				Entry("all f's", "ffffffff-ffff-ffff-ffff-ffffffffffff"),
+			)
+		})
+
+		Context("Invalid configurations", func() {
+			BeforeEach(func() {
+				baseConfig := map[string]string{
+					"clientID":       "12345678-1234-1234-1234-123456789012",
+					"tenantID":       "87654321-4321-4321-4321-210987654321",
+					"subscriptionID": "abcdef12-3456-7890-abcd-ef1234567890",
+				}
+				configBytes, _ := json.Marshal(baseConfig)
+				workloadIdentity = &gardensecurityv1alpha1.WorkloadIdentity{
+					Spec: gardensecurityv1alpha1.WorkloadIdentitySpec{
+						TargetSystem: gardensecurityv1alpha1.TargetSystem{
+							Type:           "azure",
+							ProviderConfig: &runtime.RawExtension{Raw: configBytes},
+						},
+					},
+				}
+			})
+
+			DescribeTable("should fail with missing or empty required fields",
+				func(field, value string, expectedErrorSubstring string) {
+					configMap := map[string]string{
+						"clientID":       "12345678-1234-1234-1234-123456789012",
+						"tenantID":       "87654321-4321-4321-4321-210987654321",
+						"subscriptionID": "abcdef12-3456-7890-abcd-ef1234567890",
+					}
+					if value == "<missing>" {
+						delete(configMap, field)
+					} else {
+						configMap[field] = value
+					}
+					configBytes, _ := json.Marshal(configMap)
+					workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw = configBytes
+					_, err := validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+					Expect(err).To(MatchError(ContainSubstring(expectedErrorSubstring)))
+				},
+				Entry("missing clientID", "clientID", "<missing>", "\"clientID\": required field is missing"),
+				Entry("empty clientID", "clientID", "", "\"clientID\": required field cannot be empty"),
+				Entry("missing tenantID", "tenantID", "<missing>", "\"tenantID\": required field is missing"),
+				Entry("empty tenantID", "tenantID", "", "\"tenantID\": required field cannot be empty"),
+				Entry("missing subscriptionID", "subscriptionID", "<missing>", "\"subscriptionID\": required field is missing"),
+				Entry("empty subscriptionID", "subscriptionID", "", "\"subscriptionID\": required field cannot be empty"),
+			)
+
+			DescribeTable("should fail with invalid GUID formats",
+				func(field, invalidGUID string) {
+					configMap := map[string]string{
+						"clientID":       "12345678-1234-1234-1234-123456789012",
+						"tenantID":       "87654321-4321-4321-4321-210987654321",
+						"subscriptionID": "abcdef12-3456-7890-abcd-ef1234567890",
+					}
+					configMap[field] = invalidGUID
+					configBytes, _ := json.Marshal(configMap)
+					workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw = configBytes
+					_, err := validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring(fmt.Sprintf(`pattern mismatch in field "%s": does not match any allowed patterns`, field))))
+					Expect(err).To(MatchError(ContainSubstring(fmt.Sprintf("actual: %q", invalidGUID))))
+				},
+				Entry("clientID too short", "clientID", "12345678-1234-1234-1234-12345678901"),
+				Entry("clientID missing hyphens", "clientID", "12345678123412341234123456789012"),
+				Entry("tenantID invalid characters", "tenantID", "87654321-4321-4321-4321-21098765432g"),
+				Entry("subscriptionID not a GUID", "subscriptionID", "invalid-sub-id"),
+				Entry("subscriptionID wrong format", "subscriptionID", "abcdef12_3456_7890_abcd_ef1234567890"),
+			)
+
+			DescribeTable("fails with invalid provider config",
+				func(providerConfig *runtime.RawExtension, errorSub string) {
+					workloadIdentity.Spec.TargetSystem.ProviderConfig = providerConfig
+					_, err := validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+					Expect(err).To(MatchError(ContainSubstring(errorSub)))
+				},
+				Entry("invalid JSON", &runtime.RawExtension{Raw: []byte(`invalid json`)}, "failed to unmarshal Azure workload identity config"),
+				Entry("malformed JSON", &runtime.RawExtension{Raw: []byte(`{"clientID":"123","tenantID":"456"`)}, "failed to unmarshal Azure workload identity config"),
+				Entry("nil provider config", nil, "providerConfig is missing"),
+				Entry("empty provider config", &runtime.RawExtension{Raw: []byte(``)}, "failed to unmarshal Azure workload identity config"),
 			)
 		})
 	})

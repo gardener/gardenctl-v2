@@ -9,6 +9,7 @@ package providerenv
 import (
 	"fmt"
 	"runtime"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -24,6 +25,7 @@ func NewCmdProviderEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command 
 		Options: base.Options{
 			IOStreams: ioStreams,
 		},
+		WorkloadIdentityTokenExpiration: time.Hour,
 	}
 	runE := base.WrapRunE(o, f)
 	cmd := &cobra.Command{

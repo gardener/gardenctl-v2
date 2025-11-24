@@ -51,7 +51,7 @@ fi
 {{end}}
 
 {{define "fish" -}}
-if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ];
+if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]
   set -gx GCTL_SESSION_ID (uuidgen)
 end
 alias {{.prefix}}=gardenctl
