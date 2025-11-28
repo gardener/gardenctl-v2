@@ -194,7 +194,15 @@ func callIPify(ctx context.Context, domain string) (*net.IP, error) {
 	netIP := net.ParseIP(ipAddress)
 
 	if netIP == nil {
-		return nil, fmt.Errorf("API returned an invalid IP (%q)", ipAddress)
+		return nil, fmt.Errorf("API %s returned an invalid IP (%q)", domain, ipAddress)
+	}
+
+	if !netIP.IsGlobalUnicast() {
+		return nil, fmt.Errorf("API %s returned a non-global unicast IP address: %q", domain, ipAddress)
+	}
+
+	if netIP.IsPrivate() {
+		return nil, fmt.Errorf("API %s returned a private IP address: %q", domain, ipAddress)
 	}
 
 	return &netIP, nil

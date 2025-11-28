@@ -440,4 +440,51 @@ var _ = Describe("Client", func() {
 			Expect(username).To(Equal(user))
 		})
 	})
+
+	Describe("validateBastionIngress", func() {
+		DescribeTable("should succeed with valid ingress",
+			func(ingress *corev1.LoadBalancerIngress) {
+				Expect(clientgarden.ValidateBastionIngress(ingress)).To(Succeed())
+			},
+			Entry("with valid IP",
+				&corev1.LoadBalancerIngress{IP: "192.0.2.1"}),
+			Entry("with valid hostname",
+				&corev1.LoadBalancerIngress{Hostname: "bastion.example.com"}),
+			Entry("with both valid IP and hostname",
+				&corev1.LoadBalancerIngress{IP: "192.0.2.1", Hostname: "bastion.example.com"}),
+			Entry("with nil ingress", nil),
+			Entry("when both IP and hostname are empty",
+				&corev1.LoadBalancerIngress{}),
+			Entry("with maximum length hostname (253 characters)",
+				&corev1.LoadBalancerIngress{Hostname: "a11111111111111111111111111111111111111111111111111111111111111.a11111111111111111111111111111111111111111111111111111111111111.a11111111111111111111111111111111111111111111111111111111111111.d111111111111111111111111111111111111111111111111111111111111"}),
+		)
+
+		DescribeTable("should fail with invalid ingress",
+			func(ingress *corev1.LoadBalancerIngress, expectedErrSubstring string) {
+				Expect(clientgarden.ValidateBastionIngress(ingress)).To(MatchError(ContainSubstring(expectedErrSubstring)))
+			},
+			Entry("with invalid IP address format",
+				&corev1.LoadBalancerIngress{IP: "not-an-ip"}, "invalid bastion IP address format"),
+			Entry("with unspecified IPv4 address (0.0.0.0)",
+				&corev1.LoadBalancerIngress{IP: "0.0.0.0"}, "unspecified addresses are not allowed for bastion"),
+			Entry("with unspecified IPv6 address (::)",
+				&corev1.LoadBalancerIngress{IP: "::"}, "unspecified addresses are not allowed for bastion"),
+			Entry("with multicast IPv4 address",
+				&corev1.LoadBalancerIngress{IP: "224.0.0.1"}, "multicast addresses are not allowed for bastion"),
+			Entry("with multicast IPv6 address",
+				&corev1.LoadBalancerIngress{IP: "ff02::1"}, "multicast addresses are not allowed for bastion"),
+			Entry("with hostname that is not DNS compliant (uppercase)",
+				&corev1.LoadBalancerIngress{Hostname: "BASTION.EXAMPLE.COM"}, "bastion hostname does not conform to DNS naming rules"),
+			Entry("with hostname that is not DNS compliant (invalid characters)",
+				&corev1.LoadBalancerIngress{Hostname: "bastion_example.com"}, "bastion hostname does not conform to DNS naming rules"),
+			Entry("with hostname that is not DNS compliant (starts with hyphen)",
+				&corev1.LoadBalancerIngress{Hostname: "-bastion.example.com"}, "bastion hostname does not conform to DNS naming rules"),
+			Entry("with hostname that is not DNS compliant (ends with hyphen)",
+				&corev1.LoadBalancerIngress{Hostname: "bastion-.example.com"}, "bastion hostname does not conform to DNS naming rules"),
+			Entry("with hostname that is actually an IPv4 address",
+				&corev1.LoadBalancerIngress{Hostname: "192.0.2.1"}, "bastion hostname appears to be an IP address"),
+			Entry("with hostname exceeding maximum length (254 characters)",
+				&corev1.LoadBalancerIngress{Hostname: "a11111111111111111111111111111111111111111111111111111111111111.a11111111111111111111111111111111111111111111111111111111111111.a11111111111111111111111111111111111111111111111111111111111111.d1111111111111111111111111111111111111111111111111111111111111"}, "bastion hostname does not conform to DNS naming rules"),
+		)
+	})
 })
