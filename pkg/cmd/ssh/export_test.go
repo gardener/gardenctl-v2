@@ -59,7 +59,7 @@ func SetRSAKeyBitsForTest(bits int) {
 var (
 	ValidateSSHPrivateKey = validateSSHPrivateKey
 	ValidateSSHPublicKey  = validateSSHPublicKey
-	ValidateBastionHost = validateBastionHost
+	ValidateHost          = validateHost
 )
 
 type TestArguments struct {

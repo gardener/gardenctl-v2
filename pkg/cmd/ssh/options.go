@@ -220,7 +220,7 @@ type SSHOptions struct {
 
 	// NodeName is the name of the Shoot cluster node that the user wants to
 	// connect to. If this is left empty, gardenctl will only establish the
-	// bastion host, but leave it up to the user to SSH themselves.
+	// connection to the bastion host and leave it up to the user to SSH to the node themselves.
 	NodeName string
 
 	// User is the name of the Shoot cluster node ssh login username
@@ -459,8 +459,18 @@ func (o *SSHOptions) Validate() error {
 		}
 	}
 
-	if err := validateBastionHost(o.BastionHost); err != nil {
-		return fmt.Errorf("invalid bastion-host: %w", err)
+	if o.BastionHost != "" {
+		if err := validateHost(o.BastionHost); err != nil {
+			return fmt.Errorf("invalid bastion-host: %w", err)
+		}
+	}
+
+	if o.NodeName != "" {
+		// used as a fallback hostname if the node is not found in the cluster.
+		// validateHost also covers Kubernetes node resource name validation (by checking for DNS1123 subdomain conformance).
+		if err := validateHost(o.NodeName); err != nil {
+			return fmt.Errorf("invalid node name: %w", err)
+		}
 	}
 
 	content, err := os.ReadFile(o.SSHPublicKeyFile.String())
@@ -490,27 +500,23 @@ func (o *SSHOptions) Validate() error {
 	return nil
 }
 
-// validateBastionHost validates a user-provided bastion host override.
-func validateBastionHost(host string) error {
-	if host == "" {
-		return nil
-	}
-
-	if ip := net.ParseIP(host); ip != nil {
-		// Note: Loopback and link-local addresses are allowed for jumphost tunnels and local garden setups.
+// validateHost validates that the given value is either a sane IP address or a
+// DNS1123 subdomain.
+func validateHost(value string) error {
+	if ip := net.ParseIP(value); ip != nil {
 		if ip.IsUnspecified() {
-			return fmt.Errorf("unspecified addresses are not allowed for bastion: %q", host)
+			return fmt.Errorf("unspecified addresses are not allowed: %q", value)
 		}
 
 		if ip.IsMulticast() {
-			return fmt.Errorf("multicast addresses are not allowed for bastion: %q", host)
+			return fmt.Errorf("multicast addresses are not allowed: %q", value)
 		}
 
 		return nil
 	}
 
-	if errs := validation.IsDNS1123Subdomain(host); len(errs) > 0 {
-		return fmt.Errorf("bastion hostname does not conform to DNS naming rules: %s: %q", strings.Join(errs, "; "), host)
+	if errs := validation.IsDNS1123Subdomain(value); len(errs) > 0 {
+		return fmt.Errorf("does not conform to DNS naming rules: %s: %q", strings.Join(errs, "; "), value)
 	}
 
 	return nil
