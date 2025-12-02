@@ -8,18 +8,26 @@ package providerenv_test
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
@@ -36,6 +44,7 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/env"
 	allowpattern "github.com/gardener/gardenctl-v2/pkg/provider/common/allowpattern"
+	"github.com/gardener/gardenctl-v2/pkg/provider/credvalidate"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
@@ -938,6 +947,175 @@ var _ = Describe("Env Commands - Options", func() {
 							"PLACEHOLDER_SESSION_DIR", sessionDir,
 							"PLACEHOLDER_HASH", hash,
 						).Replace(readTestFile("openstack/export.json"))
+						Expect(options.String()).To(Equal(expected))
+					})
+				})
+			})
+
+			Context("when the cloudprovider is STACKIT", func() {
+				var (
+					projectId          = uuid.New().String()
+					serviceaccount     = map[string]interface{}{}
+					jsonServiceaccount = []byte("")
+				)
+
+				BeforeEach(func() {
+					providerType = "stackit"
+
+					shoot.Spec.Region = "eu01"
+
+					factory := utilmocks.NewMockFactory(ctrl)
+					manager := targetmocks.NewMockManager(ctrl)
+					factory.EXPECT().GetSessionID().Return("test-session-id", nil)
+					factory.EXPECT().Manager().Return(manager, nil)
+					factory.EXPECT().TargetFlags().Return(tf)
+					factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
+					factory.EXPECT().Context().Return(ctx)
+					manager.EXPECT().SessionDir().Return(sessionDir)
+					manager.EXPECT().Configuration().Return(cfg)
+					Expect(options.Complete(factory, mockCmd, nil)).To(Succeed())
+
+					privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+					Expect(err).NotTo(HaveOccurred())
+
+					// Convert to PKCS#8 format
+					publicKeyBytes, _ := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+
+					// Create PEM block
+					publicKeyPEM := pem.EncodeToMemory(&pem.Block{
+						Type:  "PUBLIC KEY",
+						Bytes: publicKeyBytes,
+					})
+
+					// Convert to PKCS#8 format
+					privateKeyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
+
+					// Create PEM block
+					privateKeyPEM := pem.EncodeToMemory(&pem.Block{
+						Type:  "PRIVATE KEY",
+						Bytes: privateKeyBytes,
+					})
+
+					serviceaccount = map[string]interface{}{
+						"id":           uuid.New().String(),
+						"publicKey":    string(publicKeyPEM),
+						"createdAt":    time.Now().Format(time.RFC3339),
+						"validUntil":   time.Now().Format(time.RFC3339),
+						"keyType":      "USER_MANAGED",
+						"keyOrigin":    "USER_PROVIDED",
+						"keyAlgorithm": "RSA_2048",
+						"active":       true,
+						"credentials": map[string]interface{}{
+							"kid":        uuid.New().String(),
+							"iss":        "foo-bar@sa.stackit.cloud",
+							"sub":        uuid.New().String(),
+							"aud":        "https://foo-bar.stackit.cloud",
+							"privateKey": string(privateKeyPEM),
+						},
+					}
+					jsonServiceaccount, err = json.Marshal(serviceaccount)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				JustBeforeEach(func() {
+					secret.Data = map[string][]byte{
+						"project-id":          []byte(projectId),
+						"serviceaccount.json": jsonServiceaccount,
+					}
+				})
+
+				It("should render the template successfully", func() {
+					client := gardenclientmocks.NewMockClient(ctrl)
+					client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+					hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
+					expected := strings.NewReplacer(
+						"PLACEHOLDER_SESSION_DIR", sessionDir,
+						"PLACEHOLDER_HASH", hash,
+					).Replace(readTestFile("stackit/export.bash"))
+					Expect(options.String()).To(Equal(expected))
+				})
+
+				It("should fail with invalid aud url", func() {
+					serviceaccount["credentials"].(map[string]interface{})["aud"] = "https://foo-bar.example.com"
+
+					sajson, err := json.Marshal(serviceaccount)
+					Expect(err).NotTo(HaveOccurred())
+
+					secret.Data["serviceaccount.json"] = sajson
+
+					options.MergedAllowedPatterns = &providerenv.MergedProviderPatterns{
+						STACKIT: append(credvalidate.DefaultSTACKITAllowedPatterns(), allowpattern.Pattern{
+							Field: "aud", URI: "https://example.com",
+						}),
+					}
+
+					client := gardenclientmocks.NewMockClient(ctrl)
+					client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Not(Succeed()))
+				})
+
+				It("should fail with invalid aud url", func() {
+					serviceaccount["credentials"].(map[string]interface{})["aud"] = "https://example.com"
+
+					sajson, err := json.Marshal(serviceaccount)
+					Expect(err).NotTo(HaveOccurred())
+
+					secret.Data["serviceaccount.json"] = sajson
+
+					options.MergedAllowedPatterns = &providerenv.MergedProviderPatterns{
+						STACKIT: append(credvalidate.DefaultSTACKITAllowedPatterns(), allowpattern.Pattern{
+							Field: "aud", URI: "https://example.com",
+						}),
+					}
+
+					client := gardenclientmocks.NewMockClient(ctrl)
+					client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+				})
+
+				It("should set correct values", func() {
+					client := gardenclientmocks.NewMockClient(ctrl)
+					client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+					Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+					output := options.String()
+					hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
+					providerEnvDir := filepath.Join(sessionDir, "provider-env")
+
+					projectIdFilepath := filepath.Join(providerEnvDir, hash+"-projectId.txt")
+					stackitRegionFilepath := filepath.Join(providerEnvDir, hash+"-stackitRegion.txt")
+					stackitCliProfileFilepath := filepath.Join(providerEnvDir, hash+"-stackitCliProfile.txt")
+					serviceaccountFilepath := filepath.Join(providerEnvDir, hash+"-serviceaccount.txt")
+
+					Expect(output).To(ContainSubstring(fmt.Sprintf("export STACKIT_PROJECT_ID=$(< '%s');", projectIdFilepath)))
+					Expect(output).To(ContainSubstring(fmt.Sprintf("export STACKIT_REGION=$(< '%s');", stackitRegionFilepath)))
+					Expect(output).To(ContainSubstring(fmt.Sprintf("STACKIT_CLI_PROFILE=$(< '%s');", stackitCliProfileFilepath)))
+					Expect(output).To(ContainSubstring(fmt.Sprintf("stackit auth activate-service-account --service-account-key-path '%s';", serviceaccountFilepath)))
+
+					Expect(os.ReadFile(projectIdFilepath)).To(Equal([]byte(projectId)))
+					Expect(os.ReadFile(stackitRegionFilepath)).To(Equal([]byte(shoot.Spec.Region)))
+					Expect(os.ReadFile(stackitCliProfileFilepath)).To(Equal([]byte(gardenName)))
+					Expect(os.ReadFile(serviceaccountFilepath)).To(Equal(jsonServiceaccount))
+				})
+
+				Context("output is json", func() {
+					BeforeEach(func() {
+						output = "json"
+						shell = ""
+					})
+
+					It("should render the json successfully", func() {
+						client := gardenclientmocks.NewMockClient(ctrl)
+						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+						hash := computeTestHash("test-session-id", gardenName, shoot.Namespace, shoot.Name)
+						expected := strings.NewReplacer(
+							"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "stackit"),
+							"PLACEHOLDER_SESSION_DIR", sessionDir,
+							"PLACEHOLDER_HASH", hash,
+							"PLACEHOLDER_PROJECT_ID", projectId,
+							"PLACEHOLDER_SERVICEACCOUNT_JSON", strconv.Quote(string(jsonServiceaccount)),
+						).Replace(readTestFile("stackit/export.json"))
 						Expect(options.String()).To(Equal(expected))
 					})
 				})

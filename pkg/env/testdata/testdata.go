@@ -8,5 +8,5 @@ package testdata
 
 import "embed"
 
-//go:embed templates azure gcp openstack test
+//go:embed templates azure gcp openstack test stackit
 var FS embed.FS

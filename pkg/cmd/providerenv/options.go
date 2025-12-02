@@ -64,6 +64,10 @@ type options struct {
 	OpenStackAllowedPatterns []string
 	// OpenStackAllowedURIPatterns is a list of simple field=uri patterns for OpenStack credential config fields
 	OpenStackAllowedURIPatterns []string
+	// STACKITAllowedPatterns is a list of JSON-formatted allowed patterns for STACKIT credential config fields
+	STACKITAllowedPatterns []string
+	// STACKITAllowedURIPatterns is a list of simple field=uri patterns for STACKIT credential config fields
+	STACKITAllowedURIPatterns []string
 	// MergedAllowedPatterns contains the merged allowed patterns for all providers from defaults, config, and flags
 	MergedAllowedPatterns *MergedProviderPatterns
 }
@@ -74,6 +78,8 @@ type MergedProviderPatterns struct {
 	// OpenStack contains the merged allowed patterns for OpenStack credential fields.
 	// Currently, only the 'authURL' field is supported for pattern validation.
 	OpenStack []allowpattern.Pattern
+	// STACKIT contains the merged allowed patterns for STACKIT credential fields.
+	STACKIT []allowpattern.Pattern
 }
 
 // Complete adapts from the command line args to the data required.
@@ -118,8 +124,14 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error
 		return err
 	}
 
+	stackitPatterns, err := o.processSTACKITPatterns(cfg, logger)
+	if err != nil {
+		return err
+	}
+
 	o.MergedAllowedPatterns = &MergedProviderPatterns{
 		OpenStack: openstackPatterns,
+		STACKIT:   stackitPatterns,
 	}
 
 	return nil
@@ -132,10 +144,11 @@ func processProviderPatterns(
 	defaultPatterns []allowpattern.Pattern,
 	configPatterns []allowpattern.Pattern,
 	validationContext *allowpattern.ValidationContext,
+	validationContextExternal *allowpattern.ValidationContext,
 	jsonPatterns []string,
 	uriPatterns []string,
 ) ([]allowpattern.Pattern, error) {
-	flagPatterns, err := allowpattern.ParseAllowedPatterns(validationContext, jsonPatterns, uriPatterns)
+	flagPatterns, err := allowpattern.ParseAllowedPatterns(validationContextExternal, jsonPatterns, uriPatterns)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse %s flag allowed patterns: %w", providerName, err)
 	}
@@ -148,6 +161,12 @@ func processProviderPatterns(
 	if len(flagPatterns) > 0 {
 		logger.V(4).Info("Using custom %s allowed patterns from flags", "provider", providerName)
 		logger.V(6).Info("allowed patterns from flags", "provider", providerName, "patterns", flagPatterns)
+	}
+
+	for _, pattern := range configPatterns {
+		if err := pattern.ValidateWithContext(validationContextExternal); err != nil {
+			return nil, fmt.Errorf("invalid %s allowed pattern: %w", providerName, err)
+		}
 	}
 
 	var mergedPatterns []allowpattern.Pattern
@@ -192,8 +211,29 @@ func (o *options) processOpenStackPatterns(cfg *config.Config, logger klog.Logge
 		credvalidate.DefaultOpenStackAllowedPatterns(),
 		configPatterns,
 		credvalidate.GetOpenStackValidationContext(),
+		credvalidate.GetOpenStackValidationContext(),
 		o.OpenStackAllowedPatterns,
 		o.OpenStackAllowedURIPatterns,
+	)
+}
+
+// processOpenStackPatterns processes and merges OpenStack allowed patterns from defaults, config, and flags.
+// Note: Only the 'authURL' field is supported for OpenStack pattern validation.
+func (o *options) processSTACKITPatterns(cfg *config.Config, logger klog.Logger) ([]allowpattern.Pattern, error) {
+	var configPatterns []allowpattern.Pattern
+	if cfg != nil && cfg.Provider != nil && cfg.Provider.STACKIT != nil {
+		configPatterns = cfg.Provider.OpenStack.AllowedPatterns
+	}
+
+	return processProviderPatterns(
+		logger,
+		"STACKIT",
+		credvalidate.DefaultSTACKITAllowedPatterns(),
+		configPatterns,
+		credvalidate.GetSTACKITValidationContext(),
+		credvalidate.GetSTACKITValidationExternalContext(),
+		o.STACKITAllowedPatterns,
+		o.STACKITAllowedURIPatterns,
 	)
 }
 
@@ -235,6 +275,21 @@ Note: Only the 'authURL' field is supported for OpenStack pattern validation.
 For example:
 "authURL=https://keystone.example.com:5000/v3"
 "authURL=https://keystone.example.com/identity/v3"
+The URI is parsed and host and path are set accordingly. These are merged with defaults and configuration.`)
+
+	flags.StringArrayVar(&o.STACKITAllowedPatterns, "stackit-allowed-patterns", nil,
+		`Additional allowed patterns for STACKIT credential fields in JSON format.
+Note: Only the 'aud' field in the serviceaccount under credentials is supported for STACKIT pattern validation.
+Each pattern should be a JSON object with fields like:
+{"field": "aud", "host": "https://example.com"}
+{"field": "aud", "regexValue": "^https://[a-z0-9.-]+\\.example\\.com(:[0-9]+)?/.*$"}
+These are merged with defaults and configuration.`)
+
+	flags.StringSliceVar(&o.STACKITAllowedURIPatterns, "stackit-allowed-uri-patterns", nil,
+		`Simplified URI patterns for STACKIT credential fields in the format 'field=uri'.
+Note: Only the 'aud' field in the serviceaccount under credentials is supported for STACKIT pattern validation.
+For example:
+"aud=https://example.com"
 The URI is parsed and host and path are set accordingly. These are merged with defaults and configuration.`)
 }
 
