@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package ssh
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -230,6 +231,12 @@ type SSHOptions struct {
 	// SSHPrivateKeyFile is the full path to the file containing the user's
 	// private SSH key. If not set, gardenctl relies on the user's SSH agent.
 	SSHPrivateKeyFile PrivateKeyFile
+
+	// sshPublicKeyBytes stores the public key content.
+	sshPublicKeyBytes []byte
+
+	// sshPrivateKeyBytes stores the private key content (if provided).
+	sshPrivateKeyBytes []byte
 
 	// GeneratedSSHKeys is true if the public and private SSH keys have been generated
 	// instead of being provided by the user. This will then be used for the cleanup.
@@ -455,8 +462,23 @@ func (o *SSHOptions) Validate() error {
 		return fmt.Errorf("invalid SSH public key file: %w", err)
 	}
 
-	if _, _, _, _, err := ssh.ParseAuthorizedKey(content); err != nil {
-		return fmt.Errorf("invalid SSH public key file: %w", err)
+	if err := validateSSHPublicKey(content); err != nil {
+		return fmt.Errorf("invalid SSH public key in %q: %w", o.SSHPublicKeyFile, err)
+	}
+
+	o.sshPublicKeyBytes = content
+
+	if o.SSHPrivateKeyFile != "" {
+		privateKeyBytes, err := os.ReadFile(o.SSHPrivateKeyFile.String())
+		if err != nil {
+			return fmt.Errorf("failed to read SSH private key from %q: %w", o.SSHPrivateKeyFile, err)
+		}
+
+		if err := validateSSHPrivateKey(privateKeyBytes); err != nil {
+			return fmt.Errorf("invalid SSH private key in %q: %w", o.SSHPrivateKeyFile, err)
+		}
+
+		o.sshPrivateKeyBytes = privateKeyBytes
 	}
 
 	return nil
@@ -669,11 +691,6 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return fmt.Errorf("failed to get bastion ingress policies: %w", err)
 	}
 
-	sshPublicKey, err := os.ReadFile(o.SSHPublicKeyFile.String())
-	if err != nil {
-		return fmt.Errorf("failed to read SSH public key: %w", err)
-	}
-
 	bastionKey := client.ObjectKey{
 		Namespace: shoot.Namespace,
 		Name:      o.BastionName,
@@ -697,7 +714,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	// do not use `ctx`, as it might be cancelled already when running the cleanup
 	defer cleanup(f.Context(), o, gardenClient.RuntimeClient(), bastionKey, nodePrivateKeyFiles)
 
-	bastion, err := createOrPatchBastion(ctx, gardenClient.RuntimeClient(), bastionKey, shoot, sshPublicKey, policies)
+	bastion, err := createOrPatchBastion(ctx, gardenClient.RuntimeClient(), bastionKey, shoot, o.sshPublicKeyBytes, policies)
 	if err != nil {
 		return err
 	}
@@ -1055,16 +1072,12 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 	var (
 		lastCheckErr    error
 		privateKeyBytes []byte
-		err             error
 	)
 
 	logger := klog.FromContext(ctx)
 
-	if o.SSHPrivateKeyFile != "" {
-		privateKeyBytes, err = os.ReadFile(o.SSHPrivateKeyFile.String())
-		if err != nil {
-			return fmt.Errorf("failed to read SSH private key from %q: %w", o.SSHPrivateKeyFile, err)
-		}
+	if len(o.sshPrivateKeyBytes) > 0 {
+		privateKeyBytes = o.sshPrivateKeyBytes
 	}
 
 	hostKeyCallback, err := o.HostKeyCallbackFactory.New(o.BastionStrictHostKeyChecking, o.BastionUserKnownHostsFiles, o.IOStreams)
@@ -1235,7 +1248,13 @@ func getShootNodePrivateKeys(ctx context.Context, gardenClient client.Client, sh
 		}
 
 		if secret.Name != "" {
-			keys = append(keys, secret.Data[secrets.DataKeyRSAPrivateKey])
+			key := secret.Data[secrets.DataKeyRSAPrivateKey]
+
+			if err := validateSSHPrivateKey(key); err != nil {
+				return nil, err
+			}
+
+			keys = append(keys, key)
 		}
 	}
 
@@ -1244,6 +1263,51 @@ func getShootNodePrivateKeys(ctx context.Context, gardenClient client.Client, sh
 	}
 
 	return keys, nil
+}
+
+// validateSSHPrivateKey ensures the SSH private key:
+// - is exactly one PEM block (no extra data before/after)
+// - has no PEM headers
+// - parses as a valid SSH private key.
+func validateSSHPrivateKey(privateKey []byte) error {
+	if !bytes.HasPrefix(privateKey, []byte("-----BEGIN ")) {
+		return errors.New("private key must start with a PEM BEGIN line")
+	}
+
+	block, rest := pem.Decode(privateKey)
+	if block == nil {
+		return errors.New("private key must be a valid PEM-encoded key")
+	}
+
+	if len(bytes.TrimSpace(rest)) > 0 {
+		return errors.New("private key must contain exactly one PEM block (unexpected data after END line)")
+	}
+
+	if len(block.Headers) != 0 {
+		return errors.New("private key must not include PEM headers")
+	}
+
+	if _, err := ssh.ParsePrivateKey(privateKey); err != nil {
+		return fmt.Errorf("private key cannot be parsed as SSH key: %w", err)
+	}
+
+	return nil
+}
+
+// validateSSHPublicKey ensures the SSH public key:
+// - parses as a valid SSH public key
+// - contains exactly one key (no extra data after).
+func validateSSHPublicKey(publicKey []byte) error {
+	_, _, _, rest, err := ssh.ParseAuthorizedKey(publicKey)
+	if err != nil {
+		return fmt.Errorf("public key cannot be parsed: %w", err)
+	}
+
+	if len(bytes.TrimSpace(rest)) > 0 {
+		return errors.New("public key must contain exactly one key (unexpected data after first key)")
+	}
+
+	return nil
 }
 
 func writeToTemporaryFile(key []byte) (string, error) {
