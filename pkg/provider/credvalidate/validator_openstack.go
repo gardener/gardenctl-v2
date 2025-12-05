@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/gardener/gardenctl-v2/pkg/provider/common/allowpattern"
@@ -162,6 +163,11 @@ func (v *OpenStackValidator) validateAppCredentialAuth(secret *corev1.Secret) (m
 	}
 
 	return validatedFields, nil
+}
+
+// ValidateWorkloadIdentityConfig validates OpenStack workload identity configuration.
+func (v *OpenStackValidator) ValidateWorkloadIdentityConfig(wi *gardensecurityv1alpha1.WorkloadIdentity) (map[string]interface{}, error) {
+	return nil, fmt.Errorf("workload identity not supported for openstack")
 }
 
 // ValidateAuthURL validates the authURL field format.

@@ -206,4 +206,11 @@ var _ = Describe("AliCloud Validator", func() {
 			)
 		})
 	})
+
+	Describe("Workload Identity Validation", func() {
+		It("should fail as workload identity is not supported for alicloud", func() {
+			_, err := validator.ValidateWorkloadIdentityConfig(nil)
+			Expect(err).To(MatchError("workload identity not supported for alicloud"))
+		})
+	})
 })

@@ -8,9 +8,16 @@ package garden_test
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"time"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/secrets"
 	. "github.com/onsi/ginkgo/v2"
@@ -23,6 +30,8 @@ import (
 	clientauthenticationv1 "k8s.io/client-go/pkg/apis/clientauthentication/v1"
 	clientauthenticationv1beta1 "k8s.io/client-go/pkg/apis/clientauthentication/v1beta1"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
@@ -438,6 +447,205 @@ var _ = Describe("Client", func() {
 
 			Expect(err).To(BeNil())
 			Expect(username).To(Equal(user))
+		})
+	})
+
+	Describe("ValidateJWTFormat", func() {
+		It("should reject tokens that are too large", func() {
+			// Create a token larger than 16KB (16384 bytes)
+			largeToken := strings.Repeat("a", 16385)
+			err := clientgarden.ValidateJWTFormat(largeToken)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("token too large"))
+		})
+
+		DescribeTable("should reject invalid JWT format",
+			func(token, description string) {
+				err := clientgarden.ValidateJWTFormat(token)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("invalid JWT format"))
+			},
+			Entry("missing signature part", "invalid.jwt", "missing signature part"),
+			Entry("completely invalid", "not-a-jwt-at-all", "completely invalid"),
+			Entry("only two parts", "a.b", "missing signature part"),
+			Entry("invalid base64 encoding", "invalid.base64.data", "invalid base64 encoding"),
+		)
+
+		It("should accept valid JWT format", func() {
+			// Create a minimal valid JWT using base64 encoding to avoid hardcoding
+			header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256","typ":"JWT"}`))
+			payload := base64.RawURLEncoding.EncodeToString([]byte(`{"sub":"test","iat":1234567890}`))
+			signature := base64.RawURLEncoding.EncodeToString([]byte("fake-signature-for-testing"))
+
+			validJWT := fmt.Sprintf("%s.%s.%s", header, payload, signature)
+
+			err := clientgarden.ValidateJWTFormat(validJWT)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should accept valid JWT with proper structure", func() {
+			// Create a valid JWT structure that matches what go-jose expects
+			// This simulates what a real JWT would look like without needing actual RSA keys
+			header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256","typ":"JWT"}`))
+			payload := base64.RawURLEncoding.EncodeToString([]byte(`{"sub":"test-subject","iss":"test-issuer","exp":9999999999}`))
+			// Create a longer, more realistic signature
+			signature := base64.RawURLEncoding.EncodeToString([]byte("this-is-a-longer-fake-signature-that-looks-more-realistic-for-testing-purposes-only"))
+
+			validJWT := fmt.Sprintf("%s.%s.%s", header, payload, signature)
+
+			// The validation should pass (it only checks format, not signature)
+			err := clientgarden.ValidateJWTFormat(validJWT)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("CreateWorkloadIdentityToken", func() {
+		var (
+			ctx          context.Context
+			testServer   *httptest.Server
+			gardenClient clientgarden.Client
+			kubeConfig   *clientcmdapi.Config
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+
+			kubeConfig = clientcmdapi.NewConfig()
+			kubeConfig.Clusters["test-cluster"] = &clientcmdapi.Cluster{
+				InsecureSkipTLSVerify: true,
+			}
+			kubeConfig.AuthInfos["test-user"] = &clientcmdapi.AuthInfo{
+				Token: "test-token",
+			}
+			kubeConfig.Contexts["test-context"] = &clientcmdapi.Context{
+				Cluster:  "test-cluster",
+				AuthInfo: "test-user",
+			}
+			kubeConfig.CurrentContext = "test-context"
+		})
+
+		AfterEach(func() {
+			if testServer != nil {
+				testServer.Close()
+			}
+		})
+
+		It("should reject malformed JWT tokens returned by the server", func() {
+			// Create a test server that returns a malformed token
+			testServer = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.Contains(r.URL.Path, "/token") {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+					// Return a response with a malformed JWT
+					response := gardensecurityv1alpha1.TokenRequest{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: "security.gardener.cloud/v1alpha1",
+							Kind:       "TokenRequest",
+						},
+						Status: gardensecurityv1alpha1.TokenRequestStatus{
+							Token:               "not.a.valid.jwt", // Malformed JWT
+							ExpirationTimestamp: metav1.NewTime(time.Now().Add(1 * time.Hour)),
+						},
+					}
+					_ = json.NewEncoder(w).Encode(response)
+					return
+				}
+				w.WriteHeader(http.StatusNotFound)
+			}))
+
+			kubeConfig.Clusters["test-cluster"].Server = testServer.URL
+			clientConfig := clientcmd.NewDefaultClientConfig(*kubeConfig, &clientcmd.ConfigOverrides{})
+			gardenClient = clientgarden.NewClient(clientConfig, fake.NewClientWithObjects(), gardenName)
+
+			// Attempt to create a workload identity token
+			_, err := gardenClient.CreateWorkloadIdentityToken(ctx, "test-namespace", "test-identity", 1*time.Hour)
+
+			// The client should reject the malformed token
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("received malformed token"))
+			Expect(err.Error()).To(ContainSubstring("invalid JWT format"))
+		})
+
+		It("should accept valid JWT tokens returned by the server", func() {
+			// Create a valid JWT for testing
+			header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256","typ":"JWT"}`))
+			payload := base64.RawURLEncoding.EncodeToString([]byte(`{"sub":"test-identity","iss":"test-issuer","exp":9999999999}`))
+			signature := base64.RawURLEncoding.EncodeToString([]byte("fake-signature-for-testing"))
+			validJWT := fmt.Sprintf("%s.%s.%s", header, payload, signature)
+
+			// Create a test server that returns a valid token
+			testServer = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.Contains(r.URL.Path, "/token") {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+					response := gardensecurityv1alpha1.TokenRequest{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: "security.gardener.cloud/v1alpha1",
+							Kind:       "TokenRequest",
+						},
+						Spec: gardensecurityv1alpha1.TokenRequestSpec{
+							ExpirationSeconds: ptr.To(int64(3600)),
+						},
+						Status: gardensecurityv1alpha1.TokenRequestStatus{
+							Token:               validJWT,
+							ExpirationTimestamp: metav1.NewTime(time.Now().Add(1 * time.Hour)),
+						},
+					}
+					_ = json.NewEncoder(w).Encode(response)
+					return
+				}
+				w.WriteHeader(http.StatusNotFound)
+			}))
+
+			kubeConfig.Clusters["test-cluster"].Server = testServer.URL
+			clientConfig := clientcmd.NewDefaultClientConfig(*kubeConfig, &clientcmd.ConfigOverrides{})
+			gardenClient = clientgarden.NewClient(clientConfig, fake.NewClientWithObjects(), gardenName)
+
+			// Attempt to create a workload identity token
+			tokenRequest, err := gardenClient.CreateWorkloadIdentityToken(ctx, "test-namespace", "test-identity", 1*time.Hour)
+
+			// The client should accept the valid token
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tokenRequest).NotTo(BeNil())
+			Expect(tokenRequest.Status.Token).To(Equal(validJWT))
+		})
+
+		It("should reject tokens that are too large", func() {
+			// Create an oversized token (> 16KB)
+			largeToken := strings.Repeat("a", 16385)
+
+			// Create a test server that returns an oversized token
+			testServer = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.Contains(r.URL.Path, "/token") {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+					response := gardensecurityv1alpha1.TokenRequest{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: "security.gardener.cloud/v1alpha1",
+							Kind:       "TokenRequest",
+						},
+						Status: gardensecurityv1alpha1.TokenRequestStatus{
+							Token:               largeToken,
+							ExpirationTimestamp: metav1.NewTime(time.Now().Add(1 * time.Hour)),
+						},
+					}
+					_ = json.NewEncoder(w).Encode(response)
+					return
+				}
+				w.WriteHeader(http.StatusNotFound)
+			}))
+
+			kubeConfig.Clusters["test-cluster"].Server = testServer.URL
+			clientConfig := clientcmd.NewDefaultClientConfig(*kubeConfig, &clientcmd.ConfigOverrides{})
+			gardenClient = clientgarden.NewClient(clientConfig, fake.NewClientWithObjects(), gardenName)
+
+			// Attempt to create a workload identity token
+			_, err := gardenClient.CreateWorkloadIdentityToken(ctx, "test-namespace", "test-identity", 1*time.Hour)
+
+			// The client should reject the oversized token
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("received malformed token"))
+			Expect(err.Error()).To(ContainSubstring("token too large"))
 		})
 	})
 })
