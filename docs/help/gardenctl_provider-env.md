@@ -65,6 +65,17 @@ gardenctl provider-env [flags]
       --project string                           target the given project
       --seed string                              target the given seed cluster
       --shoot string                             target the given shoot cluster
+      --stackit-allowed-patterns stringArray     Additional allowed patterns for STACKIT credential fields in JSON format.
+                                                 Note: Only the 'aud' field in the serviceaccount under credentials is supported for STACKIT pattern validation.
+                                                 Each pattern should be a JSON object with fields like:
+                                                 {"field": "aud", "host": "https://example.com"}
+                                                 {"field": "aud", "regexValue": "^https://[a-z0-9.-]+\\.example\\.com(:[0-9]+)?/.*$"}
+                                                 These are merged with defaults and configuration.
+      --stackit-allowed-uri-patterns strings     Simplified URI patterns for STACKIT credential fields in the format 'field=uri'.
+                                                 Note: Only the 'aud' field in the serviceaccount under credentials is supported for STACKIT pattern validation.
+                                                 For example:
+                                                 "aud=https://example.com"
+                                                 The URI is parsed and host and path are set accordingly. These are merged with defaults and configuration.
   -u, --unset                                    Generate the script to unset the cloud provider CLI environment variables and logout for 
 ```
 
