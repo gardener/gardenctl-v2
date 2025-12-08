@@ -296,7 +296,17 @@ func validateSTACKITPrivateKey(_ *credvalidate.BaseValidator, field string, val 
 		return credvalidate.NewFieldError(field, "field value must contain exactly one PEM block (unexpected data after END line)", nil, nonSensitive)
 	}
 
-	_, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	var err error
+
+	switch block.Type {
+	case "PRIVATE KEY":
+		_, err = x509.ParsePKCS8PrivateKey(block.Bytes)
+	case "RSA PRIVATE KEY":
+		_, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+	default:
+		return credvalidate.NewFieldError(field, "unknown private key type", err, nonSensitive)
+	}
+
 	if err != nil {
 		return credvalidate.NewFieldError(field, "field value cannot be parsed", err, nonSensitive)
 	}
