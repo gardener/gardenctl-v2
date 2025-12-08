@@ -58,7 +58,7 @@ set -gx OS_PASSWORD (cat -- {{.dataFiles.password | shellEscape}});
 set -gx STACKIT_PROJECT_ID (cat -- {{.dataFiles.projectId | shellEscape}});
 set -gx STACKIT_REGION (cat -- {{.dataFiles.stackitRegion | shellEscape}});
 set STACKIT_CLI_PROFILE (cat -- {{.dataFiles.stackitCliProfile | shellEscape}});
-stackit config profile create --no-set --empty --ignore-existing -- "${STACKIT_CLI_PROFILE}";
+stackit config profile create --no-set --empty --ignore-existing -- "$STACKIT_CLI_PROFILE";
 set -gx STACKIT_CLI_PROFILE "$STACKIT_CLI_PROFILE";
 stackit auth activate-service-account --service-account-key-path {{.dataFiles.serviceaccount | shellEscape}};
 {{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
