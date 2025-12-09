@@ -23,6 +23,10 @@ type ValidationContext struct {
 	AllowedRegexFields map[string]bool
 	// StrictHTTPS controls the default HTTPS behavior for this provider context
 	StrictHTTPS bool
+	// AllowedUserConfigurableFields specifies which fields can be configured by users (via config or flags).
+	// If nil or empty, no user-provided patterns are allowed. If set, only fields in this list can be configured by users.
+	// Default patterns (IsUserProvided=false) are not subject to this restriction.
+	AllowedUserConfigurableFields map[string]bool
 }
 
 // Pattern represents a pattern for validating credential fields across different cloud providers.
@@ -46,6 +50,10 @@ type Pattern struct {
 	// Scheme is the allowed scheme for this pattern when URI is not provided (defaults to https).
 	// Valid values: "https" or "http". When URI is provided, the scheme is derived from the URI.
 	Scheme *string `json:"scheme,omitempty"`
+	// IsUserProvided indicates whether this pattern comes from user configuration (config file or flags).
+	// When true, the pattern field must be explicitly listed in AllowedUserConfigurableFields.
+	// This field is not serialized to/from JSON.
+	IsUserProvided bool `json:"-"`
 }
 
 // ParseAllowedPatterns parses the allowed patterns from JSON and URI formats.
@@ -97,6 +105,16 @@ func (p *Pattern) ValidateWithContext(ctx *ValidationContext) error {
 
 	if p.Field == "" {
 		return fmt.Errorf("field is required")
+	}
+
+	if p.IsUserProvided {
+		if len(ctx.AllowedUserConfigurableFields) == 0 {
+			return fmt.Errorf("field %s cannot be configured by users; no user-configurable fields are allowed for this provider", p.Field)
+		}
+
+		if !ctx.AllowedUserConfigurableFields[p.Field] {
+			return fmt.Errorf("field %s cannot be configured by users", p.Field)
+		}
 	}
 
 	// --- RegexValue mode: RegexValue must stand alone

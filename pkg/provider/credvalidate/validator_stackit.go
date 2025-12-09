@@ -117,16 +117,9 @@ func GetSTACKITValidationContext() *allowpattern.ValidationContext {
 			"aud":          true,
 		},
 		StrictHTTPS: true,
-	}
-}
-
-// GetSTACKITValidationExternalContext returns the validation context for STACKIT patterns.
-func GetSTACKITValidationExternalContext() *allowpattern.ValidationContext {
-	return &allowpattern.ValidationContext{
-		AllowedRegexFields: map[string]bool{
+		AllowedUserConfigurableFields: map[string]bool{
 			"aud": true,
 		},
-		StrictHTTPS: true,
 	}
 }
 

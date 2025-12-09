@@ -144,11 +144,10 @@ func processProviderPatterns(
 	defaultPatterns []allowpattern.Pattern,
 	configPatterns []allowpattern.Pattern,
 	validationContext *allowpattern.ValidationContext,
-	validationContextExternal *allowpattern.ValidationContext,
 	jsonPatterns []string,
 	uriPatterns []string,
 ) ([]allowpattern.Pattern, error) {
-	flagPatterns, err := allowpattern.ParseAllowedPatterns(validationContextExternal, jsonPatterns, uriPatterns)
+	flagPatterns, err := allowpattern.ParseAllowedPatterns(validationContext, jsonPatterns, uriPatterns)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse %s flag allowed patterns: %w", providerName, err)
 	}
@@ -163,10 +162,13 @@ func processProviderPatterns(
 		logger.V(6).Info("allowed patterns from flags", "provider", providerName, "patterns", flagPatterns)
 	}
 
-	for _, pattern := range configPatterns {
-		if err := pattern.ValidateWithContext(validationContextExternal); err != nil {
-			return nil, fmt.Errorf("invalid %s allowed pattern: %w", providerName, err)
-		}
+	// Set configPatterns and flagPatterns IsUserProvided to true.
+	for i := range configPatterns {
+		configPatterns[i].IsUserProvided = true
+	}
+
+	for i := range flagPatterns {
+		flagPatterns[i].IsUserProvided = true
 	}
 
 	var mergedPatterns []allowpattern.Pattern
@@ -211,7 +213,6 @@ func (o *options) processOpenStackPatterns(cfg *config.Config, logger klog.Logge
 		credvalidate.DefaultOpenStackAllowedPatterns(),
 		configPatterns,
 		credvalidate.GetOpenStackValidationContext(),
-		credvalidate.GetOpenStackValidationContext(),
 		o.OpenStackAllowedPatterns,
 		o.OpenStackAllowedURIPatterns,
 	)
@@ -231,7 +232,6 @@ func (o *options) processSTACKITPatterns(cfg *config.Config, logger klog.Logger)
 		credvalidate.DefaultSTACKITAllowedPatterns(),
 		configPatterns,
 		credvalidate.GetSTACKITValidationContext(),
-		credvalidate.GetSTACKITValidationExternalContext(),
 		o.STACKITAllowedPatterns,
 		o.STACKITAllowedURIPatterns,
 	)

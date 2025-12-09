@@ -988,7 +988,7 @@ var _ = Describe("Env Commands - Options", func() {
 					})
 
 					// Convert to PKCS#8 format
-					privateKeyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
+					privateKeyBytes, _ := x509.MarshalPKCS8PrivateKey(privateKey)
 
 					// Create PEM block
 					privateKeyPEM := pem.EncodeToMemory(&pem.Block{

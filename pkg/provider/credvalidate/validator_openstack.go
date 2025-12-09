@@ -186,6 +186,9 @@ func GetOpenStackValidationContext() *allowpattern.ValidationContext {
 	return &allowpattern.ValidationContext{
 		AllowedRegexFields: map[string]bool{},
 		StrictHTTPS:        false, // controlled by patterns
+		AllowedUserConfigurableFields: map[string]bool{
+			"authURL": true,
+		},
 	}
 }
 
