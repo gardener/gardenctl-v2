@@ -174,7 +174,7 @@ func validateSTACKITServiceaccountCredentials(v *credvalidate.BaseValidator, fie
 		return credvalidate.NewFieldError(field, "field value must be a map[string]interface", nil, nonSensitive)
 	}
 
-	serviceAccountRegistry := map[string]credvalidate.FieldRule{
+	serviceAccountCredentialsRegistry := map[string]credvalidate.FieldRule{
 		"kid":        {Required: true, Validator: credvalidate.ValidateStringWithPattern(credvalidate.MatchRegexValuePattern), NonSensitive: true},
 		"iss":        {Required: true, Validator: credvalidate.ValidateStringWithPattern(credvalidate.MatchRegexValuePattern), NonSensitive: true},
 		"sub":        {Required: true, Validator: credvalidate.ValidateStringWithPattern(credvalidate.MatchRegexValuePattern), NonSensitive: true},
@@ -182,8 +182,8 @@ func validateSTACKITServiceaccountCredentials(v *credvalidate.BaseValidator, fie
 		"privateKey": {Required: true, Validator: validateSTACKITPrivateKey, NonSensitive: true},
 	}
 
-	// Validate the nested service account JSON using the base validator
-	return v.ValidateNestedFieldsStrict(fields, serviceAccountRegistry)
+	// Validate the nested service account credentials JSON using the base validator
+	return v.ValidateNestedFieldsStrict(fields, serviceAccountCredentialsRegistry)
 }
 
 // validateSTACKITServiceaccountCredentialsAud validates the aud field.

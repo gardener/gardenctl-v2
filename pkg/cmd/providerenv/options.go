@@ -217,12 +217,12 @@ func (o *options) processOpenStackPatterns(cfg *config.Config, logger klog.Logge
 	)
 }
 
-// processOpenStackPatterns processes and merges OpenStack allowed patterns from defaults, config, and flags.
-// Note: Only the 'authURL' field is supported for OpenStack pattern validation.
+// processSTACKITPatterns processes and merges STACKIT allowed patterns from defaults, config, and flags.
+// Note: Only the 'aud' field is supported for STACKIT pattern validation.
 func (o *options) processSTACKITPatterns(cfg *config.Config, logger klog.Logger) ([]allowpattern.Pattern, error) {
 	var configPatterns []allowpattern.Pattern
 	if cfg != nil && cfg.Provider != nil && cfg.Provider.STACKIT != nil {
-		configPatterns = cfg.Provider.OpenStack.AllowedPatterns
+		configPatterns = cfg.Provider.STACKIT.AllowedPatterns
 	}
 
 	return processProviderPatterns(
