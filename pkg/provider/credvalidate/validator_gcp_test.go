@@ -19,10 +19,12 @@ import (
 	"fmt"
 	"strings"
 
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardenctl-v2/pkg/provider/common/allowpattern"
@@ -90,7 +92,7 @@ var _ = Describe("GCP Validator", func() {
 				fields[pattern.Field] = true
 			}
 
-			Expect(fields).To(HaveLen(8))
+			Expect(fields).To(HaveLen(11))
 
 			Expect(fields).To(HaveKey("private_key_id"))
 			Expect(fields).To(HaveKey("client_id"))
@@ -104,6 +106,11 @@ var _ = Describe("GCP Validator", func() {
 			Expect(fields).To(HaveKey("auth_uri"))
 			Expect(fields).To(HaveKey("auth_provider_x509_cert_url"))
 			Expect(fields).To(HaveKey("client_x509_cert_url"))
+
+			// Check for expected workload identity fields
+			Expect(fields).To(HaveKey("audience"))
+			Expect(fields).To(HaveKey("token_url"))
+			Expect(fields).To(HaveKey("service_account_impersonation_url"))
 
 			// Verify project_id is NOT in patterns (hardcoded validation only)
 			Expect(fields).NotTo(HaveKey("project_id"))
@@ -711,6 +718,264 @@ var _ = Describe("GCP Validator", func() {
 				}`)
 				_, err := validator.ValidateSecret(secret)
 				Expect(err).To(MatchError("validation error in field \"client_x509_cert_url\": failed to validate URI: must not contain fragments"))
+			})
+		})
+	})
+
+	Describe("Workload Identity Validation", func() {
+		var workloadIdentity *gardensecurityv1alpha1.WorkloadIdentity
+
+		Context("Valid configurations", func() {
+			It("should succeed with minimal valid workload identity config", func() {
+				credentialsConfig := map[string]interface{}{
+					"type":               "external_account",
+					"audience":           "//iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+					"token_url":          "https://sts.googleapis.com/v1/token",
+				}
+
+				credentialsConfigJSON, err := json.Marshal(credentialsConfig)
+				Expect(err).NotTo(HaveOccurred())
+
+				workloadIdentity = &gardensecurityv1alpha1.WorkloadIdentity{
+					Spec: gardensecurityv1alpha1.WorkloadIdentitySpec{
+						TargetSystem: gardensecurityv1alpha1.TargetSystem{
+							Type: "gcp",
+							ProviderConfig: &runtime.RawExtension{
+								Raw: []byte(`{
+										"projectID": "test-project-12345",
+										"credentialsConfig": ` + string(credentialsConfigJSON) + `
+									}`),
+							},
+						},
+					},
+				}
+
+				_, err = validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should succeed with complete workload identity config", func() {
+				credentialsConfig := map[string]interface{}{
+					"type":                              "external_account",
+					"audience":                          "//iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider",
+					"subject_token_type":                "urn:ietf:params:oauth:token-type:jwt",
+					"token_url":                         "https://sts.googleapis.com/v1/token",
+					"service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/test@test-project-12345.iam.gserviceaccount.com:generateAccessToken",
+					"universe_domain":                   "googleapis.com",
+				}
+
+				credentialsConfigJSON, err := json.Marshal(credentialsConfig)
+				Expect(err).NotTo(HaveOccurred())
+
+				workloadIdentity = &gardensecurityv1alpha1.WorkloadIdentity{
+					Spec: gardensecurityv1alpha1.WorkloadIdentitySpec{
+						TargetSystem: gardensecurityv1alpha1.TargetSystem{
+							Type: "gcp",
+							ProviderConfig: &runtime.RawExtension{
+								Raw: []byte(`{
+										"projectID": "test-project-12345",
+										"credentialsConfig": ` + string(credentialsConfigJSON) + `
+									}`),
+							},
+						},
+					},
+				}
+
+				_, err = validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("Invalid configurations", func() {
+			BeforeEach(func() {
+				credentialsConfig := map[string]interface{}{
+					"type":               "external_account",
+					"audience":           "//iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+					"token_url":          "https://sts.googleapis.com/v1/token",
+				}
+
+				credentialsConfigJSON, err := json.Marshal(credentialsConfig)
+				Expect(err).NotTo(HaveOccurred())
+
+				workloadIdentity = &gardensecurityv1alpha1.WorkloadIdentity{
+					Spec: gardensecurityv1alpha1.WorkloadIdentitySpec{
+						TargetSystem: gardensecurityv1alpha1.TargetSystem{
+							Type: "gcp",
+							ProviderConfig: &runtime.RawExtension{
+								Raw: []byte(`{
+										"projectID": "test-project-12345",
+										"credentialsConfig": ` + string(credentialsConfigJSON) + `
+									}`),
+							},
+						},
+					},
+				}
+			})
+			DescribeTable("fails with invalid provider config",
+				func(providerConfig *runtime.RawExtension, errorSub string) {
+					workloadIdentity.Spec.TargetSystem.ProviderConfig = providerConfig
+					_, err := validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+					Expect(err).To(MatchError(ContainSubstring(errorSub)))
+				},
+				Entry("invalid JSON", &runtime.RawExtension{Raw: []byte(`invalid json`)}, "failed to unmarshal GCP workload identity config"),
+				Entry("malformed JSON", &runtime.RawExtension{Raw: []byte(`{"projectID":"123"`)}, "failed to unmarshal GCP workload identity config"),
+				Entry("nil provider config", nil, "providerConfig is missing"),
+				Entry("empty provider config", &runtime.RawExtension{Raw: []byte(``)}, "failed to unmarshal GCP workload identity config"),
+			)
+			It("should fail with missing credentialsConfig", func() {
+				workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw = []byte(`{
+						"projectID": "test-project-12345"
+					}`)
+				_, err := validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+				Expect(err).To(MatchError("validation error in field \"credentialsConfig\": required field is missing"))
+			})
+
+			It("should fail with invalid project ID", func() {
+				credentialsConfig := map[string]interface{}{
+					"type":               "external_account",
+					"audience":           "//iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+					"token_url":          "https://sts.googleapis.com/v1/token",
+				}
+
+				credentialsConfigJSON, err := json.Marshal(credentialsConfig)
+				Expect(err).NotTo(HaveOccurred())
+
+				workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw = []byte(`{
+						"projectID": "123-invalid-project",
+						"credentialsConfig": ` + string(credentialsConfigJSON) + `
+					}`)
+
+				_, err = validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("does not match the expected format")))
+			})
+
+			It("should fail with wrong type in credentials config", func() {
+				credentialsConfig := map[string]interface{}{
+					"type":               "service_account", // Wrong type for workload identity
+					"audience":           "//iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+					"token_url":          "https://sts.googleapis.com/v1/token",
+				}
+
+				credentialsConfigJSON, err := json.Marshal(credentialsConfig)
+				Expect(err).NotTo(HaveOccurred())
+
+				workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw = []byte(`{
+						"projectID": "test-project-12345",
+						"credentialsConfig": ` + string(credentialsConfigJSON) + `
+					}`)
+
+				_, err = validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+				Expect(err).To(MatchError("validation error in field \"type\": type must be 'external_account' (value: \"service_account\")"))
+			})
+
+			It("should fail with missing required fields", func() {
+				credentialsConfig := map[string]interface{}{
+					"type": "external_account",
+					// Missing audience, subject_token_type, token_url
+				}
+
+				credentialsConfigJSON, err := json.Marshal(credentialsConfig)
+				Expect(err).NotTo(HaveOccurred())
+
+				workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw = []byte(`{
+						"projectID": "test-project-12345",
+						"credentialsConfig": ` + string(credentialsConfigJSON) + `
+					}`)
+
+				_, err = validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("required field is missing")))
+			})
+
+			It("should fail with invalid subject_token_type", func() {
+				credentialsConfig := map[string]interface{}{
+					"type":               "external_account",
+					"audience":           "//iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider",
+					"subject_token_type": "invalid-token-type",
+					"token_url":          "https://sts.googleapis.com/v1/token",
+				}
+
+				credentialsConfigJSON, err := json.Marshal(credentialsConfig)
+				Expect(err).NotTo(HaveOccurred())
+
+				workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw = []byte(`{
+						"projectID": "test-project-12345",
+						"credentialsConfig": ` + string(credentialsConfigJSON) + `
+					}`)
+
+				_, err = validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+				Expect(err).To(MatchError("validation error in field \"subject_token_type\": field value should be \"urn:ietf:params:oauth:token-type:jwt\" (value: \"invalid-token-type\")"))
+			})
+
+			It("should fail with invalid token_url", func() {
+				credentialsConfig := map[string]interface{}{
+					"type":               "external_account",
+					"audience":           "//iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+					"token_url":          "https://malicious.com/v1/token",
+				}
+
+				credentialsConfigJSON, err := json.Marshal(credentialsConfig)
+				Expect(err).NotTo(HaveOccurred())
+
+				workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw = []byte(`{
+						"projectID": "test-project-12345",
+						"credentialsConfig": ` + string(credentialsConfigJSON) + `
+					}`)
+
+				_, err = validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring(`pattern mismatch in field "token_url": does not match any allowed patterns`)))
+				Expect(err).To(MatchError(ContainSubstring(fmt.Sprintf("actual: %q", "https://malicious.com/v1/token"))))
+			})
+
+			It("should fail with invalid service_account_impersonation_url", func() {
+				credentialsConfig := map[string]interface{}{
+					"type":                              "external_account",
+					"audience":                          "//iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider",
+					"subject_token_type":                "urn:ietf:params:oauth:token-type:jwt",
+					"token_url":                         "https://sts.googleapis.com/v1/token",
+					"service_account_impersonation_url": "https://malicious.com/v1/projects/-/serviceAccounts/test@test-project-12345.iam.gserviceaccount.com:generateAccessToken",
+				}
+
+				credentialsConfigJSON, err := json.Marshal(credentialsConfig)
+				Expect(err).NotTo(HaveOccurred())
+
+				workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw = []byte(`{
+						"projectID": "test-project-12345",
+						"credentialsConfig": ` + string(credentialsConfigJSON) + `
+					}`)
+
+				_, err = validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring(`pattern mismatch in field "service_account_impersonation_url": does not match any allowed patterns`)))
+				Expect(err).To(MatchError(ContainSubstring(fmt.Sprintf("actual: %q", "https://malicious.com/v1/projects/-/serviceAccounts/test@test-project-12345.iam.gserviceaccount.com:generateAccessToken"))))
+			})
+
+			It("should fail with disallowed fields in credentials config", func() {
+				credentialsConfig := map[string]interface{}{
+					"type":               "external_account",
+					"audience":           "//iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+					"token_url":          "https://sts.googleapis.com/v1/token",
+					"malicious_field":    "value",
+				}
+
+				credentialsConfigJSON, err := json.Marshal(credentialsConfig)
+				Expect(err).NotTo(HaveOccurred())
+
+				workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw = []byte(`{
+						"projectID": "test-project-12345",
+						"credentialsConfig": ` + string(credentialsConfigJSON) + `
+					}`)
+
+				_, err = validator.ValidateWorkloadIdentityConfig(workloadIdentity)
+				Expect(err).To(MatchError("validation error in field \"malicious_field\": field is not allowed"))
 			})
 		})
 	})

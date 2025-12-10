@@ -4,6 +4,17 @@ unset AZURE_CLIENT_ID;
 unset AZURE_TENANT_ID;
 unset AZURE_SUBSCRIPTION_ID;
 unset AZURE_CONFIG_DIR;
+{{else if eq .__meta.credentialKind "WorkloadIdentity" -}}
+export AZURE_CLIENT_ID=$(< {{.dataFiles.clientID | shellEscape}});
+export AZURE_TENANT_ID=$(< {{.dataFiles.tenantID | shellEscape}});
+export AZURE_SUBSCRIPTION_ID=$(< {{.dataFiles.subscriptionID | shellEscape}});
+export AZURE_CONFIG_DIR={{.configDir | shellEscape}};
+AZURE_FEDERATED_TOKEN=$(< {{.dataFiles.token | shellEscape}});
+az login --service-principal --username "$AZURE_CLIENT_ID" --federated-token "$AZURE_FEDERATED_TOKEN" --tenant "$AZURE_TENANT_ID";
+unset AZURE_FEDERATED_TOKEN;
+az account set --subscription "$AZURE_SUBSCRIPTION_ID";
+{{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
+{{end -}}
 {{else -}}
 export AZURE_CLIENT_ID=$(< {{.dataFiles.clientID | shellEscape}});
 export AZURE_TENANT_ID=$(< {{.dataFiles.tenantID | shellEscape}});
@@ -26,6 +37,17 @@ set -e AZURE_CLIENT_ID;
 set -e AZURE_TENANT_ID;
 set -e AZURE_SUBSCRIPTION_ID;
 set -e AZURE_CONFIG_DIR;
+{{else if eq .__meta.credentialKind "WorkloadIdentity" -}}
+set -gx AZURE_CLIENT_ID (cat -- {{.dataFiles.clientID | shellEscape}});
+set -gx AZURE_TENANT_ID (cat -- {{.dataFiles.tenantID | shellEscape}});
+set -gx AZURE_SUBSCRIPTION_ID (cat -- {{.dataFiles.subscriptionID | shellEscape}});
+set -gx AZURE_CONFIG_DIR {{.configDir | shellEscape}};
+set AZURE_FEDERATED_TOKEN (cat -- {{.dataFiles.token | shellEscape}});
+az login --service-principal --username "$AZURE_CLIENT_ID" --federated-token "$AZURE_FEDERATED_TOKEN" --tenant "$AZURE_TENANT_ID";
+set -e AZURE_FEDERATED_TOKEN;
+az account set --subscription "$AZURE_SUBSCRIPTION_ID";
+{{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
+{{end -}}
 {{else -}}
 set -gx AZURE_CLIENT_ID (cat -- {{.dataFiles.clientID | shellEscape}});
 set -gx AZURE_TENANT_ID (cat -- {{.dataFiles.tenantID | shellEscape}});
@@ -45,6 +67,17 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CLIENT_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_TENANT_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_SUBSCRIPTION_ID;
 Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
+{{else if eq .__meta.credentialKind "WorkloadIdentity" -}}
+$Env:AZURE_CLIENT_ID = Get-Content -Raw {{.dataFiles.clientID | shellEscape}};
+$Env:AZURE_TENANT_ID = Get-Content -Raw {{.dataFiles.tenantID | shellEscape}};
+$Env:AZURE_SUBSCRIPTION_ID = Get-Content -Raw {{.dataFiles.subscriptionID | shellEscape}};
+$Env:AZURE_CONFIG_DIR = {{.configDir | shellEscape}};
+$AZURE_FEDERATED_TOKEN = Get-Content -Raw {{.dataFiles.token | shellEscape}};
+az login --service-principal --username "$Env:AZURE_CLIENT_ID" --federated-token "$AZURE_FEDERATED_TOKEN" --tenant "$Env:AZURE_TENANT_ID";
+Remove-Variable -Name AZURE_FEDERATED_TOKEN;
+az account set --subscription "$Env:AZURE_SUBSCRIPTION_ID";
+{{range $key, $path := .dataFiles}}Remove-Item -Force -ErrorAction SilentlyContinue {{$path | shellEscape}};
+{{end -}}
 {{else -}}
 $Env:AZURE_CLIENT_ID = Get-Content -Raw {{.dataFiles.clientID | shellEscape}};
 $Env:AZURE_TENANT_ID = Get-Content -Raw {{.dataFiles.tenantID | shellEscape}};

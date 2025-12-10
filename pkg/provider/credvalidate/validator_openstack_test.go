@@ -370,4 +370,11 @@ var _ = Describe("OpenStack Validator", func() {
 			Expect(patterns).To(BeEmpty())
 		})
 	})
+
+	Describe("Workload Identity Validation", func() {
+		It("should fail as workload identity is not supported for openstack", func() {
+			_, err := validator.ValidateWorkloadIdentityConfig(nil)
+			Expect(err).To(MatchError("workload identity not supported for openstack"))
+		})
+	})
 })
