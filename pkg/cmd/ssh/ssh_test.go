@@ -8,7 +8,14 @@ package ssh_test
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -217,10 +224,20 @@ var _ = Describe("SSH Command", func() {
 				Namespace: *testProject.Spec.Namespace,
 				UID:       "00000000-0000-0000-0000-000000000000",
 			},
-			Data: map[string][]byte{
-				"data": []byte("not-used"),
-			},
 		}
+
+		privateKey, err := rsa.GenerateKey(rand.Reader, 1024)
+		Expect(err).NotTo(HaveOccurred())
+
+		privateKeyPEM := pem.EncodeToMemory(&pem.Block{
+			Type:  "RSA PRIVATE KEY",
+			Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+		})
+
+		testShootKeypair.Data = map[string][]byte{
+			secrets.DataKeyRSAPrivateKey: privateKeyPEM,
+		}
+
 		testSeedKubeconfig, err := internalfake.NewConfigData("test-seed")
 		Expect(err).ToNot(HaveOccurred())
 
@@ -1103,5 +1120,161 @@ var _ = Describe("SSH Options", func() {
 			Entry("bastion name with special characters", "test@bastion"),
 			Entry("bastion name with spaces", "test bastion"),
 		)
+	})
+
+	Context("SSH key validation", Ordered, func() {
+		var (
+			privateKey       *rsa.PrivateKey
+			originalKeyBytes []byte
+		)
+
+		// Generate key once for all SSH validation tests to improve performance
+		BeforeAll(func() {
+			var err error
+			privateKey, err = rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).NotTo(HaveOccurred())
+
+			originalKeyBytes = x509.MarshalPKCS1PrivateKey(privateKey)
+		})
+
+		Describe("ValidateSSHPrivateKey", Ordered, func() {
+			var (
+				pemBlock         *pem.Block
+				pemBytes         []byte
+				originalPemBytes []byte
+			)
+
+			BeforeAll(func() {
+				pemBlockTemp := &pem.Block{
+					Type:  "RSA PRIVATE KEY",
+					Bytes: originalKeyBytes,
+				}
+				originalPemBytes = pem.EncodeToMemory(pemBlockTemp)
+			})
+
+			BeforeEach(func() {
+				// Create fresh pemBlock for each test (some tests mutate it)
+				keyBytesCopy := make([]byte, len(originalKeyBytes))
+				copy(keyBytesCopy, originalKeyBytes)
+				pemBlock = &pem.Block{
+					Type:  "RSA PRIVATE KEY",
+					Bytes: keyBytesCopy,
+				}
+				// Copy for tests that append to it
+				pemBytes = make([]byte, len(originalPemBytes))
+				copy(pemBytes, originalPemBytes)
+			})
+
+			It("should succeed for a valid private key", func() {
+				Expect(ssh.ValidateSSHPrivateKey(pemBytes)).To(Succeed())
+			})
+
+			It("should succeed for a valid private key with trailing whitespace", func() {
+				keyWithWhitespace := append(pemBytes, []byte(" \n\t")...)
+				Expect(ssh.ValidateSSHPrivateKey(keyWithWhitespace)).To(Succeed())
+			})
+
+			It("should fail if there is unexpected data after the END line", func() {
+				keyWithGarbage := append(pemBytes, []byte("garbage")...)
+				Expect(ssh.ValidateSSHPrivateKey(keyWithGarbage)).To(MatchError("private key must contain exactly one PEM block (unexpected data after END line)"))
+			})
+
+			It("should fail if the private key does not start with a PEM BEGIN line", func() {
+				keyWithGarbage := append([]byte("foo\n-----BEGIN "), pemBytes...)
+				Expect(ssh.ValidateSSHPrivateKey(keyWithGarbage)).To(MatchError("private key must start with a PEM BEGIN line"))
+			})
+
+			It("should fail if the PEM block includes headers", func() {
+				pemBlockWithHeaders := &pem.Block{
+					Type:    "RSA PRIVATE KEY",
+					Headers: map[string]string{"Header": "Value"},
+					Bytes:   pemBlock.Bytes,
+				}
+				keyWithHeaders := pem.EncodeToMemory(pemBlockWithHeaders)
+				Expect(ssh.ValidateSSHPrivateKey(keyWithHeaders)).To(MatchError("private key must not include PEM headers"))
+			})
+
+			It("should fail if the private key is not a valid PEM-encoded key", func() {
+				Expect(ssh.ValidateSSHPrivateKey([]byte("invalid-pem"))).To(MatchError("private key must start with a PEM BEGIN line"))
+			})
+
+			It("should fail if the private key cannot be parsed as SSH key", func() {
+				// corrupt the key bytes
+				pemBlock.Bytes[0] ^= 0xFF
+				invalidKey := pem.EncodeToMemory(pemBlock)
+				Expect(ssh.ValidateSSHPrivateKey(invalidKey)).To(MatchError(ContainSubstring("private key cannot be parsed as SSH key")))
+			})
+		})
+
+		Describe("ValidateSSHPublicKey", Ordered, func() {
+			var (
+				publicKeyFile         []byte
+				originalPublicKeyFile []byte
+			)
+
+			BeforeAll(func() {
+				sshPublicKey, err := cryptossh.NewPublicKey(&privateKey.PublicKey)
+				Expect(err).NotTo(HaveOccurred())
+
+				originalPublicKeyFile = cryptossh.MarshalAuthorizedKey(sshPublicKey)
+			})
+
+			BeforeEach(func() {
+				// Copy for tests that append to it
+				publicKeyFile = make([]byte, len(originalPublicKeyFile))
+				copy(publicKeyFile, originalPublicKeyFile)
+			})
+
+			It("should succeed for a valid RSA public key", func() {
+				Expect(ssh.ValidateSSHPublicKey(publicKeyFile)).To(Succeed())
+			})
+
+			It("should succeed for a valid public key with trailing whitespace", func() {
+				keyWithWhitespace := append(publicKeyFile, []byte(" \n\t")...)
+				Expect(ssh.ValidateSSHPublicKey(keyWithWhitespace)).To(Succeed())
+			})
+
+			It("should fail if the public key file is empty", func() {
+				Expect(ssh.ValidateSSHPublicKey([]byte(""))).To(MatchError("public key cannot be parsed: ssh: no key found"))
+			})
+
+			It("should fail if the public key file contains only whitespace", func() {
+				Expect(ssh.ValidateSSHPublicKey([]byte("  \n\t  "))).To(MatchError("public key cannot be parsed: ssh: no key found"))
+			})
+
+			It("should fail if there is unexpected data after the first key", func() {
+				keyWithGarbage := append(publicKeyFile, []byte("garbage data here")...)
+				Expect(ssh.ValidateSSHPublicKey(keyWithGarbage)).To(MatchError("public key must contain exactly one key (unexpected data after first key)"))
+			})
+
+			It("should fail if the public key cannot be parsed", func() {
+				invalidKey := []byte("ssh-rsa invalid-base64-data")
+				Expect(ssh.ValidateSSHPublicKey(invalidKey)).To(MatchError(ContainSubstring("public key cannot be parsed")))
+			})
+
+			It("should succeed for a valid ED25519 public key", func() {
+				// Generate an ED25519 key
+				_, edPrivateKey, err := ed25519.GenerateKey(rand.Reader)
+				Expect(err).NotTo(HaveOccurred())
+
+				sshPublicKey, err := cryptossh.NewPublicKey(edPrivateKey.Public())
+				Expect(err).NotTo(HaveOccurred())
+
+				edPublicKeyFile := cryptossh.MarshalAuthorizedKey(sshPublicKey)
+				Expect(ssh.ValidateSSHPublicKey(edPublicKeyFile)).To(Succeed())
+			})
+
+			It("should succeed for a valid ECDSA public key", func() {
+				// Generate an ECDSA key
+				ecPrivateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+				Expect(err).NotTo(HaveOccurred())
+
+				sshPublicKey, err := cryptossh.NewPublicKey(&ecPrivateKey.PublicKey)
+				Expect(err).NotTo(HaveOccurred())
+
+				ecPublicKeyFile := cryptossh.MarshalAuthorizedKey(sshPublicKey)
+				Expect(ssh.ValidateSSHPublicKey(ecPublicKeyFile)).To(Succeed())
+			})
+		})
 	})
 })
