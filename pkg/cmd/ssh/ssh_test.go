@@ -95,7 +95,7 @@ var _ = Describe("SSH Command", func() {
 		gardenKubeconfigFile = "/not/a/real/kubeconfig"
 		bastionName          = "test-bastion"
 		bastionHostname      = "example.invalid"
-		bastionIP            = "0.0.0.0"
+		bastionIP            = "192.0.2.1"
 		nodeHostname         = "example.host.invalid"
 	)
 
@@ -724,7 +724,7 @@ var _ = Describe("SSH Command", func() {
 			var info ssh.ConnectInformation
 			Expect(json.Unmarshal([]byte(out.String()), &info)).To(Succeed())
 			Expect(info.Bastion.Name).To(Equal(bastionName))
-			Expect(info.Bastion.PreferredAddress).To(Equal("0.0.0.0"))
+			Expect(info.Bastion.PreferredAddress).To(Equal(bastionIP))
 			Expect(info.Bastion.SSHPrivateKeyFile).To(Equal(options.SSHPrivateKeyFile))
 			Expect(info.Bastion.SSHPublicKeyFile).To(Equal(options.SSHPublicKeyFile))
 			Expect(info.Nodes).To(ConsistOf([]ssh.Node{
@@ -1119,6 +1119,94 @@ var _ = Describe("SSH Options", func() {
 			Entry("bastion name with underscore", "test_bastion"),
 			Entry("bastion name with special characters", "test@bastion"),
 			Entry("bastion name with spaces", "test bastion"),
+		)
+
+		DescribeTable("node name validation - valid cases",
+			func(name string) {
+				o.NodeName = name
+				Expect(o.Validate()).To(Succeed())
+			},
+			Entry("empty node name", ""),
+			Entry("valid node name", "my-node"),
+			Entry("node name with lowercase letters and hyphens", "my-test-node-123"),
+			Entry("node name with single character", "a"),
+			Entry("node name with digits only", "123"),
+			Entry("node name with dots (DNS subdomain)", "node.my-cluster.local"),
+			Entry("IPv4 address", "192.168.1.1"),
+			Entry("IPv4 loopback", "127.0.0.1"),
+			Entry("IPv6 address", "2001:db8::1"),
+			Entry("IPv6 loopback", "::1"),
+			Entry("IPv6 full form", "2001:0db8:0000:0000:0000:0000:0000:0001"),
+			Entry("AWS-style private DNS hostname", "ip-10-0-1-42.ec2.internal"),
+			Entry("GCP-style private DNS hostname", "10-0-1-42.us-central1-b.c.my-project.internal"),
+			Entry("Azure-style VM hostname", "aks-nodepool1-12345678-vmss000001"),
+		)
+
+		DescribeTable("node name validation - invalid cases",
+			func(name string) {
+				o.NodeName = name
+				err := o.Validate()
+				Expect(err).To(MatchError(ContainSubstring("invalid node name: does not conform to DNS naming rules")))
+			},
+			Entry("node name starting with hyphen", "-node"),
+			Entry("node name ending with hyphen", "node-"),
+			Entry("node name with uppercase letters", "MyNode"),
+			Entry("node name with underscore", "my_node"),
+			Entry("node name with special characters", "node@test"),
+			Entry("node name with spaces", "my node"),
+		)
+
+		DescribeTable("bastion host validation - valid cases",
+			func(host string) {
+				o.BastionHost = host
+				Expect(o.Validate()).To(Succeed())
+			},
+			Entry("empty bastion host", ""),
+			Entry("valid IP", "192.0.2.1"),
+			Entry("valid hostname", "bastion.example.com"),
+			Entry("loopback IP", "127.0.0.1"),
+			Entry("localhost", "localhost"),
+			Entry("link-local IP", "169.254.0.1"),
+		)
+
+		DescribeTable("bastion host validation - invalid cases",
+			func(host string, expectedError string) {
+				o.BastionHost = host
+				Expect(o.Validate()).To(MatchError(ContainSubstring(expectedError)))
+			},
+			Entry("unspecified IP", "0.0.0.0", "unspecified addresses are not allowed"),
+			Entry("multicast IP", "224.0.0.1", "multicast addresses are not allowed"),
+			Entry("hostname containing semicolon", "bastion;example.com", "does not conform to DNS naming rules"),
+			Entry("hostname not conforming to DNS rules", "INVALID_HOST", "does not conform to DNS naming rules"),
+		)
+	})
+
+	Describe("ValidateHost", func() {
+		DescribeTable("valid cases",
+			func(host string) {
+				Expect(ssh.ValidateHost(host)).To(Succeed())
+			},
+			Entry("valid IPv4", "192.0.2.1"),
+			Entry("valid IPv6", "2001:db8::1"),
+			Entry("valid hostname", "foo.example.com"),
+			Entry("loopback IPv4", "127.0.0.1"),
+			Entry("loopback IPv6", "::1"),
+			Entry("localhost", "localhost"),
+			Entry("link-local IP", "169.254.0.1"),
+		)
+
+		DescribeTable("invalid cases",
+			func(host string, expectedError string) {
+				Expect(ssh.ValidateHost(host)).To(MatchError(ContainSubstring(expectedError)))
+			},
+			Entry("unspecified IPv4", "0.0.0.0", "unspecified addresses are not allowed"),
+			Entry("unspecified IPv6", "::", "unspecified addresses are not allowed"),
+			Entry("multicast IPv4", "224.0.0.1", "multicast addresses are not allowed"),
+			Entry("multicast IPv6", "ff02::1", "multicast addresses are not allowed"),
+			Entry("hostname containing semicolon", "bastion;example.com", "does not conform to DNS naming rules"),
+			Entry("hostname with uppercase", "INVALID_HOST", "does not conform to DNS naming rules"),
+			Entry("hostname with underscore", "invalid_host", "does not conform to DNS naming rules"),
+			Entry("hostname with spaces", "invalid host", "does not conform to DNS naming rules"),
 		)
 	})
 

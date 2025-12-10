@@ -45,11 +45,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
@@ -218,7 +220,7 @@ type SSHOptions struct {
 
 	// NodeName is the name of the Shoot cluster node that the user wants to
 	// connect to. If this is left empty, gardenctl will only establish the
-	// bastion host, but leave it up to the user to SSH themselves.
+	// connection to the bastion host and leave it up to the user to SSH to the node themselves.
 	NodeName string
 
 	// User is the name of the Shoot cluster node ssh login username
@@ -457,6 +459,20 @@ func (o *SSHOptions) Validate() error {
 		}
 	}
 
+	if o.BastionHost != "" {
+		if err := validateHost(o.BastionHost); err != nil {
+			return fmt.Errorf("invalid bastion-host: %w", err)
+		}
+	}
+
+	if o.NodeName != "" {
+		// used as a fallback hostname if the node is not found in the cluster.
+		// validateHost also covers Kubernetes node resource name validation (by checking for DNS1123 subdomain conformance).
+		if err := validateHost(o.NodeName); err != nil {
+			return fmt.Errorf("invalid node name: %w", err)
+		}
+	}
+
 	content, err := os.ReadFile(o.SSHPublicKeyFile.String())
 	if err != nil {
 		return fmt.Errorf("invalid SSH public key file: %w", err)
@@ -479,6 +495,28 @@ func (o *SSHOptions) Validate() error {
 		}
 
 		o.sshPrivateKeyBytes = privateKeyBytes
+	}
+
+	return nil
+}
+
+// validateHost validates that the given value is either a sane IP address or a
+// DNS1123 subdomain.
+func validateHost(value string) error {
+	if ip := net.ParseIP(value); ip != nil {
+		if ip.IsUnspecified() {
+			return fmt.Errorf("unspecified addresses are not allowed: %q", value)
+		}
+
+		if ip.IsMulticast() {
+			return fmt.Errorf("multicast addresses are not allowed: %q", value)
+		}
+
+		return nil
+	}
+
+	if errs := validation.IsDNS1123Subdomain(value); len(errs) > 0 {
+		return fmt.Errorf("does not conform to DNS naming rules: %s: %q", strings.Join(errs, "; "), value)
 	}
 
 	return nil
@@ -753,11 +791,11 @@ func (o *SSHOptions) Run(f util.Factory) error {
 	}
 
 	// continuously keep the bastion alive by renewing its annotation
-	go keepBastionAlive(ctx, cancel, gardenClient.RuntimeClient(), bastion.DeepCopy())
+	go keepBastionAlive(ctx, cancel, gardenClient, bastion.DeepCopy())
 
 	logger.Info("Waiting for bastion to be ready…", "waitTimeout", o.WaitTimeout)
 
-	err = waitForBastion(ctx, o, gardenClient.RuntimeClient(), bastion)
+	bastion, err = waitForBastion(ctx, o, gardenClient, bastion)
 	if wait.Interrupted(err) {
 		return errors.New("timed out waiting for the bastion to be ready")
 	} else if err != nil {
@@ -1068,10 +1106,12 @@ func preferredBastionAddress(bastionHostOverride string, bastion *operationsv1al
 	return ""
 }
 
-func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Client, bastion *operationsv1alpha1.Bastion) error {
+func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient clientgarden.Client, bastion *operationsv1alpha1.Bastion) (*operationsv1alpha1.Bastion, error) {
 	var (
 		lastCheckErr    error
 		privateKeyBytes []byte
+		updatedBastion  *operationsv1alpha1.Bastion
+		err             error
 	)
 
 	logger := klog.FromContext(ctx)
@@ -1082,17 +1122,18 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 
 	hostKeyCallback, err := o.HostKeyCallbackFactory.New(o.BastionStrictHostKeyChecking, o.BastionUserKnownHostsFiles, o.IOStreams)
 	if err != nil {
-		return fmt.Errorf("could not create hostkey callback: %w", err)
+		return nil, fmt.Errorf("could not create hostkey callback: %w", err)
 	}
 
 	waitErr := wait.PollUntilContextTimeout(ctx, pollBastionStatusInterval, o.WaitTimeout, false, func(ctx context.Context) (bool, error) {
-		key := client.ObjectKeyFromObject(bastion)
+		var err error
 
-		if err := gardenClient.Get(ctx, key, bastion); err != nil {
+		updatedBastion, err = gardenClient.GetBastion(ctx, bastion.Namespace, bastion.Name)
+		if err != nil {
 			return false, err
 		}
 
-		switch cond := corev1beta1helper.GetCondition(bastion.Status.Conditions, operationsv1alpha1.BastionReady); {
+		switch cond := corev1beta1helper.GetCondition(updatedBastion.Status.Conditions, operationsv1alpha1.BastionReady); {
 		case cond == nil:
 			return false, nil
 		case cond.Status != gardencorev1beta1.ConditionTrue:
@@ -1107,7 +1148,7 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 			return true, nil
 		}
 
-		bastionPreferredAddress := preferredBastionAddress(o.BastionHost, bastion)
+		bastionPreferredAddress := preferredBastionAddress(o.BastionHost, updatedBastion)
 
 		lastCheckErr = bastionAvailabilityChecker(
 			bastionPreferredAddress,
@@ -1124,10 +1165,10 @@ func waitForBastion(ctx context.Context, o *SSHOptions, gardenClient client.Clie
 	})
 
 	if wait.Interrupted(waitErr) {
-		return fmt.Errorf("timed out waiting for the bastion to become ready: %w", lastCheckErr)
+		return nil, fmt.Errorf("timed out waiting for the bastion to become ready: %w", lastCheckErr)
 	}
 
-	return waitErr
+	return updatedBastion, waitErr
 }
 
 func getShootNode(ctx context.Context, o *SSHOptions, shootClient client.Client) (*corev1.Node, error) {
@@ -1185,7 +1226,7 @@ func getKeepAliveInterval() time.Duration {
 	return keepAliveInterval
 }
 
-func keepBastionAlive(ctx context.Context, cancel context.CancelFunc, gardenClient client.Client, bastion *operationsv1alpha1.Bastion) {
+func keepBastionAlive(ctx context.Context, cancel context.CancelFunc, gardenClient clientgarden.Client, bastion *operationsv1alpha1.Bastion) {
 	logger := klog.FromContext(ctx).WithValues("bastion", klog.KObj(bastion))
 
 	ticker := time.NewTicker(getKeepAliveInterval())
@@ -1198,12 +1239,8 @@ func keepBastionAlive(ctx context.Context, cancel context.CancelFunc, gardenClie
 
 		case <-ticker.C:
 			// re-fetch current bastion
-			key := types.NamespacedName{Name: bastion.Name, Namespace: bastion.Namespace}
-
-			// reset annotations so that we fetch the actual current state
-			bastion.Annotations = map[string]string{}
-
-			if err := gardenClient.Get(ctx, key, bastion); err != nil {
+			updatedBastion, err := gardenClient.GetBastion(ctx, bastion.Namespace, bastion.Name)
+			if err != nil {
 				if apierrors.IsNotFound(err) {
 					logger.Error(err, "Can't keep bastion alive. Bastion is already gone.")
 					cancel()
@@ -1217,15 +1254,15 @@ func keepBastionAlive(ctx context.Context, cancel context.CancelFunc, gardenClie
 			}
 
 			// add the keepalive annotation
-			oldBastion := bastion.DeepCopy()
+			oldBastion := updatedBastion.DeepCopy()
 
-			if bastion.Annotations == nil {
-				bastion.Annotations = map[string]string{}
+			if updatedBastion.Annotations == nil {
+				updatedBastion.Annotations = map[string]string{}
 			}
 
-			bastion.Annotations[corev1beta1constants.GardenerOperation] = corev1beta1constants.GardenerOperationKeepalive
+			updatedBastion.Annotations[corev1beta1constants.GardenerOperation] = corev1beta1constants.GardenerOperationKeepalive
 
-			if err := gardenClient.Patch(ctx, bastion, client.MergeFrom(oldBastion)); err != nil {
+			if err := gardenClient.PatchBastion(ctx, updatedBastion, oldBastion); err != nil {
 				logger.Error(err, "Failed to keep bastion alive.")
 			}
 		}
