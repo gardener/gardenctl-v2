@@ -6,4 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 
 package env
 
-var ParseFile = parseFile
+var (
+	ParseFile             = parseFile
+	ShellEscapePOSIX      = shellEscapePOSIX
+	ShellEscapeFish       = shellEscapeFish
+	ShellEscapePowerShell = shellEscapePowerShell
+)

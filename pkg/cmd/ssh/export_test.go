@@ -77,6 +77,7 @@ func SSHCommandArguments(
 	nodeHostname string,
 	nodePrivateKeyFiles []PrivateKeyFile,
 	user string,
+	shellEscapeFn func(values ...interface{}) string,
 ) TestArguments {
 	return TestArguments{
 		sshCommandArguments(
@@ -90,6 +91,7 @@ func SSHCommandArguments(
 			nodeHostname,
 			nodePrivateKeyFiles,
 			user,
+			shellEscapeFn,
 		),
 	}
 }

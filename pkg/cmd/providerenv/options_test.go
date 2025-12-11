@@ -65,8 +65,11 @@ var _ = Describe("Env Commands - Options", func() {
 			manager = targetmocks.NewMockManager(ctrl)
 			options = providerenv.NewOptions()
 			cmdPath = "gardenctl provider-env"
-			baseTemplate = env.NewTemplate("helpers")
-			shell = "default"
+			// Use bash as default shell for tests; helpers template itself is shell-agnostic
+			shell = "bash"
+			var err error
+			baseTemplate, err = env.NewTemplate(shell, "helpers")
+			Expect(err).NotTo(HaveOccurred())
 			output = ""
 			providerType = "aws"
 			cfg = &config.Config{
@@ -96,7 +99,7 @@ var _ = Describe("Env Commands - Options", func() {
 			BeforeEach(func() {
 				root = &cobra.Command{Use: "root"}
 				parent = &cobra.Command{Use: "parent", Aliases: []string{"alias"}}
-				child = &cobra.Command{Use: "child"}
+				child = &cobra.Command{Use: "bash"}
 				parent.AddCommand(child)
 				root.AddCommand(parent)
 				factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
@@ -159,6 +162,7 @@ var _ = Describe("Env Commands - Options", func() {
 			Context("when output is set", func() {
 				BeforeEach(func() {
 					shell = ""
+					baseTemplate = nil
 				})
 
 				It("should successfully validate the options", func() {
@@ -170,6 +174,12 @@ var _ = Describe("Env Commands - Options", func() {
 					options.Output = "invalid"
 					Expect(options.Validate()).To(MatchError("--output must be either 'yaml' or 'json'"))
 				})
+			})
+
+			It("should detect invalid state when both shell and output are set", func() {
+				options.Shell = "bash"
+				options.Output = "json"
+				Expect(options.Validate()).To(MatchError("internal error: both shell and output are set"))
 			})
 
 			It("should successfully validate the options", func() {
@@ -243,8 +253,10 @@ var _ = Describe("Env Commands - Options", func() {
 				factory.EXPECT().Context().Return(ctx).AnyTimes()
 				// Create a proper command hierarchy for Complete() to work
 				parentCmd := &cobra.Command{Use: "gardenctl"}
-				mockCmd = &cobra.Command{Use: "provider-env"}
-				parentCmd.AddCommand(mockCmd)
+				providerEnvCmd := &cobra.Command{Use: "provider-env"}
+				mockCmd = &cobra.Command{Use: "bash"}
+				providerEnvCmd.AddCommand(mockCmd)
+				parentCmd.AddCommand(providerEnvCmd)
 			})
 
 			JustBeforeEach(func() {
@@ -526,8 +538,10 @@ var _ = Describe("Env Commands - Options", func() {
 				options.Target = target.NewTarget("test", "project", "", shootName)
 				// Create a proper command hierarchy for Complete() to work
 				parentCmd := &cobra.Command{Use: "gardenctl"}
-				mockCmd = &cobra.Command{Use: "provider-env"}
-				parentCmd.AddCommand(mockCmd)
+				providerEnvCmd := &cobra.Command{Use: "provider-env"}
+				mockCmd = &cobra.Command{Use: "bash"}
+				providerEnvCmd.AddCommand(mockCmd)
+				parentCmd.AddCommand(providerEnvCmd)
 			})
 
 			JustBeforeEach(func() {
@@ -666,6 +680,7 @@ var _ = Describe("Env Commands - Options", func() {
 					manager.EXPECT().SessionDir().Return(sessionDir)
 					manager.EXPECT().Configuration().Return(cfg)
 					Expect(options.Complete(factory, mockCmd, nil)).To(Succeed())
+					options.Shell = shell // monkey patch
 				})
 
 				It("should fail to render the template with JSON parse error", func() {
@@ -1044,7 +1059,9 @@ var _ = Describe("Env Commands - Options", func() {
 				cli = providerenv.GetProviderCLI(providerType)
 				meta = options.GenerateMetadata(cli, "Secret")
 				targetFlags = providerenv.GetTargetFlags(t)
-				Expect(env.NewTemplate("helpers").ExecuteTemplate(options.IOStreams.Out, "usage-hint", meta)).To(Succeed())
+				tmpl, err := env.NewTemplate(shell, "helpers")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(tmpl.ExecuteTemplate(options.IOStreams.Out, "usage-hint", meta)).To(Succeed())
 			})
 
 			Context("when configuring the shell", func() {

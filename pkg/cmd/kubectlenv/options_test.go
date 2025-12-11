@@ -51,8 +51,10 @@ var _ = Describe("Env Commands - Options", func() {
 			manager = targetmocks.NewMockManager(ctrl)
 			options = kubectlenv.NewOptions()
 			cmdPath = "gardenctl provider-env"
-			baseTemplate = env.NewTemplate("helpers")
-			shell = "default"
+			shell = "bash"
+			var err error
+			baseTemplate, err = env.NewTemplate(shell, "helpers")
+			Expect(err).NotTo(HaveOccurred())
 			cfg = &config.Config{
 				LinkKubeconfig: ptr.To(false),
 				Gardens:        []config.Garden{{Name: "test"}},
@@ -78,7 +80,7 @@ var _ = Describe("Env Commands - Options", func() {
 			BeforeEach(func() {
 				root = &cobra.Command{Use: "root"}
 				parent = &cobra.Command{Use: "parent", Aliases: []string{"alias"}}
-				child = &cobra.Command{Use: "child"}
+				child = &cobra.Command{Use: "bash"}
 				parent.AddCommand(child)
 				root.AddCommand(parent)
 				factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
@@ -230,7 +232,9 @@ var _ = Describe("Env Commands - Options", func() {
 			JustBeforeEach(func() {
 				meta = options.GenerateMetadata()
 				targetFlags = kubectlenv.GetTargetFlags(t)
-				Expect(env.NewTemplate("helpers").ExecuteTemplate(options.IOStreams.Out, "usage-hint", meta)).To(Succeed())
+				tmpl, err := env.NewTemplate(shell, "helpers")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(tmpl.ExecuteTemplate(options.IOStreams.Out, "usage-hint", meta)).To(Succeed())
 			})
 
 			Context("when configuring the shell", func() {
