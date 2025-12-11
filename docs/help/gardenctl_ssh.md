@@ -4,7 +4,7 @@ Establish an SSH connection to a node of a Shoot cluster
 
 ### Synopsis
 
-Establish an SSH connection to a node of a Shoot cluster by specifying its name. 
+Establish an SSH connection to a node of a Shoot cluster by specifying its name.
 
 A bastion is created to access the node and is automatically cleaned up afterwards.
 
@@ -59,6 +59,7 @@ gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path
       --project string                            target the given project
       --public-key-file string                    Path to the file that contains a public SSH key. If not given, a temporary keypair will be generated.
       --seed string                               target the given seed cluster
+      --shell string                              Shell to use for escaping arguments when printing out the SSH command. If not provided, it defaults to the GCTL_SHELL environment variable or bash.
       --shoot string                              target the given shoot cluster
       --skip-availability-check                   Skip checking for SSH bastion host availability.
       --user string                               user is the name of the Shoot cluster node ssh login username. (default "gardener")
