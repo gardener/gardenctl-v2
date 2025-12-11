@@ -22,7 +22,7 @@ func NewCmdSSH(f util.Factory, o *SSHOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ssh [NODE_NAME]",
 		Short: "Establish an SSH connection to a node of a Shoot cluster",
-		Long: `Establish an SSH connection to a node of a Shoot cluster by specifying its name. 
+		Long: `Establish an SSH connection to a node of a Shoot cluster by specifying its name.
 
 A bastion is created to access the node and is automatically cleaned up afterwards.
 
@@ -81,6 +81,7 @@ gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path
 	o.AddFlags(cmd.Flags())
 	o.RegisterCompletionsForOutputFlag(cmd)
 	o.RegisterCompletionFuncsForStrictHostKeyCheckings(cmd)
+	o.RegisterCompletionFuncForShell(cmd)
 
 	o.AccessConfig.AddFlags(cmd.Flags())
 	RegisterCompletionFuncsForAccessConfigFlags(cmd, f)

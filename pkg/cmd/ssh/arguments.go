@@ -9,12 +9,11 @@ package ssh
 import (
 	"fmt"
 	"strings"
-
-	"github.com/gardener/gardenctl-v2/internal/util"
 )
 
 type arguments struct {
-	list []argument
+	list        []argument
+	shellEscape func(values ...interface{}) string
 }
 
 var _ fmt.Stringer = (*arguments)(nil)
@@ -35,7 +34,7 @@ func (a *arguments) String() string {
 
 		value := arg.value
 		if !arg.shellEscapeDisabled {
-			value = util.ShellEscape(value)
+			value = a.shellEscape(value)
 		}
 
 		sb.WriteString(value)
@@ -44,14 +43,14 @@ func (a *arguments) String() string {
 	return sb.String()
 }
 
-func userKnownHostsFilesArgument(userKnownHostsFiles []string) *argument {
+func userKnownHostsFilesArgument(userKnownHostsFiles []string, shellEscapeFn func(values ...interface{}) string) *argument {
 	if len(userKnownHostsFiles) == 0 {
 		return nil
 	}
 
 	var escapedHostsFiles []string
 	for _, path := range userKnownHostsFiles {
-		escapedHostsFiles = append(escapedHostsFiles, util.ShellEscape(path))
+		escapedHostsFiles = append(escapedHostsFiles, shellEscapeFn(path))
 	}
 
 	userKnownHostsFilesValue := strings.Join(escapedHostsFiles, " ")
@@ -70,9 +69,10 @@ func sshCommandArguments(
 	nodeHostname string,
 	nodePrivateKeyFiles []PrivateKeyFile,
 	user string,
+	shellEscapeFn func(values ...interface{}) string,
 ) arguments {
-	bastionUserKnownHostsFilesArg := userKnownHostsFilesArgument(bastionUserKnownHostsFiles)
-	nodeUserKnownHostsFilesArg := userKnownHostsFilesArgument(nodeUserKnownHostsFiles)
+	bastionUserKnownHostsFilesArg := userKnownHostsFilesArgument(bastionUserKnownHostsFiles, shellEscapeFn)
+	nodeUserKnownHostsFilesArg := userKnownHostsFilesArgument(nodeUserKnownHostsFiles, shellEscapeFn)
 
 	proxyCmdArgs := sshProxyCmdArguments(
 		bastionHost,
@@ -80,6 +80,7 @@ func sshCommandArguments(
 		sshPrivateKeyFile,
 		bastionUserKnownHostsFilesArg,
 		bastionStrictHostKeyChecking,
+		shellEscapeFn,
 	)
 
 	args := []argument{
@@ -99,7 +100,7 @@ func sshCommandArguments(
 
 	args = append(args, argument{value: fmt.Sprintf("%s@%s", user, nodeHostname)})
 
-	return arguments{list: args}
+	return arguments{list: args, shellEscape: shellEscapeFn}
 }
 
 func sshProxyCmdArguments(
@@ -108,6 +109,7 @@ func sshProxyCmdArguments(
 	sshPrivateKeyFile PrivateKeyFile,
 	userKnownHostsFileArg *argument,
 	bastionStrictHostKeyChecking StrictHostKeyChecking,
+	shellEscapeFn func(values ...interface{}) string,
 ) arguments {
 	args := []argument{
 		{value: "ssh", shellEscapeDisabled: true},
@@ -130,5 +132,5 @@ func sshProxyCmdArguments(
 		args = append(args, argument{value: fmt.Sprintf("-p%s", bastionPort)})
 	}
 
-	return arguments{list: args}
+	return arguments{list: args, shellEscape: shellEscapeFn}
 }
