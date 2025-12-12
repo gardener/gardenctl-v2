@@ -8,6 +8,11 @@ package providerenv_test
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
 	"path/filepath"
 	"strings"
 
@@ -16,6 +21,7 @@ import (
 	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
@@ -269,6 +275,339 @@ var _ = Describe("Env Commands", func() {
 				)
 				expectedOutput := replacer.Replace(readTestFile("gcp/export.yaml"))
 				Expect(out.String()).To(Equal(expectedOutput))
+			})
+		})
+
+		Context("STACKIT provider", func() {
+			var (
+				ctx context.Context
+				cfg *config.Config
+				t   target.Target
+			)
+
+			BeforeEach(func() {
+				t = target.NewTarget("test", "project", "seed", "shoot")
+				cfg = &config.Config{
+					Gardens: []config.Garden{
+						{
+							Name: t.GardenName(),
+						},
+					},
+				}
+
+				manager.EXPECT().SessionDir().Return(sessionDir).AnyTimes()
+				manager.EXPECT().CurrentTarget().Return(t, nil).AnyTimes()
+				manager.EXPECT().Configuration().Return(cfg).AnyTimes()
+
+				factory.EXPECT().GardenHomeDir().Return(gardenHomeDir).AnyTimes()
+
+				ctx = context.Background()
+				factory.EXPECT().Context().Return(ctx).AnyTimes()
+			})
+
+			Context("non-user-configurable field patterns", func() {
+				It("should reject project-id field pattern via flag", func() {
+					parent.SetArgs([]string{"provider-env", "--output", "yaml", "--stackit-allowed-patterns", `{"field":"project-id","regexValue":"^custom-pattern$"}`})
+					err := parent.Execute()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("field project-id cannot be configured by users"))
+				})
+
+				It("should reject id field pattern via flag", func() {
+					parent.SetArgs([]string{"provider-env", "--output", "yaml", "--stackit-allowed-patterns", `{"field":"id","regexValue":"^custom-pattern$"}`})
+					err := parent.Execute()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("field id cannot be configured by users"))
+				})
+
+				It("should reject sub field pattern via flag", func() {
+					parent.SetArgs([]string{"provider-env", "--output", "yaml", "--stackit-allowed-patterns", `{"field":"sub","regexValue":"^custom-pattern$"}`})
+					err := parent.Execute()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("field sub cannot be configured by users"))
+				})
+
+				It("should reject kid field pattern via flag", func() {
+					parent.SetArgs([]string{"provider-env", "--output", "yaml", "--stackit-allowed-patterns", `{"field":"kid","regexValue":"^custom-pattern$"}`})
+					err := parent.Execute()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("field kid cannot be configured by users"))
+				})
+
+				It("should reject keyType field pattern via flag", func() {
+					parent.SetArgs([]string{"provider-env", "--output", "yaml", "--stackit-allowed-patterns", `{"field":"keyType","regexValue":"^custom-pattern$"}`})
+					err := parent.Execute()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("field keyType cannot be configured by users"))
+				})
+
+				It("should reject keyOrigin field pattern via flag", func() {
+					parent.SetArgs([]string{"provider-env", "--output", "yaml", "--stackit-allowed-patterns", `{"field":"keyOrigin","regexValue":"^custom-pattern$"}`})
+					err := parent.Execute()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("field keyOrigin cannot be configured by users"))
+				})
+
+				It("should reject keyAlgorithm field pattern via flag", func() {
+					parent.SetArgs([]string{"provider-env", "--output", "yaml", "--stackit-allowed-patterns", `{"field":"keyAlgorithm","regexValue":"^custom-pattern$"}`})
+					err := parent.Execute()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("field keyAlgorithm cannot be configured by users"))
+				})
+
+				It("should reject iss field pattern via flag", func() {
+					parent.SetArgs([]string{"provider-env", "--output", "yaml", "--stackit-allowed-patterns", `{"field":"iss","regexValue":"^custom-pattern$"}`})
+					err := parent.Execute()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("field iss cannot be configured by users"))
+				})
+			})
+
+			Context("aud field validation", func() {
+				var (
+					credentialsBindingName string
+					cloudProfileName       string
+					region                 string
+					provider               *gardencorev1beta1.Provider
+					secretRef              *corev1.SecretReference
+					project                *gardencorev1beta1.Project
+					shoot                  *gardencorev1beta1.Shoot
+					credentialsBinding     *gardensecurityv1alpha1.CredentialsBinding
+					cloudProfile           *gardencorev1beta1.CloudProfile
+					privateKeyPEM          []byte
+					publicKeyPEM           []byte
+				)
+
+				BeforeEach(func() {
+					credentialsBindingName = "credentials-binding"
+					cloudProfileName = "cloud-profile"
+					region = "europe"
+					provider = &gardencorev1beta1.Provider{
+						Type: "stackit",
+					}
+					secretRef = &corev1.SecretReference{
+						Namespace: "private",
+						Name:      "secret",
+					}
+					namespace := "garden-" + t.ProjectName()
+
+					project = &gardencorev1beta1.Project{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: t.ProjectName(),
+							UID:  "00000000-0000-0000-0000-000000000000",
+						},
+						Spec: gardencorev1beta1.ProjectSpec{
+							Namespace: ptr.To(namespace),
+						},
+					}
+					shoot = &gardencorev1beta1.Shoot{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      t.ShootName(),
+							Namespace: namespace,
+							UID:       "00000000-0000-0000-0000-000000000000",
+						},
+						Spec: gardencorev1beta1.ShootSpec{
+							CloudProfile: &gardencorev1beta1.CloudProfileReference{
+								Kind: corev1beta1constants.CloudProfileReferenceKindCloudProfile,
+								Name: cloudProfileName,
+							},
+							Region:                 region,
+							CredentialsBindingName: &credentialsBindingName,
+							Provider:               *provider.DeepCopy(),
+						},
+					}
+					credentialsBinding = &gardensecurityv1alpha1.CredentialsBinding{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      credentialsBindingName,
+							Namespace: shoot.Namespace,
+							UID:       "00000000-0000-0000-0000-000000000000",
+						},
+						CredentialsRef: corev1.ObjectReference{
+							Kind:       "Secret",
+							APIVersion: corev1.SchemeGroupVersion.String(),
+							Namespace:  secretRef.Namespace,
+							Name:       secretRef.Name,
+						},
+					}
+
+					cloudProfile = &gardencorev1beta1.CloudProfile{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: cloudProfileName,
+							UID:  "00000000-0000-0000-0000-000000000000",
+						},
+						Spec: gardencorev1beta1.CloudProfileSpec{
+							Type: provider.Type,
+							ProviderConfig: &runtime.RawExtension{
+								Object: nil,
+								Raw:    nil,
+							},
+						},
+					}
+
+					// Generate valid RSA keys for the test
+					privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+					Expect(err).NotTo(HaveOccurred())
+
+					// Convert to PKCS#8 format for public key
+					publicKeyBytes, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+					Expect(err).NotTo(HaveOccurred())
+
+					// Create PEM block for public key
+					publicKeyPEM = pem.EncodeToMemory(&pem.Block{
+						Type:  "PUBLIC KEY",
+						Bytes: publicKeyBytes,
+					})
+
+					// Convert to PKCS#8 format for private key
+					privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
+					Expect(err).NotTo(HaveOccurred())
+
+					// Create PEM block for private key
+					privateKeyPEM = pem.EncodeToMemory(&pem.Block{
+						Type:  "PRIVATE KEY",
+						Bytes: privateKeyBytes,
+					})
+				})
+
+				It("should fail with non-stackit.cloud aud value", func() {
+					// Create a STACKIT serviceaccount JSON with a different aud value (https://example.com)
+					// This should fail because it doesn't end with .stackit.cloud
+					serviceaccount := map[string]interface{}{
+						"id":           uuid.New().String(),
+						"publicKey":    string(publicKeyPEM),
+						"createdAt":    "2024-01-01T00:00:00Z",
+						"validUntil":   "2025-01-01T00:00:00Z",
+						"keyType":      "USER_MANAGED",
+						"keyOrigin":    "USER_PROVIDED",
+						"keyAlgorithm": "RSA_2048",
+						"active":       true,
+						"credentials": map[string]interface{}{
+							"kid":        uuid.New().String(),
+							"iss":        "test@sa.stackit.cloud",
+							"sub":        uuid.New().String(),
+							"aud":        "https://example.com",
+							"privateKey": string(privateKeyPEM),
+						},
+					}
+					serviceaccountJSON, err := json.Marshal(serviceaccount)
+					Expect(err).NotTo(HaveOccurred())
+
+					customSecret := &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: secretRef.Namespace,
+							Name:      secretRef.Name,
+							UID:       "00000000-0000-0000-0000-000000000000",
+						},
+						Data: map[string][]byte{
+							"project-id":          []byte(uuid.New().String()),
+							"serviceaccount.json": serviceaccountJSON,
+						},
+					}
+
+					// Create a new client with the custom secret
+					customClient := clientgarden.NewClient(
+						nil,
+						fake.NewClientWithObjects(project, shoot, credentialsBinding, customSecret, cloudProfile),
+						t.GardenName(),
+					)
+					manager.EXPECT().GardenClient(t.GardenName()).Return(customClient, nil).AnyTimes()
+
+					parent.SetArgs([]string{"provider-env", "--output", "yaml"})
+					err = parent.Execute()
+					Expect(err).To(MatchError("validation error in field \"aud\": url host must have .stackit.cloud suffix"))
+				})
+
+				It("should succeed with non-stackit.cloud aud value when using --stackit-allowed-uri-patterns", func() {
+					// Create a STACKIT serviceaccount JSON with a custom aud value
+					serviceaccount := map[string]interface{}{
+						"id":           uuid.New().String(),
+						"publicKey":    string(publicKeyPEM),
+						"createdAt":    "2024-01-01T00:00:00Z",
+						"validUntil":   "2025-01-01T00:00:00Z",
+						"keyType":      "USER_MANAGED",
+						"keyOrigin":    "USER_PROVIDED",
+						"keyAlgorithm": "RSA_2048",
+						"active":       true,
+						"credentials": map[string]interface{}{
+							"kid":        uuid.New().String(),
+							"iss":        "test@sa.stackit.cloud",
+							"sub":        uuid.New().String(),
+							"aud":        "https://example.com",
+							"privateKey": string(privateKeyPEM),
+						},
+					}
+					serviceaccountJSON, err := json.Marshal(serviceaccount)
+					Expect(err).NotTo(HaveOccurred())
+
+					customSecret := &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: secretRef.Namespace,
+							Name:      secretRef.Name,
+							UID:       "00000000-0000-0000-0000-000000000000",
+						},
+						Data: map[string][]byte{
+							"project-id":          []byte(uuid.New().String()),
+							"serviceaccount.json": serviceaccountJSON,
+						},
+					}
+
+					// Create a new client with the custom secret
+					customClient := clientgarden.NewClient(
+						nil,
+						fake.NewClientWithObjects(project, shoot, credentialsBinding, customSecret, cloudProfile),
+						t.GardenName(),
+					)
+					manager.EXPECT().GardenClient(t.GardenName()).Return(customClient, nil).AnyTimes()
+
+					parent.SetArgs([]string{"provider-env", "--output", "yaml", "--stackit-allowed-uri-patterns", "aud=https://example.com"})
+					Expect(parent.Execute()).To(Succeed())
+				})
+
+				It("should succeed with non-stackit.cloud aud value when using --stackit-allowed-patterns", func() {
+					// Create a STACKIT serviceaccount JSON with a custom aud value
+					serviceaccount := map[string]interface{}{
+						"id":           uuid.New().String(),
+						"publicKey":    string(publicKeyPEM),
+						"createdAt":    "2024-01-01T00:00:00Z",
+						"validUntil":   "2025-01-01T00:00:00Z",
+						"keyType":      "USER_MANAGED",
+						"keyOrigin":    "USER_PROVIDED",
+						"keyAlgorithm": "RSA_2048",
+						"active":       true,
+						"credentials": map[string]interface{}{
+							"kid":        uuid.New().String(),
+							"iss":        "test@sa.stackit.cloud",
+							"sub":        uuid.New().String(),
+							"aud":        "https://custom.example.com",
+							"privateKey": string(privateKeyPEM),
+						},
+					}
+					serviceaccountJSON, err := json.Marshal(serviceaccount)
+					Expect(err).NotTo(HaveOccurred())
+
+					customSecret := &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: secretRef.Namespace,
+							Name:      secretRef.Name,
+							UID:       "00000000-0000-0000-0000-000000000000",
+						},
+						Data: map[string][]byte{
+							"project-id":          []byte(uuid.New().String()),
+							"serviceaccount.json": serviceaccountJSON,
+						},
+					}
+
+					// Create a new client with the custom secret
+					customClient := clientgarden.NewClient(
+						nil,
+						fake.NewClientWithObjects(project, shoot, credentialsBinding, customSecret, cloudProfile),
+						t.GardenName(),
+					)
+					manager.EXPECT().GardenClient(t.GardenName()).Return(customClient, nil).AnyTimes()
+
+					parent.SetArgs([]string{"provider-env", "--output", "yaml", "--stackit-allowed-patterns", `{"field":"aud","regexValue":"^https://.*\\.example\\.com$"}`})
+					Expect(parent.Execute()).To(Succeed())
+				})
 			})
 		})
 	})

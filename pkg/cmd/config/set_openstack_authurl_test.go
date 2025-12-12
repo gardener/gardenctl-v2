@@ -160,8 +160,9 @@ var _ = Describe("Config Subcommand SetOpenStackAuthURL", func() {
 					Expect(cfg.Provider.OpenStack).NotTo(BeNil())
 					Expect(cfg.Provider.OpenStack.AllowedPatterns).To(HaveLen(1))
 					Expect(cfg.Provider.OpenStack.AllowedPatterns[0]).To(Equal(allowpattern.Pattern{
-						Field: "authURL",
-						URI:   "https://keystone.example.com:5000/v3",
+						Field:          "authURL",
+						URI:            "https://keystone.example.com:5000/v3",
+						IsUserProvided: true,
 					}))
 					assertConfigHasBeenSaved(cfg)
 					Expect(out.String()).To(ContainSubstring("Successfully configured 1 OpenStack authURL pattern(s)"))
@@ -179,12 +180,14 @@ var _ = Describe("Config Subcommand SetOpenStackAuthURL", func() {
 					Expect(cfg.Provider.OpenStack).NotTo(BeNil())
 					Expect(cfg.Provider.OpenStack.AllowedPatterns).To(HaveLen(2))
 					Expect(cfg.Provider.OpenStack.AllowedPatterns[0]).To(Equal(allowpattern.Pattern{
-						Field: "authURL",
-						URI:   "https://keystone.example.com:5000/v3",
+						Field:          "authURL",
+						URI:            "https://keystone.example.com:5000/v3",
+						IsUserProvided: true,
 					}))
 					Expect(cfg.Provider.OpenStack.AllowedPatterns[1]).To(Equal(allowpattern.Pattern{
-						Field: "authURL",
-						URI:   "https://keystone.another.com/v3",
+						Field:          "authURL",
+						URI:            "https://keystone.another.com/v3",
+						IsUserProvided: true,
 					}))
 					assertConfigHasBeenSaved(cfg)
 					Expect(out.String()).To(ContainSubstring("Successfully configured 2 OpenStack authURL pattern(s)"))
@@ -207,8 +210,9 @@ var _ = Describe("Config Subcommand SetOpenStackAuthURL", func() {
 
 					Expect(cfg.Provider.OpenStack.AllowedPatterns).To(HaveLen(1))
 					Expect(cfg.Provider.OpenStack.AllowedPatterns[0]).To(Equal(allowpattern.Pattern{
-						Field: "authURL",
-						URI:   "https://new.example.com:5000/v3",
+						Field:          "authURL",
+						URI:            "https://new.example.com:5000/v3",
+						IsUserProvided: true,
 					}))
 					assertConfigHasBeenSaved(cfg)
 					Expect(out.String()).To(ContainSubstring("Successfully configured 1 OpenStack authURL pattern(s)"))

@@ -1,0 +1,98 @@
+{{define "default"}}{{if .__meta.unset -}}
+stackit auth logout;
+unset OS_AUTH_URL;
+unset OS_PROJECT_DOMAIN_NAME;
+unset OS_USER_DOMAIN_NAME;
+unset OS_REGION_NAME;
+unset OS_AUTH_STRATEGY;
+unset OS_TENANT_NAME;
+unset OS_USERNAME;
+unset OS_PASSWORD;
+unset STACKIT_PROJECT_ID;
+unset STACKIT_REGION;
+unset STACKIT_CLI_PROFILE;
+{{else -}}
+export OS_AUTH_URL=$(< {{.dataFiles.authURL | shellEscape}});
+export OS_PROJECT_DOMAIN_NAME=$(< {{.dataFiles.domainName | shellEscape}});
+export OS_USER_DOMAIN_NAME=$(< {{.dataFiles.domainName | shellEscape}});
+export OS_REGION_NAME=$(< {{.dataFiles.region | shellEscape}});
+export OS_AUTH_STRATEGY=$(< {{.dataFiles.authStrategy | shellEscape}});
+export OS_TENANT_NAME=$(< {{.dataFiles.tenantName | shellEscape}});
+export OS_USERNAME=$(< {{.dataFiles.username | shellEscape}});
+export OS_PASSWORD=$(< {{.dataFiles.password | shellEscape}});
+export STACKIT_PROJECT_ID=$(< {{.dataFiles.projectId | shellEscape}});
+export STACKIT_REGION=$(< {{.dataFiles.stackitRegion | shellEscape}});
+STACKIT_CLI_PROFILE=$(< {{.dataFiles.stackitCliProfile | shellEscape}});
+stackit config profile create --no-set --empty -- "${STACKIT_CLI_PROFILE}" 2>/dev/null;
+export STACKIT_CLI_PROFILE;
+stackit auth activate-service-account --service-account-key-path {{.dataFiles.serviceaccount | shellEscape}};
+{{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
+{{end -}}
+{{end}}{{template "usage-hint" .__meta}}{{end}}
+
+{{define "bash"}}{{template "default" .}}{{end}}
+{{define "zsh"}}{{template "default" .}}{{end}}
+
+{{define "fish"}}{{if .__meta.unset -}}
+stackit auth logout;
+set -e OS_AUTH_URL;
+set -e OS_PROJECT_DOMAIN_NAME;
+set -e OS_USER_DOMAIN_NAME;
+set -e OS_REGION_NAME;
+set -e OS_AUTH_STRATEGY;
+set -e OS_TENANT_NAME;
+set -e OS_USERNAME;
+set -e OS_PASSWORD;
+set -e STACKIT_PROJECT_ID;
+set -e STACKIT_REGION;
+set -e STACKIT_CLI_PROFILE;
+{{else -}}
+set -gx OS_AUTH_URL (cat -- {{.dataFiles.authURL | shellEscape}});
+set -gx OS_PROJECT_DOMAIN_NAME (cat -- {{.dataFiles.domainName | shellEscape}});
+set -gx OS_USER_DOMAIN_NAME (cat -- {{.dataFiles.domainName | shellEscape}});
+set -gx OS_REGION_NAME (cat -- {{.dataFiles.region | shellEscape}});
+set -gx OS_AUTH_STRATEGY (cat -- {{.dataFiles.authStrategy | shellEscape}});
+set -gx OS_TENANT_NAME (cat -- {{.dataFiles.tenantName | shellEscape}});
+set -gx OS_USERNAME (cat -- {{.dataFiles.username | shellEscape}});
+set -gx OS_PASSWORD (cat -- {{.dataFiles.password | shellEscape}});
+set -gx STACKIT_PROJECT_ID (cat -- {{.dataFiles.projectId | shellEscape}});
+set -gx STACKIT_REGION (cat -- {{.dataFiles.stackitRegion | shellEscape}});
+set STACKIT_CLI_PROFILE (cat -- {{.dataFiles.stackitCliProfile | shellEscape}});
+stackit config profile create --no-set --empty -- "$STACKIT_CLI_PROFILE" 2>/dev/null;
+set -gx STACKIT_CLI_PROFILE "$STACKIT_CLI_PROFILE";
+stackit auth activate-service-account --service-account-key-path {{.dataFiles.serviceaccount | shellEscape}};
+{{range $key, $path := .dataFiles}}rm -f -- {{$path | shellEscape}};
+{{end -}}
+{{end}}{{template "usage-hint" .__meta}}{{end}}
+
+{{define "powershell"}}{{if .__meta.unset -}}
+stackit auth logout;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_AUTH_URL;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_PROJECT_DOMAIN_NAME;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_USER_DOMAIN_NAME;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_REGION_NAME;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_AUTH_STRATEGY;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_TENANT_NAME;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_USERNAME;
+Remove-Item -ErrorAction SilentlyContinue Env:\OS_PASSWORD;
+Remove-Item -ErrorAction SilentlyContinue Env:\STACKIT_PROJECT_ID;
+Remove-Item -ErrorAction SilentlyContinue Env:\STACKIT_REGION;
+Remove-Item -ErrorAction SilentlyContinue Env:\STACKIT_CLI_PROFILE;
+{{else -}}
+$Env:OS_AUTH_URL = Get-Content -Raw {{.dataFiles.authURL | shellEscape}};
+$Env:OS_PROJECT_DOMAIN_NAME = Get-Content -Raw {{.dataFiles.domainName | shellEscape}};
+$Env:OS_USER_DOMAIN_NAME = Get-Content -Raw {{.dataFiles.domainName | shellEscape}};
+$Env:OS_REGION_NAME = Get-Content -Raw {{.dataFiles.region | shellEscape}};
+$Env:OS_AUTH_STRATEGY = Get-Content -Raw {{.dataFiles.authStrategy | shellEscape}};
+$Env:OS_TENANT_NAME = Get-Content -Raw {{.dataFiles.tenantName | shellEscape}};
+$Env:OS_USERNAME = Get-Content -Raw {{.dataFiles.username | shellEscape}};
+$Env:OS_PASSWORD = Get-Content -Raw {{.dataFiles.password | shellEscape}};
+$Env:STACKIT_PROJECT_ID = Get-Content -Raw {{.dataFiles.projectId | shellEscape}};
+$Env:STACKIT_REGION = Get-Content -Raw {{.dataFiles.stackitRegion | shellEscape}};
+$STACKIT_CLI_PROFILE = Get-Content -Raw {{.dataFiles.stackitCliProfile | shellEscape}};
+stackit config profile create --no-set --empty -- "$STACKIT_CLI_PROFILE" 2>$null;
+$Env:STACKIT_CLI_PROFILE = $STACKIT_CLI_PROFILE;
+stackit auth activate-service-account --service-account-key-path {{.dataFiles.serviceaccount | shellEscape}};
+{{range $key, $path := .dataFiles}}Remove-Item -Force -ErrorAction SilentlyContinue {{$path | shellEscape}};
+{{end -}}
+{{end}}{{template "usage-hint" .__meta}}{{end}}

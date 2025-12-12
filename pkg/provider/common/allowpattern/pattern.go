@@ -23,6 +23,10 @@ type ValidationContext struct {
 	AllowedRegexFields map[string]bool
 	// StrictHTTPS controls the default HTTPS behavior for this provider context
 	StrictHTTPS bool
+	// AllowedUserConfigurableFields specifies which fields can be configured by users (via config or flags).
+	// If nil or empty, no user-provided patterns are allowed. If set, only fields in this list can be configured by users.
+	// Default patterns (IsUserProvided=false) are not subject to this restriction.
+	AllowedUserConfigurableFields map[string]bool
 }
 
 // Pattern represents a pattern for validating credential fields across different cloud providers.
@@ -46,9 +50,15 @@ type Pattern struct {
 	// Scheme is the allowed scheme for this pattern when URI is not provided (defaults to https).
 	// Valid values: "https" or "http". When URI is provided, the scheme is derived from the URI.
 	Scheme *string `json:"scheme,omitempty"`
+	// IsUserProvided indicates whether this pattern comes from user configuration (config file or flags).
+	// When true, the pattern field must be explicitly listed in AllowedUserConfigurableFields.
+	// This field is not serialized to/from JSON.
+	IsUserProvided bool `json:"-"`
 }
 
 // ParseAllowedPatterns parses the allowed patterns from JSON and URI formats.
+// All patterns parsed by this function are marked as user-provided (IsUserProvided=true)
+// since they come from command-line flags.
 func ParseAllowedPatterns(ctx *ValidationContext, jsonPatterns, uriPatterns []string) ([]Pattern, error) {
 	var patterns []Pattern
 
@@ -58,6 +68,8 @@ func ParseAllowedPatterns(ctx *ValidationContext, jsonPatterns, uriPatterns []st
 		if err := json.Unmarshal([]byte(pattern), &p); err != nil {
 			return nil, fmt.Errorf("could not parse JSON pattern %s: %w", pattern, err)
 		}
+
+		p.IsUserProvided = true
 
 		if err := p.ValidateWithContext(ctx); err != nil {
 			return nil, fmt.Errorf("validation failed for JSON pattern %s: %w", pattern, err)
@@ -76,8 +88,9 @@ func ParseAllowedPatterns(ctx *ValidationContext, jsonPatterns, uriPatterns []st
 		field, uri := parts[0], parts[1]
 
 		p := Pattern{
-			Field: field,
-			URI:   uri,
+			Field:          field,
+			URI:            uri,
+			IsUserProvided: true,
 		}
 		if err := p.ValidateWithContext(ctx); err != nil {
 			return nil, fmt.Errorf("invalid URI pattern %s: %w", pattern, err)
@@ -97,6 +110,16 @@ func (p *Pattern) ValidateWithContext(ctx *ValidationContext) error {
 
 	if p.Field == "" {
 		return fmt.Errorf("field is required")
+	}
+
+	if p.IsUserProvided {
+		if len(ctx.AllowedUserConfigurableFields) == 0 {
+			return fmt.Errorf("field %s cannot be configured by users; no user-configurable fields are allowed for this provider", p.Field)
+		}
+
+		if !ctx.AllowedUserConfigurableFields[p.Field] {
+			return fmt.Errorf("field %s cannot be configured by users", p.Field)
+		}
 	}
 
 	// --- RegexValue mode: RegexValue must stand alone
@@ -244,7 +267,24 @@ func parseOptionalPort(portStr string) *int {
 	return nil
 }
 
-// (no wrapper needed; messages are component-based and reused directly)
+// UnmarshalJSON implements custom JSON unmarshaling for Pattern.
+// It sets IsUserProvided to true for patterns loaded from configuration files.
+func (p *Pattern) UnmarshalJSON(data []byte) error {
+	// Define a temporary type to avoid recursion
+	type PatternAlias Pattern
+
+	aux := &PatternAlias{}
+
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+
+	*p = Pattern(*aux)
+	// Mark as user-provided since it comes from config file
+	p.IsUserProvided = true
+
+	return nil
+}
 
 // String returns a string representation of the pattern type for logging and debugging purposes.
 // This implements the fmt.Stringer interface.

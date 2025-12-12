@@ -64,6 +64,10 @@ type options struct {
 	OpenStackAllowedPatterns []string
 	// OpenStackAllowedURIPatterns is a list of simple field=uri patterns for OpenStack credential config fields
 	OpenStackAllowedURIPatterns []string
+	// STACKITAllowedPatterns is a list of JSON-formatted allowed patterns for STACKIT credential config fields
+	STACKITAllowedPatterns []string
+	// STACKITAllowedURIPatterns is a list of simple field=uri patterns for STACKIT credential config fields
+	STACKITAllowedURIPatterns []string
 	// MergedAllowedPatterns contains the merged allowed patterns for all providers from defaults, config, and flags
 	MergedAllowedPatterns *MergedProviderPatterns
 }
@@ -74,6 +78,8 @@ type MergedProviderPatterns struct {
 	// OpenStack contains the merged allowed patterns for OpenStack credential fields.
 	// Currently, only the 'authURL' field is supported for pattern validation.
 	OpenStack []allowpattern.Pattern
+	// STACKIT contains the merged allowed patterns for STACKIT credential fields.
+	STACKIT []allowpattern.Pattern
 }
 
 // Complete adapts from the command line args to the data required.
@@ -126,8 +132,14 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error
 		return err
 	}
 
+	stackitPatterns, err := o.processSTACKITPatterns(cfg, logger)
+	if err != nil {
+		return err
+	}
+
 	o.MergedAllowedPatterns = &MergedProviderPatterns{
 		OpenStack: openstackPatterns,
+		STACKIT:   stackitPatterns,
 	}
 
 	return nil
@@ -205,6 +217,25 @@ func (o *options) processOpenStackPatterns(cfg *config.Config, logger klog.Logge
 	)
 }
 
+// processSTACKITPatterns processes and merges STACKIT allowed patterns from defaults, config, and flags.
+// Note: Only the 'aud' field is supported for STACKIT pattern validation.
+func (o *options) processSTACKITPatterns(cfg *config.Config, logger klog.Logger) ([]allowpattern.Pattern, error) {
+	var configPatterns []allowpattern.Pattern
+	if cfg != nil && cfg.Provider != nil && cfg.Provider.STACKIT != nil {
+		configPatterns = cfg.Provider.STACKIT.AllowedPatterns
+	}
+
+	return processProviderPatterns(
+		logger,
+		"STACKIT",
+		credvalidate.DefaultSTACKITAllowedPatterns(),
+		configPatterns,
+		credvalidate.GetSTACKITValidationContext(),
+		o.STACKITAllowedPatterns,
+		o.STACKITAllowedURIPatterns,
+	)
+}
+
 // Validate validates the provided command options.
 func (o *options) Validate() error {
 	if o.Shell == "" && o.Output == "" {
@@ -249,6 +280,21 @@ Note: Only the 'authURL' field is supported for OpenStack pattern validation.
 For example:
 "authURL=https://keystone.example.com:5000/v3"
 "authURL=https://keystone.example.com/identity/v3"
+The URI is parsed and host and path are set accordingly. These are merged with defaults and configuration.`)
+
+	flags.StringArrayVar(&o.STACKITAllowedPatterns, "stackit-allowed-patterns", nil,
+		`Additional allowed patterns for STACKIT credential fields in JSON format.
+Note: Only the 'aud' field in the serviceaccount under credentials is supported for STACKIT pattern validation.
+Each pattern should be a JSON object with fields like:
+{"field": "aud", "host": "https://example.com"}
+{"field": "aud", "regexValue": "^https://[a-z0-9.-]+\\.example\\.com(:[0-9]+)?/.*$"}
+These are merged with defaults and configuration.`)
+
+	flags.StringSliceVar(&o.STACKITAllowedURIPatterns, "stackit-allowed-uri-patterns", nil,
+		`Simplified URI patterns for STACKIT credential fields in the format 'field=uri'.
+Note: Only the 'aud' field in the serviceaccount under credentials is supported for STACKIT pattern validation.
+For example:
+"aud=https://example.com"
 The URI is parsed and host and path are set accordingly. These are merged with defaults and configuration.`)
 }
 
@@ -400,14 +446,7 @@ func printProviderEnv(
 		return o.PrintObject(data)
 	}
 
-	var filename string
-
-	if providerType == "stackit" {
-		// TODO(maboehm): add full support once the provider extension is open sourced.
-		filename = filepath.Join(o.GardenDir, "templates", "openstack.tmpl")
-	} else {
-		filename = filepath.Join(o.GardenDir, "templates", providerType+".tmpl")
-	}
+	filename := filepath.Join(o.GardenDir, "templates", providerType+".tmpl")
 
 	if err := o.Template.ParseFiles(filename); err != nil {
 		return fmt.Errorf("failed to generate the cloud provider CLI configuration script: %w", err)

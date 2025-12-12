@@ -432,6 +432,98 @@ var _ = Describe("Pattern", func() {
 				Expect(err).To(MatchError(ContainSubstring("scheme must be one of {https, http}, got \"ftp\"")))
 			})
 		})
+
+		Context("User-configurable fields validation", func() {
+			It("should allow user-provided pattern when field is in AllowedUserConfigurableFields", func() {
+				ctx := &allowpattern.ValidationContext{
+					AllowedUserConfigurableFields: map[string]bool{
+						"allowed_user_provided_field": true,
+					},
+					StrictHTTPS: true,
+				}
+				pattern := &allowpattern.Pattern{
+					Field:          "allowed_user_provided_field",
+					URI:            "https://api.example.com/v1",
+					IsUserProvided: true,
+				}
+				err := pattern.ValidateWithContext(ctx)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should reject user-provided pattern when AllowedUserConfigurableFields is empty", func() {
+				ctx := &allowpattern.ValidationContext{
+					AllowedUserConfigurableFields: map[string]bool{},
+					StrictHTTPS:                   true,
+				}
+				pattern := &allowpattern.Pattern{
+					Field:          "disallowed_user_provided_field",
+					URI:            "https://api.example.com/v1",
+					IsUserProvided: true,
+				}
+				err := pattern.ValidateWithContext(ctx)
+				Expect(err).To(MatchError("field disallowed_user_provided_field cannot be configured by users; no user-configurable fields are allowed for this provider"))
+			})
+
+			It("should reject user-provided pattern when AllowedUserConfigurableFields is nil", func() {
+				ctx := &allowpattern.ValidationContext{
+					AllowedUserConfigurableFields: nil,
+					StrictHTTPS:                   true,
+				}
+				pattern := &allowpattern.Pattern{
+					Field:          "disallowed_user_provided_field",
+					URI:            "https://api.example.com/v1",
+					IsUserProvided: true,
+				}
+				err := pattern.ValidateWithContext(ctx)
+				Expect(err).To(MatchError("field disallowed_user_provided_field cannot be configured by users; no user-configurable fields are allowed for this provider"))
+			})
+
+			It("should reject user-provided pattern when field is not in AllowedUserConfigurableFields", func() {
+				ctx := &allowpattern.ValidationContext{
+					AllowedUserConfigurableFields: map[string]bool{
+						"allowed_user_provided_field": true,
+					},
+					StrictHTTPS: true,
+				}
+				pattern := &allowpattern.Pattern{
+					Field:          "disallowed_user_provided_field",
+					URI:            "https://api.example.com/v1",
+					IsUserProvided: true,
+				}
+				err := pattern.ValidateWithContext(ctx)
+				Expect(err).To(MatchError("field disallowed_user_provided_field cannot be configured by users"))
+			})
+
+			It("should allow non-user-provided pattern regardless of AllowedUserConfigurableFields", func() {
+				ctx := &allowpattern.ValidationContext{
+					AllowedUserConfigurableFields: map[string]bool{
+						"allowed_user_provided_field": true,
+					},
+					StrictHTTPS: true,
+				}
+				pattern := &allowpattern.Pattern{
+					Field:          "disallowed_user_provided_field",
+					URI:            "https://api.example.com/v1",
+					IsUserProvided: false,
+				}
+				err := pattern.ValidateWithContext(ctx)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should allow non-user-provided pattern when AllowedUserConfigurableFields is empty", func() {
+				ctx := &allowpattern.ValidationContext{
+					AllowedUserConfigurableFields: map[string]bool{},
+					StrictHTTPS:                   true,
+				}
+				pattern := &allowpattern.Pattern{
+					Field:          "disallowed_user_provided_field",
+					URI:            "https://api.example.com/v1",
+					IsUserProvided: false,
+				}
+				err := pattern.ValidateWithContext(ctx)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
 	})
 
 	Describe("ToNormalizedPattern", func() {
@@ -605,6 +697,133 @@ var _ = Describe("Pattern", func() {
 			}
 			result := pattern.String()
 			Expect(result).To(Equal("regexValue:^[0-9]{15,25}$"))
+		})
+	})
+
+	Describe("UnmarshalJSON", func() {
+		It("should set IsUserProvided=true when unmarshaling from JSON", func() {
+			jsonData := `{"field": "endpoint", "uri": "https://api.example.com/token"}`
+			var pattern allowpattern.Pattern
+			err := pattern.UnmarshalJSON([]byte(jsonData))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pattern.Field).To(Equal("endpoint"))
+			Expect(pattern.URI).To(Equal("https://api.example.com/token"))
+			Expect(pattern.IsUserProvided).To(BeTrue())
+		})
+
+		It("should set IsUserProvided=true even if explicitly set to false in JSON", func() {
+			// IsUserProvided has json:"-" tag, so it won't be deserialized from JSON
+			// but if someone tries to include it, it should be ignored and set to true
+			jsonData := `{"field": "endpoint", "uri": "https://api.example.com/token", "isUserProvided": false}`
+			var pattern allowpattern.Pattern
+			err := pattern.UnmarshalJSON([]byte(jsonData))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pattern.IsUserProvided).To(BeTrue())
+		})
+
+		It("should handle complex pattern with host and path", func() {
+			jsonData := `{"field": "authURL", "host": "keystone.example.com", "path": "/v3"}`
+			var pattern allowpattern.Pattern
+			err := pattern.UnmarshalJSON([]byte(jsonData))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pattern.Field).To(Equal("authURL"))
+			Expect(pattern.Host).To(Equal(ptr.To("keystone.example.com")))
+			Expect(pattern.Path).To(Equal(ptr.To("/v3")))
+			Expect(pattern.IsUserProvided).To(BeTrue())
+		})
+	})
+
+	Describe("ParseAllowedPatterns", func() {
+		var valCtx *allowpattern.ValidationContext
+
+		BeforeEach(func() {
+			// Create a custom validation context that allows user-defined test fields
+			valCtx = &allowpattern.ValidationContext{
+				AllowedUserConfigurableFields: map[string]bool{
+					"test_field":    true,
+					"another_field": true,
+					"json_field":    true,
+					"uri_field":     true,
+				},
+				StrictHTTPS: true,
+			}
+		})
+
+		It("should parse valid JSON patterns", func() {
+			jsonPatterns := []string{
+				`{"field": "test_field", "host": "example.com", "path": "/test"}`,
+				`{"field": "another_field", "uri": "https://example.com/path"}`,
+			}
+
+			patterns, err := allowpattern.ParseAllowedPatterns(valCtx, jsonPatterns, nil)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(patterns).To(HaveLen(2))
+			Expect(patterns[0].Field).To(Equal("test_field"))
+			Expect(patterns[0].IsUserProvided).To(BeTrue())
+			Expect(patterns[1].Field).To(Equal("another_field"))
+			Expect(patterns[1].IsUserProvided).To(BeTrue())
+		})
+
+		It("should parse valid URI patterns", func() {
+			uriPatterns := []string{
+				"test_field=https://example.com/test",
+				"another_field=https://example.org/path",
+			}
+
+			patterns, err := allowpattern.ParseAllowedPatterns(valCtx, nil, uriPatterns)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(patterns).To(HaveLen(2))
+			Expect(patterns[0].Field).To(Equal("test_field"))
+			Expect(patterns[0].URI).To(Equal("https://example.com/test"))
+			Expect(patterns[0].IsUserProvided).To(BeTrue())
+			Expect(patterns[1].Field).To(Equal("another_field"))
+			Expect(patterns[1].URI).To(Equal("https://example.org/path"))
+			Expect(patterns[1].IsUserProvided).To(BeTrue())
+		})
+
+		It("should parse mixed JSON and URI patterns", func() {
+			jsonPatterns := []string{
+				`{"field": "json_field", "host": "example.com", "path": "/test"}`,
+			}
+			uriPatterns := []string{
+				"uri_field=https://example.org/path",
+			}
+
+			patterns, err := allowpattern.ParseAllowedPatterns(valCtx, jsonPatterns, uriPatterns)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(patterns).To(HaveLen(2))
+			for i, pattern := range patterns {
+				Expect(pattern.IsUserProvided).To(BeTrue(), "pattern at index %d should have IsUserProvided=true", i)
+			}
+		})
+
+		It("should fail with invalid JSON patterns", func() {
+			jsonPatterns := []string{
+				`{"field": "test_field", "host": "example.com"`, // Missing closing brace
+			}
+
+			_, err := allowpattern.ParseAllowedPatterns(valCtx, jsonPatterns, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("could not parse JSON pattern")))
+		})
+
+		It("should fail with invalid URI patterns", func() {
+			uriPatterns := []string{
+				"invalid-pattern-without-equals",
+			}
+
+			_, err := allowpattern.ParseAllowedPatterns(valCtx, nil, uriPatterns)
+			Expect(err).To(MatchError("invalid URI pattern: invalid-pattern-without-equals"))
+		})
+
+		It("should fail with invalid pattern validation", func() {
+			jsonPatterns := []string{
+				`{"field": "", "host": "example.com"}`, // Empty field
+			}
+
+			_, err := allowpattern.ParseAllowedPatterns(valCtx, jsonPatterns, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("field is required")))
 		})
 	})
 })

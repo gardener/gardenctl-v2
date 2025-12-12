@@ -1,0 +1,86 @@
+/*
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and Gardener contributors
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+package providerenv
+
+import (
+	"context"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/yaml"
+
+	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
+	"github.com/gardener/gardenctl-v2/pkg/provider/common/allowpattern"
+	"github.com/gardener/gardenctl-v2/pkg/provider/credvalidate"
+)
+
+type STACKITProvider struct {
+	validator *credvalidate.STACKITValidator
+}
+
+var _ Provider = &STACKITProvider{}
+
+// newSTACKITProvider creates an STACKITProvider with validator initialized.
+func newSTACKITProvider(ctx context.Context, allowedPatterns []allowpattern.Pattern) *STACKITProvider {
+	validator := credvalidate.NewSTACKITValidator(ctx, allowedPatterns)
+	return &STACKITProvider{validator: validator}
+}
+
+func (p *STACKITProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cp *clientgarden.CloudProfileUnion, configDir string) (map[string]interface{}, error) {
+	validatedFields, err := p.validator.ValidateSecret(secret)
+	if err != nil {
+		return nil, err
+	}
+
+	authURL := getKeyStoneURLInSTACKIT(cp)
+
+	// Currently the region in the shoot in eu01 is RegionOne. We just can replace this here.
+	region := shoot.Spec.Region
+	if region == "RegionOne" {
+		region = "eu01"
+	}
+
+	templateFields := map[string]interface{}{
+		"authURL":           authURL,
+		"domainName":        validatedFields["domainName"],
+		"tenantName":        validatedFields["tenantName"],
+		"username":          validatedFields["username"],
+		"password":          validatedFields["password"],
+		"authStrategy":      "keystone",
+		"projectId":         validatedFields["project-id"],
+		"serviceaccount":    validatedFields["serviceaccount.json"],
+		"stackitRegion":     region,
+		"stackitCliProfile": o.Target.GardenName(),
+	}
+
+	return templateFields, nil
+}
+
+// getKeyStoneURLInSTACKIT returns the keyStoneURL like the getKeyStoneURL for OpenStack. As the ProviderConfig in
+// Cloudprofile is using stackit.provider.extensions.gardener.cloud as APIGroup, this is needed to be done in a
+// dedicated function. This is using map[string]interface{} instead of the API object because the
+// gardener-extension-provider-stackit is not yet opensource (and the OpenStack parts will be removed in the future).
+// There is no error returned as the URL is currently optional and will be removed in the future.
+func getKeyStoneURLInSTACKIT(cloudProfile *clientgarden.CloudProfileUnion) string {
+	providerConfig := cloudProfile.GetCloudProfileSpec().ProviderConfig
+	if providerConfig == nil {
+		return ""
+	}
+
+	var cloudProfileConfig map[string]interface{}
+
+	if yaml.Unmarshal(providerConfig.Raw, &cloudProfileConfig) != nil {
+		return ""
+	}
+
+	keystoneURL, ok := cloudProfileConfig["keystoneURL"].(string)
+	if !ok || keystoneURL == "" {
+		return ""
+	}
+
+	return keystoneURL
+}

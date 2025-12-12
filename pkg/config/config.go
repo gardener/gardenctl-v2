@@ -63,10 +63,18 @@ type Garden struct {
 type ProviderConfig struct {
 	// OpenStack configuration options
 	OpenStack *OpenStackConfig `json:"openstack,omitempty"`
+	// STACKIT configuration options
+	STACKIT *STACKITConfig `json:"stackit,omitempty"`
 }
 
 // OpenStackConfig represents OpenStack-specific configuration options.
 type OpenStackConfig struct {
+	// AllowedPatterns is a list of allowed patterns for OpenStack credential fields.
+	AllowedPatterns []allowpattern.Pattern `json:"allowedPatterns,omitempty"`
+}
+
+// STACKITConfig represents STACKIT-specific configuration options.
+type STACKITConfig struct {
 	// AllowedPatterns is a list of allowed patterns for OpenStack credential fields.
 	AllowedPatterns []allowpattern.Pattern `json:"allowedPatterns,omitempty"`
 }

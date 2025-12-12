@@ -227,6 +227,94 @@ var _ = Describe("Config", func() {
 				Expect(err).To(MatchError(ContainSubstring("invalid value for field authURL: scheme must be one of {https, http}, got \"ftp\"")))
 			})
 		})
+
+		Describe("IsUserProvided flag", func() {
+			It("should set IsUserProvided=true when loading patterns from config file", func() {
+				filename := filepath.Join(gardenHomeDir, "gardenctl-v2.yaml")
+				cfgData := `gardens:
+- identity: test-garden
+  kubeconfig: /path/to/kubeconfig
+provider:
+  openstack:
+    allowedPatterns:
+    - field: authURL
+      uri: https://keystone.example.com:5000/v3
+    - field: authURL
+      host: keystone2.example.com
+      path: /v3
+`
+				Expect(os.WriteFile(filename, []byte(cfgData), 0o600)).To(Succeed())
+
+				cfg, err := config.LoadFromFile(filename)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.Provider).NotTo(BeNil())
+				Expect(cfg.Provider.OpenStack).NotTo(BeNil())
+				Expect(cfg.Provider.OpenStack.AllowedPatterns).To(HaveLen(2))
+
+				// Verify all patterns loaded from config have IsUserProvided=true
+				for i, pattern := range cfg.Provider.OpenStack.AllowedPatterns {
+					Expect(pattern.IsUserProvided).To(BeTrue(), "pattern at index %d should have IsUserProvided=true", i)
+				}
+			})
+
+			It("should not serialize IsUserProvided field when saving config", func() {
+				filename := filepath.Join(gardenHomeDir, "gardenctl-v2.yaml")
+				cfg := &config.Config{
+					Filename: filename,
+					Gardens: []config.Garden{
+						{
+							Name:       "test-garden",
+							Kubeconfig: "/path/to/kubeconfig",
+						},
+					},
+					Provider: &config.ProviderConfig{
+						OpenStack: &config.OpenStackConfig{
+							AllowedPatterns: []allowpattern.Pattern{
+								{
+									Field:          "authURL",
+									URI:            "https://keystone.example.com:5000/v3",
+									IsUserProvided: true, // This should not be serialized
+								},
+							},
+						},
+					},
+				}
+
+				Expect(cfg.Save()).To(Succeed())
+
+				// Read the file and verify IsUserProvided is not in the YAML
+				content, err := os.ReadFile(filename)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(content)).NotTo(ContainSubstring("isUserProvided"))
+				Expect(string(content)).NotTo(ContainSubstring("IsUserProvided"))
+			})
+
+			It("should ignore IsUserProvided field in config file if present", func() {
+				filename := filepath.Join(gardenHomeDir, "gardenctl-v2.yaml")
+				// Manually craft YAML with IsUserProvided field (which should be ignored)
+				cfgData := `gardens:
+- identity: test-garden
+  kubeconfig: /path/to/kubeconfig
+provider:
+  openstack:
+    allowedPatterns:
+    - field: authURL
+      uri: https://keystone.example.com:5000/v3
+      isUserProvided: false
+`
+				Expect(os.WriteFile(filename, []byte(cfgData), 0o600)).To(Succeed())
+
+				cfg, err := config.LoadFromFile(filename)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.Provider).NotTo(BeNil())
+				Expect(cfg.Provider.OpenStack).NotTo(BeNil())
+				Expect(cfg.Provider.OpenStack.AllowedPatterns).To(HaveLen(1))
+
+				// Even if isUserProvided: false is in the YAML, it should be set to true
+				// because the custom UnmarshalJSON always sets it to true
+				Expect(cfg.Provider.OpenStack.AllowedPatterns[0].IsUserProvided).To(BeTrue())
+			})
+		})
 	})
 
 	Describe("#LoadFromFile", func() {
