@@ -19,11 +19,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gardener/gardenctl-v2/pkg/provider/common/allowpattern"
-	"github.com/gardener/gardenctl-v2/pkg/provider/common/credvalidate"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
+
+	"github.com/gardener/gardenctl-v2/pkg/provider/common/allowpattern"
+	"github.com/gardener/gardenctl-v2/pkg/provider/common/credvalidate"
 )
 
 // STACKITValidator implements the common validator interface for STACKIT.
@@ -205,7 +205,7 @@ func validateSTACKITServiceaccountCredentialsAud(v *credvalidate.BaseValidator, 
 	}
 
 	if !strings.HasSuffix(u.Host, ".stackit.cloud") {
-		return credvalidate.NewFieldError(field, "field is not a valid url", err, nonSensitive)
+		return credvalidate.NewFieldError(field, "url host must have .stackit.cloud suffix", nil, nonSensitive)
 	}
 
 	if u.Scheme != "https" {

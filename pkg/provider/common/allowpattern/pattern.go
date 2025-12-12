@@ -57,6 +57,8 @@ type Pattern struct {
 }
 
 // ParseAllowedPatterns parses the allowed patterns from JSON and URI formats.
+// All patterns parsed by this function are marked as user-provided (IsUserProvided=true)
+// since they come from command-line flags.
 func ParseAllowedPatterns(ctx *ValidationContext, jsonPatterns, uriPatterns []string) ([]Pattern, error) {
 	var patterns []Pattern
 
@@ -66,6 +68,8 @@ func ParseAllowedPatterns(ctx *ValidationContext, jsonPatterns, uriPatterns []st
 		if err := json.Unmarshal([]byte(pattern), &p); err != nil {
 			return nil, fmt.Errorf("could not parse JSON pattern %s: %w", pattern, err)
 		}
+
+		p.IsUserProvided = true
 
 		if err := p.ValidateWithContext(ctx); err != nil {
 			return nil, fmt.Errorf("validation failed for JSON pattern %s: %w", pattern, err)
@@ -84,8 +88,9 @@ func ParseAllowedPatterns(ctx *ValidationContext, jsonPatterns, uriPatterns []st
 		field, uri := parts[0], parts[1]
 
 		p := Pattern{
-			Field: field,
-			URI:   uri,
+			Field:          field,
+			URI:            uri,
+			IsUserProvided: true,
 		}
 		if err := p.ValidateWithContext(ctx); err != nil {
 			return nil, fmt.Errorf("invalid URI pattern %s: %w", pattern, err)
@@ -262,7 +267,24 @@ func parseOptionalPort(portStr string) *int {
 	return nil
 }
 
-// (no wrapper needed; messages are component-based and reused directly)
+// UnmarshalJSON implements custom JSON unmarshaling for Pattern.
+// It sets IsUserProvided to true for patterns loaded from configuration files.
+func (p *Pattern) UnmarshalJSON(data []byte) error {
+	// Define a temporary type to avoid recursion
+	type PatternAlias Pattern
+
+	aux := &PatternAlias{}
+
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+
+	*p = Pattern(*aux)
+	// Mark as user-provided since it comes from config file
+	p.IsUserProvided = true
+
+	return nil
+}
 
 // String returns a string representation of the pattern type for logging and debugging purposes.
 // This implements the fmt.Stringer interface.

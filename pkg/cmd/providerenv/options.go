@@ -162,15 +162,6 @@ func processProviderPatterns(
 		logger.V(6).Info("allowed patterns from flags", "provider", providerName, "patterns", flagPatterns)
 	}
 
-	// Set configPatterns and flagPatterns IsUserProvided to true.
-	for i := range configPatterns {
-		configPatterns[i].IsUserProvided = true
-	}
-
-	for i := range flagPatterns {
-		flagPatterns[i].IsUserProvided = true
-	}
-
 	var mergedPatterns []allowpattern.Pattern
 
 	mergedPatterns = append(mergedPatterns, defaultPatterns...)

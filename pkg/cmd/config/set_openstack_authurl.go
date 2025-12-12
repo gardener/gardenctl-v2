@@ -129,8 +129,9 @@ func (o *setOpenStackAuthURLOptions) Run(_ util.Factory) error {
 		patterns := make([]allowpattern.Pattern, len(o.URIPatterns))
 		for i, uri := range o.URIPatterns {
 			patterns[i] = allowpattern.Pattern{
-				Field: "authURL",
-				URI:   uri,
+				Field:          "authURL",
+				URI:            uri,
+				IsUserProvided: true,
 			}
 		}
 
