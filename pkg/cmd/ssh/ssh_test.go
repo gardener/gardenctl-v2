@@ -948,6 +948,7 @@ var _ = Describe("SSH Options", func() {
 
 			o.CIDRs = []string{"8.8.8.8/32"}
 			o.SSHPublicKeyFile = publicSSHKeyFile
+			o.Shell = "bash"
 		})
 
 		AfterEach(func() {
@@ -1066,6 +1067,28 @@ var _ = Describe("SSH Options", func() {
 			Entry("user with dot", "user.name", "user must start with a lowercase letter or underscore, followed by lowercase letters, digits, underscores, or hyphens"),
 			Entry("user starting with hyphen", "-user", "user must start with a lowercase letter or underscore, followed by lowercase letters, digits, underscores, or hyphens"),
 			Entry("user with uppercase letters in middle", "userNAME", "user must start with a lowercase letter or underscore, followed by lowercase letters, digits, underscores, or hyphens"),
+		)
+
+		DescribeTable("shell validation - valid cases",
+			func(shell string) {
+				o.Shell = shell
+				Expect(o.Validate()).To(Succeed())
+			},
+			Entry("bash shell", "bash"),
+			Entry("zsh shell", "zsh"),
+			Entry("fish shell", "fish"),
+			Entry("powershell shell", "powershell"),
+		)
+
+		DescribeTable("shell validation - invalid cases",
+			func(shell string, expectedError string) {
+				o.Shell = shell
+				Expect(o.Validate()).To(MatchError(expectedError))
+			},
+			Entry("empty shell", "", "shell is required"),
+			Entry("invalid shell foo", "foo", "shell must be one of [bash zsh fish powershell]"),
+			Entry("invalid shell cmd", "cmd", "shell must be one of [bash zsh fish powershell]"),
+			Entry("invalid shell sh", "sh", "shell must be one of [bash zsh fish powershell]"),
 		)
 
 		DescribeTable("bastion port validation - valid cases",

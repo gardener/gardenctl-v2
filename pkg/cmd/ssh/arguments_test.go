@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
+	"github.com/gardener/gardenctl-v2/pkg/env"
 )
 
 type testCase struct {
@@ -27,6 +28,7 @@ type testCase struct {
 	nodePrivateKeyFiles          []ssh.PrivateKeyFile
 	expectedArgs                 []string
 	user                         string
+	shell                        string
 }
 
 func newTestCase() testCase {
@@ -41,6 +43,7 @@ func newTestCase() testCase {
 		nodeHostname:                 "node.example.com",
 		nodePrivateKeyFiles:          []ssh.PrivateKeyFile{"path/to/node/private/key"},
 		user:                         "gardener",
+		shell:                        "bash",
 	}
 }
 
@@ -48,6 +51,9 @@ var _ = Describe("Arguments", func() {
 	Describe("sshCommandArguments", func() {
 		DescribeTable("should match the expected arguments as string",
 			func(tc testCase) {
+				shellEscapeFn, err := env.ShellEscapeFor(tc.shell)
+				Expect(err).NotTo(HaveOccurred())
+
 				args := ssh.SSHCommandArguments(
 					tc.bastionHost,
 					tc.bastionPort,
@@ -59,6 +65,7 @@ var _ = Describe("Arguments", func() {
 					tc.nodeHostname,
 					tc.nodePrivateKeyFiles,
 					tc.user,
+					shellEscapeFn,
 				)
 				res := args.String()
 				exp := strings.Join(tc.expectedArgs, " ")

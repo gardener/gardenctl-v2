@@ -88,7 +88,15 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error
 
 	o.CmdPath = cmd.Parent().CommandPath()
 	o.GardenDir = f.GardenHomeDir()
-	o.Template = env.NewTemplate("helpers")
+
+	if o.Output == "" {
+		tmpl, err := env.NewTemplate(o.Shell, "helpers")
+		if err != nil {
+			return err
+		}
+
+		o.Template = tmpl
+	}
 
 	sessionID, err := f.GetSessionID()
 	if err != nil {
@@ -203,7 +211,13 @@ func (o *options) Validate() error {
 		return pflag.ErrHelp
 	}
 
-	// Usually, we would check and return an error if both shell and output are set (not empty). However, this is not required because the output flag is not set for the shell subcommands.
+	if o.Shell != "" && o.Output != "" {
+		return fmt.Errorf("internal error: both shell and output are set")
+	}
+
+	if o.Output != "" && o.Template != nil {
+		return fmt.Errorf("internal error: template is set when output is specified")
+	}
 
 	if o.Shell != "" {
 		s := env.Shell(o.Shell)

@@ -34,13 +34,19 @@ type ConnectInformation struct {
 	Nodes []Node `json:"nodes"`
 
 	// User is the name of the Shoot cluster node ssh login username
-	User string
+	User string `json:"user,omitempty"`
+
+	// Shell is the shell to use for escaping arguments (bash, zsh, fish, powershell)
+	Shell string `json:"shell,omitempty"`
 
 	// NodeUserKnownHostsFiles is a list of custom known hosts files for the SSH connection to the shoot node.
 	NodeUserKnownHostsFiles []string `json:"nodeUserKnownHostsFiles"`
 
 	// NodeStrictHostKeyChecking controls the SSH strict host key checking behavior for the shoot node.
 	NodeStrictHostKeyChecking StrictHostKeyChecking `json:"nodeStrictHostKeyChecking"`
+
+	// shellEscapeFn is the shell-specific escape function for formatting SSH commands.
+	shellEscapeFn func(values ...interface{}) string `json:"-"`
 }
 
 var _ fmt.Stringer = &ConnectInformation{}
@@ -100,6 +106,8 @@ func NewConnectInformation(
 	nodes []corev1.Node,
 	pendingNodeNames []string,
 	user string,
+	shell string,
+	shellEscapeFn func(values ...interface{}) string,
 ) (*ConnectInformation, error) {
 	nodeMap := make(map[string]Node)
 
@@ -173,6 +181,8 @@ func NewConnectInformation(
 		NodeStrictHostKeyChecking: nodeStrictHostKeyChecking,
 		Nodes:                     nodeList,
 		User:                      user,
+		Shell:                     shell,
+		shellEscapeFn:             shellEscapeFn,
 	}, nil
 }
 
@@ -237,10 +247,11 @@ func (p *ConnectInformation) String() string {
 		nodeHostname,
 		p.NodePrivateKeyFiles,
 		p.User,
+		p.shellEscapeFn,
 	)
 
 	fmt.Fprintf(&buf, "> Connect to shoot nodes by using the bastion as a proxy/jump host.\n")
-	fmt.Fprintf(&buf, "> Run the following command in a separate terminal:\n")
+	fmt.Fprintf(&buf, "> Run the following command in a separate terminal (formatted for %s):\n", p.Shell)
 
 	if placeholderHostname {
 		fmt.Fprintf(&buf, "> Note: The command includes a placeholder (IP_OR_HOSTNAME). Replace it with the actual IP or hostname before running the command.\n\n")

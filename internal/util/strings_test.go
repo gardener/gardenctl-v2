@@ -20,16 +20,4 @@ var _ = Describe("String Utilities", func() {
 			Expect(util.FilterStringsByPrefix("x", []string{"xa", "yb", "xc", "zx"})).To(Equal([]string{"xa", "xc"}))
 		})
 	})
-
-	Describe("escaping shell strings", func() {
-		It("should escape a shell string", func() {
-			Expect(util.ShellEscape("$TOKEN")).To(Equal("'$TOKEN'"))
-			Expect(util.ShellEscape("'")).To(Equal("''\"'\"''"))
-			Expect(util.ShellEscape("\u0081")).To(Equal("''"))
-		})
-
-		It("should escape multiple shell strings", func() {
-			Expect(util.ShellEscape("a", "b")).To(Equal("'a' 'b'"))
-		})
-	})
 })

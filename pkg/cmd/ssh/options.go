@@ -56,6 +56,7 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/gardener/gardenctl-v2/pkg/config"
+	"github.com/gardener/gardenctl-v2/pkg/env"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
@@ -226,6 +227,12 @@ type SSHOptions struct {
 	// User is the name of the Shoot cluster node ssh login username
 	User string
 
+	// Shell is the shell to use for escaping arguments (bash, zsh, fish, powershell)
+	Shell string
+
+	// shellEscapeFn is the shell-specific escape function for formatting SSH commands.
+	shellEscapeFn func(values ...interface{}) string
+
 	// SSHPublicKeyFile is the full path to the file containing the user's
 	// public SSH key. If not given, gardenctl will create a new temporary keypair.
 	SSHPublicKeyFile PublicKeyFile
@@ -308,6 +315,7 @@ func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 	flagSet.Var(&o.NodeStrictHostKeyChecking, "node-strict-host-key-checking", "Specifies how the SSH client performs host key checking for the shoot node. Valid options are 'yes', 'no', or 'ask'.")
 	flagSet.BoolVarP(&o.ConfirmAccessRestriction, "confirm-access-restriction", "y", o.ConfirmAccessRestriction, "Bypasses the need for confirmation of any access restrictions. Set this flag only if you are fully aware of the access restrictions.")
 	flagSet.StringVar(&o.User, "user", o.User, "user is the name of the Shoot cluster node ssh login username.")
+	flagSet.StringVar(&o.Shell, "shell", o.Shell, "Shell to use for escaping arguments when printing out the SSH command. If not provided, it defaults to the GCTL_SHELL environment variable or bash.")
 	o.Options.AddFlags(flagSet)
 }
 
@@ -325,6 +333,17 @@ func (o *SSHOptions) RegisterCompletionFuncsForStrictHostKeyCheckings(cmd *cobra
 	}))
 	utilruntime.Must(cmd.RegisterFlagCompletionFunc("node-strict-host-key-checking", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return strictHostKeyCheckingOptions, cobra.ShellCompDirectiveNoFileComp
+	}))
+}
+
+func (o *SSHOptions) RegisterCompletionFuncForShell(cmd *cobra.Command) {
+	shellOptions := make([]string, 0, len(env.ValidShells()))
+	for _, shell := range env.ValidShells() {
+		shellOptions = append(shellOptions, string(shell))
+	}
+
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("shell", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return shellOptions, cobra.ShellCompDirectiveNoFileComp
 	}))
 }
 
@@ -376,6 +395,24 @@ func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string)
 		o.BastionName = name
 	}
 
+	if o.Shell == "" {
+		o.Shell = os.Getenv("GCTL_SHELL")
+		if o.Shell == "" {
+			o.Shell = "bash"
+
+			logger.Info("no shell specified via --shell flag or GCTL_SHELL environment variable, using fallback; the printed SSH command may have incorrect escaping for your shell - set GCTL_SHELL in your shell profile (e.g., 'export GCTL_SHELL=zsh')", "shell", "bash")
+		} else {
+			logger.V(4).Info("using shell from environment variable", "shell", o.Shell, "env", "GCTL_SHELL")
+		}
+	}
+
+	shellEscapeFn, err := env.ShellEscapeFor(o.Shell)
+	if err != nil {
+		return fmt.Errorf("failed to get shell escape function: %w", err)
+	}
+
+	o.shellEscapeFn = shellEscapeFn
+
 	return nil
 }
 
@@ -412,6 +449,23 @@ func (o *SSHOptions) Validate() error {
 
 	if err := o.AccessConfig.Validate(); err != nil {
 		return err
+	}
+
+	if o.Shell == "" {
+		return errors.New("shell is required")
+	}
+
+	valid := false
+
+	for _, shell := range env.ValidShells() {
+		if o.Shell == string(shell) {
+			valid = true
+			break
+		}
+	}
+
+	if !valid {
+		return fmt.Errorf("shell must be one of %v", env.ValidShells())
 	}
 
 	if o.WaitTimeout == 0 {
@@ -842,6 +896,8 @@ func (o *SSHOptions) Run(f util.Factory) error {
 			nodes,
 			pendingNodeNames,
 			o.User,
+			o.Shell,
+			o.shellEscapeFn,
 		)
 		if err != nil {
 			return err
@@ -873,6 +929,7 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		nodeHostname,
 		nodePrivateKeyFiles,
 		o.User,
+		o.shellEscapeFn,
 	)
 }
 
@@ -1193,6 +1250,7 @@ func remoteShell(
 	nodeHostname string,
 	nodePrivateKeyFiles []PrivateKeyFile,
 	user string,
+	shellEscapeFn func(values ...interface{}) string,
 ) error {
 	commandArgs := sshCommandArguments(
 		bastionHost,
@@ -1205,6 +1263,7 @@ func remoteShell(
 		nodeHostname,
 		nodePrivateKeyFiles,
 		user,
+		shellEscapeFn,
 	)
 
 	fmt.Fprintf(ioStreams.Out, "> You can open additional SSH sessions by running the following command in a separate terminal:\n\n")

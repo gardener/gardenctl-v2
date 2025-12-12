@@ -50,7 +50,9 @@ var _ = Describe("Env Commands - Template", func() {
 	})
 
 	JustBeforeEach(func() {
-		t = env.NewTemplate(filenames...)
+		var err error
+		t, err = env.NewTemplate(shell, filenames...)
+		Expect(err).NotTo(HaveOccurred())
 		metadata["commandPath"] = commandPath
 		metadata["cli"] = cli
 		metadata["shell"] = shell

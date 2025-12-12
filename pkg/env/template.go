@@ -18,9 +18,6 @@ import (
 	"text/template"
 
 	sprigv3 "github.com/Masterminds/sprig/v3"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-
-	"github.com/gardener/gardenctl-v2/internal/util"
 )
 
 //go:embed templates
@@ -29,12 +26,17 @@ var fsys embed.FS
 //go:generate mockgen -destination=./mocks/mock_template.go -package=mocks github.com/gardener/gardenctl-v2/pkg/env Template
 
 // Template provides an abstraction for go templates.
+//
+// A Template instance is bound to a specific shell at construction time and
+// exposes shell-aware escaping via the "shellEscape" template function. The
+// ExecuteTemplate method selects which named template ({{define "name"}}) to
+// execute.
 type Template interface {
 	// ParseFiles parses the named files and associates the resulting templates with t.
 	ParseFiles(filenames ...string) error
-	// ExecuteTemplate applies the template associated with t for the given shell
-	// to the specified data object and writes the output to wr.
-	ExecuteTemplate(wr io.Writer, shell string, data interface{}) error
+	// ExecuteTemplate applies the template with the given name to the specified
+	// data object and writes the output to wr.
+	ExecuteTemplate(wr io.Writer, name string, data interface{}) error
 }
 
 type templateImpl struct {
@@ -43,24 +45,33 @@ type templateImpl struct {
 
 var _ Template = &templateImpl{}
 
-// NewTemplate creates a new Template instance with the given filenames.
-func NewTemplate(filenames ...string) Template {
-	return newTemplateImpl(filenames...)
+// NewTemplate creates a new Template instance for the given shell with the
+// provided filenames. The shell determines how values are escaped via the
+// "shellEscape" template function.
+func NewTemplate(shell string, filenames ...string) (Template, error) {
+	return newTemplateImpl(shell, filenames...)
 }
 
-func newTemplateImpl(filenames ...string) *templateImpl {
+func newTemplateImpl(shell string, filenames ...string) (*templateImpl, error) {
+	shellEscapeFn, err := ShellEscapeFor(shell)
+	if err != nil {
+		return nil, err
+	}
+
 	t := &templateImpl{
 		delegate: template.
 			New("base").
 			Funcs(sprigv3.TxtFuncMap()).
-			Funcs(template.FuncMap{"shellEscape": util.ShellEscape}),
+			Funcs(template.FuncMap{"shellEscape": shellEscapeFn}),
 	}
 
 	if len(filenames) > 0 {
-		utilruntime.Must(t.ParseFiles(filenames...))
+		if err := t.ParseFiles(filenames...); err != nil {
+			return nil, err
+		}
 	}
 
-	return t
+	return t, nil
 }
 
 // ParseFiles parses the file located at path and associates the resulting templates with t.
@@ -74,10 +85,10 @@ func (t *templateImpl) ParseFiles(filenames ...string) error {
 	return nil
 }
 
-// ExecuteTemplate applies the template associated with t for the given shell
+// ExecuteTemplate applies the template associated with t for the given name
 // to the specified data object and writes the output to wr.
-func (t *templateImpl) ExecuteTemplate(wr io.Writer, shell string, data interface{}) error {
-	return t.delegate.ExecuteTemplate(wr, shell, data)
+func (t *templateImpl) ExecuteTemplate(wr io.Writer, name string, data interface{}) error {
+	return t.delegate.ExecuteTemplate(wr, name, data)
 }
 
 // Delegate returns the wrapped go template.

@@ -1,4 +1,5 @@
 {{define "bash" -}}
+export GCTL_SHELL={{.shell}}
 if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
@@ -19,6 +20,7 @@ complete -o default -F __start_gardenctl {{.prefix}}
 {{end}}
 
 {{define "zsh" -}}
+export GCTL_SHELL={{.shell}}
 if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
@@ -51,6 +53,7 @@ fi
 {{end}}
 
 {{define "fish" -}}
+set -gx GCTL_SHELL {{.shell}}
 if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ];
   set -gx GCTL_SESSION_ID (uuidgen)
 end
@@ -71,6 +74,7 @@ complete -c {{.prefix}} -w gardenctl
 {{end}}
 
 {{define "powershell" -}}
+$Env:GCTL_SHELL = "{{.shell}}"
 if ( !(Test-Path Env:GCTL_SESSION_ID) -and !(Test-Path Env:TERM_SESSION_ID) ) {
   $Env:GCTL_SESSION_ID = [guid]::NewGuid().ToString()
 }

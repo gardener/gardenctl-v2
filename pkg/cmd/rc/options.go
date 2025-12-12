@@ -40,7 +40,13 @@ type options struct {
 func (o *options) Complete(_ util.Factory, cmd *cobra.Command, _ []string) error {
 	o.Shell = cmd.Name()
 	o.CmdPath = cmd.Parent().CommandPath()
-	o.Template = env.NewTemplate("rc")
+
+	tmpl, err := env.NewTemplate(o.Shell, "rc")
+	if err != nil {
+		return err
+	}
+
+	o.Template = tmpl
 
 	return nil
 }
@@ -58,6 +64,10 @@ func (o *options) Validate() error {
 
 	if !prefixRegexp.MatchString(o.Prefix) {
 		return fmt.Errorf("prefix must start with an alphabetic character may be followed by alphanumeric characters, underscore or dash")
+	}
+
+	if len(o.Prefix) > 32 {
+		return fmt.Errorf("prefix is too long, maximum length is 32 characters")
 	}
 
 	return nil

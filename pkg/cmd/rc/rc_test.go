@@ -62,7 +62,8 @@ var _ = Describe("Env Commands", func() {
 		It("should execute the bash subcommand", func() {
 			cmd.SetArgs([]string{"bash"})
 			Expect(cmd.Execute()).To(Succeed())
-			Expect(out.String()).To(Equal(`if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
+			Expect(out.String()).To(Equal(`export GCTL_SHELL=bash
+if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
 alias g=gardenctl
@@ -81,7 +82,8 @@ gk
 		It("should execute the zsh subcommand", func() {
 			cmd.SetArgs([]string{"zsh"})
 			Expect(cmd.Execute()).To(Succeed())
-			Expect(out.String()).To(Equal(`if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
+			Expect(out.String()).To(Equal(`export GCTL_SHELL=zsh
+if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ]; then
   export GCTL_SESSION_ID=$(uuidgen)
 fi
 alias g=gardenctl
@@ -112,7 +114,8 @@ gk
 		It("should execute the fish subcommand", func() {
 			cmd.SetArgs([]string{"fish"})
 			Expect(cmd.Execute()).To(Succeed())
-			Expect(out.String()).To(Equal(`if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ];
+			Expect(out.String()).To(Equal(`set -gx GCTL_SHELL fish
+if [ -z "$GCTL_SESSION_ID" ] && [ -z "$TERM_SESSION_ID" ];
   set -gx GCTL_SESSION_ID (uuidgen)
 end
 alias g=gardenctl
@@ -131,7 +134,8 @@ gk
 		It("should execute the powershell subcommand", func() {
 			cmd.SetArgs([]string{"powershell"})
 			Expect(cmd.Execute()).To(Succeed())
-			Expect(out.String()).To(Equal(`if ( !(Test-Path Env:GCTL_SESSION_ID) -and !(Test-Path Env:TERM_SESSION_ID) ) {
+			Expect(out.String()).To(Equal(`$Env:GCTL_SHELL = "powershell"
+if ( !(Test-Path Env:GCTL_SESSION_ID) -and !(Test-Path Env:TERM_SESSION_ID) ) {
   $Env:GCTL_SESSION_ID = [guid]::NewGuid().ToString()
 }
 Set-Alias -Name g -Value (get-command gardenctl).Path -Option AllScope -Force
@@ -227,6 +231,40 @@ gk
 
 		It("should return an error when the prefix is invalid", func() {
 			options.Prefix = "!"
+			Expect(options.Validate()).To(MatchError("prefix must start with an alphabetic character may be followed by alphanumeric characters, underscore or dash"))
+		})
+		It("should return an error when the prefix is too long", func() {
+			options.Prefix = "verylongprefixthatiswaymorethan32characters"
+			Expect(options.Validate()).To(MatchError("prefix is too long, maximum length is 32 characters"))
+		})
+
+		It("should allow valid prefix with alphanumeric characters", func() {
+			options.Prefix = "gctl123"
+			Expect(options.Validate()).To(Succeed())
+		})
+
+		It("should allow valid prefix with underscore", func() {
+			options.Prefix = "g_ctl"
+			Expect(options.Validate()).To(Succeed())
+		})
+
+		It("should allow valid prefix with dash", func() {
+			options.Prefix = "g-ctl"
+			Expect(options.Validate()).To(Succeed())
+		})
+
+		It("should return an error when prefix starts with a number", func() {
+			options.Prefix = "1gctl"
+			Expect(options.Validate()).To(MatchError("prefix must start with an alphabetic character may be followed by alphanumeric characters, underscore or dash"))
+		})
+
+		It("should return an error when prefix starts with underscore", func() {
+			options.Prefix = "_gctl"
+			Expect(options.Validate()).To(MatchError("prefix must start with an alphabetic character may be followed by alphanumeric characters, underscore or dash"))
+		})
+
+		It("should return an error when prefix starts with dash", func() {
+			options.Prefix = "-gctl"
 			Expect(options.Validate()).To(MatchError("prefix must start with an alphabetic character may be followed by alphanumeric characters, underscore or dash"))
 		})
 	})

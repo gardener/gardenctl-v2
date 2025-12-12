@@ -47,7 +47,13 @@ func (o *options) Complete(f util.Factory, cmd *cobra.Command, _ []string) error
 	o.Shell = cmd.Name()
 	o.CmdPath = cmd.Parent().CommandPath()
 	o.GardenDir = f.GardenHomeDir()
-	o.Template = env.NewTemplate("helpers")
+
+	tmpl, err := env.NewTemplate(o.Shell, "helpers")
+	if err != nil {
+		return err
+	}
+
+	o.Template = tmpl
 
 	filename := filepath.Join(o.GardenDir, "templates", "kubernetes.tmpl")
 	if err := o.Template.ParseFiles(filename); err != nil {
