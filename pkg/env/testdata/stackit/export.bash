@@ -9,7 +9,7 @@ export OS_PASSWORD=$(< 'PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-pa
 export STACKIT_PROJECT_ID=$(< 'PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-projectId.txt');
 export STACKIT_REGION=$(< 'PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-stackitRegion.txt');
 STACKIT_CLI_PROFILE=$(< 'PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-stackitCliProfile.txt');
-stackit config profile create --no-set --empty --ignore-existing -- "${STACKIT_CLI_PROFILE}";
+stackit config profile create --no-set --empty -- "${STACKIT_CLI_PROFILE}" 2>/dev/null;
 export STACKIT_CLI_PROFILE;
 stackit auth activate-service-account --service-account-key-path 'PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-serviceaccount.txt';
 rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/PLACEHOLDER_HASH-authStrategy.txt';
