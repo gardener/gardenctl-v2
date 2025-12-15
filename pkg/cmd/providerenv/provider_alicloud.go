@@ -8,8 +8,10 @@ package providerenv
 
 import (
 	"context"
+	"errors"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
@@ -28,6 +30,10 @@ func newAliCloudProvider(ctx context.Context) *AliCloudProvider {
 	return &AliCloudProvider{validator: validator}
 }
 
-func (p *AliCloudProvider) FromSecret(_ *options, _ *gardencorev1beta1.Shoot, secret *corev1.Secret, _ *clientgarden.CloudProfileUnion, _ string) (map[string]interface{}, error) {
+func (p *AliCloudProvider) FromSecret(_ *options, _ *gardencorev1beta1.Shoot, secret *corev1.Secret, _ *clientgarden.CloudProfileUnion) (map[string]interface{}, error) {
 	return p.validator.ValidateSecret(secret)
+}
+
+func (p *AliCloudProvider) FromWorkloadIdentity(*options, *gardensecurityv1alpha1.WorkloadIdentity, string, string) (map[string]interface{}, error) {
+	return nil, errors.New("workload identity not supported for alicloud")
 }

@@ -137,4 +137,11 @@ var _ = Describe("HCloud Validator", func() {
 			)
 		})
 	})
+
+	Describe("Workload Identity Validation", func() {
+		It("should fail as workload identity is not supported for hcloud", func() {
+			_, err := validator.ValidateWorkloadIdentityConfig(nil)
+			Expect(err).To(MatchError("workload identity not supported for hcloud"))
+		})
+	})
 })

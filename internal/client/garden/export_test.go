@@ -27,3 +27,5 @@ func ValidateObjectMetadata(obj metav1.Object) error {
 func ValidateBastionIngress(ingress *corev1.LoadBalancerIngress) error {
 	return validateBastionIngress(ingress)
 }
+
+var ValidateJWTFormat = validateJWTFormat

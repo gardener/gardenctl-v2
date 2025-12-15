@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	openstackinstall "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/install"
 	openstackv1alpha1 "github.com/gardener/gardener-extension-provider-openstack/pkg/apis/openstack/v1alpha1"
@@ -21,6 +22,9 @@ import (
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
+	gardensecurityclientset "github.com/gardener/gardener/pkg/client/security/clientset/versioned"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -35,10 +39,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var decoder runtime.Decoder
+
+const maxWorkloadIdentityTokenSize = 16384 // 16KB - ~10x current token size for future growth
 
 func init() {
 	extensionsScheme := runtime.NewScheme()
@@ -75,7 +82,6 @@ type Client interface {
 	GetShootClientConfig(ctx context.Context, namespace, name string) (clientcmd.ClientConfig, error)
 
 	// GetSecretBinding returns a Gardener secretbinding resource
-	//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
 	GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error)
 
 	// GetCredentialsBinding returns a Gardener credentialsbinding resource
@@ -104,6 +110,13 @@ type Client interface {
 
 	// CurrentUser returns the username of the caller as seen by the garden cluster
 	CurrentUser(ctx context.Context) (string, error)
+
+	// GetWorkloadIdentity returns a Gardener workload identity resource
+	GetWorkloadIdentity(ctx context.Context, namespace, name string) (*gardensecurityv1alpha1.WorkloadIdentity, error)
+	// CreateWorkloadIdentityToken creates a workload identity token with the given name and expiration duration. The expiration duration might be limited by the server.
+	// The returned token is guaranteed to have a valid JWT format (structure validation only, not cryptographic verification).
+	// If the server returns a malformed token, this method will return an error.
+	CreateWorkloadIdentityToken(ctx context.Context, namespace, name string, expirationDuration time.Duration) (*gardensecurityv1alpha1.TokenRequest, error)
 
 	// RuntimeClient returns the underlying kubernetes runtime client
 	// TODO: Remove this when we switched all APIs to the new gardenclient
@@ -305,10 +318,7 @@ func (g *clientImpl) GetNamespace(ctx context.Context, name string) (*corev1.Nam
 }
 
 // GetSecretBinding returns a Gardener secretbinding resource.
-//
-//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
 func (g *clientImpl) GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error) {
-	//nolint:staticcheck // SA1019: gardenctl must support SecretBindings as long as Gardener still supports them
 	secretBinding := &gardencorev1beta1.SecretBinding{}
 	key := types.NamespacedName{Namespace: namespace, Name: name}
 
@@ -487,6 +497,50 @@ func (g *clientImpl) PatchBastion(ctx context.Context, newBastion, oldBastion *o
 	}
 
 	return nil
+}
+
+func (g *clientImpl) GetWorkloadIdentity(ctx context.Context, namespace, name string) (*gardensecurityv1alpha1.WorkloadIdentity, error) {
+	workloadIdentity := &gardensecurityv1alpha1.WorkloadIdentity{}
+	key := types.NamespacedName{Namespace: namespace, Name: name}
+
+	err := g.c.Get(ctx, key, workloadIdentity)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := validateObjectMetadata(workloadIdentity); err != nil {
+		return nil, err
+	}
+
+	return workloadIdentity, nil
+}
+
+func (g *clientImpl) CreateWorkloadIdentityToken(ctx context.Context, namespace, name string, expirationDuration time.Duration) (*gardensecurityv1alpha1.TokenRequest, error) {
+	restConfig, err := g.config.ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	securityClient, err := gardensecurityclientset.NewForConfig(restConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenRequest, err := securityClient.SecurityV1alpha1().WorkloadIdentities(namespace).CreateToken(ctx, name, &gardensecurityv1alpha1.TokenRequest{
+		Spec: gardensecurityv1alpha1.TokenRequestSpec{
+			ExpirationSeconds: ptr.To(int64(expirationDuration / time.Second)),
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create workload identity token: %w", err)
+	}
+
+	// Sanity check token format
+	if err := validateJWTFormat(tokenRequest.Status.Token); err != nil {
+		return nil, fmt.Errorf("received malformed token: %w", err)
+	}
+
+	return tokenRequest, nil
 }
 
 func (g *clientImpl) CurrentUser(ctx context.Context) (string, error) {
@@ -711,6 +765,28 @@ func (w ProjectFilter) resolve(ctx context.Context, g Client) error {
 		}
 
 		w["metadata.namespace"] = *project.Spec.Namespace
+	}
+
+	return nil
+}
+
+// ValidateJWTFormat checks that a token has a valid JWT structure without any cryptographic verification.
+// This is a lightweight sanity check to reject obviously malformed input before further processing.
+// It validates:
+// - Token size (must not exceed 16KB to prevent memory exhaustion)
+// - JWT structure (header.payload.signature format with valid base64 encoding)
+// Note: This function does NOT perform cryptographic signature verification.
+func validateJWTFormat(token string) error {
+	// Prevent memory exhaustion and storage abuse
+	if len(token) > maxWorkloadIdentityTokenSize {
+		return fmt.Errorf("token too large: %d bytes (max %d)", len(token), maxWorkloadIdentityTokenSize)
+	}
+
+	// We intentionally do NOT validate the signature here.
+	// This function only sanity-checks the token's structure, not its authenticity
+	_, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jose.RS256})
+	if err != nil {
+		return fmt.Errorf("invalid JWT format: %w", err)
 	}
 
 	return nil

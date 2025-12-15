@@ -7,6 +7,7 @@ package mocks
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	garden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -40,6 +41,21 @@ func NewMockClient(ctrl *gomock.Controller) *MockClient {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockClient) EXPECT() *MockClientMockRecorder {
 	return m.recorder
+}
+
+// CreateWorkloadIdentityToken mocks base method.
+func (m *MockClient) CreateWorkloadIdentityToken(arg0 context.Context, arg1, arg2 string, arg3 time.Duration) (*v1alpha10.TokenRequest, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateWorkloadIdentityToken", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*v1alpha10.TokenRequest)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateWorkloadIdentityToken indicates an expected call of CreateWorkloadIdentityToken.
+func (mr *MockClientMockRecorder) CreateWorkloadIdentityToken(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateWorkloadIdentityToken", reflect.TypeOf((*MockClient)(nil).CreateWorkloadIdentityToken), arg0, arg1, arg2, arg3)
 }
 
 // CurrentUser mocks base method.
@@ -285,6 +301,21 @@ func (m *MockClient) GetShootOfManagedSeed(arg0 context.Context, arg1 string) (*
 func (mr *MockClientMockRecorder) GetShootOfManagedSeed(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootOfManagedSeed", reflect.TypeOf((*MockClient)(nil).GetShootOfManagedSeed), arg0, arg1)
+}
+
+// GetWorkloadIdentity mocks base method.
+func (m *MockClient) GetWorkloadIdentity(arg0 context.Context, arg1, arg2 string) (*v1alpha10.WorkloadIdentity, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetWorkloadIdentity", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*v1alpha10.WorkloadIdentity)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetWorkloadIdentity indicates an expected call of GetWorkloadIdentity.
+func (mr *MockClientMockRecorder) GetWorkloadIdentity(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkloadIdentity", reflect.TypeOf((*MockClient)(nil).GetWorkloadIdentity), arg0, arg1, arg2)
 }
 
 // ListBastions mocks base method.

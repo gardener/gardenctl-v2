@@ -13,11 +13,13 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
 
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 
@@ -55,6 +57,25 @@ func (v *GCPValidator) ValidateSecret(secret *corev1.Secret) (map[string]interfa
 	return v.ValidateWithRegistry(fields, registry, credvalidate.Permissive)
 }
 
+// ValidateWorkloadIdentityConfig validates a GCP workload identity configuration.
+func (v *GCPValidator) ValidateWorkloadIdentityConfig(workloadIdentity *gardensecurityv1alpha1.WorkloadIdentity) (map[string]interface{}, error) {
+	if workloadIdentity.Spec.TargetSystem.ProviderConfig == nil || workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw == nil {
+		return nil, errors.New("providerConfig is missing")
+	}
+
+	fields := make(map[string]interface{})
+	if err := json.Unmarshal(workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw, &fields); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal GCP workload identity config: %w", err)
+	}
+
+	registry := map[string]credvalidate.FieldRule{
+		"projectID":         {Required: true, Validator: validateProjectID, NonSensitive: true},
+		"credentialsConfig": {Required: true, Validator: validateCredentialsConfig, NonSensitive: false},
+	}
+
+	return v.ValidateWithRegistry(fields, registry, credvalidate.Permissive)
+}
+
 // GetGCPValidationContext returns the validation context for GCP patterns.
 func GetGCPValidationContext() *allowpattern.ValidationContext {
 	return &allowpattern.ValidationContext{
@@ -62,12 +83,13 @@ func GetGCPValidationContext() *allowpattern.ValidationContext {
 			"private_key_id": true,
 			"client_id":      true,
 			"client_email":   true,
+			"audience":       true,
 		},
 		StrictHTTPS: true,
 	}
 }
 
-// DefaultGCPAllowedPatterns returns the default allowed patterns for GCP credential fields.
+// DefaultGCPAllowedPatterns returns the default allowed patterns for GCP credential fields (both service account and workload identity).
 func DefaultGCPAllowedPatterns() []allowpattern.Pattern {
 	return []allowpattern.Pattern{
 		// Value regex patterns for fields that support regex validation
@@ -86,6 +108,10 @@ func DefaultGCPAllowedPatterns() []allowpattern.Pattern {
 		{
 			Field:      "client_email",
 			RegexValue: ptr.To(`^[0-9]{1,20}-compute@developer\.gserviceaccount\.com$`),
+		},
+		{
+			Field:      "audience",
+			RegexValue: ptr.To(`^//iam\.googleapis\.com/projects/[0-9]+/locations/[a-z0-9-]+/workloadIdentityPools/[a-zA-Z0-9_-]+/providers/[a-zA-Z0-9_-]+$`),
 		},
 		// URI and domain patterns for other fields
 		{
@@ -113,6 +139,15 @@ func DefaultGCPAllowedPatterns() []allowpattern.Pattern {
 			Field: "client_x509_cert_url",
 			Host:  ptr.To("www.googleapis.com"),
 			Path:  ptr.To("/robot/v1/metadata/x509/" + ClientEmailPlaceholder),
+		},
+		{
+			Field: "token_url",
+			URI:   "https://sts.googleapis.com/v1/token",
+		},
+		{
+			Field:     "service_account_impersonation_url",
+			Host:      ptr.To("iamcredentials.googleapis.com"),
+			RegexPath: ptr.To("^/v1/projects/-/serviceAccounts/[^/:]+:generateAccessToken$"),
 		},
 	}
 }
@@ -147,11 +182,33 @@ func validateServiceAccountJSON(baseValidator *credvalidate.BaseValidator, field
 		"universe_domain":             {Required: false, Validator: credvalidate.ValidateStringWithPattern(matchDomainPattern), NonSensitive: true},
 	}
 
-	// Validate the nested service account JSON using the base validator
 	return baseValidator.ValidateNestedFieldsStrict(fields, serviceAccountRegistry)
 }
 
 var _ credvalidate.FieldValidator = validateServiceAccountJSON
+
+// validateCredentialsConfig validates the nested credentialsConfig field for workload identity.
+// This is a nested sub-validator that handles the credentials configuration fields.
+func validateCredentialsConfig(baseValidator *credvalidate.BaseValidator, field string, val any, allFields map[string]any, nonSensitive bool) error {
+	credentialsMap, ok := val.(map[string]interface{})
+	if !ok {
+		return credvalidate.NewFieldError(field, "field value must be an object", nil, nonSensitive)
+	}
+
+	credentialsRegistry := map[string]credvalidate.FieldRule{
+		"type":                              {Required: true, Validator: validateWorkloadIdentityType, NonSensitive: true},
+		"audience":                          {Required: true, Validator: credvalidate.ValidateStringWithPattern(credvalidate.MatchRegexValuePattern), NonSensitive: true},
+		"subject_token_type":                {Required: true, Validator: validateSubjectTokenType, NonSensitive: true},
+		"token_url":                         {Required: true, Validator: credvalidate.ValidateStringWithPattern(credvalidate.MatchURIPattern), NonSensitive: true},
+		"service_account_impersonation_url": {Required: false, Validator: credvalidate.ValidateStringWithPattern(credvalidate.MatchURIPattern), NonSensitive: true},
+		"universe_domain":                   {Required: false, Validator: credvalidate.ValidateStringWithPattern(matchDomainPattern), NonSensitive: true},
+	}
+
+	// Validate the nested credentials config using the base validator
+	return baseValidator.ValidateNestedFieldsStrict(credentialsMap, credentialsRegistry)
+}
+
+var _ credvalidate.FieldValidator = validateCredentialsConfig
 
 // validateServiceAccountType validates the type field for service accounts.
 func validateServiceAccountType(v *credvalidate.BaseValidator, field string, val any, allFields map[string]any, nonSensitive bool) error {
@@ -236,6 +293,40 @@ func validatePrivateKey(_ *credvalidate.BaseValidator, field string, val any, _ 
 }
 
 var _ credvalidate.FieldValidator = validatePrivateKey
+
+// validateWorkloadIdentityType validates the type field for workload identity.
+func validateWorkloadIdentityType(v *credvalidate.BaseValidator, field string, val any, allFields map[string]any, nonSensitive bool) error {
+	str, ok := val.(string)
+	if !ok {
+		return credvalidate.NewFieldError(field, "field value must be a string", nil, nonSensitive)
+	}
+
+	if str != "external_account" {
+		return credvalidate.NewFieldErrorWithValue(field, "type must be 'external_account'", str, nil, nonSensitive)
+	}
+
+	return nil
+}
+
+var _ credvalidate.FieldValidator = validateWorkloadIdentityType
+
+// validateSubjectTokenType validates the subject_token_type field.
+func validateSubjectTokenType(v *credvalidate.BaseValidator, field string, val any, allFields map[string]any, nonSensitive bool) error {
+	str, ok := val.(string)
+
+	if !ok {
+		return credvalidate.NewFieldError(field, "field value must be a string", nil, nonSensitive)
+	}
+
+	expectedSubjectTokenType := "urn:ietf:params:oauth:token-type:jwt" // #nosec G101 -- false positive
+	if str != expectedSubjectTokenType {
+		return credvalidate.NewFieldErrorWithValue(field, fmt.Sprintf("field value should be %q", expectedSubjectTokenType), str, nil, nonSensitive)
+	}
+
+	return nil
+}
+
+var _ credvalidate.FieldValidator = validateSubjectTokenType
 
 // Pattern matcher functions that implement the credvalidate.PatternMatcher interface.
 

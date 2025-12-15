@@ -8,9 +8,11 @@ package providerenv
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
@@ -30,7 +32,7 @@ func newOpenStackProvider(ctx context.Context, allowedPatterns []allowpattern.Pa
 	return &OpenStackProvider{validator: validator}
 }
 
-func (p *OpenStackProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cp *clientgarden.CloudProfileUnion, configDir string) (map[string]interface{}, error) {
+func (p *OpenStackProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cp *clientgarden.CloudProfileUnion) (map[string]interface{}, error) {
 	validatedFields, err := p.validator.ValidateSecret(secret)
 	if err != nil {
 		return nil, err
@@ -71,4 +73,8 @@ func (p *OpenStackProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoo
 	}
 
 	return templateFields, nil
+}
+
+func (p *OpenStackProvider) FromWorkloadIdentity(*options, *gardensecurityv1alpha1.WorkloadIdentity, string, string) (map[string]interface{}, error) {
+	return nil, errors.New("workload identity not supported for openstack")
 }

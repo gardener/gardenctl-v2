@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 
@@ -44,7 +45,7 @@ func NewSTACKITValidator(ctx context.Context, allowedPatterns []allowpattern.Pat
 	}
 }
 
-// ValidateSecret validates OpenStack credentials from a Kubernetes secret.
+// ValidateSecret validates STACKIT credentials from a Kubernetes secret.
 func (v *STACKITValidator) ValidateSecret(secret *corev1.Secret) (map[string]interface{}, error) {
 	fields := credvalidate.FlatCoerceBytesToStringsMap(secret.Data)
 	registry := map[string]credvalidate.FieldRule{
@@ -63,6 +64,11 @@ func (v *STACKITValidator) ValidateSecret(secret *corev1.Secret) (map[string]int
 	maps.Copy(validatedValues, validatedValuesOpenstack)
 
 	return validatedValues, nil
+}
+
+// ValidateWorkloadIdentityConfig validates STACKIT workload identity configuration.
+func (v *STACKITValidator) ValidateWorkloadIdentityConfig(wi *gardensecurityv1alpha1.WorkloadIdentity) (map[string]interface{}, error) {
+	return nil, fmt.Errorf("workload identity not supported for stackit")
 }
 
 func DefaultSTACKITAllowedPatterns() []allowpattern.Pattern {

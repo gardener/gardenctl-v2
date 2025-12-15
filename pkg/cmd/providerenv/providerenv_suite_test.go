@@ -84,3 +84,11 @@ func computeTestHash(sessionID, garden, namespace, shoot string) string {
 
 	return hex.EncodeToString(hash[:8])
 }
+
+// computeTestWorkloadIdentityHash computes the same hash as used in the implementation
+// for workload identity token file naming.
+func computeTestWorkloadIdentityHash(sessionID, workloadIdentityUID string) string {
+	hash := sha256.Sum256([]byte(sessionID + "|" + workloadIdentityUID))
+
+	return hex.EncodeToString(hash[:8])
+}

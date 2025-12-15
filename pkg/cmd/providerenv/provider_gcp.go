@@ -9,8 +9,11 @@ package providerenv
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"path/filepath"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
@@ -30,7 +33,7 @@ func newGCPProvider(ctx context.Context, allowedPatterns []allowpattern.Pattern)
 	return &GCPProvider{validator: validator}
 }
 
-func (p *GCPProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cp *clientgarden.CloudProfileUnion, configDir string) (map[string]interface{}, error) {
+func (p *GCPProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, secret *corev1.Secret, cp *clientgarden.CloudProfileUnion) (map[string]interface{}, error) {
 	validatedFields, err := p.validator.ValidateSecret(secret)
 	if err != nil {
 		return nil, err
@@ -43,9 +46,44 @@ func (p *GCPProvider) FromSecret(o *options, shoot *gardencorev1beta1.Shoot, sec
 		return nil, err
 	}
 
-	return map[string]interface{}{
-		"credentials":  serviceaccountJSON,
-		"client_email": credentialsMap["client_email"],
-		"project_id":   credentialsMap["project_id"],
-	}, nil
+	templateFields := map[string]interface{}{
+		"credentials": serviceaccountJSON,
+		"project_id":  credentialsMap["project_id"],
+	}
+
+	return templateFields, nil
+}
+
+func (p *GCPProvider) FromWorkloadIdentity(o *options, wi *gardensecurityv1alpha1.WorkloadIdentity, token, configDir string) (map[string]interface{}, error) {
+	validatedConfig, err := p.validator.ValidateWorkloadIdentityConfig(wi)
+	if err != nil {
+		return nil, err
+	}
+
+	// Only delete the token file when the unset flag is set; gcloud does not keep a separate copy of this token file.
+	tokenFileName := fmt.Sprintf(".%s-web-identity-token", computeWorkloadIdentityFilePrefix(o.SessionID, wi))
+
+	tokenFilePath := filepath.Join(configDir, tokenFileName)
+	if err := writeOrRemoveFile(o.Unset, tokenFilePath, []byte(token)); err != nil {
+		return nil, err
+	}
+
+	credentialsConfig := validatedConfig["credentialsConfig"].(map[string]interface{})
+
+	credentialsConfig["credential_source"] = map[string]interface{}{
+		"file":   tokenFilePath,
+		"format": map[string]interface{}{"type": "text"},
+	}
+
+	credentialsJSON, err := json.Marshal(credentialsConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	templateFields := map[string]interface{}{
+		"credentials": string(credentialsJSON),
+		"project_id":  validatedConfig["projectID"].(string),
+	}
+
+	return templateFields, nil
 }
