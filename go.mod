@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/fatih/color v1.18.0
-	github.com/gardener/gardener v1.134.2
+	github.com/gardener/gardener v1.134.3
 	github.com/gardener/gardener-extension-provider-openstack v1.51.0
 	github.com/gardener/machine-controller-manager v0.60.2
 	github.com/go-jose/go-jose/v4 v4.1.3
