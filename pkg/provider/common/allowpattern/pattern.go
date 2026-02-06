@@ -11,10 +11,9 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
-
-	"k8s.io/utils/strings/slices"
 )
 
 // ValidationContext holds provider-specific validation rules that are not exposed in configuration.
