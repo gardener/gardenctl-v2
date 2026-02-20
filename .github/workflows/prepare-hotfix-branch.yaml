@@ -9,12 +9,10 @@ on:
         type: string
 
 permissions:
-  contents: none  # we rely on the GitHub App token instead
+  id-token: write # required for GitHub OIDC Federation Service token
 
 jobs:
   call-dashboard-workflow:
     uses: gardener/dashboard/.github/workflows/prepare-hotfix-branch.yaml@master
     with:
       tag: ${{ inputs.tag }}
-    secrets:
-      GARDENER_GITHUB_ACTIONS_PRIVATE_KEY: ${{ secrets.GARDENER_GITHUB_ACTIONS_PRIVATE_KEY }}
