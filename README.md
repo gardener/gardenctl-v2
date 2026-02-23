@@ -177,3 +177,19 @@ Establish an SSH connection to a Shoot cluster's node.
 ```bash
 gardenctl ssh my-node
 ```
+
+## Full CLI documentation
+
+Check out the documentation in [GitHub: docs/](docs/), get it for each sub-command (eg. `gardenctl target --help`) or use [Backstage.io TechDocs](https://backstage.io/docs/features/techdocs/) previewer to render the `/docs` folder  locally (needs `Node` and `docker`):
+
+```shell
+$> git clone https://github.com/gardener/gardenctl-v2
+$> cd gardenctl-v2
+$> npx @techdocs/cli serve
+
+# [ a lot of output ]
+
+info: Docker is up and running. Proceed to starting up mkdocs server
+info: Starting mkdocs server.
+info: Serving docs in Backstage at http://localhost:3000/docs/default/component/local/
+```
