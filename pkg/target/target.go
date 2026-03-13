@@ -94,8 +94,8 @@ func newTargetImpl(gardenName, projectName, seedName, shootName string, controlP
 // Validate checks that the target is not malformed and all required
 // steps are configured correctly.
 func (t *targetImpl) Validate() error {
-	if len(t.Project) > 0 && len(t.Seed) > 0 {
-		return errors.New("seed and project must not be configured at the same time")
+	if len(t.Project) > 0 && len(t.Seed) > 0 && len(t.Shoot) == 0 {
+		return errors.New("seed and project must not be configured at the same time without a shoot")
 	}
 
 	if t.Garden != "" {

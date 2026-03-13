@@ -30,8 +30,11 @@ var _ = Describe("Target", func() {
 			Expect(target.NewTarget("a", "", "c", "d").Validate()).To(Succeed())
 			Expect(target.NewTarget("a", "", "", "d").Validate()).To(Succeed())
 
-			// invalid because both project and seed are defined
-			Expect(target.NewTarget("a", "b", "c", "d").Validate()).NotTo(Succeed())
+			// valid because shoot is also defined (seed is informational)
+			Expect(target.NewTarget("a", "b", "c", "d").Validate()).To(Succeed())
+
+			// invalid because both project and seed are defined without a shoot
+			Expect(target.NewTarget("a", "b", "c", "").Validate()).NotTo(Succeed())
 
 			// valid shoot names (DNS label compliant)
 			Expect(target.NewTarget("a", "b", "", "my-shoot").Validate()).To(Succeed())

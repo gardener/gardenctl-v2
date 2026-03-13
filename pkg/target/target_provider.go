@@ -169,19 +169,32 @@ func merge(t Target, tf TargetFlags) (Target, error) {
 	}
 
 	if tf.ProjectName() != "" && tf.SeedName() != "" {
-		return nil, errors.New("cannot specify --project and --seed at the same time")
-	}
+		if tf.ShootName() == "" {
+			return nil, errors.New("cannot specify --project and --seed at the same time")
+		}
 
-	if tf.ProjectName() != "" {
-		newTarget = newTarget.WithProjectName(tf.ProjectName()).WithSeedName("").WithShootName("")
-	}
+		// When project, seed, and shoot are all specified, keep all three
+		// so that the shoot is found via project and the seed is validated in
+		// completeTargetForShoot.
+		newTarget = newTarget.WithProjectName(tf.ProjectName()).WithSeedName(tf.SeedName()).WithShootName(tf.ShootName())
+	} else {
+		if tf.ProjectName() != "" {
+			newTarget = newTarget.WithProjectName(tf.ProjectName()).WithSeedName("").WithShootName("")
+		}
 
-	if tf.SeedName() != "" {
-		newTarget = newTarget.WithSeedName(tf.SeedName()).WithProjectName("").WithShootName("")
-	}
+		if tf.SeedName() != "" {
+			// If a shoot is targeted via project and has a known seed,
+			// forbid specifying a different seed.
+			if t.ShootName() != "" && t.ProjectName() != "" && t.SeedName() != "" && tf.SeedName() != t.SeedName() {
+				return nil, fmt.Errorf("the specified seed %q does not match the actual seed %q of shoot %q", tf.SeedName(), t.SeedName(), t.ShootName())
+			}
 
-	if tf.ShootName() != "" {
-		newTarget = newTarget.WithShootName(tf.ShootName())
+			newTarget = newTarget.WithSeedName(tf.SeedName()).WithProjectName("").WithShootName("")
+		}
+
+		if tf.ShootName() != "" {
+			newTarget = newTarget.WithShootName(tf.ShootName())
+		}
 	}
 
 	if tf.ControlPlane() {

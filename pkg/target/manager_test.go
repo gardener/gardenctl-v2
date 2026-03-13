@@ -305,7 +305,7 @@ var _ = Describe("Target Manager", func() {
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetShoot(ctx, prod1AmbiguousShoot.Name)).To(Succeed())
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name))
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1AmbiguousShoot.Name))
 	})
 
 	It("should be able to target valid shoots with a seed already targeted. Should drop seed and set shoot project instead", func() {
@@ -313,7 +313,7 @@ var _ = Describe("Target Manager", func() {
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetShoot(ctx, prod1GoldenShoot.Name)).To(Succeed())
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1GoldenShoot.Name))
 	})
 
 	It("should not be able to target valid shoots with another seed already targeted", func() {
@@ -325,13 +325,24 @@ var _ = Describe("Target Manager", func() {
 		assertTargetProvider(targetProvider, t)
 	})
 
+	It("should reject targeting a shoot when the specified seed does not match the shoot's actual seed", func() {
+		// current target has project and a wrong seed (as if the user provided --project and --seed flags)
+		t := target.NewTarget(gardenName, prod1Project.Name, "wrong-seed", prod1GoldenShoot.Name)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
+
+		err := manager.TargetShoot(ctx, prod1GoldenShoot.Name)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("does not match the actual seed"))
+		assertTargetProvider(targetProvider, t)
+	})
+
 	It("should be able to target valid shoots with only garden targeted", func() {
 		t := target.NewTarget(gardenName, "", "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetShoot(ctx, prod1GoldenShoot.Name)).To(Succeed())
 		// project should be inserted into the path, as it is preferred over a seed step
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
+		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1GoldenShoot.Name))
 	})
 
 	It("should error when multiple shoots match", func() {
@@ -353,7 +364,7 @@ var _ = Describe("Target Manager", func() {
 			manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 			Expect(manager.TargetMatchPattern(ctx, tf, fmt.Sprintf("%s/shoot--%s--%s", gardenName, prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
-			assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
+			assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1GoldenShoot.Name))
 		})
 
 		It("should be able to target valid project shoot by matching a pattern if garden is set", func() {
@@ -361,7 +372,7 @@ var _ = Describe("Target Manager", func() {
 			manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 			Expect(manager.TargetMatchPattern(ctx, tf, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
-			assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
+			assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1GoldenShoot.Name))
 		})
 
 		It("should be able to target shoot by matching a pattern if garden is not set", func() {
@@ -369,7 +380,7 @@ var _ = Describe("Target Manager", func() {
 			manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 			Expect(manager.TargetMatchPattern(ctx, tf, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))).To(Succeed())
-			assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name))
+			assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1GoldenShoot.Name))
 		})
 
 		It("should not target anything if target is not completely valid", func() {

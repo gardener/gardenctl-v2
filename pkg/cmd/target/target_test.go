@@ -181,7 +181,7 @@ var _ = Describe("Target Command", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(currentTarget.GardenName()).To(Equal(gardenName))
 			Expect(currentTarget.ProjectName()).To(Equal(projectName))
-			Expect(currentTarget.SeedName()).To(BeEmpty())
+			Expect(currentTarget.SeedName()).To(Equal(seedName))
 			Expect(currentTarget.ShootName()).To(Equal(shootName))
 		})
 
@@ -214,7 +214,7 @@ var _ = Describe("Target Command", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(currentTarget.GardenName()).To(Equal(gardenName))
 			Expect(currentTarget.ProjectName()).To(Equal(projectName))
-			Expect(currentTarget.SeedName()).To(BeEmpty())
+			Expect(currentTarget.SeedName()).To(Equal(seedName))
 			Expect(currentTarget.ShootName()).To(Equal(shootName))
 		})
 

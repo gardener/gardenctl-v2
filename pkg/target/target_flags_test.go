@@ -57,7 +57,7 @@ var _ = Describe("Target Flags", func() {
 	It("should validate target flags", func() {
 		Expect(target.NewTargetFlags("", "project", "", "shoot", false).IsTargetValid()).To(BeFalse())
 		Expect(target.NewTargetFlags("garden", "", "", "shoot", false).IsTargetValid()).To(BeTrue())
-		Expect(target.NewTargetFlags("garden", "project", "seed", "shoot", false).IsTargetValid()).To(BeFalse())
+		Expect(target.NewTargetFlags("garden", "project", "seed", "shoot", false).IsTargetValid()).To(BeTrue())
 		Expect(target.NewTargetFlags("garden", "", "", "", false).IsTargetValid()).To(BeTrue())
 		Expect(target.NewTargetFlags("garden", "project", "", "", false).IsTargetValid()).To(BeTrue())
 		Expect(target.NewTargetFlags("garden", "", "seed", "", false).IsTargetValid()).To(BeTrue())
