@@ -308,7 +308,7 @@ var _ = Describe("Target Manager", func() {
 		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1AmbiguousShoot.Name))
 	})
 
-	It("should be able to target valid shoots with a seed already targeted. Should drop seed and set shoot project instead", func() {
+	It("should be able to target valid shoots with a seed already targeted and preserve the matching seed", func() {
 		t := target.NewTarget(gardenName, "", seed.Name, "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 

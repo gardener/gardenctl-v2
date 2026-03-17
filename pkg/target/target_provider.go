@@ -184,9 +184,13 @@ func merge(t Target, tf TargetFlags) (Target, error) {
 
 		if tf.SeedName() != "" {
 			// If a shoot is targeted via project and has a known seed,
-			// forbid specifying a different seed.
-			if t.ShootName() != "" && t.ProjectName() != "" && t.SeedName() != "" && tf.SeedName() != t.SeedName() {
-				return nil, fmt.Errorf("the specified seed %q does not match the actual seed %q of shoot %q", tf.SeedName(), t.SeedName(), t.ShootName())
+			// forbid specifying a different seed. Only check when the user
+			// is passing --seed alone (no garden/project/shoot flags that
+			// would retarget to something else entirely).
+			if tf.GardenName() == "" && tf.ProjectName() == "" && tf.ShootName() == "" &&
+				newTarget.ShootName() != "" && newTarget.ProjectName() != "" && newTarget.SeedName() != "" &&
+				tf.SeedName() != newTarget.SeedName() {
+				return nil, fmt.Errorf("the specified seed %q does not match the actual seed %q of shoot %q", tf.SeedName(), newTarget.SeedName(), newTarget.ShootName())
 			}
 
 			newTarget = newTarget.WithSeedName(tf.SeedName()).WithProjectName("").WithShootName("")
