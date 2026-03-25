@@ -230,6 +230,7 @@ var _ = Describe("Dynamic Target Provider", func() {
 
 		readBack, err := dtp.Read()
 		Expect(err).NotTo(HaveOccurred())
+		Expect(readBack.GardenName()).To(Equal("mygarden"))
 		Expect(readBack.ProjectName()).To(Equal("newproject"))
 		Expect(readBack.SeedName()).To(Equal("newseed"))
 		Expect(readBack.ShootName()).To(Equal("newshoot"))
