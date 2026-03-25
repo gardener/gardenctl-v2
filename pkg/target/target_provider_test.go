@@ -235,28 +235,19 @@ var _ = Describe("Dynamic Target Provider", func() {
 		Expect(readBack.ShootName()).To(Equal("newshoot"))
 	})
 
-	It("should reject --seed when it does not match the shoot's actual seed", func() {
+	It("should retarget to the specified seed and drop project and shoot", func() {
 		dummy := target.NewTarget("mygarden", "myproject", "actualseed", "myshoot")
 		Expect(provider.Write(dummy)).To(Succeed())
 
-		tf := target.NewTargetFlags("", "", "wrongseed", "", false)
-		dtp := target.NewTargetProvider(tmpFile.Name(), tf)
-
-		readBack, err := dtp.Read()
-		Expect(readBack).To(BeNil())
-		Expect(err).To(MatchError(ContainSubstring("does not match the actual seed")))
-	})
-
-	It("should allow --seed when it matches the shoot's actual seed", func() {
-		dummy := target.NewTarget("mygarden", "myproject", "actualseed", "myshoot")
-		Expect(provider.Write(dummy)).To(Succeed())
-
-		tf := target.NewTargetFlags("", "", "actualseed", "", false)
+		tf := target.NewTargetFlags("", "", "otherseed", "", false)
 		dtp := target.NewTargetProvider(tmpFile.Name(), tf)
 
 		readBack, err := dtp.Read()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(readBack.SeedName()).To(Equal("actualseed"))
+		Expect(readBack.GardenName()).To(Equal("mygarden"))
+		Expect(readBack.SeedName()).To(Equal("otherseed"))
+		Expect(readBack.ProjectName()).To(BeEmpty())
+		Expect(readBack.ShootName()).To(BeEmpty())
 	})
 
 	It("should write changes as expected", func() {
