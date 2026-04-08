@@ -58,7 +58,7 @@ jobs:
             homebrew-tap
             chocolatey-packages
 
-      - uses: gardener/cc-utils/.github/actions/trusted-checkout@master
+      - uses: gardener/cc-utils/.github/actions/trusted-checkout@v1
       - name: export-version-from-input
         if: ${{ inputs.version != '' && inputs.component-descriptor == '' }}
         run: |
