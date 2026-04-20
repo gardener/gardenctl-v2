@@ -26,6 +26,7 @@ var _ = Describe("Target View Command", func() {
 	const (
 		gardenName  = "mygarden"
 		projectName = "myproject"
+		seedName    = "myseed"
 		shootName   = "myshoot"
 	)
 
@@ -85,6 +86,26 @@ var _ = Describe("Target View Command", func() {
 
 			// here we need the real manager
 			Expect(out.String()).To(Equal(fmt.Sprintf("garden: %s\nproject: %s\nshoot: %s\n", gardenName, projectName, "myshoot2")))
+		})
+	})
+
+	Context("when shoot has a seed assigned", func() {
+		BeforeEach(func() {
+			currentTarget = target.NewTarget(gardenName, projectName, seedName, shootName)
+			Expect(targetProvider.Write(currentTarget)).To(Succeed())
+		})
+
+		It("should include seed in yaml output", func() {
+			cmd := cmdtarget.NewCmdView(factory, streams)
+			Expect(cmd.RunE(cmd, nil)).To(Succeed())
+			Expect(out.String()).To(Equal(fmt.Sprintf("garden: %s\nproject: %s\nseed: %s\nshoot: %s\n", gardenName, projectName, seedName, shootName)))
+		})
+
+		It("should include seed in json output", func() {
+			cmd := cmdtarget.NewCmdView(factory, streams)
+			cmd.SetArgs([]string{"-ojson"})
+			Expect(cmd.Execute()).To(Succeed())
+			Expect(out.String()).To(Equal(fmt.Sprintf("{\n  \"garden\": \"%s\",\n  \"project\": \"%s\",\n  \"seed\": \"%s\",\n  \"shoot\": \"%s\"\n}\n", gardenName, projectName, seedName, shootName)))
 		})
 	})
 })

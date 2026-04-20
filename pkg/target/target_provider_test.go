@@ -90,10 +90,10 @@ var _ = Describe("Target Provider", func() {
 		Expect(t.ControlPlane()).To(BeTrue())
 	})
 
-	It("should fail to override a target", func() {
+	It("should allow to override a target", func() {
 		tf := target.NewTargetFlags("", "", "", "shoot", false)
 		_, err := target.Merge(target.NewTarget("", "b", "c", "d"), tf)
-		Expect(err).To(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 	})
 })
 
@@ -218,8 +218,38 @@ var _ = Describe("Dynamic Target Provider", func() {
 			Expect(readBack).To(BeNil())
 			Expect(err).To(HaveOccurred())
 		},
-		Entry("seed and project", target.NewTargetFlags("", "newproject", "newseed", "", false)),
+		Entry("seed and project without shoot", target.NewTargetFlags("", "newproject", "newseed", "", false)),
 	)
+
+	It("should allow --project, --seed, and --shoot together", func() {
+		dummy := target.NewTarget("mygarden", "myproject", "", "myshoot")
+		Expect(provider.Write(dummy)).To(Succeed())
+
+		tf := target.NewTargetFlags("", "newproject", "newseed", "newshoot", false)
+		dtp := target.NewTargetProvider(tmpFile.Name(), tf)
+
+		readBack, err := dtp.Read()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(readBack.GardenName()).To(Equal("mygarden"))
+		Expect(readBack.ProjectName()).To(Equal("newproject"))
+		Expect(readBack.SeedName()).To(Equal("newseed"))
+		Expect(readBack.ShootName()).To(Equal("newshoot"))
+	})
+
+	It("should retarget to the specified seed and drop project and shoot", func() {
+		dummy := target.NewTarget("mygarden", "myproject", "actualseed", "myshoot")
+		Expect(provider.Write(dummy)).To(Succeed())
+
+		tf := target.NewTargetFlags("", "", "otherseed", "", false)
+		dtp := target.NewTargetProvider(tmpFile.Name(), tf)
+
+		readBack, err := dtp.Read()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(readBack.GardenName()).To(Equal("mygarden"))
+		Expect(readBack.SeedName()).To(Equal("otherseed"))
+		Expect(readBack.ProjectName()).To(BeEmpty())
+		Expect(readBack.ShootName()).To(BeEmpty())
+	})
 
 	It("should write changes as expected", func() {
 		// prepare target

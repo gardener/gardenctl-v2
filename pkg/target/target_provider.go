@@ -160,27 +160,41 @@ func merge(t Target, tf TargetFlags) (Target, error) {
 		return newTarget, nil
 	}
 
-	// Note that "deeper" levels of targets are reset, allowing the
-	// user to "move up". For example, when they have targeted a shoot, simply
-	// specifying "--garden mygarden" should target the garden, not the same
-	// shoot within the garden named mygarden.
+	// Setting a garden resets all deeper targeting levels, allowing
+	// the user to "move up". For example, when they have targeted a shoot,
+	// simply specifying "--garden mygarden" should target the garden, not
+	// the same shoot within the garden named mygarden.
 	if tf.GardenName() != "" {
 		newTarget = newTarget.WithGardenName(tf.GardenName()).WithProjectName("").WithSeedName("").WithShootName("")
 	}
 
-	if tf.ProjectName() != "" && tf.SeedName() != "" {
-		return nil, errors.New("cannot specify --project and --seed at the same time")
-	}
+	switch {
+	case tf.ProjectName() != "" && tf.SeedName() != "":
+		// --project and --seed together require --shoot; without it,
+		// the target would be ambiguous (seed and project are independent paths).
+		if tf.ShootName() == "" {
+			return nil, errors.New("cannot specify --project and --seed at the same time")
+		}
 
-	if tf.ProjectName() != "" {
+		// All three specified: the shoot is looked up via project and the
+		// seed is validated later in completeTargetForShoot.
+		newTarget = newTarget.WithProjectName(tf.ProjectName()).WithSeedName(tf.SeedName()).WithShootName(tf.ShootName())
+
+	case tf.ProjectName() != "":
+		// Targeting a project resets seed and shoot.
 		newTarget = newTarget.WithProjectName(tf.ProjectName()).WithSeedName("").WithShootName("")
-	}
+		if tf.ShootName() != "" {
+			newTarget = newTarget.WithShootName(tf.ShootName())
+		}
 
-	if tf.SeedName() != "" {
+	case tf.SeedName() != "":
+		// Targeting a seed resets project and shoot.
 		newTarget = newTarget.WithSeedName(tf.SeedName()).WithProjectName("").WithShootName("")
-	}
+		if tf.ShootName() != "" {
+			newTarget = newTarget.WithShootName(tf.ShootName())
+		}
 
-	if tf.ShootName() != "" {
+	case tf.ShootName() != "":
 		newTarget = newTarget.WithShootName(tf.ShootName())
 	}
 

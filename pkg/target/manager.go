@@ -313,6 +313,7 @@ func (m *managerImpl) UnsetTargetShoot(ctx context.Context) (string, error) {
 
 	return targetedName, m.patchTarget(ctx, func(t *targetImpl) error {
 		t.Shoot = ""
+		t.Seed = ""
 		t.ControlPlaneFlag = false
 
 		return nil

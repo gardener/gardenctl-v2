@@ -224,7 +224,16 @@ func (b *targetBuilderImpl) completeTargetForShoot(ctx context.Context, t *targe
 		t.Project = project.Name
 	}
 
-	t.Seed = ""
+	if shoot.Spec.SeedName != nil {
+		if t.Seed != "" && t.Seed != *shoot.Spec.SeedName {
+			return fmt.Errorf("the specified seed %q does not match the actual seed %q of shoot %q", t.Seed, *shoot.Spec.SeedName, name)
+		}
+
+		t.Seed = *shoot.Spec.SeedName
+	} else {
+		t.Seed = ""
+	}
+
 	t.Shoot = shoot.Name
 	t.ControlPlaneFlag = false
 
