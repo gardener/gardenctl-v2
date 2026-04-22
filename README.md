@@ -13,13 +13,16 @@ gardenctl is a command-line client for the Gardener. It facilitates the administ
 
 ## Installation
 
-Install the latest release from [Homebrew](https://brew.sh/), [Chocolatey](https://chocolatey.org/packages/gardenctl-v2) or [GitHub Releases](https://github.com/gardener/gardenctl-v2/releases).
+Install the latest release from [Homebrew](https://brew.sh/), [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/), [Chocolatey](https://chocolatey.org/packages/gardenctl-v2) or [GitHub Releases](https://github.com/gardener/gardenctl-v2/releases).
 
 ### Install using Package Managers
 
 ```sh
 # Homebrew (macOS and Linux)
 brew install gardener/tap/gardenctl-v2
+
+# winget (Windows)
+winget install -e --id Gardener.gardenctl
 
 # Chocolatey (Windows)
 # default location C:\ProgramData\chocolatey\bin\gardenctl-v2.exe
