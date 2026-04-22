@@ -139,6 +139,27 @@ your shell completion command. Example:
 gardenctl completion bash --help
 ```
 
+### Recommended shell configuration
+
+It is possible to configure the shell session, completion and useful aliases at the same time using `gardenctl rc`.
+For more information on how to configure your preferred shell, see the included help:
+
+```sh
+gardenctl rc bash --help
+```
+
+```sh
+gardenctl rc fish --help
+```
+
+```powershell
+gardenctl rc powershell --help
+```
+
+```sh
+gardenctl rc zsh --help
+```
+
 ## Usage
 
 ### Targeting
