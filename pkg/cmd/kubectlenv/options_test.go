@@ -52,9 +52,12 @@ var _ = Describe("Env Commands - Options", func() {
 			options = kubectlenv.NewOptions()
 			cmdPath = "gardenctl provider-env"
 			shell = "bash"
+
 			var err error
+
 			baseTemplate, err = env.NewTemplate(shell, "helpers")
 			Expect(err).NotTo(HaveOccurred())
+
 			cfg = &config.Config{
 				LinkKubeconfig: ptr.To(false),
 				Gardens:        []config.Garden{{Name: "test"}},
@@ -86,6 +89,7 @@ var _ = Describe("Env Commands - Options", func() {
 				factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
 				root.SetArgs([]string{"alias", "child"})
 				Expect(root.Execute()).To(Succeed())
+
 				baseTemplate = nil
 			})
 
@@ -244,6 +248,7 @@ var _ = Describe("Env Commands - Options", func() {
 					Expect(meta["cli"]).To(Equal("kubectl"))
 					Expect(meta["commandPath"]).To(Equal(options.CmdPath))
 					Expect(meta["targetFlags"]).To(Equal(targetFlags))
+
 					regex := regexp.MustCompile(`(?m)\A\n(.*)\n(.*)\n\z`)
 					match := regex.FindStringSubmatch(options.String())
 					Expect(match).NotTo(BeNil())
@@ -260,6 +265,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 				It("should generate the metadata and render the unset", func() {
 					Expect(meta["unset"]).To(BeTrue())
+
 					regex := regexp.MustCompile(`(?m)\A\n(.*)\n(.*)\n\z`)
 					match := regex.FindStringSubmatch(options.String())
 					Expect(match).NotTo(BeNil())

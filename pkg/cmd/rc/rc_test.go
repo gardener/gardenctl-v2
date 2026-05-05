@@ -49,9 +49,11 @@ var _ = Describe("Env Commands", func() {
 			Expect(cmd.Flag("output")).To(BeNil())
 			subCmds := cmd.Commands()
 			Expect(len(subCmds)).To(Equal(4))
+
 			for _, c := range subCmds {
 				s := env.Shell(c.Name())
 				Expect(s).To(BeElementOf(env.ValidShells()))
+
 				flag := c.Flag("prefix")
 				Expect(flag).NotTo(BeNil())
 				Expect(flag.Shorthand).To(Equal("p"))

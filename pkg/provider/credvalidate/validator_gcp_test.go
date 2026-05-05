@@ -87,6 +87,7 @@ var _ = Describe("GCP Validator", func() {
 
 		It("should include expected fields in default patterns", func() {
 			patterns := credvalidate.DefaultGCPAllowedPatterns()
+
 			fields := make(map[string]bool)
 			for _, pattern := range patterns {
 				fields[pattern.Field] = true
@@ -184,6 +185,7 @@ var _ = Describe("GCP Validator", func() {
 				secret.Data["serviceaccount.json"] = []byte(generateCompleteValidJSON())
 				fields, err := validator.ValidateSecret(secret)
 				Expect(err).NotTo(HaveOccurred())
+
 				serviceaccountJSON := parseServiceaccountJSON(fields)
 				Expect(serviceaccountJSON).To(HaveKeyWithValue("type", "service_account"))
 				Expect(serviceaccountJSON).To(HaveKeyWithValue("project_id", "test-project-12345"))
@@ -1001,6 +1003,7 @@ var _ = Describe("GCP Validator", func() {
 
 		It("includes values when unsafe debug is enabled for sensitive fields", func() {
 			GinkgoT().Setenv("GCTL_UNSAFE_DEBUG", "true")
+
 			err := commoncredvalidate.NewPatternMismatchErrorWithValues(
 				"private_key", "does not match any allowed patterns", "SECRET", "EXPECTED", false,
 			)

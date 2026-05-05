@@ -56,6 +56,7 @@ var _ = Describe("Version Command", func() {
 		Expect(o.Short).To(BeFalse())
 		Expect(cmd.Execute()).To(Succeed())
 		Expect(o.Output).To(Equal("json"))
+
 		var anyJSON map[string]interface{}
 		Expect(json.Unmarshal([]byte(buf.String()), &anyJSON)).To(Succeed())
 		Expect(anyJSON["gitVersion"]).To(HavePrefix("v0.0.0-master"))
@@ -67,6 +68,7 @@ var _ = Describe("Version Command", func() {
 		Expect(cmd.Execute()).To(Succeed())
 		Expect(o.Short).To(BeTrue())
 		Expect(o.Output).To(Equal("json"))
+
 		var anyJSON map[string]interface{}
 		Expect(json.Unmarshal([]byte(buf.String()), &anyJSON)).To(Succeed())
 		Expect(anyJSON["gitVersion"]).To(HavePrefix("v0.0.0-master"))

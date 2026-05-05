@@ -45,9 +45,12 @@ var _ = Describe("Target Flags", func() {
 	It("should add target flags to a cobra FlagSet", func() {
 		flags := &pflag.FlagSet{}
 		tf := target.NewTargetFlags("", "", "", "", false)
+
 		Expect(flags.HasFlags()).To(BeFalse())
 		tf.AddFlags(flags)
+
 		var names []string
+
 		flags.VisitAll(func(flag *pflag.Flag) {
 			names = append(names, flag.Name)
 		})

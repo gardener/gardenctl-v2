@@ -28,10 +28,12 @@ var _ = Describe("Config Command", func() {
 
 		It("should have 4 subcommands", func() {
 			Expect(cmd.Use).To(Equal("config"))
+
 			subCommands := []string{}
 			for _, c := range cmd.Commands() {
 				subCommands = append(subCommands, c.Name())
 			}
+
 			Expect(subCommands).To(Equal([]string{"delete-garden", "set-garden", "set-openstack-authurl", "view"}))
 		})
 
@@ -74,6 +76,7 @@ var _ = Describe("Config Command", func() {
 				g, err := cfg.Garden(gardenIdentity3)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(g).To(BeEquivalentTo(garden))
+
 				c, err := config.LoadFromFile(cfg.Filename)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(c).To(BeEquivalentTo(cfg))

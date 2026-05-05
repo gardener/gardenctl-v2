@@ -21,8 +21,10 @@ import (
 
 var _ = Describe("AccessRestriction", func() {
 	Describe("Checking access restrictions", func() {
-		var accessRestrictions []ac.AccessRestriction
-		var shoot *gardencorev1beta1.Shoot
+		var (
+			accessRestrictions []ac.AccessRestriction
+			shoot              *gardencorev1beta1.Shoot
+		)
 
 		BeforeEach(func() {
 			accessRestrictions = []ac.AccessRestriction{

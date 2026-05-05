@@ -58,6 +58,7 @@ var _ = Describe("Env Commands", func() {
 		factory = utilmocks.NewMockFactory(ctrl)
 
 		manager = targetmocks.NewMockManager(ctrl)
+
 		factory.EXPECT().GetSessionID().Return("test-session-id", nil).AnyTimes()
 		factory.EXPECT().Manager().Return(manager, nil).AnyTimes()
 
@@ -90,8 +91,10 @@ var _ = Describe("Env Commands", func() {
 			flag := cmd.Flag("unset")
 			Expect(flag).NotTo(BeNil())
 			Expect(flag.Shorthand).To(Equal("u"))
+
 			subCmds := cmd.Commands()
 			Expect(len(subCmds)).To(Equal(4))
+
 			for _, c := range subCmds {
 				Expect(c.Flag("unset")).To(BeIdenticalTo(flag))
 				Expect(c.Flag("output")).To(BeNil())
@@ -111,6 +114,7 @@ var _ = Describe("Env Commands", func() {
 						break
 					}
 				}
+
 				Expect(zshCmd).NotTo(BeNil())
 			})
 
@@ -266,6 +270,7 @@ var _ = Describe("Env Commands", func() {
 			It("should output in yaml format", func() {
 				parent.SetArgs([]string{"provider-env", "--output", "yaml"})
 				Expect(parent.Execute()).To(Succeed())
+
 				configDir := filepath.Join(sessionDir, ".config", "gcloud")
 				hash := computeTestHash("test-session-id", t.GardenName(), shoot.Namespace, t.ShootName())
 				replacer := strings.NewReplacer(

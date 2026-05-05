@@ -91,10 +91,12 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 			DescribeTable("Validating Alias Flag",
 				func(alias string, shouldSetAlias bool, matcher types.GomegaMatcher) {
 					o := cmdconfig.NewSetGardenOptions()
+
 					o.Name = "foo"
 					if shouldSetAlias {
 						Expect(o.Alias.Set(alias)).To(Succeed())
 					}
+
 					Expect(o.Validate()).To(matcher)
 				},
 				Entry("when alias is not set", "", false, Succeed()),
@@ -106,9 +108,11 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 		})
 
 		Describe("Run", func() {
-			const pathToKubeconfig = "/path/to/kubeconfig"
-			const testContext = "test-context"
-			const testPattern = "test-pattern"
+			const (
+				pathToKubeconfig = "/path/to/kubeconfig"
+				testContext      = "test-context"
+				testPattern      = "test-pattern"
+			)
 
 			BeforeEach(func() {
 				options.Configuration = cfg

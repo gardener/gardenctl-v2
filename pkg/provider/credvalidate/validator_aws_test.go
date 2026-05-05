@@ -325,20 +325,25 @@ var _ = Describe("AWS Validator", func() {
 					func() string {
 						baseARN := "arn:aws:iam::123456789012:role/"
 						paddingLength := 2049 - len(baseARN)
+
 						padding := make([]byte, paddingLength)
 						for i := range padding {
 							padding[i] = 'a'
 						}
+
 						return baseARN + string(padding)
 					}(),
 					func() string {
 						baseARN := "arn:aws:iam::123456789012:role/"
 						paddingLength := 2049 - len(baseARN)
+
 						padding := make([]byte, paddingLength)
 						for i := range padding {
 							padding[i] = 'a'
 						}
+
 						longARN := baseARN + string(padding)
+
 						return fmt.Sprintf("validation error in field \"roleARN\": field value must be at most 2048 characters, got %d", len(longARN))
 					}(),
 				),

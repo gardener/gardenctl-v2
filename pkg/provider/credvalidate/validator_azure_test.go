@@ -108,6 +108,7 @@ var _ = Describe("Azure Validator", func() {
 					} else {
 						secret.Data[field] = []byte("")
 					}
+
 					_, err := validator.ValidateSecret(secret)
 					if isMissing {
 						Expect(err).To(MatchError(fmt.Sprintf("validation error in field %q: required field is missing", field)))
@@ -283,6 +284,7 @@ var _ = Describe("Azure Validator", func() {
 					} else {
 						configMap[field] = value
 					}
+
 					configBytes, _ := json.Marshal(configMap)
 					workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw = configBytes
 					_, err := validator.ValidateWorkloadIdentityConfig(workloadIdentity)

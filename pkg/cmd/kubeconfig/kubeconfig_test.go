@@ -184,6 +184,7 @@ users: null
 					config = clientcmd.NewDefaultClientConfig(*createTestKubeconfig(), nil)
 					rawConfig, err = config.RawConfig()
 					Expect(err).To(Succeed())
+
 					options.RawConfig = &rawConfig
 
 					Expect(options.Run(nil)).To(Succeed())

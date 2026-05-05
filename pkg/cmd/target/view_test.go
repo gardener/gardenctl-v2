@@ -56,6 +56,7 @@ var _ = Describe("Target View Command", func() {
 		sessionID := uuid.New().String()
 		sessionDir = filepath.Join(os.TempDir(), "garden", "sessions", sessionID)
 		Expect(os.MkdirAll(sessionDir, os.ModePerm))
+
 		currentTarget = target.NewTarget(gardenName, projectName, "", shootName)
 		targetProvider = target.NewTargetProvider(filepath.Join(sessionDir, "target.yaml"), targetFlags)
 		Expect(targetProvider.Write(currentTarget)).To(Succeed())

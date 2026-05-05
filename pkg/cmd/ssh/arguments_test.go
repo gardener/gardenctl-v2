@@ -80,6 +80,7 @@ var _ = Describe("Arguments", func() {
 					`'-oProxyCommand=ssh '"'"'-W[%h]:%p'"'"' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
 					"'gardener@node.example.com'",
 				}
+
 				return tc
 			}()),
 			Entry("basic case with other ssh username", func() testCase {
@@ -92,6 +93,7 @@ var _ = Describe("Arguments", func() {
 					`'-oProxyCommand=ssh '"'"'-W[%h]:%p'"'"' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
 					"'aaa@node.example.com'",
 				}
+
 				return tc
 			}()),
 			Entry("no bastion port", func() testCase {
@@ -104,6 +106,7 @@ var _ = Describe("Arguments", func() {
 					`'-oProxyCommand=ssh '"'"'-W[%h]:%p'"'"' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'gardener@bastion.example.com'"'"''`,
 					"'gardener@node.example.com'",
 				}
+
 				return tc
 			}()),
 			Entry("multiple known hosts files", func() testCase {
@@ -120,6 +123,7 @@ var _ = Describe("Arguments", func() {
 					`'-oProxyCommand=ssh '"'"'-W[%h]:%p'"'"' -oStrictHostKeyChecking=no -oIdentitiesOnly=yes '"'"'-ipath/to/private/key'"'"' '"'"'-oUserKnownHostsFile='"'"'"'"'"'"'"'"'path/to/known_hosts1'"'"'"'"'"'"'"'"' '"'"'"'"'"'"'"'"'path/to/known_hosts2'"'"'"'"'"'"'"'"''"'"' '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
 					"'gardener@node.example.com'",
 				}
+
 				return tc
 			}()),
 			Entry("no private key files", func() testCase {
@@ -132,6 +136,7 @@ var _ = Describe("Arguments", func() {
 					`'-oProxyCommand=ssh '"'"'-W[%h]:%p'"'"' -oStrictHostKeyChecking=ask '"'"'gardener@bastion.example.com'"'"' '"'"'-p22'"'"''`,
 					"'gardener@node.example.com'",
 				}
+
 				return tc
 			}()),
 		)

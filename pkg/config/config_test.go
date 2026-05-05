@@ -35,6 +35,7 @@ var _ = Describe("Config", func() {
 	BeforeEach(func() {
 		dir, err := os.MkdirTemp("", "garden-*")
 		Expect(err).NotTo(HaveOccurred())
+
 		gardenHomeDir = dir
 
 		cfg = &config.Config{
@@ -69,6 +70,7 @@ var _ = Describe("Config", func() {
 		if prefix != "" {
 			value = fmt.Sprintf("%s/%s", prefix, value)
 		}
+
 		return value
 	}
 
@@ -157,12 +159,14 @@ var _ = Describe("Config", func() {
 			LinkKubeconfig: actVal,
 		}
 		Expect(cfg.Save()).NotTo(HaveOccurred())
+
 		if envVal == "" {
 			os.Unsetenv(envKey)
 		} else {
 			os.Setenv(envKey, envVal)
 			defer os.Unsetenv(envKey)
 		}
+
 		cfg, err := config.LoadFromFile(filename)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cfg.Filename).To(Equal(filename))
@@ -182,6 +186,7 @@ var _ = Describe("Config", func() {
 	It("should create configuration directories and file", func() {
 		dir, err := os.MkdirTemp("", "home-*")
 		Expect(err).NotTo(HaveOccurred())
+
 		defer os.RemoveAll(dir)
 
 		filename := filepath.Join(dir, ".garden", "gardenctl-v2.yaml")

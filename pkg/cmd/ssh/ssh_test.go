@@ -339,11 +339,13 @@ var _ = Describe("SSH Command", func() {
 
 		gardenHomeDir, err = os.MkdirTemp("", "garden-home-*")
 		Expect(err).ToNot(HaveOccurred())
+
 		factory.GardenHomeDirectory = gardenHomeDir
 
 		// Create a temporary directory for GardenTempDirectory
 		gardenTempDir, err = os.MkdirTemp("", "garden-temp-*")
 		Expect(err).ToNot(HaveOccurred())
+
 		factory.GardenTempDirectory = gardenTempDir
 	})
 
@@ -430,10 +432,12 @@ var _ = Describe("SSH Command", func() {
 
 			// do not actually execute any commands
 			executedCommands := 0
+
 			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
 				defer func() {
 					signalChan <- os.Interrupt
 				}()
+
 				executedCommands++
 
 				// Retrieve the bastion object to get its UID
@@ -500,10 +504,12 @@ var _ = Describe("SSH Command", func() {
 
 			// do not actually execute any commands
 			executedCommands := 0
+
 			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
 				defer func() {
 					signalChan <- os.Interrupt
 				}()
+
 				executedCommands++
 
 				bastion := &operationsv1alpha1.Bastion{}
@@ -629,7 +635,9 @@ var _ = Describe("SSH Command", func() {
 			// end the test after a couple of seconds (enough seconds for the keep-alive
 			// goroutine to do its thing)
 			ssh.SetKeepAliveInterval(100 * time.Millisecond)
+
 			signalChan := make(chan os.Signal, 1)
+
 			ssh.SetCreateSignalChannel(func() chan os.Signal {
 				return signalChan
 			})
@@ -637,6 +645,7 @@ var _ = Describe("SSH Command", func() {
 			// Once the waitForSignal function is called we delete the bastion
 			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, signalChan <-chan struct{}) {
 				By("deleting bastion")
+
 				bastion := &operationsv1alpha1.Bastion{}
 				key := types.NamespacedName{Name: bastionName, Namespace: *testProject.Spec.Namespace}
 				Expect(gardenClient.Get(ctx, key, bastion)).To(Succeed())
@@ -661,6 +670,7 @@ var _ = Describe("SSH Command", func() {
 			ssh.SetBastionAvailabilityChecker(func(hostname string, port string, privateKey []byte, hostKeyCallback cryptossh.HostKeyCallback) error {
 				err := errors.New("this function should not be executed as of SkipAvailabilityCheck = true")
 				Fail(err.Error())
+
 				return err
 			})
 
@@ -686,6 +696,7 @@ var _ = Describe("SSH Command", func() {
 			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
 				err := errors.New("this function should not be executed as of NoKeepalive = true")
 				Fail(err.Error())
+
 				return err
 			})
 
@@ -713,6 +724,7 @@ var _ = Describe("SSH Command", func() {
 			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
 				err := errors.New("this function should not be executed as of NoKeepalive = true")
 				Fail(err.Error())
+
 				return err
 			})
 
@@ -767,10 +779,12 @@ var _ = Describe("SSH Command", func() {
 
 			// do not actually execute any commands
 			executedCommands := 0
+
 			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
 				defer func() {
 					signalChan <- os.Interrupt
 				}()
+
 				executedCommands++
 
 				Expect(command).To(Equal("ssh"))
@@ -886,6 +900,7 @@ var _ = Describe("SSH Options", func() {
 
 	Describe("Complete", func() {
 		var factory *internalfake.Factory
+
 		BeforeEach(func() {
 			factory = internalfake.NewFakeFactory(nil, nil, nil, nil)
 		})
@@ -938,6 +953,7 @@ var _ = Describe("SSH Options", func() {
 		BeforeEach(func() {
 			tmpFile, err := os.CreateTemp("", "")
 			Expect(err).NotTo(HaveOccurred())
+
 			defer tmpFile.Close()
 
 			// write dummy SSH public key
@@ -1242,6 +1258,7 @@ var _ = Describe("SSH Options", func() {
 		// Generate key once for all SSH validation tests to improve performance
 		BeforeAll(func() {
 			var err error
+
 			privateKey, err = rsa.GenerateKey(rand.Reader, 2048)
 			Expect(err).NotTo(HaveOccurred())
 

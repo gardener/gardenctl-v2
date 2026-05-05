@@ -163,6 +163,7 @@ var _ = Describe("SSH Patch Command", func() {
 		factory.EXPECT().TargetFlags().Return(targetFlags).AnyTimes()
 		factory.EXPECT().Context().Return(ctx).AnyTimes()
 		factory.EXPECT().Clock().Return(clock).AnyTimes()
+
 		fakeIPs := []string{"192.0.2.42", "2001:db8::8a2e:370:7334"}
 		factory.EXPECT().PublicIPs(isCtx).Return(fakeIPs, nil).AnyTimes()
 	})
@@ -285,9 +286,11 @@ var _ = Describe("SSH Patch Command", func() {
 		})
 
 		Describe("Run", func() {
-			var options *sshpatch.TestOptions
-			var cmd *cobra.Command
-			var isBastion gomock.Matcher
+			var (
+				options   *sshpatch.TestOptions
+				cmd       *cobra.Command
+				isBastion gomock.Matcher
+			)
 
 			BeforeEach(func() {
 				fakeBastion := createBastion(defaultUserName, defaultUserName+"-bastion1")
