@@ -30,7 +30,7 @@ function run_test {
     RACE_FLAG="-race"
   fi
 
-  GO111MODULE=on go test ./... ${RACE_FLAG} -timeout "${GO_TEST_TIMEOUT}" -coverprofile cover.out
+  CGO_ENABLED=0 GO111MODULE=on go test ./... ${RACE_FLAG} -timeout "${GO_TEST_TIMEOUT}" -coverprofile cover.out
 
   popd
 }

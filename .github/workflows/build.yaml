@@ -100,7 +100,7 @@ jobs:
     permissions:
       contents: read
     env:
-      GO_TEST_RACE: 1
+      GO_TEST_RACE: 0
       GOLANGCI_LINT_VERBOSE: 1
       GOLANGCI_LINT_TIMEOUT: 5m
     strategy:

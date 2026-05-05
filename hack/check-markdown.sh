@@ -24,7 +24,7 @@ trap cleanup EXIT ERR INT TERM
 pushd "$MAIN_REPO_DIR" > /dev/null
 
 export OUT_DIR=$tmpDir
-go run "internal/gen/markdown.go"
+CGO_ENABLED=0 go run "internal/gen/markdown.go"
 
 EXIT_CODE=0
 output=$(diff -x '.DS_Store' "$MAIN_REPO_DIR/docs/help" "$OUT_DIR") || EXIT_CODE=$?
