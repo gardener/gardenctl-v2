@@ -30,6 +30,7 @@ var _ = Describe("TempDataWriter", func() {
 		// Create a temporary directory for testing
 		tempDir, err = os.MkdirTemp("", "gardenctl-test-*")
 		Expect(err).NotTo(HaveOccurred())
+
 		sessionID = "test-session-id"
 		sessionDir = filepath.Join(tempDir, "sessions", "test-session")
 		err = os.MkdirAll(sessionDir, 0o700)
@@ -223,6 +224,7 @@ var _ = Describe("CleanupDataWriter", func() {
 		// Create a temporary directory for testing
 		tempDir, err = os.MkdirTemp("", "gardenctl-test-*")
 		Expect(err).NotTo(HaveOccurred())
+
 		sessionID = "test-session-id"
 		sessionDir = filepath.Join(tempDir, "sessions", "test-session")
 		err = os.MkdirAll(sessionDir, 0o700)
@@ -423,11 +425,13 @@ var _ = Describe("CleanupDataWriter", func() {
 			// Create files for target1
 			writer1, err := providerenv.NewTempDataWriter(sessionID, sessionDir, target1)
 			Expect(err).NotTo(HaveOccurred())
+
 			path1, _ := writer1.WriteField("field1", "value1")
 
 			// Create files for target2
 			writer2, err := providerenv.NewTempDataWriter(sessionID, sessionDir, target2)
 			Expect(err).NotTo(HaveOccurred())
+
 			path2, _ := writer2.WriteField("field2", "value2")
 
 			// Both files should exist

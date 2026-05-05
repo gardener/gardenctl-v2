@@ -706,7 +706,9 @@ var _ = Describe("Pattern", func() {
 	Describe("UnmarshalJSON", func() {
 		It("should set IsUserProvided=true when unmarshaling from JSON", func() {
 			jsonData := `{"field": "endpoint", "uri": "https://api.example.com/token"}`
+
 			var pattern allowpattern.Pattern
+
 			err := pattern.UnmarshalJSON([]byte(jsonData))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pattern.Field).To(Equal("endpoint"))
@@ -718,7 +720,9 @@ var _ = Describe("Pattern", func() {
 			// IsUserProvided has json:"-" tag, so it won't be deserialized from JSON
 			// but if someone tries to include it, it should be ignored and set to true
 			jsonData := `{"field": "endpoint", "uri": "https://api.example.com/token", "isUserProvided": false}`
+
 			var pattern allowpattern.Pattern
+
 			err := pattern.UnmarshalJSON([]byte(jsonData))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pattern.IsUserProvided).To(BeTrue())
@@ -726,7 +730,9 @@ var _ = Describe("Pattern", func() {
 
 		It("should handle complex pattern with host and path", func() {
 			jsonData := `{"field": "authURL", "host": "keystone.example.com", "path": "/v3"}`
+
 			var pattern allowpattern.Pattern
+
 			err := pattern.UnmarshalJSON([]byte(jsonData))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pattern.Field).To(Equal("authURL"))
@@ -795,6 +801,7 @@ var _ = Describe("Pattern", func() {
 			patterns, err := allowpattern.ParseAllowedPatterns(valCtx, jsonPatterns, uriPatterns)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(patterns).To(HaveLen(2))
+
 			for i, pattern := range patterns {
 				Expect(pattern.IsUserProvided).To(BeTrue(), "pattern at index %d should have IsUserProvided=true", i)
 			}

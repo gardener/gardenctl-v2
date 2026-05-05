@@ -22,6 +22,7 @@ func TestCredvalidate(t *testing.T) {
 var _ = BeforeSuite(func() {
 	// Ensure a stable default for redaction across the suite; specs can override with Setenv.
 	prev, had := os.LookupEnv("GCTL_UNSAFE_DEBUG")
+
 	Expect(os.Setenv("GCTL_UNSAFE_DEBUG", "false")).To(Succeed())
 
 	DeferCleanup(func() {

@@ -13,7 +13,7 @@ fi
 export SOURCE_PATH="$(readlink -f "$SOURCE_PATH")"
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION=v2.8.0
+GOLANGCI_LINT_VERSION=v2.12.1
 
 GOLANGCI_LINT_TIMEOUT="${GOLANGCI_LINT_TIMEOUT:-5m}"
 GOLANGCI_LINT_VERBOSE="${GOLANGCI_LINT_VERBOSE:-0}"
@@ -21,7 +21,7 @@ GOLANGCI_LINT_VERBOSE="${GOLANGCI_LINT_VERBOSE:-0}"
 # Install golangci-lint if not present or version mismatch
 if ! which golangci-lint >/dev/null 2>&1 || ! golangci-lint --version | grep -q "version ${GOLANGCI_LINT_VERSION#v}"; then
   echo "> Downloading golangci-lint..."
-  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin ${GOLANGCI_LINT_VERSION}
+  curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b "$(go env GOPATH)/bin" ${GOLANGCI_LINT_VERSION}
 fi
 
 VERBOSE_FLAG=""

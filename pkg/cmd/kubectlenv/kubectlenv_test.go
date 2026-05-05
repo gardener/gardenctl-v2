@@ -58,8 +58,10 @@ var _ = Describe("Env Commands", func() {
 			flag := cmd.Flag("unset")
 			Expect(flag).NotTo(BeNil())
 			Expect(flag.Shorthand).To(Equal("u"))
+
 			subCmds := cmd.Commands()
 			Expect(len(subCmds)).To(Equal(4))
+
 			for _, c := range subCmds {
 				Expect(c.Flag("unset")).To(BeIdenticalTo(flag))
 				s := env.Shell(c.Name())

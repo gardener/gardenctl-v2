@@ -51,6 +51,7 @@ var _ = BeforeSuite(func() {
 	Expect(os.Setenv(cmd.EnvSessionID, sessionID)).To(Succeed())
 	sessionDir = filepath.Join(os.TempDir(), "garden", "sessions", sessionID)
 	Expect(os.MkdirAll(sessionDir, os.ModePerm))
+
 	cfg = &config.Config{
 		Filename:       configFile,
 		LinkKubeconfig: ptr.To(false),
@@ -70,6 +71,7 @@ var _ = BeforeSuite(func() {
 		} else {
 			_ = os.Unsetenv(cmd.EnvSessionID)
 		}
+
 		if hadHome {
 			_ = os.Setenv(cmd.EnvGardenHomeDir, prevHome)
 		} else {

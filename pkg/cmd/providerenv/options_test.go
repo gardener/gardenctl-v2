@@ -76,9 +76,12 @@ var _ = Describe("Env Commands - Options", func() {
 			cmdPath = "gardenctl provider-env"
 			// Use bash as default shell for tests; helpers template itself is shell-agnostic
 			shell = "bash"
+
 			var err error
+
 			baseTemplate, err = env.NewTemplate(shell, "helpers")
 			Expect(err).NotTo(HaveOccurred())
+
 			shell = "default"
 			output = ""
 			providerType = "aws"
@@ -116,6 +119,7 @@ var _ = Describe("Env Commands - Options", func() {
 				factory.EXPECT().Context().Return(ctx)
 				root.SetArgs([]string{"alias", "child"})
 				Expect(root.Execute()).To(Succeed())
+
 				baseTemplate = nil
 				providerType = ""
 			})
@@ -259,6 +263,7 @@ var _ = Describe("Env Commands - Options", func() {
 				}
 				shell = "bash"
 				options.SessionDir = sessionDir
+
 				factory.EXPECT().Context().Return(ctx).AnyTimes()
 				// Create a proper command hierarchy for Complete() to work
 				parentCmd := &cobra.Command{Use: "gardenctl"}
@@ -352,6 +357,7 @@ var _ = Describe("Env Commands - Options", func() {
 					JustBeforeEach(func() {
 						shoot.Spec.SecretBindingName = &secretBindingName
 						client.EXPECT().GetSecretBinding(ctx, shoot.Namespace, *shoot.Spec.SecretBindingName).Return(secretBinding, nil)
+
 						currentTarget := t.WithSeedName("")
 						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
 						client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
@@ -359,6 +365,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 					It("does the work when the shoot is targeted via project", func() {
 						Expect(options.Run(factory)).To(Succeed())
+
 						hash := computeTestHash("test-session-id", t.GardenName(), shoot.Namespace, t.ShootName())
 						replacer := strings.NewReplacer(
 							"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "gcloud"),
@@ -383,6 +390,7 @@ var _ = Describe("Env Commands - Options", func() {
 					JustBeforeEach(func() {
 						currentTarget := t.WithProjectName("")
 						hash = computeTestHash("test-session-id", t.GardenName(), shoot.Namespace, t.ShootName())
+
 						manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
 						client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
 					})
@@ -396,6 +404,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 						It("does the work when the shoot is targeted via seed", func() {
 							Expect(options.Run(factory)).To(Succeed())
+
 							replacer := strings.NewReplacer(
 								"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "gcloud"),
 								"PLACEHOLDER_SESSION_DIR", sessionDir,
@@ -413,6 +422,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 						It("does the work when the shoot is targeted via seed", func() {
 							Expect(options.Run(factory)).To(Succeed())
+
 							expected := strings.NewReplacer(
 								"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "gcloud"),
 								"PLACEHOLDER_SESSION_DIR", sessionDir,
@@ -611,6 +621,7 @@ var _ = Describe("Env Commands - Options", func() {
 						// Initialize options with Complete() to set up default patterns
 						factory := utilmocks.NewMockFactory(ctrl)
 						manager := targetmocks.NewMockManager(ctrl)
+
 						factory.EXPECT().GetSessionID().Return("test-session-id", nil)
 						factory.EXPECT().Manager().Return(manager, nil)
 						factory.EXPECT().TargetFlags().Return(tf)
@@ -643,6 +654,7 @@ var _ = Describe("Env Commands - Options", func() {
 						// Initialize options with Complete() to set up default patterns
 						factory := utilmocks.NewMockFactory(ctrl)
 						manager := targetmocks.NewMockManager(ctrl)
+
 						factory.EXPECT().GetSessionID().Return("test-session-id", nil)
 						factory.EXPECT().Manager().Return(manager, nil)
 						factory.EXPECT().TargetFlags().Return(tf)
@@ -680,6 +692,7 @@ var _ = Describe("Env Commands - Options", func() {
 						// Initialize options with Complete() to set up default patterns
 						factory := utilmocks.NewMockFactory(ctrl)
 						manager := targetmocks.NewMockManager(ctrl)
+
 						factory.EXPECT().GetSessionID().Return("test-session-id", nil)
 						factory.EXPECT().Manager().Return(manager, nil)
 						factory.EXPECT().TargetFlags().Return(tf)
@@ -694,6 +707,7 @@ var _ = Describe("Env Commands - Options", func() {
 					It("should fail to render the template with JSON parse error", func() {
 						client := gardenclientmocks.NewMockClient(ctrl)
 						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+
 						noTemplateFmt := "template: no template %q associated with template %q"
 						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(fmt.Sprintf(noTemplateFmt, shell, "base")))
 					})
@@ -728,6 +742,7 @@ var _ = Describe("Env Commands - Options", func() {
 					It("should fail to render the template with a not supported error", func() {
 						client := gardenclientmocks.NewMockClient(ctrl)
 						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+
 						message := "failed to generate the cloud provider CLI configuration script"
 						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(MatchRegexp(message)))
 					})
@@ -749,6 +764,7 @@ var _ = Describe("Env Commands - Options", func() {
 					It("should fail to render the template with a not supported error", func() {
 						client := gardenclientmocks.NewMockClient(ctrl)
 						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+
 						message := "failed to generate the cloud provider CLI configuration script"
 						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(MatchRegexp(message)))
 					})
@@ -776,6 +792,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 						factory := utilmocks.NewMockFactory(ctrl)
 						manager := targetmocks.NewMockManager(ctrl)
+
 						factory.EXPECT().GetSessionID().Return("test-session-id", nil)
 						factory.EXPECT().Manager().Return(manager, nil)
 						factory.EXPECT().TargetFlags().Return(tf)
@@ -814,6 +831,7 @@ var _ = Describe("Env Commands - Options", func() {
 					It("should fail with invalid provider config", func() {
 						client := gardenclientmocks.NewMockClient(ctrl)
 						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
+
 						cloudProfile.GetCloudProfileSpec().ProviderConfig = nil
 						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(MatchError(MatchRegexp("^failed to get openstack provider config:")))
 					})
@@ -988,6 +1006,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 						factory := utilmocks.NewMockFactory(ctrl)
 						manager := targetmocks.NewMockManager(ctrl)
+
 						factory.EXPECT().GetSessionID().Return("test-session-id", nil)
 						factory.EXPECT().Manager().Return(manager, nil)
 						factory.EXPECT().TargetFlags().Return(tf)
@@ -1157,6 +1176,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 						factory := utilmocks.NewMockFactory(ctrl)
 						manager := targetmocks.NewMockManager(ctrl)
+
 						factory.EXPECT().GetSessionID().Return("test-session-id", nil)
 						factory.EXPECT().Manager().Return(manager, nil)
 						factory.EXPECT().TargetFlags().Return(tf)
@@ -1178,6 +1198,7 @@ var _ = Describe("Env Commands - Options", func() {
 						client := gardenclientmocks.NewMockClient(ctrl)
 						client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
 						Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+
 						hash := computeTestHash("test-session-id", "test", namespace, shootName)
 						replacer := strings.NewReplacer(
 							"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "az"),
@@ -1204,6 +1225,7 @@ var _ = Describe("Env Commands - Options", func() {
 							client := gardenclientmocks.NewMockClient(ctrl)
 							client.EXPECT().GetSecret(ctx, secret.Namespace, secret.Name).Return(secret, nil)
 							Expect(options.PrintProviderEnv(ctx, client, shoot, credentialsRef, cloudProfile, nil)).To(Succeed())
+
 							hash := computeTestHash("test-session-id", "test", namespace, shootName)
 							replacer := strings.NewReplacer(
 								"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "az"),
@@ -1269,6 +1291,7 @@ var _ = Describe("Env Commands - Options", func() {
 					// Initialize options with Complete() to set up defaults and session ID
 					factory := utilmocks.NewMockFactory(ctrl)
 					manager := targetmocks.NewMockManager(ctrl)
+
 					factory.EXPECT().GetSessionID().Return("test-session-id", nil)
 					factory.EXPECT().Manager().Return(manager, nil)
 					factory.EXPECT().TargetFlags().Return(tf)
@@ -1312,15 +1335,19 @@ var _ = Describe("Env Commands - Options", func() {
 					// Verify baseline files
 					proj, _ := os.ReadFile(projectIDPath)
 					Expect(string(proj)).To(Equal("my-gcp-project"))
+
 					tok, _ := os.ReadFile(tokenPath)
 					Expect(string(tok)).To(Equal("test-jwt-token"))
+
 					sub, _ := os.ReadFile(subjectPath)
 					Expect(string(sub)).To(Equal("subject-123"))
+
 					aud, _ := os.ReadFile(audiencesPath)
 					Expect(string(aud)).To(Equal("[sts.googleapis.com]"))
 
 					// Verify credentials JSON content and credential_source points to token file
 					credBytes, _ := os.ReadFile(credentialsPath)
+
 					var credMap map[string]interface{}
 					Expect(json.Unmarshal(credBytes, &credMap)).To(Succeed())
 					Expect(credMap["type"]).To(Equal("external_account"))
@@ -1432,6 +1459,7 @@ var _ = Describe("Env Commands - Options", func() {
 					Expect(meta["cli"]).To(Equal(cli))
 					Expect(meta["commandPath"]).To(Equal(options.CmdPath))
 					Expect(meta["targetFlags"]).To(Equal(targetFlags))
+
 					regex := regexp.MustCompile(`(?m)\A\n(.*)\n(.*)\n\z`)
 					match := regex.FindStringSubmatch(options.String())
 					Expect(match).NotTo(BeNil())
@@ -1448,6 +1476,7 @@ var _ = Describe("Env Commands - Options", func() {
 
 				It("should generate the metadata and render the unset", func() {
 					Expect(meta["unset"]).To(BeTrue())
+
 					regex := regexp.MustCompile(`(?m)\A\n(.*)\n(.*)\n\z`)
 					match := regex.FindStringSubmatch(options.String())
 					Expect(match).NotTo(BeNil())

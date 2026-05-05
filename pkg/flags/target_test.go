@@ -180,6 +180,7 @@ var _ = Describe("Target flags", func() {
 			clientConfig1, err := cfg.ClientConfig(gardenName1)
 			Expect(err).ToNot(HaveOccurred())
 			clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig1)).Return(gardenClient1, nil).AnyTimes()
+
 			clientConfig2, err := cfg.ClientConfig(gardenName2)
 			Expect(err).ToNot(HaveOccurred())
 			clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig2)).Return(gardenClient2, nil).AnyTimes()
@@ -289,6 +290,7 @@ var _ = Describe("Target flags", func() {
 				returned, directory := wrapped(nil, nil, "f")
 				Expect(directory).To(Equal(cobra.ShellCompDirectiveNoFileComp))
 				Expect(returned).To(BeNil())
+
 				head := strings.Split(errOut.String(), "\n")[0]
 				Expect(head).To(Equal("completion failed"))
 			})
@@ -302,6 +304,7 @@ var _ = Describe("Target flags", func() {
 				returned, directory := wrapped(nil, nil, "f")
 				Expect(directory).To(Equal(cobra.ShellCompDirectiveNoFileComp))
 				Expect(returned).To(BeNil())
+
 				head := strings.Split(errOut.String(), "\n")[0]
 				Expect(head).To(HavePrefix("failed to load config:"))
 			})

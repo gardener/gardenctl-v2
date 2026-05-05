@@ -51,8 +51,10 @@ var _ = Describe("Env Commands - Template", func() {
 
 	JustBeforeEach(func() {
 		var err error
+
 		t, err = env.NewTemplate(shell, filenames...)
 		Expect(err).NotTo(HaveOccurred())
+
 		metadata["commandPath"] = commandPath
 		metadata["cli"] = cli
 		metadata["shell"] = shell
@@ -103,12 +105,14 @@ var _ = Describe("Env Commands - Template", func() {
 # Run this command to reset the kubectl configuration for your shell:
 # eval $(gardenctl kubectl-env -u PLACEHOLDER_SHELL)
 `
+
 		pathToKubeconfig := "/path/to/.kube/config"
 
 		BeforeEach(func() {
 			providerType = "kubernetes"
 			cli = "kubectl"
 			commandPath = "gardenctl kubectl-env"
+
 			filenames = append(filenames, "helpers", providerType)
 		})
 
@@ -120,6 +124,7 @@ var _ = Describe("Env Commands - Template", func() {
 			func(unset bool, format string) {
 				metadata["shell"] = shell
 				metadata["unset"] = unset
+
 				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
 				expected := strings.NewReplacer(
 					"PLACEHOLDER_SHELL", shell,
@@ -156,6 +161,7 @@ unset CLOUDSDK_CONFIG;
 # Run this command to reset the gcloud configuration for your shell:
 # eval $(gardenctl provider-env -u PLACEHOLDER_SHELL)
 `
+
 		var (
 			projectIDFile   = "/tmp/project_id.txt"
 			regionFile      = "/tmp/region.txt"
@@ -167,6 +173,7 @@ unset CLOUDSDK_CONFIG;
 			providerType = "gcp"
 			cli = "gcloud"
 			commandPath = "gardenctl provider-env"
+
 			filenames = append(filenames, "helpers", providerType)
 		})
 
@@ -183,6 +190,7 @@ unset CLOUDSDK_CONFIG;
 			func(unset bool, format string) {
 				metadata["shell"] = shell
 				metadata["unset"] = unset
+
 				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
 				expected := strings.NewReplacer(
 					"PLACEHOLDER_SHELL", shell,
@@ -214,6 +222,7 @@ printf 'Run the following command to revoke access credentials:\n$ eval $(garden
 # Run this command to configure gcloud for your shell:
 # eval $(gardenctl provider-env PLACEHOLDER_SHELL)
 `
+
 			var (
 				tokenFile     = "/tmp/token.txt"
 				subjectFile   = "/tmp/subject.txt"
@@ -230,6 +239,7 @@ printf 'Run the following command to revoke access credentials:\n$ eval $(garden
 			It("should render template with workload identity fields", func() {
 				metadata["shell"] = shell
 				metadata["unset"] = false
+
 				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
 				expected := strings.NewReplacer(
 					"PLACEHOLDER_SHELL", shell,
@@ -272,6 +282,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 # Run this command to reset the az configuration for your shell:
 # & gardenctl provider-env -u PLACEHOLDER_SHELL | Invoke-Expression
 `
+
 		var (
 			clientIDFile       = "/tmp/clientID.txt"
 			clientSecretFile   = "/tmp/clientSecret.txt"
@@ -285,6 +296,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 			cli = "az"
 			shell = "powershell"
 			commandPath = "gardenctl provider-env"
+
 			filenames = append(filenames, "helpers", providerType)
 		})
 
@@ -302,6 +314,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 			func(unset bool, format string) {
 				metadata["shell"] = shell
 				metadata["unset"] = unset
+
 				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
 				expected := strings.NewReplacer(
 					"PLACEHOLDER_SHELL", shell,
@@ -356,6 +369,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 # Run this command to configure test for your shell:
 # eval $(gardenctl provider-env PLACEHOLDER_SHELL)
 `
+
 			var token string
 
 			BeforeEach(func() {
@@ -364,6 +378,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 				token = "token"
 				filename = filepath.Join("templates", providerType+".tmpl")
 				writeTempFile(filename, readTestFile("templates/"+providerType+".tmpl"))
+
 				data["unsafeSecretData"] = map[string]interface{}{
 					"testToken": token,
 				}

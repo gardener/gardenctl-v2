@@ -259,6 +259,7 @@ var _ = Describe("Client", func() {
 			k8sVersion       = "1.20.0"
 			k8sVersionLegacy = "1.19.0" // legacy kubeconfig should be rendered
 		)
+
 		var (
 			testShoot1  *gardencorev1beta1.Shoot
 			caConfigMap *corev1.ConfigMap
@@ -301,7 +302,9 @@ var _ = Describe("Client", func() {
 				CommonName: "ca-test",
 				CertType:   secrets.CACert,
 			}
+
 			var err error
+
 			ca, err = csc.GenerateCertificate()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -360,6 +363,7 @@ var _ = Describe("Client", func() {
 			Context("legacy kubeconfig", func() {
 				BeforeEach(func() {
 					By("having shoot kubernetes version < v1.20.0")
+
 					testShoot1.Spec.Kubernetes.Version = k8sVersionLegacy
 				})
 
@@ -595,8 +599,10 @@ var _ = Describe("Client", func() {
 						},
 					}
 					_ = json.NewEncoder(w).Encode(response)
+
 					return
 				}
+
 				w.WriteHeader(http.StatusNotFound)
 			}))
 
@@ -625,6 +631,7 @@ var _ = Describe("Client", func() {
 				if strings.Contains(r.URL.Path, "/token") {
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusOK)
+
 					response := gardensecurityv1alpha1.TokenRequest{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: "security.gardener.cloud/v1alpha1",
@@ -639,8 +646,10 @@ var _ = Describe("Client", func() {
 						},
 					}
 					_ = json.NewEncoder(w).Encode(response)
+
 					return
 				}
+
 				w.WriteHeader(http.StatusNotFound)
 			}))
 
@@ -666,6 +675,7 @@ var _ = Describe("Client", func() {
 				if strings.Contains(r.URL.Path, "/token") {
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusOK)
+
 					response := gardensecurityv1alpha1.TokenRequest{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: "security.gardener.cloud/v1alpha1",
@@ -677,8 +687,10 @@ var _ = Describe("Client", func() {
 						},
 					}
 					_ = json.NewEncoder(w).Encode(response)
+
 					return
 				}
+
 				w.WriteHeader(http.StatusNotFound)
 			}))
 

@@ -31,6 +31,7 @@ import (
 
 var _ = Describe("Resolve Command - Options", func() {
 	const gardenName = "mygarden"
+
 	var (
 		ctrl         *gomock.Controller
 		factory      *utilmocks.MockFactory
@@ -433,6 +434,7 @@ shoot:
 					o.CurrentTarget = t
 
 					shoot2Target := target.NewTarget(gardenName, "garden", "", seedName).WithControlPlane(true)
+
 					gardenClient.EXPECT().FindShoot(ctx, t.AsListOption()).Return(shoot, nil)
 					gardenClient.EXPECT().FindShoot(ctx, shoot2Target.AsListOption()).Return(shoot2, nil)
 					gardenClient.EXPECT().GetProjectByNamespace(ctx, "garden").Return(projectGarden, nil)

@@ -41,6 +41,7 @@ var _ = Describe("realHostKeyCallbackFactory", func() {
 		ioStreams, inBuffer, outBuffer, errOutBuffer = util.NewTestIOStreams()
 
 		var err error
+
 		homeDir, err = os.MkdirTemp("", "testuserdir")
 		Expect(err).NotTo(HaveOccurred())
 
@@ -112,7 +113,9 @@ var _ = Describe("realHostKeyCallbackFactory", func() {
 				// Since we haven't added any hosts, the callback should fail when called
 				err = callback("hostname:22", &net.TCPAddr{}, publicKey)
 				Expect(err).To(HaveOccurred())
+
 				var keyErr *knownhosts.KeyError
+
 				ok := errors.As(err, &keyErr)
 				Expect(ok).To(BeTrue(), "error should be of type knownhosts.KeyError")
 				Expect(len(keyErr.Want)).To(Equal(0), "keyErr.Want should be empty")
@@ -303,6 +306,7 @@ var _ = Describe("realHostKeyCallbackFactory", func() {
 			// Create a known hosts file with an entry for a host with one key
 			tempFile, err := os.CreateTemp("", "known_hosts")
 			Expect(err).NotTo(HaveOccurred())
+
 			defer os.Remove(tempFile.Name())
 
 			knownHostsFiles := []string{tempFile.Name()}
@@ -334,7 +338,9 @@ var _ = Describe("realHostKeyCallbackFactory", func() {
 			// Call the callback with the mismatched public key
 			err = callback("hostname:22", &net.TCPAddr{}, publicKey2)
 			Expect(err).To(HaveOccurred())
+
 			var keyErr *knownhosts.KeyError
+
 			ok := errors.As(err, &keyErr)
 			Expect(ok).To(BeTrue(), "error should be of type knownhosts.KeyError")
 			// keyErr.Want should not be empty
@@ -352,6 +358,7 @@ var _ = Describe("realHostKeyCallbackFactory", func() {
 			// Create a known hosts file with an entry for a host with an RSA key
 			tempFile, err := os.CreateTemp("", "known_hosts")
 			Expect(err).NotTo(HaveOccurred())
+
 			defer os.Remove(tempFile.Name())
 
 			knownHostsFiles := []string{tempFile.Name()}
@@ -383,7 +390,9 @@ var _ = Describe("realHostKeyCallbackFactory", func() {
 			// Call the callback with the ED25519 key
 			err = callback("hostname:22", &net.TCPAddr{}, publicKeyED25519)
 			Expect(err).To(HaveOccurred())
+
 			var keyErr *knownhosts.KeyError
+
 			ok := errors.As(err, &keyErr)
 			Expect(ok).To(BeTrue(), "error should be of type knownhosts.KeyError")
 			// keyErr.Want should not be empty
@@ -404,6 +413,7 @@ var _ = Describe("realHostKeyCallbackFactory", func() {
 			// Create a known hosts file with an entry for a host with a known key
 			tempFile, err := os.CreateTemp("", "known_hosts")
 			Expect(err).NotTo(HaveOccurred())
+
 			defer os.Remove(tempFile.Name())
 
 			knownHostsFiles := []string{tempFile.Name()}

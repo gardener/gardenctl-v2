@@ -355,6 +355,7 @@ var _ = Describe("Target Manager", func() {
 
 	Describe("#TargetMatchPattern", func() {
 		var tf target.TargetFlags
+
 		BeforeEach(func() {
 			tf = target.NewTargetFlags("", "", "", "", false)
 		})
