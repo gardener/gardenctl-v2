@@ -4,6 +4,7 @@
     'config:recommended',
     ':semanticCommitsDisabled',
     'customManagers:githubActionsVersions',
+    'github>gardener/ci-infra//config/renovate/group-gardener-updates.json5',
   ],
   labels: [
     'kind/enhancement',
@@ -72,7 +73,6 @@
         'github.com/Masterminds/semver',
         'github.com/Masterminds/sprig/v3',
         'github.com/fatih/color',
-        'github.com/gardener/gardener',
         'github.com/gardener/gardener-extension-provider-openstack',
         'github.com/gardener/machine-controller-manager',
         'github.com/golang/mock',
