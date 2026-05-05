@@ -25,11 +25,13 @@ gardenctl provider-env fish [flags]
 ```
       --add-dir-header                                If true, adds the file directory to the header of the log messages
       --alsologtostderr                               log to standard error as well as files (no effect when -logtostderr=true)
+      --alsologtostderrthreshold severity             logs at or above this threshold go to stderr when -alsologtostderr=true (no effect when -logtostderr=true)
       --config string                                 config file (default is ~/.garden/gardenctl-v2.yaml)
   -y, --confirm-access-restriction                    Confirm any access restrictions. Set this flag only if you are completely aware of the access restrictions.
       --control-plane                                 target control plane of shoot, use together with shoot argument
   -f, --force                                         Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.
       --garden string                                 target the given garden cluster
+      --legacy-stderr-threshold-behavior              If true, stderrthreshold is ignored when logtostderr=true (legacy behavior). If false, stderrthreshold is honored even when logtostderr=true (default true)
       --log-backtrace-at traceLocation                when logging hits line file:N, emit a stack trace (default :0)
       --log-dir string                                If non-empty, write log files in this directory (no effect when -logtostderr=true)
       --log-file string                               If non-empty, use this log file (no effect when -logtostderr=true)
@@ -65,7 +67,7 @@ gardenctl provider-env fish [flags]
                                                       For example:
                                                       "aud=https://example.com"
                                                       The URI is parsed and host and path are set accordingly. These are merged with defaults and configuration.
-      --stderrthreshold severity                      logs at or above this threshold go to stderr when writing to files and stderr (no effect when -logtostderr=true or -alsologtostderr=true) (default 2)
+      --stderrthreshold severity                      logs at or above this threshold go to stderr when writing to files and stderr (no effect when -logtostderr=true or -alsologtostderr=true unless -legacy_stderr_threshold_behavior=false) (default 2)
   -u, --unset                                         Generate the script to unset the cloud provider CLI environment variables and logout.
   -v, --v Level                                       number for the log level verbosity
       --vmodule moduleSpec                            comma-separated list of pattern=N settings for file-filtered logging
