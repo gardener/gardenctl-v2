@@ -49,7 +49,7 @@ clean: ## Remove generated files and clean up directories.
 
 .PHONY: gen-markdown
 gen-markdown: ## Generate markdown help files
-	go run ./internal/gen/markdown.go
+	CGO_ENABLED=0 go run ./internal/gen/markdown.go
 
 .PHONY: generate
 generate: gen-markdown $(MOCKGEN) fmt  ## Run go generate
