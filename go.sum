@@ -206,10 +206,10 @@ github.com/gardener/etcd-druid/api v0.34.0 h1:GNeKNN/KS9Iy1su0N695/wq/VtNW9ekeRj
 github.com/gardener/etcd-druid/api v0.34.0/go.mod h1:SvgJtzYbrtBMPRL+AkRV5tXV2LjbSLCSBFu3cC6XjJs=
 github.com/gardener/gardener v1.135.1 h1:chxfp1ZrikzXv1rE146ktEviafKuAUnUh9Oei7Ugtj0=
 github.com/gardener/gardener v1.135.1/go.mod h1:gqA0KOBQvd9z4hb9kJAXmNnrsFfYzRkAzKKDTOTfu+4=
-github.com/gardener/gardener-extension-provider-openstack v1.52.0 h1:14R6oxWrXKi08kWcD/mLafsyH6ybVuFltXwI0ZAyjxw=
-github.com/gardener/gardener-extension-provider-openstack v1.52.0/go.mod h1:DHWc5rLE3x0OlMd1j2BX6jEOdZlpoe3RZr3sHqY+/Yk=
-github.com/gardener/machine-controller-manager v0.61.1 h1:Aa7FsFC4AppZ0VWqpNWUKwT25yscO9/9TF4Vsw9Vauc=
-github.com/gardener/machine-controller-manager v0.61.1/go.mod h1:8eE1qLztrWIbOM71mHSQGaC6Q+pl5lvOyN08qP39D7o=
+github.com/gardener/gardener-extension-provider-openstack v1.52.1 h1:4S4zKUMNdvF9/F4ijTFEhJkjVavK8LH/l1fVVQcrAro=
+github.com/gardener/gardener-extension-provider-openstack v1.52.1/go.mod h1:DHWc5rLE3x0OlMd1j2BX6jEOdZlpoe3RZr3sHqY+/Yk=
+github.com/gardener/machine-controller-manager v0.61.3 h1:w0JuHCKLmcK7B8E7mx3TvE3e0hSYwikchsMSiMhocqw=
+github.com/gardener/machine-controller-manager v0.61.3/go.mod h1:8eE1qLztrWIbOM71mHSQGaC6Q+pl5lvOyN08qP39D7o=
 github.com/ghodss/yaml v0.0.0-20150909031657-73d445a93680/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/gkampitakis/ciinfo v0.3.2 h1:JcuOPk8ZU7nZQjdUhctuhQofk7BGHuIy0c9Ez8BNhXs=
 github.com/gkampitakis/ciinfo v0.3.2/go.mod h1:1NIwaOcFChN4fa/B0hEBdAb6npDlFL8Bwx4dfRLRqAo=
