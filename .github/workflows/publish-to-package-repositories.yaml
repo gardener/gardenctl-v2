@@ -67,13 +67,15 @@ jobs:
 
       - uses: gardener/cc-utils/.github/actions/trusted-checkout@v1 # zizmor: ignore[unpinned-uses] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
       - name: export-version-from-input
+        id: export-version
         if: ${{ inputs.version != '' && inputs.component-descriptor == '' }}
         env:
           VERSION: ${{ inputs.version }}
         run: |
           set -eu
-          echo "version=${VERSION}" >> ${GITHUB_ENV}
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
       - name: Read-Digests
+        id: read-digests
         if: ${{ inputs.component-descriptor != '' }}
         env:
           COMPONENT_DESCRIPTOR: ${{ inputs.component-descriptor }}
@@ -85,18 +87,19 @@ jobs:
           source .github/workflows/export-digests-from-component-descriptor.sh \
             /tmp/component-descriptor.yaml
 
-          echo "DARWIN_SHA_AMD64=${DARWIN_SHA_AMD64}" >> "${GITHUB_ENV}"
-          echo "DARWIN_SHA_ARM64=${DARWIN_SHA_ARM64}" >> "${GITHUB_ENV}"
-          echo "LINUX_SHA_AMD64=${LINUX_SHA_AMD64}" >> "${GITHUB_ENV}"
-          echo "LINUX_SHA_ARM64=${LINUX_SHA_ARM64}" >> "${GITHUB_ENV}"
-          echo "WINDOWS_SHA=${WINDOWS_SHA}" >> "${GITHUB_ENV}"
+          echo "DARWIN_SHA_AMD64=${DARWIN_SHA_AMD64}" >> "${GITHUB_OUTPUT}"
+          echo "DARWIN_SHA_ARM64=${DARWIN_SHA_ARM64}" >> "${GITHUB_OUTPUT}"
+          echo "LINUX_SHA_AMD64=${LINUX_SHA_AMD64}" >> "${GITHUB_OUTPUT}"
+          echo "LINUX_SHA_ARM64=${LINUX_SHA_ARM64}" >> "${GITHUB_OUTPUT}"
+          echo "WINDOWS_SHA=${WINDOWS_SHA}" >> "${GITHUB_OUTPUT}"
 
           version="$(cat /tmp/component-descriptor.yaml | \
             yq '.component.version'
           )"
-          echo "version=${version}" >> "${GITHUB_ENV}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
       - name: Use dummy hashes (skip‑build)
+        id: dummy-hashes
         if: ${{ inputs.component-descriptor == '' }}
         run: |
           set -euo pipefail
@@ -106,13 +109,18 @@ jobs:
             "DARWIN_SHA_ARM64=$dummy" \
             "LINUX_SHA_AMD64=$dummy"  \
             "LINUX_SHA_ARM64=$dummy"  \
-            "WINDOWS_SHA=$dummy" >> "$GITHUB_ENV"
+            "WINDOWS_SHA=$dummy" >> "$GITHUB_OUTPUT"
 
       # ───── Homebrew tap dispatch ────────────────────────────────────────────
       - name: Send update to ${{ github.repository_owner }}/homebrew-tap
         if: ${{ inputs.dry_run == false }}
         env:
           GITHUB_APP_TOKEN: ${{ steps.gardener-github-workflows.outputs.token }}
+          version: ${{ steps.read-digests.outputs.version || steps.export-version.outputs.version }}
+          DARWIN_SHA_AMD64: ${{ steps.read-digests.outputs.DARWIN_SHA_AMD64 || steps.dummy-hashes.outputs.DARWIN_SHA_AMD64 }}
+          DARWIN_SHA_ARM64: ${{ steps.read-digests.outputs.DARWIN_SHA_ARM64 || steps.dummy-hashes.outputs.DARWIN_SHA_ARM64 }}
+          LINUX_SHA_AMD64: ${{ steps.read-digests.outputs.LINUX_SHA_AMD64 || steps.dummy-hashes.outputs.LINUX_SHA_AMD64 }}
+          LINUX_SHA_ARM64: ${{ steps.read-digests.outputs.LINUX_SHA_ARM64 || steps.dummy-hashes.outputs.LINUX_SHA_ARM64 }}
         run: |
           set -euo pipefail
           data=$(jq -n \
@@ -141,6 +149,8 @@ jobs:
         if: ${{ inputs.dry_run == false }}
         env:
           GITHUB_APP_TOKEN: ${{ steps.gardener-github-workflows.outputs.token }}
+          version: ${{ steps.read-digests.outputs.version || steps.export-version.outputs.version }}
+          WINDOWS_SHA: ${{ steps.read-digests.outputs.WINDOWS_SHA || steps.dummy-hashes.outputs.WINDOWS_SHA }}
         run: |
           set -euo pipefail
           data=$(jq -n \
