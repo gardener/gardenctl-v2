@@ -12,6 +12,13 @@ on:
         required: true
         description: |
           the OCM-Component-Descriptor from which to publish built artefacts
+    secrets:
+      GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_ID:
+        required: false
+        description: App ID for the gardener-github-pkg-mngr GitHub App
+      GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_PRIVATE_KEY:
+        required: false
+        description: Private key for the gardener-github-pkg-mngr GitHub App
 
   # Manual / ad‑hoc trigger
   workflow_dispatch:
