@@ -18,10 +18,11 @@ jobs:
       mode: release
 
   release-to-github-and-bump:
-    uses: gardener/cc-utils/.github/workflows/release.yaml@v1
+    uses: gardener/cc-utils/.github/workflows/release.yaml@v1 # zizmor: ignore[unpinned-uses] -- same-org reusable workflow; intentionally allowed for now, planned to pin to a version in the future
     needs:
       - build
-    secrets: inherit
+    secrets:
+      slack-token: ${{ secrets.SLACK_APP_TOKEN_GARDENER_CICD }}
     permissions:
       contents: write
       id-token: write
@@ -68,7 +69,9 @@ jobs:
       actions: read
     needs:
       - release-to-github-and-bump
-    secrets: inherit
+    secrets:
+      GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_ID: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_ID }}
+      GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_PRIVATE_KEY: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_PRIVATE_KEY }}
     uses: ./.github/workflows/publish-to-package-repositories.yaml
     with:
       component-descriptor: ${{ needs.release-to-github-and-bump.outputs.component-descriptor }}

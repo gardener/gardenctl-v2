@@ -13,7 +13,7 @@ on:
 
 jobs:
   prepare:
-    uses: gardener/cc-utils/.github/workflows/prepare.yaml@v1
+    uses: gardener/cc-utils/.github/workflows/prepare.yaml@v1 # zizmor: ignore[unpinned-uses] -- same-org reusable workflow; intentionally allowed for now, planned to pin to a version in the future
     with:
       mode: ${{ inputs.mode }}
       version-commit-callback-action-path: ./.github/actions/prepare-release
@@ -45,9 +45,9 @@ jobs:
             runner: ubuntu-latest
     runs-on: ${{ matrix.args.runner }}
     steps:
-      - uses: gardener/cc-utils/.github/actions/trusted-checkout@v1
+      - uses: gardener/cc-utils/.github/actions/trusted-checkout@v1 # zizmor: ignore[unpinned-uses] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
       - name: import-release-commit
-        uses: gardener/cc-utils/.github/actions/import-commit@v1
+        uses: gardener/cc-utils/.github/actions/import-commit@v1 # zizmor: ignore[unpinned-uses] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
         with:
           commit-objects-artefact: release-commit-objects
           after-import: rebase
@@ -66,7 +66,7 @@ jobs:
           GOARCH=${{ matrix.args.arch }} \
           out_file="/tmp/blobs.d/gardenctl-v2-${{ matrix.args.os }}-${{ matrix.args.arch }}${{ matrix.args.os == 'windows' && '.exe' || '' }}" \
             hack/build.sh
-      - uses: gardener/cc-utils/.github/actions/export-ocm-fragments@v1
+      - uses: gardener/cc-utils/.github/actions/export-ocm-fragments@v1 # zizmor: ignore[unpinned-uses] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
         with:
           blobs-directory: /tmp/blobs.d
           ocm-resources: |
@@ -112,9 +112,9 @@ jobs:
           - lint
           - go-test
     steps:
-      - uses: gardener/cc-utils/.github/actions/trusted-checkout@v1
+      - uses: gardener/cc-utils/.github/actions/trusted-checkout@v1 # zizmor: ignore[unpinned-uses] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
       - name: import-release-commit
-        uses: gardener/cc-utils/.github/actions/import-commit@v1
+        uses: gardener/cc-utils/.github/actions/import-commit@v1 # zizmor: ignore[unpinned-uses] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
         with:
           commit-objects-artefact: release-commit-objects
           after-import: rebase
@@ -122,7 +122,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: ${{ inputs.mode != 'release' }}  # disable cache for release builds
-      - uses: gardener/cc-utils/.github/actions/setup-git-identity@v1
+      - uses: gardener/cc-utils/.github/actions/setup-git-identity@v1 # zizmor: ignore[unpinned-uses] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
         if: ${{ matrix.target == 'check-generate' }}
 
       - shell: bash
@@ -133,7 +133,7 @@ jobs:
           tar czf /tmp/blobs.d/logs.tar.gz -C/tmp/blobs.d logs.txt
       - name: add-reports-to-component-descriptor
         if: ${{ matrix.target == 'go-test' }}
-        uses: gardener/cc-utils/.github/actions/export-ocm-fragments@v1
+        uses: gardener/cc-utils/.github/actions/export-ocm-fragments@v1 # zizmor: ignore[unpinned-uses] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
         with:
           blobs-directory: /tmp/blobs.d
           ocm-resources: |
@@ -148,7 +148,7 @@ jobs:
                   - test
 
   verify-sast:
-    uses: gardener/cc-utils/.github/workflows/sastlint-ocm.yaml@v1
+    uses: gardener/cc-utils/.github/workflows/sastlint-ocm.yaml@v1 # zizmor: ignore[unpinned-uses] -- same-org reusable workflow; intentionally allowed for now, planned to pin to a version in the future
     permissions:
       contents: read
     with:
