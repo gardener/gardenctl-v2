@@ -104,7 +104,26 @@ export GCTL_CONFIG_NAME=myconfig # without extension!
 # config is expected to be under /alternate/garden/config/dir/myconfig.yaml
 ```
 
+### Recommended Shell Configuration
+
+The easiest way to configure your shell for gardenctl is using `gardenctl rc`.
+For bash, add the following to your `~/.bashrc`:
+
+```bash
+source <(gardenctl rc bash)
+```
+
+Other shells (`zsh`, `fish`, `powershell`) are also supported. Run `gardenctl rc [shell] --help` for details.
+
+This automatically:
+- Sets the `GCTL_SESSION_ID` and `KUBECONFIG` environment variables, preventing the warning about a missing `KUBECONFIG` when running `gardenctl target`
+- Loads shell completion
+- Provides useful aliases (prefixed with `g` by default)
+
 ### Shell Session
+
+> [!NOTE]
+> If you source `gardenctl rc` as described above, this is already handled for you.
 
 The state of gardenctl is bound to a shell session and is not shared across windows, tabs or panes.
 A shell session is defined by the environment variable `GCTL_SESSION_ID`. If this is not defined,
@@ -129,6 +148,9 @@ powershell:   if ( !(Test-Path Env:GCTL_SESSION_ID) -and !(Test-Path Env:TERM_SE
 
 ### Completion
 
+> [!NOTE]
+> If you source `gardenctl rc` as described above, this is already handled for you.
+
 Gardenctl supports completion that will help you working with the CLI and save you typing effort.
 It will also help you find clusters by providing suggestions for gardener resources such as shoots or projects.
 Completion is supported for `bash`, `zsh`, `fish` and `powershell`.
@@ -137,27 +159,6 @@ your shell completion command. Example:
 
 ```bash
 gardenctl completion bash --help
-```
-
-### Recommended shell configuration
-
-It is possible to configure the shell session, completion and useful aliases at the same time using `gardenctl rc`.
-For more information on how to configure your preferred shell, see the included help:
-
-```sh
-gardenctl rc bash --help
-```
-
-```sh
-gardenctl rc fish --help
-```
-
-```powershell
-gardenctl rc powershell --help
-```
-
-```sh
-gardenctl rc zsh --help
 ```
 
 ## Usage
