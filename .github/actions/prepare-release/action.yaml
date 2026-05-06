@@ -10,6 +10,8 @@ runs:
   steps:
     - name: write-latest-version
       shell: bash
+      env:
+        EFFECTIVE_VERSION: ${{ inputs.effective-version }}
       run: |
         set -euo pipefail
-        echo "${{ inputs.effective-version }}" > LATEST
+        echo "${EFFECTIVE_VERSION}" > LATEST

@@ -61,17 +61,19 @@ jobs:
       - uses: gardener/cc-utils/.github/actions/trusted-checkout@v1
       - name: export-version-from-input
         if: ${{ inputs.version != '' && inputs.component-descriptor == '' }}
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
           set -eu
-          echo "version=${{ inputs.version }}" >> ${GITHUB_ENV}
+          echo "version=${VERSION}" >> ${GITHUB_ENV}
       - name: Read-Digests
         if: ${{ inputs.component-descriptor != '' }}
+        env:
+          COMPONENT_DESCRIPTOR: ${{ inputs.component-descriptor }}
         run: |
           set -euo pipefail
 
-          cat <<"EOF" > /tmp/component-descriptor.yaml
-          ${{ inputs.component-descriptor }}
-          EOF
+          printenv COMPONENT_DESCRIPTOR > /tmp/component-descriptor.yaml
 
           source .github/workflows/export-digests-from-component-descriptor.sh \
             /tmp/component-descriptor.yaml
@@ -102,6 +104,8 @@ jobs:
       # ───── Homebrew tap dispatch ────────────────────────────────────────────
       - name: Send update to ${{ github.repository_owner }}/homebrew-tap
         if: ${{ inputs.dry_run == false }}
+        env:
+          GITHUB_APP_TOKEN: ${{ steps.gardener-github-workflows.outputs.token }}
         run: |
           set -euo pipefail
           data=$(jq -n \
@@ -121,13 +125,15 @@ jobs:
                 linux_sha_arm64:$linux_sha_arm64}}')
           curl -X POST \
             -H 'Accept: application/vnd.github.everest-preview+json' \
-            -H "Authorization: Bearer ${{ steps.gardener-github-workflows.outputs.token }}" \
+            -H "Authorization: Bearer ${GITHUB_APP_TOKEN}" \
             -d "$data" \
             "https://api.github.com/repos/${{ github.repository_owner }}/homebrew-tap/dispatches"
 
       # ───── Chocolatey dispatch ──────────────────────────────────────────────
       - name: Send update to ${{ github.repository_owner }}/chocolatey-packages
         if: ${{ inputs.dry_run == false }}
+        env:
+          GITHUB_APP_TOKEN: ${{ steps.gardener-github-workflows.outputs.token }}
         run: |
           set -euo pipefail
           data=$(jq -n \
@@ -141,6 +147,6 @@ jobs:
                 windows_sha:$windows_sha}}')
           curl -X POST \
             -H 'Accept: application/vnd.github.everest-preview+json' \
-            -H "Authorization: Bearer ${{ steps.gardener-github-workflows.outputs.token }}" \
+            -H "Authorization: Bearer ${GITHUB_APP_TOKEN}" \
             -d "$data" \
             "https://api.github.com/repos/${{ github.repository_owner }}/chocolatey-packages/dispatches"
