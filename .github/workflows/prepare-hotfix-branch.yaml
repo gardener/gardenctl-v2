@@ -13,6 +13,6 @@ permissions:
 
 jobs:
   call-dashboard-workflow:
-    uses: gardener/dashboard/.github/workflows/prepare-hotfix-branch.yaml@master
+    uses: gardener/dashboard/.github/workflows/prepare-hotfix-branch.yaml@master # zizmor: ignore[unpinned-uses] -- same-org reusable workflow; intentionally tracks master as the trusted source for the latest hotfix preparation logic
     with:
       tag: ${{ inputs.tag }}
