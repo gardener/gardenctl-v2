@@ -161,11 +161,10 @@ var (
 		return signalChan
 	}
 
-	// execCommand executes the given command, using the in/out streams
-	// from the SSHOptions. The function returns an error if the command
-	// fails.
-	execCommand = func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
-		cmd := exec.CommandContext(ctx, command, args...)
+	// execSSHCommand executes the OpenSSH client, using the in/out streams
+	// from the SSHOptions. The function returns an error if the command fails.
+	execSSHCommand = func(ctx context.Context, args []string, ioStreams util.IOStreams) error {
+		cmd := exec.CommandContext(ctx, "ssh", args...) // #nosec G204 -- Executable is hardcoded "ssh"; user-controlled values (host, port, user) are validated in SSHOptions.Validate.
 		cmd.Stdout = ioStreams.Out
 		cmd.Stdin = ioStreams.In
 		cmd.Stderr = ioStreams.ErrOut
@@ -1275,7 +1274,7 @@ func remoteShell(
 		args = append(args, arg.value)
 	}
 
-	return execCommand(ctx, "ssh", args, ioStreams)
+	return execSSHCommand(ctx, args, ioStreams)
 }
 
 func getKeepAliveInterval() time.Duration {

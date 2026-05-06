@@ -32,8 +32,8 @@ func SetCreateSignalChannel(f func() chan os.Signal) {
 	createSignalChannel = f
 }
 
-func SetExecCommand(f func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error) {
-	execCommand = f
+func SetExecSSHCommand(f func(ctx context.Context, args []string, ioStreams util.IOStreams) error) {
+	execSSHCommand = f
 }
 
 func SetPollBastionStatusInterval(d time.Duration) {
