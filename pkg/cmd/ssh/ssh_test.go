@@ -433,7 +433,7 @@ var _ = Describe("SSH Command", func() {
 			// do not actually execute any commands
 			executedCommands := 0
 
-			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
+			ssh.SetExecSSHCommand(func(ctx context.Context, args []string, ioStreams util.IOStreams) error {
 				defer func() {
 					signalChan <- os.Interrupt
 				}()
@@ -450,7 +450,6 @@ var _ = Describe("SSH Command", func() {
 				defaultBastionKnownHostsFile := filepath.Join(gardenTempDir, "cache", bastionUID, ".ssh", "known_hosts")
 				defaultNodeKnownHostsFile := filepath.Join(gardenHomeDir, "cache", shootUID, ".ssh", "known_hosts")
 
-				Expect(command).To(Equal("ssh"))
 				Expect(args).To(Equal([]string{
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
@@ -505,7 +504,7 @@ var _ = Describe("SSH Command", func() {
 			// do not actually execute any commands
 			executedCommands := 0
 
-			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
+			ssh.SetExecSSHCommand(func(ctx context.Context, args []string, ioStreams util.IOStreams) error {
 				defer func() {
 					signalChan <- os.Interrupt
 				}()
@@ -521,7 +520,6 @@ var _ = Describe("SSH Command", func() {
 				defaultBastionKnownHostsFile := filepath.Join(gardenTempDir, "cache", bastionUID, ".ssh", "known_hosts")
 				defaultNodeKnownHostsFile := filepath.Join(gardenHomeDir, "cache", shootUID, ".ssh", "known_hosts")
 
-				Expect(command).To(Equal("ssh"))
 				Expect(args).To(Equal([]string{
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
@@ -693,7 +691,7 @@ var _ = Describe("SSH Command", func() {
 			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, signalChan <-chan struct{}) {
 				Fail("this function should not be executed as of NoKeepalive = true")
 			})
-			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
+			ssh.SetExecSSHCommand(func(ctx context.Context, args []string, ioStreams util.IOStreams) error {
 				err := errors.New("this function should not be executed as of NoKeepalive = true")
 				Fail(err.Error())
 
@@ -721,7 +719,7 @@ var _ = Describe("SSH Command", func() {
 			ssh.SetWaitForSignal(func(ctx context.Context, o *ssh.SSHOptions, signalChan <-chan struct{}) {
 				Fail("this function should not be executed as of NoKeepalive = true")
 			})
-			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
+			ssh.SetExecSSHCommand(func(ctx context.Context, args []string, ioStreams util.IOStreams) error {
 				err := errors.New("this function should not be executed as of NoKeepalive = true")
 				Fail(err.Error())
 
@@ -780,14 +778,13 @@ var _ = Describe("SSH Command", func() {
 			// do not actually execute any commands
 			executedCommands := 0
 
-			ssh.SetExecCommand(func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
+			ssh.SetExecSSHCommand(func(ctx context.Context, args []string, ioStreams util.IOStreams) error {
 				defer func() {
 					signalChan <- os.Interrupt
 				}()
 
 				executedCommands++
 
-				Expect(command).To(Equal("ssh"))
 				Expect(args).To(Equal([]string{
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",

@@ -113,7 +113,7 @@ var (
 
 			authMethods = append(authMethods, ssh.PublicKeys(signer))
 		} else if addr := os.Getenv("SSH_AUTH_SOCK"); len(addr) > 0 {
-			socket, dialErr := net.Dial("unix", addr)
+			socket, dialErr := net.Dial("unix", addr) // #nosec G704 -- SSRF false positive: network is hardcoded to "unix", limiting the dial to local IPC; the connection is used exclusively for SSH agent protocol operations.
 			if dialErr != nil {
 				return fmt.Errorf("could not open SSH agent socket %q: %w", addr, dialErr)
 			}
@@ -161,11 +161,10 @@ var (
 		return signalChan
 	}
 
-	// execCommand executes the given command, using the in/out streams
-	// from the SSHOptions. The function returns an error if the command
-	// fails.
-	execCommand = func(ctx context.Context, command string, args []string, ioStreams util.IOStreams) error {
-		cmd := exec.CommandContext(ctx, command, args...)
+	// execSSHCommand executes the OpenSSH client, using the in/out streams
+	// from the SSHOptions. The function returns an error if the command fails.
+	execSSHCommand = func(ctx context.Context, args []string, ioStreams util.IOStreams) error {
+		cmd := exec.CommandContext(ctx, "ssh", args...) // #nosec G204 -- Executable is hardcoded "ssh"; user-controlled values (host, port, user) are validated in SSHOptions.Validate.
 		cmd.Stdout = ioStreams.Out
 		cmd.Stdin = ioStreams.In
 		cmd.Stderr = ioStreams.ErrOut
@@ -654,7 +653,7 @@ func countSSHAgentSigners() (int, error) {
 		return 0, nil
 	}
 
-	socket, err := net.Dial("unix", addr)
+	socket, err := net.Dial("unix", addr) // #nosec G704 -- SSRF false positive: network is hardcoded to "unix", limiting the dial to local IPC; the connection is used exclusively for SSH agent protocol operations.
 	if err != nil {
 		return 0, fmt.Errorf("could not open SSH agent socket %q: %w", addr, err)
 	}
@@ -1275,7 +1274,7 @@ func remoteShell(
 		args = append(args, arg.value)
 	}
 
-	return execCommand(ctx, "ssh", args, ioStreams)
+	return execSSHCommand(ctx, args, ioStreams)
 }
 
 func getKeepAliveInterval() time.Duration {
