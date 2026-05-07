@@ -7,6 +7,7 @@ package kubeconfig
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -124,17 +125,26 @@ func (o *options) Complete(f util.Factory, _ *cobra.Command, _ []string) error {
 
 	ctx := f.Context()
 
-	config, err := manager.ClientConfig(ctx, currentTarget)
+	clientConfig, err := manager.ClientConfig(ctx, currentTarget)
 	if err != nil {
 		return err
 	}
 
-	rawConfig, err := config.RawConfig()
+	rawConfig, err := clientConfig.RawConfig()
 	if err != nil {
 		return err
 	}
 
 	o.RawConfig = &rawConfig
+
+	// Always surface the kubeconfig access level so the user can be confident
+	// which credentials they got. Goes to stderr so it doesn't pollute the
+	// kubeconfig YAML on stdout (which users typically pipe to a file or kubectl).
+	// Skipped for targets that don't produce a gardenlogin kubeconfig (e.g.
+	// garden- or project-only targets) where the notion does not apply.
+	if level, ok := manager.EffectiveAccessLevel(currentTarget); ok && level != "" {
+		fmt.Fprintf(o.IOStreams.ErrOut, "Kubeconfig access level: %s\n", level)
+	}
 
 	return nil
 }

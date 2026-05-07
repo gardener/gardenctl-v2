@@ -22,12 +22,13 @@ gardenctl target value/that/matches/pattern --control-plane
 ### Options
 
 ```
-      --control-plane    target control plane of shoot, use together with shoot argument
-      --garden string    target the given garden cluster
-  -h, --help             help for target
-      --project string   target the given project
-      --seed string      target the given seed cluster
-      --shoot string     target the given shoot cluster
+      --control-plane                    target control plane of shoot, use together with shoot argument
+      --garden string                    target the given garden cluster
+  -h, --help                             help for target
+      --kubeconfig-access-level string   Override default kubeconfig access level for shoots/managed-seeds. One of "admin", "viewer", "auto".
+      --project string                   target the given project
+      --seed string                      target the given seed cluster
+      --shoot string                     target the given shoot cluster
 ```
 
 ### Options inherited from parent commands

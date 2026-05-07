@@ -12,9 +12,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/spf13/pflag"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
@@ -57,6 +59,107 @@ type Garden struct {
 	// AccessRestrictions is a list of access restriction definitions
 	// +optional
 	AccessRestrictions []ac.AccessRestriction `json:"accessRestrictions,omitempty"`
+	// DefaultKubeconfigAccessLevel sets the default access level requested per
+	// target scope when no --kubeconfig-access-level flag is provided. Each
+	// sub-field defaults to "admin" when empty.
+	// +optional
+	DefaultKubeconfigAccessLevel *KubeconfigAccessLevels `json:"defaultKubeconfigAccessLevel,omitempty"`
+}
+
+// KubeconfigAccessLevels defines per-scope default access levels for kubeconfig
+// requests in a garden. Non-managed seeds are not configurable here - they always use
+// the static seed-login secret, which only supports admin access.
+type KubeconfigAccessLevels struct {
+	// Shoots is the default access level used when targeting a shoot.
+	// +optional
+	Shoots KubeconfigAccessLevel `json:"shoots,omitempty"`
+	// ManagedSeeds is the default access level used when targeting a managed seed
+	// (or a shoot's control plane on a managed seed).
+	// +optional
+	ManagedSeeds KubeconfigAccessLevel `json:"managedSeeds,omitempty"`
+}
+
+// Validate returns an error if any of the per-scope levels has an invalid value.
+func (l *KubeconfigAccessLevels) Validate() error {
+	if l == nil {
+		return nil
+	}
+
+	if err := l.Shoots.Validate(); err != nil {
+		return fmt.Errorf("shoots: %w", err)
+	}
+
+	if err := l.ManagedSeeds.Validate(); err != nil {
+		return fmt.Errorf("managedSeeds: %w", err)
+	}
+
+	return nil
+}
+
+// KubeconfigAccessLevel selects which kubeconfig gardenlogin requests on behalf of the user.
+// The string values match gardenlogin's --access-level CLI flag values (a stable CLI
+// contract; gardenlogin does not export these constants as Go symbols).
+type KubeconfigAccessLevel string
+
+const (
+	// KubeconfigAccessLevelAdmin requests an admin (cluster-admin) kubeconfig.
+	KubeconfigAccessLevelAdmin KubeconfigAccessLevel = "admin"
+	// KubeconfigAccessLevelViewer requests a read-only viewer kubeconfig.
+	KubeconfigAccessLevelViewer KubeconfigAccessLevel = "viewer"
+	// KubeconfigAccessLevelAuto attempts admin and falls back to viewer on permission denial.
+	KubeconfigAccessLevelAuto KubeconfigAccessLevel = "auto"
+)
+
+var AllKubeconfigAccessLevels = []KubeconfigAccessLevel{
+	KubeconfigAccessLevelAdmin,
+	KubeconfigAccessLevelViewer,
+	KubeconfigAccessLevelAuto,
+}
+
+// AllKubeconfigAccessLevelStrings returns the AllKubeconfigAccessLevels values as
+// strings, suitable for cobra shell-completion functions which return []string.
+func AllKubeconfigAccessLevelStrings() []string {
+	values := make([]string, 0, len(AllKubeconfigAccessLevels))
+	for _, l := range AllKubeconfigAccessLevels {
+		values = append(values, string(l))
+	}
+
+	return values
+}
+
+// Validate returns an error if the access level is not one of the allowed values.
+// An empty value is treated as valid (= use the built-in default).
+func (l KubeconfigAccessLevel) Validate() error {
+	if l == "" || slices.Contains(AllKubeconfigAccessLevels, l) {
+		return nil
+	}
+
+	return fmt.Errorf("invalid kubeconfig access level %q: must be one of %q, %q, %q",
+		l, KubeconfigAccessLevelAdmin, KubeconfigAccessLevelViewer, KubeconfigAccessLevelAuto)
+}
+
+var _ pflag.Value = (*KubeconfigAccessLevel)(nil)
+
+// Set implements pflag.Value, validating the input against the allowed access levels.
+func (l *KubeconfigAccessLevel) Set(value string) error {
+	candidate := KubeconfigAccessLevel(value)
+	if err := candidate.Validate(); err != nil {
+		return err
+	}
+
+	*l = candidate
+
+	return nil
+}
+
+// Type implements pflag.Value.
+func (l *KubeconfigAccessLevel) Type() string {
+	return "string"
+}
+
+// String implements pflag.Value and fmt.Stringer.
+func (l *KubeconfigAccessLevel) String() string {
+	return string(*l)
 }
 
 // ProviderConfig represents provider-specific configuration options.
@@ -203,6 +306,10 @@ func (config *Config) validateGardens() error {
 			} else if !ok {
 				seen[garden.Alias] = false
 			}
+		}
+
+		if err := garden.DefaultKubeconfigAccessLevel.Validate(); err != nil {
+			return fmt.Errorf("garden %q: defaultKubeconfigAccessLevel: %w", garden.Name, err)
 		}
 	}
 

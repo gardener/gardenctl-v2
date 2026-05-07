@@ -36,6 +36,7 @@ import (
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/internal/fake"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
 type createInterceptingClient struct {
@@ -201,7 +202,7 @@ var _ = Describe("Client", func() {
 		})
 
 		DescribeTable("when the secret exists", func(seedName string) {
-			clientConfig, err := gardenClient.GetSeedClientConfig(ctx, seedName)
+			clientConfig, err := gardenClient.GetSeedClientConfig(ctx, seedName, "")
 			Expect(err).NotTo(HaveOccurred())
 
 			rawConfig, err := clientConfig.RawConfig()
@@ -214,11 +215,29 @@ var _ = Describe("Client", func() {
 
 		Context("when the secret does not exist", func() {
 			It("it should fail with not found error", func() {
-				_, err := gardenClient.GetSeedClientConfig(ctx, "seed-3")
+				_, err := gardenClient.GetSeedClientConfig(ctx, "seed-3", "")
 				Expect(err).To(HaveOccurred())
 				Expect(apierrors.IsNotFound(err)).To(BeTrue())
 			})
 		})
+
+		DescribeTable("rejects non-admin access level for non-managed seeds",
+			func(level config.KubeconfigAccessLevel) {
+				_, err := gardenClient.GetSeedClientConfig(ctx, "seed-1", level)
+				Expect(err).To(MatchError(ContainSubstring("not a managed seed")))
+			},
+			Entry("viewer", config.KubeconfigAccessLevelViewer),
+			Entry("auto", config.KubeconfigAccessLevelAuto),
+		)
+
+		DescribeTable("permits admin or empty access level for non-managed seeds",
+			func(level config.KubeconfigAccessLevel) {
+				_, err := gardenClient.GetSeedClientConfig(ctx, "seed-1", level)
+				Expect(err).NotTo(HaveOccurred())
+			},
+			Entry("empty (built-in default)", config.KubeconfigAccessLevel("")),
+			Entry("admin", config.KubeconfigAccessLevelAdmin),
+		)
 	})
 
 	Describe("GetShootOfManagedSeed", func() {
@@ -329,7 +348,7 @@ var _ = Describe("Client", func() {
 						gardenName,
 					)
 
-					clientConfig, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName)
+					clientConfig, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName, "")
 					Expect(err).NotTo(HaveOccurred())
 
 					rawConfig, err := clientConfig.RawConfig()
@@ -358,6 +377,32 @@ var _ = Describe("Client", func() {
 					}))
 					Expect(authInfo.Exec.InstallHint).ToNot(BeEmpty())
 				})
+
+				DescribeTable("appends --access-level when set",
+					func(level config.KubeconfigAccessLevel) {
+						gardenClient = clientgarden.NewClient(
+							nil,
+							fake.NewClientWithObjects(testShoot1, caConfigMap),
+							gardenName,
+						)
+
+						clientConfig, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName, level)
+						Expect(err).NotTo(HaveOccurred())
+
+						rawConfig, err := clientConfig.RawConfig()
+						Expect(err).NotTo(HaveOccurred())
+
+						context := rawConfig.Contexts[rawConfig.CurrentContext]
+						authInfo := rawConfig.AuthInfos[context.AuthInfo]
+						Expect(authInfo.Exec.Args).To(Equal([]string{
+							"get-client-certificate",
+							fmt.Sprintf("--access-level=%s", level),
+						}))
+					},
+					Entry("admin", config.KubeconfigAccessLevelAdmin),
+					Entry("viewer", config.KubeconfigAccessLevelViewer),
+					Entry("auto", config.KubeconfigAccessLevelAuto),
+				)
 			})
 
 			Context("legacy kubeconfig", func() {
@@ -374,7 +419,7 @@ var _ = Describe("Client", func() {
 						gardenName,
 					)
 
-					clientConfig, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName)
+					clientConfig, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName, "")
 					Expect(err).NotTo(HaveOccurred())
 
 					rawConfig, err := clientConfig.RawConfig()
@@ -400,6 +445,30 @@ var _ = Describe("Client", func() {
 						fmt.Sprintf("--garden-cluster-identity=%s", gardenName),
 					}))
 				})
+
+				It("should append --access-level when set in legacy mode", func() {
+					gardenClient = clientgarden.NewClient(
+						nil,
+						fake.NewClientWithObjects(testShoot1, caConfigMap),
+						gardenName,
+					)
+
+					clientConfig, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName, config.KubeconfigAccessLevelViewer)
+					Expect(err).NotTo(HaveOccurred())
+
+					rawConfig, err := clientConfig.RawConfig()
+					Expect(err).NotTo(HaveOccurred())
+
+					context := rawConfig.Contexts[rawConfig.CurrentContext]
+					authInfo := rawConfig.AuthInfos[context.AuthInfo]
+					Expect(authInfo.Exec.Args).To(Equal([]string{
+						"get-client-certificate",
+						fmt.Sprintf("--name=%s", shootName),
+						fmt.Sprintf("--namespace=%s", namespace),
+						fmt.Sprintf("--garden-cluster-identity=%s", gardenName),
+						fmt.Sprintf("--access-level=%s", config.KubeconfigAccessLevelViewer),
+					}))
+				})
 			})
 		})
 
@@ -413,7 +482,7 @@ var _ = Describe("Client", func() {
 			})
 
 			It("it should fail with not found error", func() {
-				_, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName)
+				_, err := gardenClient.GetShootClientConfig(ctx, namespace, shootName, "")
 				Expect(err).To(HaveOccurred())
 				Expect(apierrors.IsNotFound(err)).To(BeTrue())
 				Expect(err.Error()).To(ContainSubstring(shootName + ".ca-cluster"))

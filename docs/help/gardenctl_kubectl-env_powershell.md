@@ -29,6 +29,7 @@ gardenctl kubectl-env powershell [flags]
       --alsologtostderr                     log to standard error as well as files (no effect when -logtostderr=true)
       --alsologtostderrthreshold severity   logs at or above this threshold go to stderr when -alsologtostderr=true (no effect when -logtostderr=true)
       --config string                       config file (default is ~/.garden/gardenctl-v2.yaml)
+      --kubeconfig-access-level string      Override default kubeconfig access level for shoots/managed-seeds. One of "admin", "viewer", "auto".
       --legacy-stderr-threshold-behavior    If true, stderrthreshold is ignored when logtostderr=true (legacy behavior). If false, stderrthreshold is honored even when logtostderr=true (default true)
       --log-backtrace-at traceLocation      when logging hits line file:N, emit a stack trace (default :0)
       --log-dir string                      If non-empty, write log files in this directory (no effect when -logtostderr=true)

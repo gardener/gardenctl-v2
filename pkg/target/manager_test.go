@@ -86,7 +86,7 @@ func cloneTarget(t target.Target) target.Target {
 func createTestManager(t target.Target, cfg *config.Config, clientProvider internalclient.Provider) (target.Manager, target.TargetProvider) {
 	targetProvider := fake.NewFakeTargetProvider(cloneTarget(t))
 
-	manager, err := target.NewManager(cfg, targetProvider, clientProvider, sessionDir)
+	manager, err := target.NewManager(cfg, targetProvider, clientProvider, sessionDir, "")
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 	ExpectWithOffset(1, manager).NotTo(BeNil())
 
@@ -742,6 +742,76 @@ var _ = Describe("Target Manager", func() {
 				Expect(err).ToNot(Succeed())
 				Expect(shootNames).To(BeNil())
 			})
+		})
+	})
+
+	Describe("resolveAccessLevel", func() {
+		const (
+			gardenName = "g1"
+		)
+
+		newManager := func(flagLevel config.KubeconfigAccessLevel, gardenLevels *config.KubeconfigAccessLevels) target.Manager {
+			cfg := &config.Config{
+				Gardens: []config.Garden{{
+					Name:                         gardenName,
+					Kubeconfig:                   "kubeconfig",
+					DefaultKubeconfigAccessLevel: gardenLevels,
+				}},
+			}
+
+			tp := fake.NewFakeTargetProvider(target.NewTarget(gardenName, "", "", ""))
+			m, err := target.NewManager(cfg, tp, nil, sessionDir, flagLevel)
+			Expect(err).NotTo(HaveOccurred())
+
+			return m
+		}
+
+		It("uses the CLI flag value regardless of scope and per-garden defaults", func() {
+			m := newManager(config.KubeconfigAccessLevelViewer, &config.KubeconfigAccessLevels{
+				Shoots:       config.KubeconfigAccessLevelAdmin,
+				ManagedSeeds: config.KubeconfigAccessLevelAdmin,
+			})
+			t := target.NewTarget(gardenName, "", "", "")
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(Equal(config.KubeconfigAccessLevelViewer))
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeManagedSeeds)).To(Equal(config.KubeconfigAccessLevelViewer))
+		})
+
+		It("uses the scope-matching per-garden default when no flag is set", func() {
+			m := newManager("", &config.KubeconfigAccessLevels{
+				Shoots:       config.KubeconfigAccessLevelViewer,
+				ManagedSeeds: config.KubeconfigAccessLevelAuto,
+			})
+			t := target.NewTarget(gardenName, "", "", "")
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(Equal(config.KubeconfigAccessLevelViewer))
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeManagedSeeds)).To(Equal(config.KubeconfigAccessLevelAuto))
+		})
+
+		It("falls back to admin per-scope when only the other scope is configured", func() {
+			m := newManager("", &config.KubeconfigAccessLevels{
+				Shoots: config.KubeconfigAccessLevelViewer,
+			})
+			t := target.NewTarget(gardenName, "", "", "")
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(Equal(config.KubeconfigAccessLevelViewer))
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeManagedSeeds)).To(Equal(config.KubeconfigAccessLevelAdmin))
+		})
+
+		It("falls back to admin when neither flag nor per-garden default is set", func() {
+			m := newManager("", nil)
+			t := target.NewTarget(gardenName, "", "", "")
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(Equal(config.KubeconfigAccessLevelAdmin))
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeManagedSeeds)).To(Equal(config.KubeconfigAccessLevelAdmin))
+		})
+
+		It("returns admin when the target has no garden", func() {
+			m := newManager("", &config.KubeconfigAccessLevels{Shoots: config.KubeconfigAccessLevelViewer})
+			t := target.NewTarget("", "", "", "")
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(Equal(config.KubeconfigAccessLevelAdmin))
+		})
+
+		It("returns admin when the target's garden is not in the config", func() {
+			m := newManager("", &config.KubeconfigAccessLevels{Shoots: config.KubeconfigAccessLevelViewer})
+			t := target.NewTarget("unknown-garden", "", "", "")
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(Equal(config.KubeconfigAccessLevelAdmin))
 		})
 	})
 })

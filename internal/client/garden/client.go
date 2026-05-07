@@ -41,6 +41,8 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
 var decoder runtime.Decoder
@@ -68,8 +70,13 @@ type Client interface {
 	GetSeed(ctx context.Context, name string) (*gardencorev1beta1.Seed, error)
 	// ListSeeds returns all Gardener seed resources
 	ListSeeds(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.SeedList, error)
-	// GetSeedClientConfig returns the client config for a seed
-	GetSeedClientConfig(ctx context.Context, name string) (clientcmd.ClientConfig, error)
+	// GetSeedClientConfig returns the client config for a seed.
+	// For managed seeds, accessLevel is honored (the call is delegated to
+	// GetShootClientConfig). For non-managed seeds the kubeconfig comes from a
+	// static <name>.login Secret which only supports admin access - a non-admin
+	// accessLevel returns an error rather than silently producing an admin
+	// kubeconfig. Pass an empty value or "admin" for non-managed seeds.
+	GetSeedClientConfig(ctx context.Context, name string, accessLevel config.KubeconfigAccessLevel) (clientcmd.ClientConfig, error)
 
 	// GetShoot returns a Gardener shoot resource in a namespace by name
 	GetShoot(ctx context.Context, namespace, name string) (*gardencorev1beta1.Shoot, error)
@@ -78,8 +85,10 @@ type Client interface {
 	FindShoot(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.Shoot, error)
 	// ListShoots returns all Gardener shoot resources, filtered by a list option
 	ListShoots(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.ShootList, error)
-	// GetShootClientConfig returns the client config for a shoot
-	GetShootClientConfig(ctx context.Context, namespace, name string) (clientcmd.ClientConfig, error)
+	// GetShootClientConfig returns the client config for a shoot.
+	// accessLevel selects the gardenlogin --access-level (admin, viewer, auto). An empty
+	// value omits the flag, falling back to gardenlogin's own default.
+	GetShootClientConfig(ctx context.Context, namespace, name string, accessLevel config.KubeconfigAccessLevel) (clientcmd.ClientConfig, error)
 
 	// GetSecretBinding returns a Gardener secretbinding resource
 	GetSecretBinding(ctx context.Context, namespace, name string) (*gardencorev1beta1.SecretBinding, error)
@@ -561,7 +570,7 @@ func (g *clientImpl) CurrentUser(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("could not detect current user")
 }
 
-func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clientcmd.ClientConfig, error) {
+func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string, accessLevel config.KubeconfigAccessLevel) (clientcmd.ClientConfig, error) {
 	logger := klog.FromContext(ctx)
 
 	shoot, err := g.GetShootOfManagedSeed(ctx, name)
@@ -577,7 +586,17 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string) (clie
 			},
 			"seed", name)
 
-		return g.GetShootClientConfig(ctx, "garden", shoot.Name)
+		return g.GetShootClientConfig(ctx, "garden", shoot.Name, accessLevel)
+	}
+
+	// Non-managed seed: kubeconfig comes from a static <name>.login Secret rather
+	// than gardenlogin, so the admin/viewer/auto distinction does not apply.
+	// Reject any explicit non-admin choice rather than silently returning admin -
+	// a silent escalation would defeat the point of asking for viewer.
+	if accessLevel != "" && accessLevel != config.KubeconfigAccessLevelAdmin {
+		return nil, fmt.Errorf("seed %q is not a managed seed; %q kubeconfig access is unavailable (only %q is supported). "+
+			"Re-run with --kubeconfig-access-level=%s to override",
+			name, accessLevel, config.KubeconfigAccessLevelAdmin, config.KubeconfigAccessLevelAdmin)
 	}
 
 	key := types.NamespacedName{Name: name}

@@ -83,6 +83,21 @@ func (mr *MockManagerMockRecorder) CurrentTarget() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentTarget", reflect.TypeOf((*MockManager)(nil).CurrentTarget))
 }
 
+// EffectiveAccessLevel mocks base method.
+func (m *MockManager) EffectiveAccessLevel(arg0 target.Target) (config.KubeconfigAccessLevel, bool) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EffectiveAccessLevel", arg0)
+	ret0, _ := ret[0].(config.KubeconfigAccessLevel)
+	ret1, _ := ret[1].(bool)
+	return ret0, ret1
+}
+
+// EffectiveAccessLevel indicates an expected call of EffectiveAccessLevel.
+func (mr *MockManagerMockRecorder) EffectiveAccessLevel(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EffectiveAccessLevel", reflect.TypeOf((*MockManager)(nil).EffectiveAccessLevel), arg0)
+}
+
 // GardenClient mocks base method.
 func (m *MockManager) GardenClient(arg0 string) (garden.Client, error) {
 	m.ctrl.T.Helper()
@@ -126,6 +141,20 @@ func (m *MockManager) ProjectNames(arg0 context.Context) ([]string, error) {
 func (mr *MockManagerMockRecorder) ProjectNames(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProjectNames", reflect.TypeOf((*MockManager)(nil).ProjectNames), arg0)
+}
+
+// RefreshKubeconfig mocks base method.
+func (m *MockManager) RefreshKubeconfig(arg0 context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RefreshKubeconfig", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RefreshKubeconfig indicates an expected call of RefreshKubeconfig.
+func (mr *MockManagerMockRecorder) RefreshKubeconfig(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshKubeconfig", reflect.TypeOf((*MockManager)(nil).RefreshKubeconfig), arg0)
 }
 
 // SeedClient mocks base method.

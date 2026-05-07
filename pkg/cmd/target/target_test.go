@@ -176,6 +176,8 @@ var _ = Describe("Target Command", func() {
 			// run command
 			Expect(cmd.RunE(cmd, []string{shootName})).To(Succeed())
 			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q\n", shootName))
+			// No per-garden default and no flag -> resolves to admin -> line shows admin.
+			Expect(out.String()).To(ContainSubstring("Kubeconfig access level: admin"))
 
 			currentTarget, err := targetProvider.Read()
 			Expect(err).NotTo(HaveOccurred())
@@ -183,6 +185,18 @@ var _ = Describe("Target Command", func() {
 			Expect(currentTarget.ProjectName()).To(Equal(projectName))
 			Expect(currentTarget.SeedName()).To(Equal(seedName))
 			Expect(currentTarget.ShootName()).To(Equal(shootName))
+		})
+
+		It("uses the per-garden shoots access level when set", func() {
+			targetProvider.Target = target.NewTarget(gardenName, projectName, "", "")
+			cfg.Gardens[0].DefaultKubeconfigAccessLevel = &config.KubeconfigAccessLevels{
+				Shoots: config.KubeconfigAccessLevelViewer,
+			}
+			cmd := cmdtarget.NewCmdTargetShoot(factory, streams)
+
+			Expect(cmd.RunE(cmd, []string{shootName})).To(Succeed())
+			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q\n", shootName))
+			Expect(out.String()).To(ContainSubstring("Kubeconfig access level: viewer"))
 		})
 
 		It("should be able to target a control plane", func() {
