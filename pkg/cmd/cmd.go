@@ -128,12 +128,10 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 	kubeconfigCmd := kubeconfig.NewCmdKubeconfig(f, ioStreams)
 
 	// The --kubeconfig-access-level flag is only meaningful for commands that
-	// produce a gardenlogin-driven kubeconfig.
+	// produce a user-facing gardenlogin-driven kubeconfig.
 	flagsutil.AddKubeconfigAccessLevelFlag(targetCmd, &f.KubeconfigAccessLevel)
 	flagsutil.AddKubeconfigAccessLevelFlag(kubeconfigCmd, &f.KubeconfigAccessLevel)
 	flagsutil.AddKubeconfigAccessLevelFlag(kubectlEnvCmd, &f.KubeconfigAccessLevel)
-	flagsutil.AddKubeconfigAccessLevelFlag(sshCmd, &f.KubeconfigAccessLevel)
-	flagsutil.AddKubeconfigAccessLevelFlag(sshpatchCmd, &f.KubeconfigAccessLevel)
 
 	cmd.AddCommand(sshCmd)
 	cmd.AddCommand(sshpatchCmd)

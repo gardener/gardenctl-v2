@@ -51,7 +51,6 @@ gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path
   -h, --help                                      help for ssh
       --interactive                               Open an SSH connection instead of just providing the bastion host (only if NODE_NAME is provided). (default true)
       --keep-bastion                              Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)
-      --kubeconfig-access-level string            Override default kubeconfig access level for shoots/managed-seeds. One of "admin", "viewer", "auto".
       --no-keepalive                              Exit after the bastion host became available without keeping the bastion alive or establishing an SSH connection. Note that this flag requires the flags --interactive=false and --keep-bastion to be set
       --node-strict-host-key-checking string      Specifies how the SSH client performs host key checking for the shoot node. Valid options are 'yes', 'no', or 'ask'. (default "ask")
       --node-user-known-hosts-file strings        Path to a custom known hosts file for verifying remote hosts' public keys during SSH connection to the shoot node. If not provided, defaults to <garden_home_dir>/cache/<shoot_uid>/.ssh/known_hosts.
