@@ -115,7 +115,7 @@ defaultKubeconfigAccessLevel:
   managedSeeds: admin
 ```
 
-Override per invocation with the `--kubeconfig-access-level` flag, available on commands that produce a kubeconfig (`target`, `kubeconfig`, `kubectl-env`):
+Override per invocation with the `--kubeconfig-access-level` flag, available on commands that produce a kubeconfig (`target`, `kubeconfig`):
 
 ```bash
 gardenctl kubeconfig --kubeconfig-access-level=admin            # one-off escalation

@@ -13,9 +13,8 @@ For details on how to use the printed shell script, such as applying it temporar
 ### Options
 
 ```
-  -h, --help                             help for kubectl-env
-      --kubeconfig-access-level string   Override default kubeconfig access level for shoots/managed-seeds. One of "admin", "viewer", "auto".
-  -u, --unset                            Generate the script to unset the KUBECONFIG environment variable for 
+  -h, --help    help for kubectl-env
+  -u, --unset   Generate the script to unset the KUBECONFIG environment variable for 
 ```
 
 ### Options inherited from parent commands
