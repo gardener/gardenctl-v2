@@ -32,7 +32,6 @@ import (
 	cmdsshpatch "github.com/gardener/gardenctl-v2/pkg/cmd/sshpatch"
 	cmdtarget "github.com/gardener/gardenctl-v2/pkg/cmd/target"
 	cmdversion "github.com/gardener/gardenctl-v2/pkg/cmd/version"
-	flagsutil "github.com/gardener/gardenctl-v2/pkg/flags"
 )
 
 const (
@@ -123,18 +122,9 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 	// add subcommands
 	sshCmd := cmdssh.NewCmdSSH(f, cmdssh.NewSSHOptions(ioStreams))
 	sshpatchCmd := cmdsshpatch.NewCmdSSHPatch(f, ioStreams)
-	targetCmd := cmdtarget.NewCmdTarget(f, ioStreams)
+	targetCmd := cmdtarget.NewCmdTarget(f, ioStreams, &f.KubeconfigAccessLevel)
 	kubectlEnvCmd := cmdkubectl.NewCmdKubectlEnv(f, ioStreams)
-	kubeconfigCmd := kubeconfig.NewCmdKubeconfig(f, ioStreams)
-
-	// The --kubeconfig-access-level flag is only meaningful for commands that
-	// produce a user-facing gardenlogin-driven kubeconfig. kubectl-env's symlink
-	// mode (the configured default) makes the flag a no-op there, and its
-	// non-symlink path still respects per-garden config defaults; users wanting
-	// a one-shot override should `gardenctl target --kubeconfig-access-level=...`
-	// before running kubectl-env.
-	flagsutil.AddKubeconfigAccessLevelFlag(targetCmd, &f.KubeconfigAccessLevel)
-	flagsutil.AddKubeconfigAccessLevelFlag(kubeconfigCmd, &f.KubeconfigAccessLevel)
+	kubeconfigCmd := kubeconfig.NewCmdKubeconfig(f, ioStreams, &f.KubeconfigAccessLevel)
 
 	cmd.AddCommand(sshCmd)
 	cmd.AddCommand(sshpatchCmd)

@@ -20,12 +20,14 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/flags"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
-// NewCmdKubeconfig returns a new kubeconfig command.
-func NewCmdKubeconfig(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+// NewCmdKubeconfig returns a new kubeconfig command. accessLevel is bound to
+// the --kubeconfig-access-level flag.
+func NewCmdKubeconfig(f util.Factory, ioStreams util.IOStreams, accessLevel *config.KubeconfigAccessLevel) *cobra.Command {
 	o := newOptions(ioStreams)
 
 	cmd := &cobra.Command{
@@ -51,6 +53,7 @@ gardenctl kubeconfig --garden my-garden --project my-project`,
 
 	f.TargetFlags().AddFlags(cmd.Flags())
 	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, cmd.Flags())
+	flags.AddKubeconfigAccessLevelFlag(cmd, accessLevel)
 
 	utilruntime.Must(cmd.RegisterFlagCompletionFunc("output", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return o.PrintFlags.AllowedFormats(), cobra.ShellCompDirectiveNoFileComp

@@ -19,12 +19,15 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/flags"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
-// NewCmdTarget returns a new target command.
-func NewCmdTarget(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+// NewCmdTarget returns a new target command. accessLevel is bound to the
+// --kubeconfig-access-level persistent flag so its value is available on this
+// command and all of its subcommands.
+func NewCmdTarget(f util.Factory, ioStreams util.IOStreams, accessLevel *config.KubeconfigAccessLevel) *cobra.Command {
 	o := NewTargetOptions(ioStreams)
 	cmd := &cobra.Command{
 		Use:   "target",
@@ -51,6 +54,7 @@ gardenctl target value/that/matches/pattern --control-plane`,
 
 	f.TargetFlags().AddFlags(cmd.Flags())
 	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, cmd.Flags())
+	flags.AddKubeconfigAccessLevelFlag(cmd, accessLevel)
 
 	return cmd
 }

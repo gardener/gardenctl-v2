@@ -122,7 +122,7 @@ var _ = Describe("Target Command", func() {
 		})
 
 		It("should reject bad options", func() {
-			cmd := cmdtarget.NewCmdTarget(factory, streams)
+			cmd := cmdtarget.NewCmdTarget(factory, streams, new(config.KubeconfigAccessLevel))
 
 			Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
 		})
@@ -216,7 +216,7 @@ var _ = Describe("Target Command", func() {
 		})
 
 		It("should be able to target via pattern matching", func() {
-			cmd := cmdtarget.NewCmdTarget(factory, streams)
+			cmd := cmdtarget.NewCmdTarget(factory, streams, new(config.KubeconfigAccessLevel))
 
 			// run command
 			Expect(cmd.RunE(cmd, []string{fmt.Sprintf("shoot--%s--%s", projectName, shootName)})).To(Succeed())

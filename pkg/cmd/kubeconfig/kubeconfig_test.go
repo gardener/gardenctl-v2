@@ -73,7 +73,7 @@ var _ = Describe("Kubeconfig Command - Options", func() {
 			factory.EXPECT().TargetFlags().Return(targetFlags).AnyTimes()
 
 			streams, _, out, _ = util.NewTestIOStreams()
-			cmd = cmdkubeconfig.NewCmdKubeconfig(factory, streams)
+			cmd = cmdkubeconfig.NewCmdKubeconfig(factory, streams, new(gardenconfig.KubeconfigAccessLevel))
 		})
 
 		It("should execute the kubeconfig subcommand", func() {
