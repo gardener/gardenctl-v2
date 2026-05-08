@@ -40,6 +40,7 @@ var _ = Describe("Target Command", func() {
 		streams        util.IOStreams
 		in             *util.SafeBytesBuffer
 		out            *util.SafeBytesBuffer
+		errOut         *util.SafeBytesBuffer
 		ctrl           *gomock.Controller
 		cfg            *config.Config
 		clientProvider *clientmocks.MockProvider
@@ -97,7 +98,7 @@ var _ = Describe("Target Command", func() {
 			},
 		}
 
-		streams, in, out, _ = util.NewTestIOStreams()
+		streams, in, out, errOut = util.NewTestIOStreams()
 
 		ctrl = gomock.NewController(GinkgoT())
 
@@ -194,6 +195,7 @@ var _ = Describe("Target Command", func() {
 			cmd := cmdtarget.NewCmdTargetShoot(factory, streams)
 
 			Expect(cmd.RunE(cmd, []string{shootName})).To(Succeed())
+			Expect(errOut.String()).To(BeEmpty())
 			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q (access level: viewer)\n", shootName))
 		})
 

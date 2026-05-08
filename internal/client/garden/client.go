@@ -21,6 +21,7 @@ import (
 	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
+	"github.com/gardener/gardener/pkg/apis/seedmanagement"
 	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	gardensecurityclientset "github.com/gardener/gardener/pkg/client/security/clientset/versioned"
 	"github.com/go-jose/go-jose/v4"
@@ -109,6 +110,11 @@ type Client interface {
 	GetConfigMap(ctx context.Context, namespace, name string) (*corev1.ConfigMap, error)
 	// GetShootOfManagedSeed returns shoot of seed using ManagedSeed resource. An error is returned if it is not a managed seed or the referenced shoot is nil
 	GetShootOfManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.Shoot, error)
+	// IsManagedSeed reports whether the shoot identified by (shootNamespace, shootName)
+	// is referenced by a ManagedSeed resource. Uses the spec.shoot.name field
+	// selector rather than relying on the (conventional but not guaranteed)
+	// equality of ManagedSeed and shoot names.
+	IsManagedSeed(ctx context.Context, shootNamespace, shootName string) (bool, error)
 
 	// GetBastion returns a Gardener bastion resource by namespace and name
 	GetBastion(ctx context.Context, namespace, name string) (*operationsv1alpha1.Bastion, error)
@@ -388,6 +394,19 @@ func (g *clientImpl) GetConfigMap(ctx context.Context, namespace, name string) (
 	}
 
 	return cm, nil
+}
+
+func (g *clientImpl) IsManagedSeed(ctx context.Context, shootNamespace, shootName string) (bool, error) {
+	list := &seedmanagementv1alpha1.ManagedSeedList{}
+
+	if err := g.c.List(ctx, list,
+		client.InNamespace(shootNamespace),
+		client.MatchingFields{seedmanagement.ManagedSeedShootName: shootName},
+	); err != nil {
+		return false, err
+	}
+
+	return len(list.Items) > 0, nil
 }
 
 func (g *clientImpl) GetShootOfManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.Shoot, error) {

@@ -319,6 +319,21 @@ func (mr *MockClientMockRecorder) GetWorkloadIdentity(arg0, arg1, arg2 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkloadIdentity", reflect.TypeOf((*MockClient)(nil).GetWorkloadIdentity), arg0, arg1, arg2)
 }
 
+// IsManagedSeed mocks base method.
+func (m *MockClient) IsManagedSeed(arg0 context.Context, arg1, arg2 string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsManagedSeed", arg0, arg1, arg2)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsManagedSeed indicates an expected call of IsManagedSeed.
+func (mr *MockClientMockRecorder) IsManagedSeed(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsManagedSeed", reflect.TypeOf((*MockClient)(nil).IsManagedSeed), arg0, arg1, arg2)
+}
+
 // ListBastions mocks base method.
 func (m *MockClient) ListBastions(arg0 context.Context, arg1 ...client.ListOption) (*v1alpha1.BastionList, error) {
 	m.ctrl.T.Helper()

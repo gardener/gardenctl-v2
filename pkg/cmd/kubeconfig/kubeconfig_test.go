@@ -67,7 +67,7 @@ var _ = Describe("Kubeconfig Command - Options", func() {
 
 			manager.EXPECT().CurrentTarget().Return(t, nil)
 			manager.EXPECT().ClientConfig(ctx, t).Return(config, nil)
-			manager.EXPECT().EffectiveAccessLevel(t).Return(gardenconfig.KubeconfigAccessLevel(""), false)
+			manager.EXPECT().EffectiveAccessLevel(ctx, t).Return(gardenconfig.KubeconfigAccessLevel(""), false, nil)
 
 			targetFlags := target.NewTargetFlags("", "", "", "", false)
 			factory.EXPECT().TargetFlags().Return(targetFlags).AnyTimes()
@@ -110,7 +110,7 @@ users: null
 				factory.EXPECT().Context().Return(ctx)
 				manager.EXPECT().CurrentTarget().Return(t, nil)
 				manager.EXPECT().ClientConfig(ctx, t).Return(config, nil)
-				manager.EXPECT().EffectiveAccessLevel(t).Return(gardenconfig.KubeconfigAccessLevel(""), false)
+				manager.EXPECT().EffectiveAccessLevel(ctx, t).Return(gardenconfig.KubeconfigAccessLevel(""), false, nil)
 
 				Expect(options.Complete(factory, nil, nil)).To(Succeed())
 				Expect(options.PrintObject).NotTo(BeNil())
@@ -126,7 +126,7 @@ users: null
 					factory.EXPECT().Context().Return(ctx)
 					manager.EXPECT().CurrentTarget().Return(t, nil)
 					manager.EXPECT().ClientConfig(ctx, t).Return(config, nil)
-					manager.EXPECT().EffectiveAccessLevel(t).Return(level, applies)
+					manager.EXPECT().EffectiveAccessLevel(ctx, t).Return(level, applies, nil)
 
 					Expect(options.Complete(factory, nil, nil)).To(Succeed())
 

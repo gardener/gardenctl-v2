@@ -228,7 +228,15 @@ func (o *TargetOptions) Run(f util.Factory) error {
 
 	if o.Output == "" {
 		var levelSuffix string
-		if level, ok := manager.EffectiveAccessLevel(currentTarget); ok {
+
+		level, ok, lvlErr := manager.EffectiveAccessLevel(ctx, currentTarget)
+		switch {
+		case lvlErr != nil:
+			// Display-path soft-warn: the kubeconfig itself is already correct
+			// (ClientConfig either succeeded with the right scope or the command
+			// has already errored out).
+			fmt.Fprintf(o.IOStreams.ErrOut, "Warning: could not determine effective access level: %v\n", lvlErr)
+		case ok:
 			levelSuffix = fmt.Sprintf(" (access level: %s)", level)
 		}
 

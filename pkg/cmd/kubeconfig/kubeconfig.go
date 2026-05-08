@@ -142,8 +142,13 @@ func (o *options) Complete(f util.Factory, _ *cobra.Command, _ []string) error {
 
 	// Print the access level to stderr (stdout is the kubeconfig YAML) only when
 	// gardenctl explicitly chose one. When unset we let gardenlogin's own default
-	// apply and stay silent.
-	if level, ok := manager.EffectiveAccessLevel(currentTarget); ok {
+	// apply and stay silent. Display-path soft-warn: the kubeconfig YAML on
+	// stdout is already correct from ClientConfig above.
+	level, ok, lvlErr := manager.EffectiveAccessLevel(ctx, currentTarget)
+	switch {
+	case lvlErr != nil:
+		fmt.Fprintf(o.IOStreams.ErrOut, "Warning: could not determine effective access level: %v\n", lvlErr)
+	case ok:
 		fmt.Fprintf(o.IOStreams.ErrOut, "Access level: %s\n", level)
 	}
 
