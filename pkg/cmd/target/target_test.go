@@ -199,6 +199,7 @@ var _ = Describe("Target Command", func() {
 			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q (access level: viewer)\n", shootName))
 		})
 
+
 		It("should be able to target a control plane", func() {
 			// user has already targeted a garden, project and shoot
 			targetProvider.Target = target.NewTarget(gardenName, projectName, "", shootName)
@@ -388,3 +389,4 @@ var _ = Describe("Target Options", func() {
 		Expect(o.Validate()).To(Succeed())
 	})
 })
+

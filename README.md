@@ -115,12 +115,15 @@ kubeconfigAccessLevelDefaults:
   managedSeeds: admin
 ```
 
-Override per invocation with the `--kubeconfig-access-level` flag, available on commands that produce a kubeconfig (`target`, `kubeconfig`):
+Override per invocation with `--kubeconfig-access-level` (or the `--admin` / `--viewer` shorthands), available on commands that produce a kubeconfig (`target`, `kubeconfig`):
 
 ```bash
-gardenctl kubeconfig --kubeconfig-access-level=admin            # one-off escalation
-gardenctl target --shoot my-shoot --kubeconfig-access-level=viewer
+gardenctl kubeconfig --admin                                    # one-off escalation
+gardenctl target --shoot my-shoot --viewer                      # one-off de-escalation
+gardenctl kubeconfig --kubeconfig-access-level=auto             # explicit auto (no shorthand)
 ```
+
+The shorthands and the full form are mutually exclusive — pass at most one.
 
 The same defaults can be set via the CLI rather than hand-editing the YAML:
 

@@ -22,6 +22,7 @@ gardenctl target value/that/matches/pattern --control-plane
 ### Options
 
 ```
+      --admin                            shorthand for --kubeconfig-access-level=admin
       --control-plane                    target control plane of shoot, use together with shoot argument
       --garden string                    target the given garden cluster
   -h, --help                             help for target
@@ -29,6 +30,7 @@ gardenctl target value/that/matches/pattern --control-plane
       --project string                   target the given project
       --seed string                      target the given seed cluster
       --shoot string                     target the given shoot cluster
+      --viewer                           shorthand for --kubeconfig-access-level=viewer
 ```
 
 ### Options inherited from parent commands

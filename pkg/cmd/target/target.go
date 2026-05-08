@@ -227,9 +227,23 @@ func (o *TargetOptions) Run(f util.Factory) error {
 	}
 
 	if o.Output == "" {
+		// dynamicTargetProvider.merge() wipes deeper target levels whenever
+		// --garden is set on the CLI, even immediately after TargetXXX persisted
+		// a shoot/seed. Re-apply the just-targeted leaf so EffectiveAccessLevel
+		// sees it instead of falling through to "no scope".
+		levelTarget := currentTarget
+		switch o.Kind {
+		case TargetKindShoot:
+			levelTarget = levelTarget.WithShootName(o.TargetName)
+		case TargetKindSeed:
+			levelTarget = levelTarget.WithSeedName(o.TargetName)
+		case TargetKindControlPlane:
+			levelTarget = levelTarget.WithControlPlane(true)
+		}
+
 		var levelSuffix string
 
-		level, ok, lvlErr := manager.EffectiveAccessLevel(ctx, currentTarget)
+		level, ok, lvlErr := manager.EffectiveAccessLevel(ctx, levelTarget)
 		switch {
 		case lvlErr != nil:
 			// Display-path soft-warn: the kubeconfig itself is already correct

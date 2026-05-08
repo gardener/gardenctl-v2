@@ -851,49 +851,29 @@ var _ = Describe("Target Manager", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: projectName, UID: "00000000-0000-0000-0000-000000000000"},
 			Spec:       gardencorev1beta1.ProjectSpec{Namespace: ptr.To(namespace)},
 		}
+		managedSeed := &seedmanagementv1alpha1.ManagedSeed{
+			ObjectMeta: metav1.ObjectMeta{Name: seedShoot, Namespace: namespace, UID: "00000000-0000-0000-0000-000000000001"},
+			Spec:       seedmanagementv1alpha1.ManagedSeedSpec{Shoot: &seedmanagementv1alpha1.Shoot{Name: seedShoot}},
+		}
+		levels := &config.KubeconfigAccessLevels{
+			Shoots:       config.KubeconfigAccessLevelViewer,
+			ManagedSeeds: config.KubeconfigAccessLevelAdmin,
+		}
 
-		It("uses the shoots scope for a regular shoot", func() {
-			m := newManagerWithGarden(&config.KubeconfigAccessLevels{
-				Shoots:       config.KubeconfigAccessLevelViewer,
-				ManagedSeeds: config.KubeconfigAccessLevelAdmin,
-			}, project)
-
-			t := target.NewTarget(gardenName, projectName, "", plainShoot)
-			level, ok, err := m.EffectiveAccessLevel(ctx, t)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(ok).To(BeTrue())
-			Expect(level).To(Equal(config.KubeconfigAccessLevelViewer))
-		})
-
-		It("uses the managed-seeds scope for a seed target", func() {
-			m := newManagerWithGarden(&config.KubeconfigAccessLevels{
-				Shoots:       config.KubeconfigAccessLevelViewer,
-				ManagedSeeds: config.KubeconfigAccessLevelAdmin,
-			}, project)
-
-			t := target.NewTarget(gardenName, "", "some-seed", "")
-			level, ok, err := m.EffectiveAccessLevel(ctx, t)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(ok).To(BeTrue())
-			Expect(level).To(Equal(config.KubeconfigAccessLevelAdmin))
-		})
-
-		It("uses the managed-seeds scope for a shoot that backs a managed seed", func() {
-			managedSeed := &seedmanagementv1alpha1.ManagedSeed{
-				ObjectMeta: metav1.ObjectMeta{Name: seedShoot, Namespace: namespace, UID: "00000000-0000-0000-0000-000000000001"},
-				Spec:       seedmanagementv1alpha1.ManagedSeedSpec{Shoot: &seedmanagementv1alpha1.Shoot{Name: seedShoot}},
-			}
-
-			m := newManagerWithGarden(&config.KubeconfigAccessLevels{
-				Shoots:       config.KubeconfigAccessLevelViewer,
-				ManagedSeeds: config.KubeconfigAccessLevelAdmin,
-			}, project, managedSeed)
-
-			t := target.NewTarget(gardenName, projectName, "", seedShoot)
-			level, ok, err := m.EffectiveAccessLevel(ctx, t)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(ok).To(BeTrue())
-			Expect(level).To(Equal(config.KubeconfigAccessLevelAdmin))
-		})
+		DescribeTable("routes to the right scope",
+			func(t target.Target, objs []client.Object, want config.KubeconfigAccessLevel) {
+				m := newManagerWithGarden(levels, objs...)
+				level, ok, err := m.EffectiveAccessLevel(ctx, t)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ok).To(BeTrue())
+				Expect(level).To(Equal(want))
+			},
+			Entry("regular shoot -> shoots scope (viewer)",
+				target.NewTarget(gardenName, projectName, "", plainShoot), []client.Object{project}, config.KubeconfigAccessLevelViewer),
+			Entry("seed target -> managedSeeds scope (admin)",
+				target.NewTarget(gardenName, "", "some-seed", ""), []client.Object{project}, config.KubeconfigAccessLevelAdmin),
+			Entry("managed-seed-backing shoot -> managedSeeds scope (admin) regardless of target path",
+				target.NewTarget(gardenName, projectName, "", seedShoot), []client.Object{project, managedSeed}, config.KubeconfigAccessLevelAdmin),
+		)
 	})
 })
