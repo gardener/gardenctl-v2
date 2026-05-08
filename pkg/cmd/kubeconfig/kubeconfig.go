@@ -137,13 +137,11 @@ func (o *options) Complete(f util.Factory, _ *cobra.Command, _ []string) error {
 
 	o.RawConfig = &rawConfig
 
-	// Always surface the kubeconfig access level so the user can be confident
-	// which credentials they got. Goes to stderr so it doesn't pollute the
-	// kubeconfig YAML on stdout (which users typically pipe to a file or kubectl).
-	// Skipped for targets that don't produce a gardenlogin kubeconfig (e.g.
-	// garden- or project-only targets) where the notion does not apply.
-	if level, ok := manager.EffectiveAccessLevel(currentTarget); ok && level != "" {
-		fmt.Fprintf(o.IOStreams.ErrOut, "Kubeconfig access level: %s\n", level)
+	// Print the access level to stderr (stdout is the kubeconfig YAML) only when
+	// gardenctl explicitly chose one. When unset we let gardenlogin's own default
+	// apply and stay silent.
+	if level, ok := manager.EffectiveAccessLevel(currentTarget); ok {
+		fmt.Fprintf(o.IOStreams.ErrOut, "Access level: %s\n", level)
 	}
 
 	return nil

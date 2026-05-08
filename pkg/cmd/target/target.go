@@ -223,18 +223,15 @@ func (o *TargetOptions) Run(f util.Factory) error {
 	}
 
 	if o.Output == "" {
-		if o.Kind == TargetKindControlPlane {
-			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted control plane of shoot %q\n", currentTarget.ShootName())
-		} else if o.Kind != "" {
-			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
+		var levelSuffix string
+		if level, ok := manager.EffectiveAccessLevel(currentTarget); ok {
+			levelSuffix = fmt.Sprintf(" (access level: %s)", level)
 		}
 
-		// Always surface the kubeconfig access level so the user can be confident
-		// which credentials they got. Skipped only for targets that don't produce
-		// a gardenlogin kubeconfig (garden- or project-only targets), where the
-		// notion does not apply.
-		if level, ok := manager.EffectiveAccessLevel(currentTarget); ok && level != "" {
-			fmt.Fprintf(o.IOStreams.Out, "Kubeconfig access level: %s\n", level)
+		if o.Kind == TargetKindControlPlane {
+			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted control plane of shoot %q%s\n", currentTarget.ShootName(), levelSuffix)
+		} else if o.Kind != "" {
+			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q%s\n", o.Kind, o.TargetName, levelSuffix)
 		}
 	}
 

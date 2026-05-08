@@ -131,7 +131,7 @@ users: null
 					Expect(options.Complete(factory, nil, nil)).To(Succeed())
 
 					if expectNotice {
-						Expect(errOut.String()).To(Equal("Kubeconfig access level: " + string(level) + "\n"))
+						Expect(errOut.String()).To(Equal("Access level: " + string(level) + "\n"))
 					} else {
 						Expect(errOut.String()).To(BeEmpty())
 					}
@@ -139,8 +139,7 @@ users: null
 				Entry("admin: shown", gardenconfig.KubeconfigAccessLevelAdmin, true, true),
 				Entry("viewer: shown", gardenconfig.KubeconfigAccessLevelViewer, true, true),
 				Entry("auto: shown", gardenconfig.KubeconfigAccessLevelAuto, true, true),
-				Entry("not applicable to target shape: silent", gardenconfig.KubeconfigAccessLevel(""), false, false),
-				Entry("empty level (defensive): silent", gardenconfig.KubeconfigAccessLevel(""), true, false),
+				Entry("gardenctl did not decide a level: silent", gardenconfig.KubeconfigAccessLevel(""), false, false),
 			)
 
 			It("should fail to complete options when the target is empty", func() {

@@ -140,15 +140,16 @@ The access level only applies to **shoots and managed seeds**, where Gardener pr
 
 #### Verifying which access level is in use
 
-`gardenctl` prints the access level after `target` and `kubeconfig` (stderr):
+When `gardenctl` explicitly chose an access level (via flag or per-garden config), it surfaces it inline after `target` and on stderr after `kubeconfig`:
 
-```
-$ gardenctl target shoot prod-cluster
-Successfully targeted shoot "prod-cluster"
-Kubeconfig access level: viewer
+```console
+$ gardenctl target shoot prod-cluster --kubeconfig-access-level=viewer
+Successfully targeted shoot "prod-cluster" (access level: viewer)
 ```
 
-For an explicit check, the access level is also embedded as a `--access-level=…` argument in the produced kubeconfig's exec plugin section:
+When neither a flag nor a per-garden config is set, `gardenctl` stays silent and lets `gardenlogin`'s own default apply (currently `auto`).
+
+For an explicit check, the access level is also embedded as a `--access-level=…` argument in the produced kubeconfig's exec plugin section (omitted when `gardenctl` deferred to `gardenlogin`'s default):
 
 ```bash
 gardenctl kubeconfig | grep -- '--access-level='

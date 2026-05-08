@@ -176,8 +176,6 @@ var _ = Describe("Target Command", func() {
 			// run command
 			Expect(cmd.RunE(cmd, []string{shootName})).To(Succeed())
 			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q\n", shootName))
-			// No per-garden default and no flag -> gardenctl did not decide a level ->
-			// no access-level line so gardenlogin's own default applies.
 			Expect(out.String()).NotTo(ContainSubstring("access level"))
 
 			currentTarget, err := targetProvider.Read()
@@ -196,8 +194,7 @@ var _ = Describe("Target Command", func() {
 			cmd := cmdtarget.NewCmdTargetShoot(factory, streams)
 
 			Expect(cmd.RunE(cmd, []string{shootName})).To(Succeed())
-			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q\n", shootName))
-			Expect(out.String()).To(ContainSubstring("Kubeconfig access level: viewer"))
+			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q (access level: viewer)\n", shootName))
 		})
 
 		It("should be able to target a control plane", func() {
