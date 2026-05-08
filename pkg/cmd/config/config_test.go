@@ -16,7 +16,6 @@ import (
 
 	cmdconfig "github.com/gardener/gardenctl-v2/pkg/cmd/config"
 	"github.com/gardener/gardenctl-v2/pkg/config"
-	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 var _ = Describe("Config Command", func() {
@@ -56,10 +55,6 @@ var _ = Describe("Config Command", func() {
 			})
 
 			It("should successfully run subcommand set-garden", func() {
-				// gardenIdentity3 isn't the current target -> no kubeconfig refresh.
-				factory.EXPECT().Context().Return(nil).AnyTimes()
-				manager.EXPECT().CurrentTarget().Return(target.NewTarget("", "", "", ""), nil)
-
 				garden := &config.Garden{
 					Name:       gardenIdentity3,
 					Kubeconfig: "/path/to/kubeconfig",

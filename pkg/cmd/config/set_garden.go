@@ -20,7 +20,6 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	flagsutil "github.com/gardener/gardenctl-v2/pkg/flags"
-	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 const (
@@ -68,9 +67,6 @@ gardenctl config set-garden prd-garden --default-shoot-access-level viewer`,
 
 type setGardenOptions struct {
 	base.Options
-	// Manager is the target manager. Held so Run can refresh the active session
-	// kubeconfig when the modified garden is the currently-targeted one.
-	Manager target.Manager
 	// Configuration is the gardenctl configuration
 	Configuration *config.Config
 	// Name is a unique name of this Garden that can be used to target this Garden
@@ -138,7 +134,6 @@ func (o *setGardenOptions) Complete(f util.Factory, _ *cobra.Command, args []str
 		return errors.New("failed to get configuration")
 	}
 
-	o.Manager = manager
 	o.Configuration = cfg
 
 	if len(args) > 0 {
@@ -186,7 +181,7 @@ You may specify any number of extra patterns.`)
 }
 
 // Run executes the command.
-func (o *setGardenOptions) Run(f util.Factory) error {
+func (o *setGardenOptions) Run(_ util.Factory) error {
 	garden, err := o.Configuration.Garden(o.Name)
 	if err == nil {
 		if o.KubeconfigFlag.Provided() {
@@ -232,30 +227,12 @@ func (o *setGardenOptions) Run(f util.Factory) error {
 
 	fmt.Fprintf(o.IOStreams.Out, "Successfully configured garden %q\n", o.Name)
 
-	o.refreshKubeconfigIfTargeted(f)
+	if o.DefaultShootAccessLevelFlag.Provided() || o.DefaultManagedSeedAccessLevelFlag.Provided() {
+		fmt.Fprintf(o.IOStreams.ErrOut,
+			"Note: existing session kubeconfigs are not regenerated. Run `gardenctl target` again for the new access level to take effect.\n")
+	}
 
 	return nil
-}
-
-// refreshKubeconfigIfTargeted regenerates the active session kubeconfig when
-// the modified garden is the currently-targeted one, so config changes (e.g. a
-// new defaultKubeconfigAccessLevel) take effect for in-flight kubectl calls
-// without the user having to re-target. Soft-fails: the config save already
-// succeeded, so we surface refresh errors as a warning rather than failing the
-// command.
-func (o *setGardenOptions) refreshKubeconfigIfTargeted(f util.Factory) {
-	if o.Manager == nil {
-		return
-	}
-
-	currentTarget, err := o.Manager.CurrentTarget()
-	if err != nil || currentTarget.GardenName() != o.Name {
-		return
-	}
-
-	if err := o.Manager.RefreshKubeconfig(f.Context()); err != nil {
-		fmt.Fprintf(o.IOStreams.ErrOut, "Warning: failed to refresh kubeconfig for current target: %v\n", err)
-	}
 }
 
 // applyAccessLevelFlags writes the per-scope access level flags into the Garden's

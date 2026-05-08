@@ -100,12 +100,6 @@ type Manager interface {
 	// when the target does not produce a gardenlogin kubeconfig (garden/project
 	// targets, or no target).
 	EffectiveAccessLevel(t Target) (config.KubeconfigAccessLevel, bool)
-	// RefreshKubeconfig regenerates the symlinked session kubeconfig for the
-	// current target. Useful after a config change (e.g. a new
-	// defaultKubeconfigAccessLevel) so the on-disk kubeconfig picks up the new
-	// value without the user having to re-target. No-ops when symlinking is
-	// disabled or no target is set.
-	RefreshKubeconfig(ctx context.Context) error
 	// WriteClientConfig creates a kubeconfig file in the session directory of the operating system
 	WriteClientConfig(config clientcmd.ClientConfig) (string, error)
 	// SeedClient controller-runtime client for accessing the configured seed cluster
@@ -692,23 +686,6 @@ func (m *managerImpl) patchTarget(ctx context.Context, patch func(t *targetImpl)
 	err = m.targetProvider.Write(impl)
 	if err != nil {
 		return err
-	}
-
-	if !m.config.SymlinkTargetKubeconfig() {
-		return nil
-	}
-
-	return m.updateClientConfigSymlink(ctx, target)
-}
-
-func (m *managerImpl) RefreshKubeconfig(ctx context.Context) error {
-	target, err := m.targetProvider.Read()
-	if err != nil {
-		return err
-	}
-
-	if target.GardenName() == "" {
-		return nil
 	}
 
 	if !m.config.SymlinkTargetKubeconfig() {

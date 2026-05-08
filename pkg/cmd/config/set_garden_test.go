@@ -9,7 +9,6 @@ package config_test
 import (
 	"errors"
 
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -17,7 +16,6 @@ import (
 
 	cmdconfig "github.com/gardener/gardenctl-v2/pkg/cmd/config"
 	"github.com/gardener/gardenctl-v2/pkg/config"
-	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 var _ = Describe("Config Subcommand SetGarden", func() {
@@ -59,7 +57,6 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 					manager.EXPECT().Configuration().Return(cfg)
 					Expect(options.Complete(factory, nil, []string{" garden "})).To(Succeed())
 					Expect(options.Configuration).To(BeIdenticalTo(cfg))
-					Expect(options.Manager).To(BeIdenticalTo(manager))
 					Expect(options.Name).To(Equal("garden"))
 				})
 			})
@@ -248,9 +245,6 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 
 					factory.EXPECT().Manager().Return(manager, nil)
 					manager.EXPECT().Configuration().Return(cfg)
-					// Modified garden is not the current target -> refresh path is skipped.
-					manager.EXPECT().CurrentTarget().Return(target.NewTarget("", "", "", ""), nil)
-					factory.EXPECT().Context().Return(nil).AnyTimes()
 
 					cmd := cmdconfig.NewCmdConfigSetGarden(factory, streams)
 					cmd.SetArgs([]string{
@@ -274,46 +268,20 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 					})
 					Expect(cmd.Execute()).To(MatchError(ContainSubstring(`invalid kubeconfig access level "guest"`)))
 				})
-			})
 
-			Describe("automatic kubeconfig refresh after a config change", func() {
-				BeforeEach(func() {
-					// The Run path needs a Factory only for f.Context() in the refresh
-					// soft-fail branch, so a mock that returns a real ctx is enough.
-					factory.EXPECT().Context().Return(nil).AnyTimes()
-
-					options.Manager = manager
-				})
-
-				It("refreshes the kubeconfig when the modified garden is the current target", func() {
+				It("prints a re-target hint when an access-level flag was changed", func() {
 					options.Name = gardenIdentity1
 					Expect(options.DefaultShootAccessLevelFlag.Set(string(config.KubeconfigAccessLevelViewer))).To(Succeed())
 
-					manager.EXPECT().CurrentTarget().Return(target.NewTarget(gardenIdentity1, "", "", ""), nil)
-					manager.EXPECT().RefreshKubeconfig(gomock.Any()).Return(nil)
-
-					Expect(options.Run(factory)).To(Succeed())
+					Expect(options.Run(nil)).To(Succeed())
+					Expect(errOut.String()).To(ContainSubstring("Run `gardenctl target` again"))
 				})
 
-				It("does not refresh when the modified garden is not the current target", func() {
+				It("prints no hint when no access-level flag was provided", func() {
 					options.Name = gardenIdentity1
-					Expect(options.DefaultShootAccessLevelFlag.Set(string(config.KubeconfigAccessLevelViewer))).To(Succeed())
 
-					manager.EXPECT().CurrentTarget().Return(target.NewTarget(gardenIdentity2, "", "", ""), nil)
-					// No RefreshKubeconfig expectation - Mock would FAIL on an unexpected call.
-
-					Expect(options.Run(factory)).To(Succeed())
-				})
-
-				It("soft-fails (warns, does not error) when refresh fails", func() {
-					options.Name = gardenIdentity1
-					Expect(options.DefaultShootAccessLevelFlag.Set(string(config.KubeconfigAccessLevelViewer))).To(Succeed())
-
-					manager.EXPECT().CurrentTarget().Return(target.NewTarget(gardenIdentity1, "", "", ""), nil)
-					manager.EXPECT().RefreshKubeconfig(gomock.Any()).Return(errors.New("refresh boom"))
-
-					Expect(options.Run(factory)).To(Succeed())
-					Expect(errOut.String()).To(ContainSubstring("Warning: failed to refresh kubeconfig"))
+					Expect(options.Run(nil)).To(Succeed())
+					Expect(errOut.String()).To(BeEmpty())
 				})
 			})
 		})
