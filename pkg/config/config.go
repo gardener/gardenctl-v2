@@ -59,11 +59,11 @@ type Garden struct {
 	// AccessRestrictions is a list of access restriction definitions
 	// +optional
 	AccessRestrictions []ac.AccessRestriction `json:"accessRestrictions,omitempty"`
-	// DefaultKubeconfigAccessLevel sets the default access level requested per
+	// KubeconfigAccessLevelDefaults sets the default access level requested per
 	// target scope when no --kubeconfig-access-level flag is provided. Each
 	// sub-field defaults to "admin" when empty.
 	// +optional
-	DefaultKubeconfigAccessLevel *KubeconfigAccessLevels `json:"defaultKubeconfigAccessLevel,omitempty"`
+	KubeconfigAccessLevelDefaults *KubeconfigAccessLevels `json:"kubeconfigAccessLevelDefaults,omitempty"`
 }
 
 // KubeconfigAccessLevels defines per-scope default access levels for kubeconfig
@@ -308,8 +308,8 @@ func (config *Config) validateGardens() error {
 			}
 		}
 
-		if err := garden.DefaultKubeconfigAccessLevel.Validate(); err != nil {
-			return fmt.Errorf("garden %q: defaultKubeconfigAccessLevel: %w", garden.Name, err)
+		if err := garden.KubeconfigAccessLevelDefaults.Validate(); err != nil {
+			return fmt.Errorf("garden %q: kubeconfigAccessLevelDefaults: %w", garden.Name, err)
 		}
 	}
 

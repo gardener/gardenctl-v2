@@ -270,12 +270,12 @@ func (m *managerImpl) resolveAccessLevel(t Target, scope AccessScope) config.Kub
 	}
 
 	if t.GardenName() != "" {
-		if garden, err := m.config.Garden(t.GardenName()); err == nil && garden.DefaultKubeconfigAccessLevel != nil {
+		if garden, err := m.config.Garden(t.GardenName()); err == nil && garden.KubeconfigAccessLevelDefaults != nil {
 			switch scope {
 			case AccessScopeShoots:
-				return garden.DefaultKubeconfigAccessLevel.Shoots
+				return garden.KubeconfigAccessLevelDefaults.Shoots
 			case AccessScopeManagedSeeds:
-				return garden.DefaultKubeconfigAccessLevel.ManagedSeeds
+				return garden.KubeconfigAccessLevelDefaults.ManagedSeeds
 			}
 		}
 	}

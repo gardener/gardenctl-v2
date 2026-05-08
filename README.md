@@ -90,7 +90,7 @@ gardens:
 # name: my-name # An alternative, unique garden name for targeting
 # context: different-context # Overrides the current-context of the garden cluster kubeconfig
 # patterns: ~ # List of regex patterns for pattern targeting
-# defaultKubeconfigAccessLevel: # Default access level requested per target scope
+# kubeconfigAccessLevelDefaults: # Default access level requested per target scope
 #   shoots: viewer              # admin (default) | viewer | auto
 #   managedSeeds: admin         # admin (default) | viewer | auto
 ```
@@ -107,10 +107,10 @@ For shoots and managed seeds, `gardenctl` requests a kubeconfig from `gardenlogi
 - `viewer` - read-only credentials with no access to encrypted resources (e.g. Secrets).
 - `auto` - try admin first; fall back to viewer if admin is denied. Convenient when you don't know your RBAC up front; for users who *do* have admin, this is effectively the same as `admin`.
 
-Set per-scope defaults per garden under `defaultKubeconfigAccessLevel`. The `shoots` and `managedSeeds` fields are independent - for example, an admin who wants least-privilege access to customer shoots while still keeping admin access for seed-level debugging would set:
+Set per-scope defaults per garden under `kubeconfigAccessLevelDefaults`. The `shoots` and `managedSeeds` fields are independent - for example, an admin who wants least-privilege access to customer shoots while still keeping admin access for seed-level debugging would set:
 
 ```yaml
-defaultKubeconfigAccessLevel:
+kubeconfigAccessLevelDefaults:
   shoots: viewer
   managedSeeds: admin
 ```

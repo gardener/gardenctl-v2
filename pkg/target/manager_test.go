@@ -754,9 +754,9 @@ var _ = Describe("Target Manager", func() {
 		newManager := func(flagLevel config.KubeconfigAccessLevel, gardenLevels *config.KubeconfigAccessLevels) target.Manager {
 			cfg := &config.Config{
 				Gardens: []config.Garden{{
-					Name:                         gardenName,
-					Kubeconfig:                   "kubeconfig",
-					DefaultKubeconfigAccessLevel: gardenLevels,
+					Name:                          gardenName,
+					Kubeconfig:                    "kubeconfig",
+					KubeconfigAccessLevelDefaults: gardenLevels,
 				}},
 			}
 
@@ -828,9 +828,9 @@ var _ = Describe("Target Manager", func() {
 		newManagerWithGarden := func(gardenLevels *config.KubeconfigAccessLevels, objs ...client.Object) target.Manager {
 			cfg := &config.Config{
 				Gardens: []config.Garden{{
-					Name:                         gardenName,
-					Kubeconfig:                   "kubeconfig",
-					DefaultKubeconfigAccessLevel: gardenLevels,
+					Name:                          gardenName,
+					Kubeconfig:                    "kubeconfig",
+					KubeconfigAccessLevelDefaults: gardenLevels,
 				}},
 			}
 

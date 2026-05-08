@@ -495,13 +495,13 @@ provider:
 		})
 	})
 
-	Describe("Garden.DefaultKubeconfigAccessLevel validation via Config.Validate", func() {
+	Describe("Garden.KubeconfigAccessLevelDefaults validation via Config.Validate", func() {
 		It("rejects an unknown shoots access level", func() {
 			cfg := &config.Config{
 				Gardens: []config.Garden{{
 					Name:       "g1",
 					Kubeconfig: "kubeconfig",
-					DefaultKubeconfigAccessLevel: &config.KubeconfigAccessLevels{
+					KubeconfigAccessLevelDefaults: &config.KubeconfigAccessLevels{
 						Shoots: config.KubeconfigAccessLevel("guest"),
 					},
 				}},
@@ -514,7 +514,7 @@ provider:
 				Gardens: []config.Garden{{
 					Name:       "g1",
 					Kubeconfig: "kubeconfig",
-					DefaultKubeconfigAccessLevel: &config.KubeconfigAccessLevels{
+					KubeconfigAccessLevelDefaults: &config.KubeconfigAccessLevels{
 						ManagedSeeds: config.KubeconfigAccessLevel("guest"),
 					},
 				}},
@@ -526,10 +526,10 @@ provider:
 			cfg := &config.Config{
 				Gardens: []config.Garden{
 					{Name: "g1", Kubeconfig: "kubeconfig"},
-					{Name: "g2", Kubeconfig: "kubeconfig", DefaultKubeconfigAccessLevel: &config.KubeconfigAccessLevels{
+					{Name: "g2", Kubeconfig: "kubeconfig", KubeconfigAccessLevelDefaults: &config.KubeconfigAccessLevels{
 						Shoots: config.KubeconfigAccessLevelViewer,
 					}},
-					{Name: "g3", Kubeconfig: "kubeconfig", DefaultKubeconfigAccessLevel: &config.KubeconfigAccessLevels{
+					{Name: "g3", Kubeconfig: "kubeconfig", KubeconfigAccessLevelDefaults: &config.KubeconfigAccessLevels{
 						Shoots:       config.KubeconfigAccessLevelViewer,
 						ManagedSeeds: config.KubeconfigAccessLevelAdmin,
 					}},

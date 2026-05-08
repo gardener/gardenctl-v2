@@ -84,11 +84,11 @@ type setGardenOptions struct {
 	// Supported capturing groups: project, namespace, shoot
 	// +optional
 	Patterns []string
-	// DefaultShootAccessLevelFlag sets defaultKubeconfigAccessLevel.shoots in the
+	// DefaultShootAccessLevelFlag sets kubeconfigAccessLevelDefaults.shoots in the
 	// stored Garden config (admin | viewer | auto).
 	// +optional
 	DefaultShootAccessLevelFlag accessLevelFlag
-	// DefaultManagedSeedAccessLevelFlag sets defaultKubeconfigAccessLevel.managedSeeds
+	// DefaultManagedSeedAccessLevelFlag sets kubeconfigAccessLevelDefaults.managedSeeds
 	// in the stored Garden config (admin | viewer | auto).
 	// +optional
 	DefaultManagedSeedAccessLevelFlag accessLevelFlag
@@ -236,27 +236,27 @@ func (o *setGardenOptions) Run(_ util.Factory) error {
 }
 
 // applyAccessLevelFlags writes the per-scope access level flags into the Garden's
-// DefaultKubeconfigAccessLevel, allocating the struct lazily and clearing it when
+// KubeconfigAccessLevelDefaults, allocating the struct lazily and clearing it when
 // both fields end up empty so we don't litter the config file with empty objects.
 func (o *setGardenOptions) applyAccessLevelFlags(garden *config.Garden) {
 	if !o.DefaultShootAccessLevelFlag.Provided() && !o.DefaultManagedSeedAccessLevelFlag.Provided() {
 		return
 	}
 
-	if garden.DefaultKubeconfigAccessLevel == nil {
-		garden.DefaultKubeconfigAccessLevel = &config.KubeconfigAccessLevels{}
+	if garden.KubeconfigAccessLevelDefaults == nil {
+		garden.KubeconfigAccessLevelDefaults = &config.KubeconfigAccessLevels{}
 	}
 
 	if o.DefaultShootAccessLevelFlag.Provided() {
-		garden.DefaultKubeconfigAccessLevel.Shoots = o.DefaultShootAccessLevelFlag.Value()
+		garden.KubeconfigAccessLevelDefaults.Shoots = o.DefaultShootAccessLevelFlag.Value()
 	}
 
 	if o.DefaultManagedSeedAccessLevelFlag.Provided() {
-		garden.DefaultKubeconfigAccessLevel.ManagedSeeds = o.DefaultManagedSeedAccessLevelFlag.Value()
+		garden.KubeconfigAccessLevelDefaults.ManagedSeeds = o.DefaultManagedSeedAccessLevelFlag.Value()
 	}
 
-	if garden.DefaultKubeconfigAccessLevel.Shoots == "" && garden.DefaultKubeconfigAccessLevel.ManagedSeeds == "" {
-		garden.DefaultKubeconfigAccessLevel = nil
+	if garden.KubeconfigAccessLevelDefaults.Shoots == "" && garden.KubeconfigAccessLevelDefaults.ManagedSeeds == "" {
+		garden.KubeconfigAccessLevelDefaults = nil
 	}
 }
 

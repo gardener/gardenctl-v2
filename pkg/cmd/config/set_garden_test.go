@@ -189,7 +189,7 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 					assertGarden(cfg, &config.Garden{
 						Name:       gardenIdentity3,
 						Kubeconfig: pathToKubeconfig,
-						DefaultKubeconfigAccessLevel: &config.KubeconfigAccessLevels{
+						KubeconfigAccessLevelDefaults: &config.KubeconfigAccessLevels{
 							Shoots:       config.KubeconfigAccessLevelViewer,
 							ManagedSeeds: config.KubeconfigAccessLevelAdmin,
 						},
@@ -203,9 +203,9 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 
 					garden, err := cfg.Garden(gardenIdentity1)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(garden.DefaultKubeconfigAccessLevel).NotTo(BeNil())
-					Expect(garden.DefaultKubeconfigAccessLevel.Shoots).To(Equal(config.KubeconfigAccessLevelViewer))
-					Expect(garden.DefaultKubeconfigAccessLevel.ManagedSeeds).To(BeEmpty())
+					Expect(garden.KubeconfigAccessLevelDefaults).NotTo(BeNil())
+					Expect(garden.KubeconfigAccessLevelDefaults.Shoots).To(Equal(config.KubeconfigAccessLevelViewer))
+					Expect(garden.KubeconfigAccessLevelDefaults.ManagedSeeds).To(BeEmpty())
 				})
 
 				It("clears the struct when both fields end up empty", func() {
@@ -214,7 +214,7 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 					garden, err := cfg.Garden(gardenIdentity1)
 					Expect(err).NotTo(HaveOccurred())
 
-					garden.DefaultKubeconfigAccessLevel = &config.KubeconfigAccessLevels{
+					garden.KubeconfigAccessLevelDefaults = &config.KubeconfigAccessLevels{
 						Shoots: config.KubeconfigAccessLevelViewer,
 					}
 
@@ -223,7 +223,7 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 
 					garden, err = cfg.Garden(gardenIdentity1)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(garden.DefaultKubeconfigAccessLevel).To(BeNil())
+					Expect(garden.KubeconfigAccessLevelDefaults).To(BeNil())
 				})
 
 				It("rejects an invalid value at flag-parse time", func() {
@@ -239,7 +239,7 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 
 					Expect(err).NotTo(HaveOccurred())
 
-					existing.DefaultKubeconfigAccessLevel = &config.KubeconfigAccessLevels{
+					existing.KubeconfigAccessLevelDefaults = &config.KubeconfigAccessLevels{
 						Shoots: config.KubeconfigAccessLevelViewer,
 					}
 
@@ -255,7 +255,7 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 
 					updated, err := cfg.Garden(gardenIdentity1)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(updated.DefaultKubeconfigAccessLevel).To(BeNil())
+					Expect(updated.KubeconfigAccessLevelDefaults).To(BeNil())
 				})
 
 				It("rejects an invalid value during cobra parse, never reaching Run", func() {

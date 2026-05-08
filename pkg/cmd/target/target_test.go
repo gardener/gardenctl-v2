@@ -189,7 +189,7 @@ var _ = Describe("Target Command", func() {
 
 		It("uses the per-garden shoots access level when set", func() {
 			targetProvider.Target = target.NewTarget(gardenName, projectName, "", "")
-			cfg.Gardens[0].DefaultKubeconfigAccessLevel = &config.KubeconfigAccessLevels{
+			cfg.Gardens[0].KubeconfigAccessLevelDefaults = &config.KubeconfigAccessLevels{
 				Shoots: config.KubeconfigAccessLevelViewer,
 			}
 			cmd := cmdtarget.NewCmdTargetShoot(factory, streams)
