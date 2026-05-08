@@ -786,32 +786,32 @@ var _ = Describe("Target Manager", func() {
 			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeManagedSeeds)).To(Equal(config.KubeconfigAccessLevelAuto))
 		})
 
-		It("falls back to admin per-scope when only the other scope is configured", func() {
+		It("falls back to empty per-scope when only the other scope is configured", func() {
 			m := newManager("", &config.KubeconfigAccessLevels{
 				Shoots: config.KubeconfigAccessLevelViewer,
 			})
 			t := target.NewTarget(gardenName, "", "", "")
 			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(Equal(config.KubeconfigAccessLevelViewer))
-			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeManagedSeeds)).To(Equal(config.KubeconfigAccessLevelAdmin))
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeManagedSeeds)).To(BeEmpty())
 		})
 
-		It("falls back to admin when neither flag nor per-garden default is set", func() {
+		It("returns empty when neither flag nor per-garden default is set, so gardenlogin's own default applies", func() {
 			m := newManager("", nil)
 			t := target.NewTarget(gardenName, "", "", "")
-			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(Equal(config.KubeconfigAccessLevelAdmin))
-			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeManagedSeeds)).To(Equal(config.KubeconfigAccessLevelAdmin))
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(BeEmpty())
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeManagedSeeds)).To(BeEmpty())
 		})
 
-		It("returns admin when the target has no garden", func() {
+		It("returns empty when the target has no garden", func() {
 			m := newManager("", &config.KubeconfigAccessLevels{Shoots: config.KubeconfigAccessLevelViewer})
 			t := target.NewTarget("", "", "", "")
-			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(Equal(config.KubeconfigAccessLevelAdmin))
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(BeEmpty())
 		})
 
-		It("returns admin when the target's garden is not in the config", func() {
+		It("returns empty when the target's garden is not in the config", func() {
 			m := newManager("", &config.KubeconfigAccessLevels{Shoots: config.KubeconfigAccessLevelViewer})
 			t := target.NewTarget("unknown-garden", "", "", "")
-			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(Equal(config.KubeconfigAccessLevelAdmin))
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(BeEmpty())
 		})
 	})
 })

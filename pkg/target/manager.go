@@ -179,25 +179,33 @@ const (
 	AccessScopeManagedSeeds AccessScope = "managedSeeds"
 )
 
-// EffectiveAccessLevel returns the access level that ClientConfig would use for the
-// given target. It mirrors ClientConfig's scope dispatch: shoots use the Shoots
-// scope, seeds and control planes use the ManagedSeeds scope. Returns ("", false)
-// for targets that don't produce a gardenlogin-driven kubeconfig.
+// EffectiveAccessLevel returns the access level that gardenctl explicitly chose
+// for the given target. The bool is false when gardenctl did not decide a level
+// (no flag and no per-garden config) — the caller should defer to gardenlogin's
+// own default in that case — and for targets that don't produce a gardenlogin-
+// driven kubeconfig at all.
 func (m *managerImpl) EffectiveAccessLevel(t Target) (config.KubeconfigAccessLevel, bool) {
+	var level config.KubeconfigAccessLevel
+
 	switch {
 	case t.ControlPlane():
-		return m.resolveAccessLevel(t, AccessScopeManagedSeeds), true
+		level = m.resolveAccessLevel(t, AccessScopeManagedSeeds)
 	case t.ShootName() != "":
-		return m.resolveAccessLevel(t, AccessScopeShoots), true
+		level = m.resolveAccessLevel(t, AccessScopeShoots)
 	case t.SeedName() != "":
-		return m.resolveAccessLevel(t, AccessScopeManagedSeeds), true
-	default:
-		return "", false
+		level = m.resolveAccessLevel(t, AccessScopeManagedSeeds)
 	}
+
+	return level, level != ""
 }
 
 // resolveAccessLevel returns the effective kubeconfig access level for a target+scope.
-// Precedence: CLI flag > per-garden default for the requested scope > built-in default ("admin").
+// Precedence: CLI flag > per-garden default for the requested scope > empty.
+//
+// Returning empty when neither a flag nor a config default is set lets the
+// shoot kubeconfig generator omit the --access-level argument entirely, so
+// gardenlogin falls back to its own documented default ("auto") rather than
+// gardenctl silently overriding it.
 func (m *managerImpl) resolveAccessLevel(t Target, scope AccessScope) config.KubeconfigAccessLevel {
 	if m.flagAccessLevel != "" {
 		return m.flagAccessLevel
@@ -205,22 +213,16 @@ func (m *managerImpl) resolveAccessLevel(t Target, scope AccessScope) config.Kub
 
 	if t.GardenName() != "" {
 		if garden, err := m.config.Garden(t.GardenName()); err == nil && garden.DefaultKubeconfigAccessLevel != nil {
-			var configured config.KubeconfigAccessLevel
-
 			switch scope {
 			case AccessScopeShoots:
-				configured = garden.DefaultKubeconfigAccessLevel.Shoots
+				return garden.DefaultKubeconfigAccessLevel.Shoots
 			case AccessScopeManagedSeeds:
-				configured = garden.DefaultKubeconfigAccessLevel.ManagedSeeds
-			}
-
-			if configured != "" {
-				return configured
+				return garden.DefaultKubeconfigAccessLevel.ManagedSeeds
 			}
 		}
 	}
 
-	return config.KubeconfigAccessLevelAdmin
+	return ""
 }
 
 func (m *managerImpl) CurrentTarget() (Target, error) {
