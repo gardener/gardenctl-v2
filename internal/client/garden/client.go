@@ -608,14 +608,18 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string, acces
 		return g.GetShootClientConfig(ctx, "garden", shoot.Name, accessLevel)
 	}
 
-	// Non-managed seed: kubeconfig comes from a static <name>.login Secret rather
-	// than gardenlogin, so the admin/viewer/auto distinction does not apply.
-	// Reject any explicit non-admin choice rather than silently returning admin -
-	// a silent escalation would defeat the point of asking for viewer.
-	if accessLevel != "" && accessLevel != config.KubeconfigAccessLevelAdmin {
-		return nil, fmt.Errorf("seed %q is not a managed seed; %q kubeconfig access is unavailable (only %q is supported). "+
-			"Re-run with --kubeconfig-access-level=%s to override",
-			name, accessLevel, config.KubeconfigAccessLevelAdmin, config.KubeconfigAccessLevelAdmin)
+	// Non-managed seed: kubeconfig comes from a static <name>.login Secret, so
+	// gardenlogin's access-level mechanism is not available on this path. We
+	// reject only an explicit "viewer" request - the user asked for read-only
+	// and we cannot deliver it, so silently returning the static kubeconfig
+	// would be a privilege surprise. "auto" semantically means "try admin,
+	// fall back to viewer", so falling through here matches its documented
+	// behavior. Note that gardenctl cannot determine the actual privileges
+	// the static kubeconfig grants - they depend on the cluster's RBAC.
+	if accessLevel == config.KubeconfigAccessLevelViewer {
+		return nil, fmt.Errorf("seed %q is not a managed seed; gardenlogin's access-level mechanism is unavailable for static seed-login kubeconfigs. "+
+			"Re-run without %q (or with --kubeconfig-access-level=%s) to use the static kubeconfig as-is",
+			name, accessLevel, config.KubeconfigAccessLevelAdmin)
 	}
 
 	key := types.NamespacedName{Name: name}

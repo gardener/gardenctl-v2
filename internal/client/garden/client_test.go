@@ -221,22 +221,22 @@ var _ = Describe("Client", func() {
 			})
 		})
 
-		DescribeTable("rejects non-admin access level for non-managed seeds",
+		DescribeTable("rejects only viewer for non-managed seeds (the user asked for read-only and we cannot deliver it)",
 			func(level config.KubeconfigAccessLevel) {
 				_, err := gardenClient.GetSeedClientConfig(ctx, "seed-1", level)
 				Expect(err).To(MatchError(ContainSubstring("not a managed seed")))
 			},
 			Entry("viewer", config.KubeconfigAccessLevelViewer),
-			Entry("auto", config.KubeconfigAccessLevelAuto),
 		)
 
-		DescribeTable("permits admin or empty access level for non-managed seeds",
+		DescribeTable("permits admin, auto, or empty access level for non-managed seeds (auto falls back to admin per its documented semantics)",
 			func(level config.KubeconfigAccessLevel) {
 				_, err := gardenClient.GetSeedClientConfig(ctx, "seed-1", level)
 				Expect(err).NotTo(HaveOccurred())
 			},
 			Entry("empty (built-in default)", config.KubeconfigAccessLevel("")),
 			Entry("admin", config.KubeconfigAccessLevelAdmin),
+			Entry("auto", config.KubeconfigAccessLevelAuto),
 		)
 	})
 
