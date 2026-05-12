@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package config_test
 
 import (
+	"errors"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -28,7 +30,7 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 			Expect(cmd.Use).To(Equal("set-garden"))
 			Expect(cmd.ValidArgsFunction).NotTo(BeNil())
 			Expect(cmd.ValidArgs).To(BeNil())
-			assertAllFlagNames(cmd.Flags(), "alias", "context", "kubeconfig", "pattern")
+			assertAllFlagNames(cmd.Flags(), "alias", "context", "default-managed-seed-access-level", "default-shoot-access-level", "kubeconfig", "pattern")
 		})
 	})
 
@@ -56,6 +58,13 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 					Expect(options.Complete(factory, nil, []string{" garden "})).To(Succeed())
 					Expect(options.Configuration).To(BeIdenticalTo(cfg))
 					Expect(options.Name).To(Equal("garden"))
+				})
+			})
+
+			Context("when getting the manager fails", func() {
+				It("should propagate the error", func() {
+					factory.EXPECT().Manager().Return(nil, errors.New("boom"))
+					Expect(options.Complete(factory, nil, nil)).To(MatchError(MatchRegexp("^failed to get target manager")))
 				})
 			})
 		})
@@ -167,6 +176,91 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 			It("should fail when the filename is invalid", func() {
 				options.Configuration.Filename = string([]byte{0})
 				Expect(options.Run(nil)).To(MatchError(MatchRegexp("^failed to configure garden")))
+			})
+
+			Describe("default kubeconfig access level flags", func() {
+				It("sets shoots and managedSeeds on a new garden", func() {
+					options.Name = gardenIdentity3
+					Expect(options.KubeconfigFlag.Set(pathToKubeconfig)).To(Succeed())
+					Expect(options.DefaultShootAccessLevelFlag.Set(string(config.KubeconfigAccessLevelViewer))).To(Succeed())
+					Expect(options.DefaultManagedSeedAccessLevelFlag.Set(string(config.KubeconfigAccessLevelAdmin))).To(Succeed())
+					Expect(options.Run(nil)).To(Succeed())
+
+					assertGarden(cfg, &config.Garden{
+						Name:       gardenIdentity3,
+						Kubeconfig: pathToKubeconfig,
+						KubeconfigAccessLevelDefaults: &config.KubeconfigAccessLevels{
+							Shoots:       config.KubeconfigAccessLevelViewer,
+							ManagedSeeds: config.KubeconfigAccessLevelAdmin,
+						},
+					})
+				})
+
+				It("sets only the provided sub-field on an existing garden, leaving the other untouched", func() {
+					options.Name = gardenIdentity1
+					Expect(options.DefaultShootAccessLevelFlag.Set(string(config.KubeconfigAccessLevelViewer))).To(Succeed())
+					Expect(options.Run(nil)).To(Succeed())
+
+					garden, err := cfg.Garden(gardenIdentity1)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(garden.KubeconfigAccessLevelDefaults).NotTo(BeNil())
+					Expect(garden.KubeconfigAccessLevelDefaults.Shoots).To(Equal(config.KubeconfigAccessLevelViewer))
+					Expect(garden.KubeconfigAccessLevelDefaults.ManagedSeeds).To(BeEmpty())
+				})
+
+			})
+
+			Describe("--default-*-access-level flags via real cobra flag parsing", func() {
+				It("clears the per-scope field when an empty value is parsed", func() {
+					// Pre-seed the existing garden with a non-nil struct.
+					existing, err := cfg.Garden(gardenIdentity1)
+
+					Expect(err).NotTo(HaveOccurred())
+
+					existing.KubeconfigAccessLevelDefaults = &config.KubeconfigAccessLevels{
+						Shoots: config.KubeconfigAccessLevelViewer,
+					}
+
+					factory.EXPECT().Manager().Return(manager, nil)
+					manager.EXPECT().Configuration().Return(cfg)
+
+					cmd := cmdconfig.NewCmdConfigSetGarden(factory, streams)
+					cmd.SetArgs([]string{
+						gardenIdentity1,
+						"--default-shoot-access-level=",
+					})
+					Expect(cmd.Execute()).To(Succeed())
+
+					updated, err := cfg.Garden(gardenIdentity1)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(updated.KubeconfigAccessLevelDefaults).To(BeNil())
+				})
+
+				It("rejects an invalid value during cobra parse, never reaching Run", func() {
+					// No factory/manager EXPECTs: cobra rejects the flag value before
+					// PreRun/Run fires, so none of our code is invoked.
+					cmd := cmdconfig.NewCmdConfigSetGarden(factory, streams)
+					cmd.SetArgs([]string{
+						gardenIdentity1,
+						"--default-shoot-access-level=guest",
+					})
+					Expect(cmd.Execute()).To(MatchError(ContainSubstring(`invalid kubeconfig access level "guest"`)))
+				})
+
+				It("prints a re-target hint when an access-level flag was changed", func() {
+					options.Name = gardenIdentity1
+					Expect(options.DefaultShootAccessLevelFlag.Set(string(config.KubeconfigAccessLevelViewer))).To(Succeed())
+
+					Expect(options.Run(nil)).To(Succeed())
+					Expect(errOut.String()).To(ContainSubstring("Run `gardenctl target` again"))
+				})
+
+				It("prints no hint when no access-level flag was provided", func() {
+					options.Name = gardenIdentity1
+
+					Expect(options.Run(nil)).To(Succeed())
+					Expect(errOut.String()).To(BeEmpty())
+				})
 			})
 		})
 	})

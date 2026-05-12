@@ -83,6 +83,22 @@ func (mr *MockManagerMockRecorder) CurrentTarget() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentTarget", reflect.TypeOf((*MockManager)(nil).CurrentTarget))
 }
 
+// EffectiveAccessLevel mocks base method.
+func (m *MockManager) EffectiveAccessLevel(arg0 context.Context, arg1 target.Target) (config.KubeconfigAccessLevel, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EffectiveAccessLevel", arg0, arg1)
+	ret0, _ := ret[0].(config.KubeconfigAccessLevel)
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// EffectiveAccessLevel indicates an expected call of EffectiveAccessLevel.
+func (mr *MockManagerMockRecorder) EffectiveAccessLevel(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EffectiveAccessLevel", reflect.TypeOf((*MockManager)(nil).EffectiveAccessLevel), arg0, arg1)
+}
+
 // GardenClient mocks base method.
 func (m *MockManager) GardenClient(arg0 string) (garden.Client, error) {
 	m.ctrl.T.Helper()

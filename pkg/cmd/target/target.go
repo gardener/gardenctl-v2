@@ -19,12 +19,15 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/flags"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
-// NewCmdTarget returns a new target command.
-func NewCmdTarget(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+// NewCmdTarget returns a new target command. accessLevel is bound to the
+// --access-level persistent flag so its value is available on this
+// command and all of its subcommands.
+func NewCmdTarget(f util.Factory, ioStreams util.IOStreams, accessLevel *config.KubeconfigAccessLevel) *cobra.Command {
 	o := NewTargetOptions(ioStreams)
 	cmd := &cobra.Command{
 		Use:   "target",
@@ -51,6 +54,7 @@ gardenctl target value/that/matches/pattern --control-plane`,
 
 	f.TargetFlags().AddFlags(cmd.Flags())
 	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, cmd.Flags())
+	flags.AddKubeconfigAccessLevelFlag(cmd, accessLevel)
 
 	return cmd
 }
@@ -223,10 +227,37 @@ func (o *TargetOptions) Run(f util.Factory) error {
 	}
 
 	if o.Output == "" {
+		// dynamicTargetProvider.merge() wipes deeper target levels whenever
+		// --garden is set on the CLI, even immediately after TargetXXX persisted
+		// a shoot/seed. Re-apply the just-targeted leaf so EffectiveAccessLevel
+		// sees it instead of falling through to "no scope".
+		levelTarget := currentTarget
+		switch o.Kind {
+		case TargetKindShoot:
+			levelTarget = levelTarget.WithShootName(o.TargetName)
+		case TargetKindSeed:
+			levelTarget = levelTarget.WithSeedName(o.TargetName)
+		case TargetKindControlPlane:
+			levelTarget = levelTarget.WithControlPlane(true)
+		}
+
+		var levelSuffix string
+
+		level, ok, lvlErr := manager.EffectiveAccessLevel(ctx, levelTarget)
+		switch {
+		case lvlErr != nil:
+			// Display-path soft-warn: the kubeconfig itself is already correct
+			// (ClientConfig either succeeded with the right scope or the command
+			// has already errored out).
+			fmt.Fprintf(o.IOStreams.ErrOut, "Warning: could not determine effective access level: %v\n", lvlErr)
+		case ok:
+			levelSuffix = fmt.Sprintf(" (access level: %s)", level)
+		}
+
 		if o.Kind == TargetKindControlPlane {
-			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted control plane of shoot %q\n", currentTarget.ShootName())
+			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted control plane of shoot %q%s\n", currentTarget.ShootName(), levelSuffix)
 		} else if o.Kind != "" {
-			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q\n", o.Kind, o.TargetName)
+			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q%s\n", o.Kind, o.TargetName, levelSuffix)
 		}
 	}
 

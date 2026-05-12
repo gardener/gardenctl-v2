@@ -25,6 +25,8 @@ gardenctl kubeconfig --garden my-garden --project my-project
 ### Options
 
 ```
+      --access-level string           Override default kubeconfig access level for shoots/managed-seeds. One of "admin", "viewer", "auto".
+      --admin                         shorthand for --access-level=admin
       --allow-missing-template-keys   If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats. (default true)
       --context string                The name of the kubeconfig context to use
       --control-plane                 target control plane of shoot, use together with shoot argument
@@ -39,6 +41,7 @@ gardenctl kubeconfig --garden my-garden --project my-project
       --shoot string                  target the given shoot cluster
       --show-managed-fields           If true, keep the managedFields when printing objects in JSON or YAML format.
       --template string               Template string or path to template file to use when -o=go-template, -o=go-template-file. The template format is golang templates [http://golang.org/pkg/text/template/#pkg-overview].
+      --viewer                        shorthand for --access-level=viewer
 ```
 
 ### Options inherited from parent commands

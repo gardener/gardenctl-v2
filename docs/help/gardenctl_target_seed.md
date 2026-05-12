@@ -30,7 +30,9 @@ gardenctl target seed my-seed --garden my-garden
 ### Options inherited from parent commands
 
 ```
+      --access-level string                 Override default kubeconfig access level for shoots/managed-seeds. One of "admin", "viewer", "auto".
       --add-dir-header                      If true, adds the file directory to the header of the log messages
+      --admin                               shorthand for --access-level=admin
       --alsologtostderr                     log to standard error as well as files (no effect when -logtostderr=true)
       --alsologtostderrthreshold severity   logs at or above this threshold go to stderr when -alsologtostderr=true (no effect when -logtostderr=true)
       --config string                       config file (default is ~/.garden/gardenctl-v2.yaml)
@@ -45,6 +47,7 @@ gardenctl target seed my-seed --garden my-garden
       --skip-log-headers                    If true, avoid headers when opening log files (no effect when -logtostderr=true)
       --stderrthreshold severity            logs at or above this threshold go to stderr when writing to files and stderr (no effect when -logtostderr=true or -alsologtostderr=true unless -legacy_stderr_threshold_behavior=false) (default 2)
   -v, --v Level                             number for the log level verbosity
+      --viewer                              shorthand for --access-level=viewer
       --vmodule moduleSpec                  comma-separated list of pattern=N settings for file-filtered logging
 ```
 

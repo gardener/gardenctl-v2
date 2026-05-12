@@ -10,6 +10,7 @@ import (
 	time "time"
 
 	garden "github.com/gardener/gardenctl-v2/internal/client/garden"
+	config "github.com/gardener/gardenctl-v2/pkg/config"
 	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
 	v1alpha10 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
@@ -244,18 +245,18 @@ func (mr *MockClientMockRecorder) GetSeed(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // GetSeedClientConfig mocks base method.
-func (m *MockClient) GetSeedClientConfig(arg0 context.Context, arg1 string) (clientcmd.ClientConfig, error) {
+func (m *MockClient) GetSeedClientConfig(arg0 context.Context, arg1 string, arg2 config.KubeconfigAccessLevel) (clientcmd.ClientConfig, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSeedClientConfig", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetSeedClientConfig", arg0, arg1, arg2)
 	ret0, _ := ret[0].(clientcmd.ClientConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSeedClientConfig indicates an expected call of GetSeedClientConfig.
-func (mr *MockClientMockRecorder) GetSeedClientConfig(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetSeedClientConfig(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeedClientConfig", reflect.TypeOf((*MockClient)(nil).GetSeedClientConfig), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeedClientConfig", reflect.TypeOf((*MockClient)(nil).GetSeedClientConfig), arg0, arg1, arg2)
 }
 
 // GetShoot mocks base method.
@@ -274,18 +275,18 @@ func (mr *MockClientMockRecorder) GetShoot(arg0, arg1, arg2 interface{}) *gomock
 }
 
 // GetShootClientConfig mocks base method.
-func (m *MockClient) GetShootClientConfig(arg0 context.Context, arg1, arg2 string) (clientcmd.ClientConfig, error) {
+func (m *MockClient) GetShootClientConfig(arg0 context.Context, arg1, arg2 string, arg3 config.KubeconfigAccessLevel) (clientcmd.ClientConfig, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetShootClientConfig", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetShootClientConfig", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(clientcmd.ClientConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetShootClientConfig indicates an expected call of GetShootClientConfig.
-func (mr *MockClientMockRecorder) GetShootClientConfig(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetShootClientConfig(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootClientConfig", reflect.TypeOf((*MockClient)(nil).GetShootClientConfig), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShootClientConfig", reflect.TypeOf((*MockClient)(nil).GetShootClientConfig), arg0, arg1, arg2, arg3)
 }
 
 // GetShootOfManagedSeed mocks base method.
@@ -316,6 +317,21 @@ func (m *MockClient) GetWorkloadIdentity(arg0 context.Context, arg1, arg2 string
 func (mr *MockClientMockRecorder) GetWorkloadIdentity(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkloadIdentity", reflect.TypeOf((*MockClient)(nil).GetWorkloadIdentity), arg0, arg1, arg2)
+}
+
+// IsManagedSeed mocks base method.
+func (m *MockClient) IsManagedSeed(arg0 context.Context, arg1, arg2 string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsManagedSeed", arg0, arg1, arg2)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsManagedSeed indicates an expected call of IsManagedSeed.
+func (mr *MockClientMockRecorder) IsManagedSeed(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsManagedSeed", reflect.TypeOf((*MockClient)(nil).IsManagedSeed), arg0, arg1, arg2)
 }
 
 // ListBastions mocks base method.

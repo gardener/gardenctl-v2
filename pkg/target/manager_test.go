@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
@@ -86,7 +87,7 @@ func cloneTarget(t target.Target) target.Target {
 func createTestManager(t target.Target, cfg *config.Config, clientProvider internalclient.Provider) (target.Manager, target.TargetProvider) {
 	targetProvider := fake.NewFakeTargetProvider(cloneTarget(t))
 
-	manager, err := target.NewManager(cfg, targetProvider, clientProvider, sessionDir)
+	manager, err := target.NewManager(cfg, targetProvider, clientProvider, sessionDir, "")
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 	ExpectWithOffset(1, manager).NotTo(BeNil())
 
@@ -743,5 +744,136 @@ var _ = Describe("Target Manager", func() {
 				Expect(shootNames).To(BeNil())
 			})
 		})
+	})
+
+	Describe("resolveAccessLevel", func() {
+		const (
+			gardenName = "g1"
+		)
+
+		newManager := func(flagLevel config.KubeconfigAccessLevel, gardenLevels *config.KubeconfigAccessLevels) target.Manager {
+			cfg := &config.Config{
+				Gardens: []config.Garden{{
+					Name:                          gardenName,
+					Kubeconfig:                    "kubeconfig",
+					KubeconfigAccessLevelDefaults: gardenLevels,
+				}},
+			}
+
+			tp := fake.NewFakeTargetProvider(target.NewTarget(gardenName, "", "", ""))
+			m, err := target.NewManager(cfg, tp, nil, sessionDir, flagLevel)
+			Expect(err).NotTo(HaveOccurred())
+
+			return m
+		}
+
+		It("uses the CLI flag value regardless of scope and per-garden defaults", func() {
+			m := newManager(config.KubeconfigAccessLevelViewer, &config.KubeconfigAccessLevels{
+				Shoots:       config.KubeconfigAccessLevelAdmin,
+				ManagedSeeds: config.KubeconfigAccessLevelAdmin,
+			})
+			t := target.NewTarget(gardenName, "", "", "")
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(Equal(config.KubeconfigAccessLevelViewer))
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeManagedSeeds)).To(Equal(config.KubeconfigAccessLevelViewer))
+		})
+
+		It("uses the scope-matching per-garden default when no flag is set", func() {
+			m := newManager("", &config.KubeconfigAccessLevels{
+				Shoots:       config.KubeconfigAccessLevelViewer,
+				ManagedSeeds: config.KubeconfigAccessLevelAuto,
+			})
+			t := target.NewTarget(gardenName, "", "", "")
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(Equal(config.KubeconfigAccessLevelViewer))
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeManagedSeeds)).To(Equal(config.KubeconfigAccessLevelAuto))
+		})
+
+		It("falls back to empty per-scope when only the other scope is configured", func() {
+			m := newManager("", &config.KubeconfigAccessLevels{
+				Shoots: config.KubeconfigAccessLevelViewer,
+			})
+			t := target.NewTarget(gardenName, "", "", "")
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(Equal(config.KubeconfigAccessLevelViewer))
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeManagedSeeds)).To(BeEmpty())
+		})
+
+		It("returns empty when neither flag nor per-garden default is set, so gardenlogin's own default applies", func() {
+			m := newManager("", nil)
+			t := target.NewTarget(gardenName, "", "", "")
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(BeEmpty())
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeManagedSeeds)).To(BeEmpty())
+		})
+
+		It("returns empty when the target has no garden", func() {
+			m := newManager("", &config.KubeconfigAccessLevels{Shoots: config.KubeconfigAccessLevelViewer})
+			t := target.NewTarget("", "", "", "")
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(BeEmpty())
+		})
+
+		It("returns empty when the target's garden is not in the config", func() {
+			m := newManager("", &config.KubeconfigAccessLevels{Shoots: config.KubeconfigAccessLevelViewer})
+			t := target.NewTarget("unknown-garden", "", "", "")
+			Expect(target.ResolveAccessLevel(m, t, target.AccessScopeShoots)).To(BeEmpty())
+		})
+	})
+
+	Describe("EffectiveAccessLevel scope routing for managed-seed-backing shoots", func() {
+		const (
+			gardenName  = "g1"
+			projectName = "myproject"
+			namespace   = "garden-myproject"
+			plainShoot  = "plain-shoot"
+			seedShoot   = "seed-shoot"
+		)
+
+		newManagerWithGarden := func(gardenLevels *config.KubeconfigAccessLevels, objs ...client.Object) target.Manager {
+			cfg := &config.Config{
+				Gardens: []config.Garden{{
+					Name:                          gardenName,
+					Kubeconfig:                    "kubeconfig",
+					KubeconfigAccessLevelDefaults: gardenLevels,
+				}},
+			}
+
+			ctrl := gomock.NewController(GinkgoT())
+			provider := clientmocks.NewMockProvider(ctrl)
+			cc, err := cfg.ClientConfig(gardenName)
+			Expect(err).NotTo(HaveOccurred())
+			provider.EXPECT().FromClientConfig(gomock.Eq(cc)).Return(fake.NewClientWithObjects(objs...), nil).AnyTimes()
+
+			tp := fake.NewFakeTargetProvider(target.NewTarget(gardenName, projectName, "", ""))
+			m, err := target.NewManager(cfg, tp, provider, sessionDir, "")
+			Expect(err).NotTo(HaveOccurred())
+
+			return m
+		}
+
+		project := &gardencorev1beta1.Project{
+			ObjectMeta: metav1.ObjectMeta{Name: projectName, UID: "00000000-0000-0000-0000-000000000000"},
+			Spec:       gardencorev1beta1.ProjectSpec{Namespace: ptr.To(namespace)},
+		}
+		managedSeed := &seedmanagementv1alpha1.ManagedSeed{
+			ObjectMeta: metav1.ObjectMeta{Name: seedShoot, Namespace: namespace, UID: "00000000-0000-0000-0000-000000000001"},
+			Spec:       seedmanagementv1alpha1.ManagedSeedSpec{Shoot: &seedmanagementv1alpha1.Shoot{Name: seedShoot}},
+		}
+		levels := &config.KubeconfigAccessLevels{
+			Shoots:       config.KubeconfigAccessLevelViewer,
+			ManagedSeeds: config.KubeconfigAccessLevelAdmin,
+		}
+
+		DescribeTable("routes to the right scope",
+			func(t target.Target, objs []client.Object, want config.KubeconfigAccessLevel) {
+				m := newManagerWithGarden(levels, objs...)
+				level, ok, err := m.EffectiveAccessLevel(ctx, t)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ok).To(BeTrue())
+				Expect(level).To(Equal(want))
+			},
+			Entry("regular shoot -> shoots scope (viewer)",
+				target.NewTarget(gardenName, projectName, "", plainShoot), []client.Object{project}, config.KubeconfigAccessLevelViewer),
+			Entry("seed target -> managedSeeds scope (admin)",
+				target.NewTarget(gardenName, "", "some-seed", ""), []client.Object{project}, config.KubeconfigAccessLevelAdmin),
+			Entry("managed-seed-backing shoot -> managedSeeds scope (admin) regardless of target path",
+				target.NewTarget(gardenName, projectName, "", seedShoot), []client.Object{project, managedSeed}, config.KubeconfigAccessLevelAdmin),
+		)
 	})
 })

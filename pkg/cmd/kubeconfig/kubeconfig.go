@@ -7,6 +7,7 @@ package kubeconfig
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -19,12 +20,14 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/flags"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
-// NewCmdKubeconfig returns a new kubeconfig command.
-func NewCmdKubeconfig(f util.Factory, ioStreams util.IOStreams) *cobra.Command {
+// NewCmdKubeconfig returns a new kubeconfig command. accessLevel is bound to
+// the --access-level flag.
+func NewCmdKubeconfig(f util.Factory, ioStreams util.IOStreams, accessLevel *config.KubeconfigAccessLevel) *cobra.Command {
 	o := newOptions(ioStreams)
 
 	cmd := &cobra.Command{
@@ -50,6 +53,7 @@ gardenctl kubeconfig --garden my-garden --project my-project`,
 
 	f.TargetFlags().AddFlags(cmd.Flags())
 	flags.RegisterCompletionFuncsForTargetFlags(cmd, f, ioStreams, cmd.Flags())
+	flags.AddKubeconfigAccessLevelFlag(cmd, accessLevel)
 
 	utilruntime.Must(cmd.RegisterFlagCompletionFunc("output", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return o.PrintFlags.AllowedFormats(), cobra.ShellCompDirectiveNoFileComp
@@ -124,17 +128,29 @@ func (o *options) Complete(f util.Factory, _ *cobra.Command, _ []string) error {
 
 	ctx := f.Context()
 
-	config, err := manager.ClientConfig(ctx, currentTarget)
+	clientConfig, err := manager.ClientConfig(ctx, currentTarget)
 	if err != nil {
 		return err
 	}
 
-	rawConfig, err := config.RawConfig()
+	rawConfig, err := clientConfig.RawConfig()
 	if err != nil {
 		return err
 	}
 
 	o.RawConfig = &rawConfig
+
+	// Print the access level to stderr (stdout is the kubeconfig YAML) only when
+	// gardenctl explicitly chose one. When unset we let gardenlogin's own default
+	// apply and stay silent. Display-path soft-warn: the kubeconfig YAML on
+	// stdout is already correct from ClientConfig above.
+	level, ok, lvlErr := manager.EffectiveAccessLevel(ctx, currentTarget)
+	switch {
+	case lvlErr != nil:
+		fmt.Fprintf(o.IOStreams.ErrOut, "Warning: could not determine effective access level: %v\n", lvlErr)
+	case ok:
+		fmt.Fprintf(o.IOStreams.ErrOut, "Access level: %s\n", level)
+	}
 
 	return nil
 }

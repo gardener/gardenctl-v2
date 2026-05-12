@@ -120,15 +120,21 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
 	flags.StringVar(&f.ConfigFile, "config", "", fmt.Sprintf("config file (default is %s)", filepath.Join("~", gardenHomeFolder, configName+"."+configExtension)))
 
 	// add subcommands
-	cmd.AddCommand(cmdssh.NewCmdSSH(f, cmdssh.NewSSHOptions(ioStreams)))
-	cmd.AddCommand(cmdsshpatch.NewCmdSSHPatch(f, ioStreams))
-	cmd.AddCommand(cmdtarget.NewCmdTarget(f, ioStreams))
+	sshCmd := cmdssh.NewCmdSSH(f, cmdssh.NewSSHOptions(ioStreams))
+	sshpatchCmd := cmdsshpatch.NewCmdSSHPatch(f, ioStreams)
+	targetCmd := cmdtarget.NewCmdTarget(f, ioStreams, &f.KubeconfigAccessLevel)
+	kubectlEnvCmd := cmdkubectl.NewCmdKubectlEnv(f, ioStreams)
+	kubeconfigCmd := kubeconfig.NewCmdKubeconfig(f, ioStreams, &f.KubeconfigAccessLevel)
+
+	cmd.AddCommand(sshCmd)
+	cmd.AddCommand(sshpatchCmd)
+	cmd.AddCommand(targetCmd)
 	cmd.AddCommand(cmdversion.NewCmdVersion(f, cmdversion.NewVersionOptions(ioStreams)))
 	cmd.AddCommand(cmdconfig.NewCmdConfig(f, ioStreams))
 	cmd.AddCommand(cmdprovider.NewCmdProviderEnv(f, ioStreams))
-	cmd.AddCommand(cmdkubectl.NewCmdKubectlEnv(f, ioStreams))
+	cmd.AddCommand(kubectlEnvCmd)
 	cmd.AddCommand(cmdrc.NewCmdRC(f, ioStreams))
-	cmd.AddCommand(kubeconfig.NewCmdKubeconfig(f, ioStreams))
+	cmd.AddCommand(kubeconfigCmd)
 	cmd.AddCommand(resolve.NewCmdResolve(f, ioStreams))
 
 	return cmd

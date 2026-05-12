@@ -448,4 +448,94 @@ provider:
 			Expect(config.ValidateGardenName("_")).To(MatchError("garden name must start and end with an alphanumeric character"))
 		})
 	})
+
+	Describe("KubeconfigAccessLevel", func() {
+		Describe("Validate", func() {
+			DescribeTable("accepts valid values",
+				func(value config.KubeconfigAccessLevel) {
+					Expect(value.Validate()).To(Succeed())
+				},
+				Entry("empty (use built-in default)", config.KubeconfigAccessLevel("")),
+				Entry("admin", config.KubeconfigAccessLevelAdmin),
+				Entry("viewer", config.KubeconfigAccessLevelViewer),
+				Entry("auto", config.KubeconfigAccessLevelAuto),
+			)
+
+			It("rejects unknown values with a descriptive error", func() {
+				err := config.KubeconfigAccessLevel("guest").Validate()
+				Expect(err).To(MatchError(ContainSubstring(`invalid kubeconfig access level "guest"`)))
+				Expect(err).To(MatchError(ContainSubstring(`"admin"`)))
+				Expect(err).To(MatchError(ContainSubstring(`"viewer"`)))
+				Expect(err).To(MatchError(ContainSubstring(`"auto"`)))
+			})
+		})
+
+		Describe("Set (pflag.Value)", func() {
+			It("assigns valid values", func() {
+				var l config.KubeconfigAccessLevel
+				Expect(l.Set("viewer")).To(Succeed())
+				Expect(l).To(Equal(config.KubeconfigAccessLevelViewer))
+			})
+
+			It("returns an error and leaves the value unchanged on bad input", func() {
+				l := config.KubeconfigAccessLevelAdmin
+				Expect(l.Set("nope")).To(MatchError(ContainSubstring("invalid kubeconfig access level")))
+				Expect(l).To(Equal(config.KubeconfigAccessLevelAdmin))
+			})
+
+			It("reports a string type for help output", func() {
+				var l config.KubeconfigAccessLevel
+				Expect(l.Type()).To(Equal("string"))
+			})
+
+			It("stringifies to its raw value", func() {
+				l := config.KubeconfigAccessLevelViewer
+				Expect(l.String()).To(Equal("viewer"))
+			})
+		})
+	})
+
+	Describe("Garden.KubeconfigAccessLevelDefaults validation via Config.Validate", func() {
+		It("rejects an unknown shoots access level", func() {
+			cfg := &config.Config{
+				Gardens: []config.Garden{{
+					Name:       "g1",
+					Kubeconfig: "kubeconfig",
+					KubeconfigAccessLevelDefaults: &config.KubeconfigAccessLevels{
+						Shoots: config.KubeconfigAccessLevel("guest"),
+					},
+				}},
+			}
+			Expect(cfg.Validate()).To(MatchError(ContainSubstring(`shoots: invalid kubeconfig access level "guest"`)))
+		})
+
+		It("rejects an unknown managedSeeds access level", func() {
+			cfg := &config.Config{
+				Gardens: []config.Garden{{
+					Name:       "g1",
+					Kubeconfig: "kubeconfig",
+					KubeconfigAccessLevelDefaults: &config.KubeconfigAccessLevels{
+						ManagedSeeds: config.KubeconfigAccessLevel("guest"),
+					},
+				}},
+			}
+			Expect(cfg.Validate()).To(MatchError(ContainSubstring(`managedSeeds: invalid kubeconfig access level "guest"`)))
+		})
+
+		It("accepts a missing, partial, or valid access level config", func() {
+			cfg := &config.Config{
+				Gardens: []config.Garden{
+					{Name: "g1", Kubeconfig: "kubeconfig"},
+					{Name: "g2", Kubeconfig: "kubeconfig", KubeconfigAccessLevelDefaults: &config.KubeconfigAccessLevels{
+						Shoots: config.KubeconfigAccessLevelViewer,
+					}},
+					{Name: "g3", Kubeconfig: "kubeconfig", KubeconfigAccessLevelDefaults: &config.KubeconfigAccessLevels{
+						Shoots:       config.KubeconfigAccessLevelViewer,
+						ManagedSeeds: config.KubeconfigAccessLevelAdmin,
+					}},
+				},
+			}
+			Expect(cfg.Validate()).To(Succeed())
+		})
+	})
 })

@@ -89,7 +89,7 @@ func (f *Factory) Manager() (target.Manager, error) {
 
 	sessionDir := os.TempDir()
 
-	return target.NewManager(f.Config, f.TargetProviderImpl, f.ClientProviderImpl, sessionDir)
+	return target.NewManager(f.Config, f.TargetProviderImpl, f.ClientProviderImpl, sessionDir, "")
 }
 
 func (f *Factory) Context() context.Context {
