@@ -103,7 +103,7 @@ jobs:
         if: ${{ inputs.component-descriptor == '' }}
         run: |
           set -euo pipefail
-          dummy=dummySHA256sum
+          dummy=0000000000000000000000000000000000000000000000000000000000000000
           printf '%s\n' \
             "DARWIN_SHA_AMD64=$dummy" \
             "DARWIN_SHA_ARM64=$dummy" \
