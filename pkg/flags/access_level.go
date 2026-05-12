@@ -17,7 +17,7 @@ import (
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
-// AddKubeconfigAccessLevelFlag registers --kubeconfig-access-level (full form,
+// AddKubeconfigAccessLevelFlag registers --access-level (full form,
 // supports admin/viewer/auto) plus --admin and --viewer as mutually-exclusive
 // shorthands on cmd, all bound to value. The shorthands are convenience for
 // the common case; the full form is the canonical way to set "auto" via flag
@@ -28,13 +28,13 @@ import (
 // persistent flag keeps it out of the help output of unrelated commands.
 func AddKubeconfigAccessLevelFlag(cmd *cobra.Command, value *config.KubeconfigAccessLevel) {
 	flags := cmd.PersistentFlags()
-	flags.Var(value, "kubeconfig-access-level",
+	flags.Var(value, "access-level",
 		fmt.Sprintf(`Override default kubeconfig access level for shoots/managed-seeds. One of %q, %q, %q.`,
 			config.KubeconfigAccessLevelAdmin, config.KubeconfigAccessLevelViewer, config.KubeconfigAccessLevelAuto))
 	addBoolAccessLevelFlag(flags, value, "admin", config.KubeconfigAccessLevelAdmin)
 	addBoolAccessLevelFlag(flags, value, "viewer", config.KubeconfigAccessLevelViewer)
-	cmd.MarkFlagsMutuallyExclusive("kubeconfig-access-level", "admin", "viewer")
-	utilruntime.Must(cmd.RegisterFlagCompletionFunc("kubeconfig-access-level", kubeconfigAccessLevelCompletionFunc))
+	cmd.MarkFlagsMutuallyExclusive("access-level", "admin", "viewer")
+	utilruntime.Must(cmd.RegisterFlagCompletionFunc("access-level", kubeconfigAccessLevelCompletionFunc))
 }
 
 // addBoolAccessLevelFlag registers a bool-shaped flag whose presence sets
@@ -42,18 +42,16 @@ func AddKubeconfigAccessLevelFlag(cmd *cobra.Command, value *config.KubeconfigAc
 // `=true` - pflag's parser keys on that field, not the IsBoolFlag interface.
 func addBoolAccessLevelFlag(flags *pflag.FlagSet, target *config.KubeconfigAccessLevel, name string, level config.KubeconfigAccessLevel) {
 	flag := flags.VarPF(newBoolAccessLevel(target, level), name, "",
-		fmt.Sprintf("shorthand for --kubeconfig-access-level=%s", level))
+		fmt.Sprintf("shorthand for --access-level=%s", level))
 	flag.NoOptDefVal = "true"
 }
 
 // boolAccessLevel is a bool-shaped pflag.Value that, when set to true, writes
 // a fixed access level into a shared target pointer. This lets --admin and
-// --viewer funnel into the same KubeconfigAccessLevel value as
-// --kubeconfig-access-level.
+// --viewer funnel into the same KubeconfigAccessLevel value as --access-level.
 type boolAccessLevel struct {
 	target *config.KubeconfigAccessLevel
 	level  config.KubeconfigAccessLevel
-	set    bool
 }
 
 var _ pflag.Value = (*boolAccessLevel)(nil)
@@ -69,22 +67,17 @@ func (b *boolAccessLevel) Set(v string) error {
 	}
 
 	if !parsed {
-		return fmt.Errorf("does not accept false; omit the flag instead, or use --kubeconfig-access-level=... to pick a different level")
+		return fmt.Errorf("does not accept false; omit the flag instead, or use --access-level=... to pick a different level")
 	}
 
 	*b.target = b.level
-	b.set = true
 
 	return nil
 }
 
-func (b *boolAccessLevel) String() string {
-	if b.set {
-		return "true"
-	}
-
-	return "false"
-}
+// String reports the flag's default for help output. Always "false" since
+// these shortcuts default to unset; current state is reflected via *b.target.
+func (b *boolAccessLevel) String() string { return "false" }
 
 func (b *boolAccessLevel) Type() string { return "bool" }
 

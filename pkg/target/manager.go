@@ -93,7 +93,7 @@ type Manager interface {
 
 	// ClientConfig returns the client config for a target.
 	// The kubeconfig access level (admin/viewer/auto) is resolved internally from the
-	// global --kubeconfig-access-level flag and the per-garden config default.
+	// global --access-level flag and the per-garden config default.
 	ClientConfig(ctx context.Context, t Target) (clientcmd.ClientConfig, error)
 	// EffectiveAccessLevel returns the kubeconfig access level that gardenctl
 	// would use for the given target. The boolean is false when gardenctl did
@@ -127,7 +127,7 @@ type managerImpl struct {
 	targetProvider   TargetProvider
 	clientProvider   internalclient.Provider
 	sessionDirectory string
-	// flagAccessLevel is the value of the global --kubeconfig-access-level flag.
+	// flagAccessLevel is the value of the global --access-level flag.
 	// Empty when unset. Takes precedence over per-garden config defaults.
 	flagAccessLevel config.KubeconfigAccessLevel
 }
@@ -154,7 +154,7 @@ func newGardenClient(name string, config *config.Config, provider internalclient
 }
 
 // NewManager returns a new manager. flagAccessLevel is the value of the global
-// --kubeconfig-access-level flag (empty when unset); the manager combines it with
+// --access-level flag (empty when unset); the manager combines it with
 // per-garden config defaults when resolving the effective level for kubeconfig requests.
 func NewManager(config *config.Config, targetProvider TargetProvider, clientProvider internalclient.Provider, sessionDirectory string, flagAccessLevel config.KubeconfigAccessLevel) (Manager, error) {
 	return &managerImpl{
@@ -210,8 +210,11 @@ func (m *managerImpl) scopeForTarget(ctx context.Context, t Target) (AccessScope
 		}
 
 		scope, err := scopeForShoot(ctx, c, ns, t.ShootName())
+		if err != nil {
+			return "", false, err
+		}
 
-		return scope, err == nil, err
+		return scope, true, nil
 	case t.SeedName() != "":
 		return AccessScopeManagedSeeds, true, nil
 	}
@@ -572,7 +575,7 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 		// typically a managed seed, so the managed-seeds scope is the right default.
 		// If the seed turns out to be non-managed, GetSeedClientConfig rejects any
 		// non-admin level - the user can override per invocation with
-		// --kubeconfig-access-level=admin.
+		// --access-level=admin.
 		accessLevel := m.resolveAccessLevel(t, AccessScopeManagedSeeds)
 
 		return m.getClientConfig(t, func(client clientgarden.Client) (clientcmd.ClientConfig, error) {

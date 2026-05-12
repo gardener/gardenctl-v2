@@ -115,15 +115,18 @@ kubeconfigAccessLevelDefaults:
   managedSeeds: admin
 ```
 
-Override per invocation with `--kubeconfig-access-level` (or the `--admin` / `--viewer` shorthands), available on commands that produce a kubeconfig (`target`, `kubeconfig`):
+Override per invocation with `--access-level` (or the `--admin` / `--viewer` shorthands), available on commands that produce a kubeconfig (`target`, `kubeconfig`):
 
 ```bash
-gardenctl kubeconfig --admin                                    # one-off escalation
-gardenctl target --shoot my-shoot --viewer                      # one-off de-escalation
-gardenctl kubeconfig --kubeconfig-access-level=auto             # explicit auto (no shorthand)
+gardenctl kubeconfig --admin                       # one-off escalation
+gardenctl target --shoot my-shoot --viewer         # one-off de-escalation
+gardenctl kubeconfig --access-level=auto           # explicit auto (no shorthand)
 ```
 
 The shorthands and the full form are mutually exclusive — pass at most one.
+
+> [!NOTE]
+> Flag overrides apply only to the invocation they're passed to. They are not persisted on disk, so a subsequent `gardenctl kubeconfig` (without a flag) re-resolves from the per-garden config defaults, not from the flag you passed to an earlier `gardenctl target`. For persistent changes set them via `gardenctl config set-garden`. You may also repeat the flags on `gardenctl kubeconfig`.
 
 The same defaults can be set via the CLI rather than hand-editing the YAML:
 
@@ -146,7 +149,7 @@ The access level only applies to **shoots and managed seeds**, where Gardener pr
 When `gardenctl` explicitly chose an access level (via flag or per-garden config), it surfaces it inline after `target` and on stderr after `kubeconfig`:
 
 ```console
-$ gardenctl target shoot prod-cluster --kubeconfig-access-level=viewer
+$ gardenctl target shoot prod-cluster --access-level=viewer
 Successfully targeted shoot "prod-cluster" (access level: viewer)
 ```
 

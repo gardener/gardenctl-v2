@@ -25,7 +25,7 @@ import (
 )
 
 // NewCmdTarget returns a new target command. accessLevel is bound to the
-// --kubeconfig-access-level persistent flag so its value is available on this
+// --access-level persistent flag so its value is available on this
 // command and all of its subcommands.
 func NewCmdTarget(f util.Factory, ioStreams util.IOStreams, accessLevel *config.KubeconfigAccessLevel) *cobra.Command {
 	o := NewTargetOptions(ioStreams)

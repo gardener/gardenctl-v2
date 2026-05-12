@@ -38,9 +38,9 @@ var _ = Describe("AddKubeconfigAccessLevelFlag", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(level).To(Equal(want))
 		},
-		Entry("--kubeconfig-access-level=admin", []string{"--kubeconfig-access-level=admin"}, config.KubeconfigAccessLevelAdmin),
-		Entry("--kubeconfig-access-level=viewer", []string{"--kubeconfig-access-level=viewer"}, config.KubeconfigAccessLevelViewer),
-		Entry("--kubeconfig-access-level=auto", []string{"--kubeconfig-access-level=auto"}, config.KubeconfigAccessLevelAuto),
+		Entry("--access-level=admin", []string{"--access-level=admin"}, config.KubeconfigAccessLevelAdmin),
+		Entry("--access-level=viewer", []string{"--access-level=viewer"}, config.KubeconfigAccessLevelViewer),
+		Entry("--access-level=auto", []string{"--access-level=auto"}, config.KubeconfigAccessLevelAuto),
 		Entry("--admin (NoOptDefVal accepts no =true)", []string{"--admin"}, config.KubeconfigAccessLevelAdmin),
 		Entry("--viewer (NoOptDefVal accepts no =true)", []string{"--viewer"}, config.KubeconfigAccessLevelViewer),
 		Entry("subcommand inherits persistent flag", []string{"child", "--viewer"}, config.KubeconfigAccessLevelViewer),
@@ -52,13 +52,13 @@ var _ = Describe("AddKubeconfigAccessLevelFlag", func() {
 			Expect(err).To(MatchError(ContainSubstring(errSubstring)))
 		},
 		Entry("--admin --viewer (mutually exclusive)", []string{"--admin", "--viewer"}, "none of the others can be"),
-		Entry("--admin --kubeconfig-access-level=viewer (mutually exclusive)", []string{"--admin", "--kubeconfig-access-level=viewer"}, "none of the others can be"),
-		Entry("--viewer --kubeconfig-access-level=admin (mutually exclusive)", []string{"--viewer", "--kubeconfig-access-level=admin"}, "none of the others can be"),
+		Entry("--admin --access-level=viewer (mutually exclusive)", []string{"--admin", "--access-level=viewer"}, "none of the others can be"),
+		Entry("--viewer --access-level=admin (mutually exclusive)", []string{"--viewer", "--access-level=admin"}, "none of the others can be"),
 		Entry("subcommand --admin --viewer still mutex (persistent flags + annotation propagate)", []string{"child", "--admin", "--viewer"}, "none of the others can be"),
 		Entry("--admin=false (rejected, switches not toggles)", []string{"--admin=false"}, "does not accept false"),
 		Entry("--viewer=false (rejected)", []string{"--viewer=false"}, "does not accept false"),
 		Entry("--admin=garbage (not a bool)", []string{"--admin=garbage"}, "invalid boolean value"),
-		Entry("--kubeconfig-access-level=guest (not in enum)", []string{"--kubeconfig-access-level=guest"}, "invalid kubeconfig access level"),
+		Entry("--access-level=guest (not in enum)", []string{"--access-level=guest"}, "invalid kubeconfig access level"),
 	)
 
 	It("leaves the value empty when no flag is set", func() {

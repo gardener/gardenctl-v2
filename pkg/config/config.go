@@ -60,7 +60,7 @@ type Garden struct {
 	// +optional
 	AccessRestrictions []ac.AccessRestriction `json:"accessRestrictions,omitempty"`
 	// KubeconfigAccessLevelDefaults sets the default access level requested per
-	// target scope when no --kubeconfig-access-level flag is provided. Each
+	// target scope when no --access-level flag is provided. Each
 	// sub-field defaults to "admin" when empty.
 	// +optional
 	KubeconfigAccessLevelDefaults *KubeconfigAccessLevels `json:"kubeconfigAccessLevelDefaults,omitempty"`

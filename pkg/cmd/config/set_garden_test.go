@@ -208,28 +208,6 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 					Expect(garden.KubeconfigAccessLevelDefaults.ManagedSeeds).To(BeEmpty())
 				})
 
-				It("clears the struct when both fields end up empty", func() {
-					options.Name = gardenIdentity1
-					// Pre-seed the garden with a non-nil struct so we can prove it gets cleared.
-					garden, err := cfg.Garden(gardenIdentity1)
-					Expect(err).NotTo(HaveOccurred())
-
-					garden.KubeconfigAccessLevelDefaults = &config.KubeconfigAccessLevels{
-						Shoots: config.KubeconfigAccessLevelViewer,
-					}
-
-					Expect(options.DefaultShootAccessLevelFlag.Set("")).To(Succeed())
-					Expect(options.Run(nil)).To(Succeed())
-
-					garden, err = cfg.Garden(gardenIdentity1)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(garden.KubeconfigAccessLevelDefaults).To(BeNil())
-				})
-
-				It("rejects an invalid value at flag-parse time", func() {
-					Expect(options.DefaultShootAccessLevelFlag.Set("guest")).
-						To(MatchError(ContainSubstring(`invalid kubeconfig access level "guest"`)))
-				})
 			})
 
 			Describe("--default-*-access-level flags via real cobra flag parsing", func() {

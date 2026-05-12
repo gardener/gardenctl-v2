@@ -26,7 +26,7 @@ import (
 )
 
 // NewCmdKubeconfig returns a new kubeconfig command. accessLevel is bound to
-// the --kubeconfig-access-level flag.
+// the --access-level flag.
 func NewCmdKubeconfig(f util.Factory, ioStreams util.IOStreams, accessLevel *config.KubeconfigAccessLevel) *cobra.Command {
 	o := newOptions(ioStreams)
 

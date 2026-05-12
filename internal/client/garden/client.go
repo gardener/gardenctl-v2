@@ -618,7 +618,7 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string, acces
 	// the static kubeconfig grants - they depend on the cluster's RBAC.
 	if accessLevel == config.KubeconfigAccessLevelViewer {
 		return nil, fmt.Errorf("seed %q is not a managed seed; gardenlogin's access-level mechanism is unavailable for static seed-login kubeconfigs. "+
-			"Re-run without %q (or with --kubeconfig-access-level=%s) to use the static kubeconfig as-is",
+			"Re-run without %q (or with --access-level=%s) to use the static kubeconfig as-is",
 			name, accessLevel, config.KubeconfigAccessLevelAdmin)
 	}
 
