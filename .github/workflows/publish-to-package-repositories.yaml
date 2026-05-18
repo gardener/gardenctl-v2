@@ -64,6 +64,7 @@ jobs:
           repositories: |
             homebrew-tap
             chocolatey-packages
+          permission-contents: write
 
       - uses: gardener/cc-utils/.github/actions/trusted-checkout@v1 # zizmor: ignore[unpinned-uses] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
       - name: export-version-from-input
