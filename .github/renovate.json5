@@ -93,17 +93,5 @@
         'github-actions',
       ],
     },
-    {
-      matchManagers: [
-        'gomod',
-      ],
-      matchUpdateTypes: [
-        'patch',
-      ],
-      enabled: false,
-      matchPackageNames: [
-        '/go/',
-      ],
-    },
   ],
 }
