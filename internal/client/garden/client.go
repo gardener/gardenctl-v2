@@ -414,15 +414,20 @@ func (g *clientImpl) IsManagedSeed(ctx context.Context, shootNamespace, shootNam
 }
 
 func (g *clientImpl) IsManagedSeedByName(ctx context.Context, seedName string) (bool, error) {
+	// A ManagedSeed produces a Seed of the same metadata.name, but its
+	// spec.shoot.name may differ - so the lookup is by name, not field selector.
 	list := &seedmanagementv1alpha1.ManagedSeedList{}
-
-	if err := g.c.List(ctx, list,
-		client.MatchingFields{seedmanagement.ManagedSeedShootName: seedName},
-	); err != nil {
+	if err := g.c.List(ctx, list); err != nil {
 		return false, err
 	}
 
-	return len(list.Items) > 0, nil
+	for i := range list.Items {
+		if list.Items[i].Name == seedName {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func (g *clientImpl) GetShootOfManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.Shoot, error) {
