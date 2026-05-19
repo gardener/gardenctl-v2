@@ -197,7 +197,7 @@ func (m *managerImpl) EffectiveAccessLevel(ctx context.Context, t Target) (confi
 func (m *managerImpl) scopeForTarget(ctx context.Context, t Target) (AccessScope, bool, error) {
 	switch {
 	case t.ControlPlane():
-		return AccessScopeManagedSeeds, true, nil
+		return scopeForSeedTarget(ctx, m, t)
 	case t.ShootName() != "":
 		c, err := m.GardenClient(t.GardenName())
 		if err != nil {
@@ -216,10 +216,30 @@ func (m *managerImpl) scopeForTarget(ctx context.Context, t Target) (AccessScope
 
 		return scope, true, nil
 	case t.SeedName() != "":
-		return AccessScopeManagedSeeds, true, nil
+		return scopeForSeedTarget(ctx, m, t)
 	}
 
 	return "", false, nil
+}
+
+// scopeForSeedTarget returns the managed-seed scope, or no scope for
+// non-managed seeds (static seed-login kubeconfig: access level unknown).
+func scopeForSeedTarget(ctx context.Context, m *managerImpl, t Target) (AccessScope, bool, error) {
+	c, err := m.GardenClient(t.GardenName())
+	if err != nil {
+		return "", false, err
+	}
+
+	isManaged, err := c.IsManagedSeedByName(ctx, t.SeedName())
+	if err != nil {
+		return "", false, err
+	}
+
+	if !isManaged {
+		return "", false, nil
+	}
+
+	return AccessScopeManagedSeeds, true, nil
 }
 
 // scopeForShoot picks the access scope for a shoot kubeconfig: managedSeeds

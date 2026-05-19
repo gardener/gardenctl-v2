@@ -861,19 +861,21 @@ var _ = Describe("Target Manager", func() {
 		}
 
 		DescribeTable("routes to the right scope",
-			func(t target.Target, objs []client.Object, want config.KubeconfigAccessLevel) {
+			func(t target.Target, objs []client.Object, wantOK bool, want config.KubeconfigAccessLevel) {
 				m := newManagerWithGarden(levels, objs...)
 				level, ok, err := m.EffectiveAccessLevel(ctx, t)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(ok).To(BeTrue())
+				Expect(ok).To(Equal(wantOK))
 				Expect(level).To(Equal(want))
 			},
 			Entry("regular shoot -> shoots scope (viewer)",
-				target.NewTarget(gardenName, projectName, "", plainShoot), []client.Object{project}, config.KubeconfigAccessLevelViewer),
-			Entry("seed target -> managedSeeds scope (admin)",
-				target.NewTarget(gardenName, "", "some-seed", ""), []client.Object{project}, config.KubeconfigAccessLevelAdmin),
+				target.NewTarget(gardenName, projectName, "", plainShoot), []client.Object{project}, true, config.KubeconfigAccessLevelViewer),
+			Entry("managed seed target -> managedSeeds scope (admin)",
+				target.NewTarget(gardenName, "", seedShoot, ""), []client.Object{project, managedSeed}, true, config.KubeconfigAccessLevelAdmin),
+			Entry("non-managed seed target -> no scope (static seed-login kubeconfig)",
+				target.NewTarget(gardenName, "", "some-seed", ""), []client.Object{project}, false, config.KubeconfigAccessLevel("")),
 			Entry("managed-seed-backing shoot -> managedSeeds scope (admin) regardless of target path",
-				target.NewTarget(gardenName, projectName, "", seedShoot), []client.Object{project, managedSeed}, config.KubeconfigAccessLevelAdmin),
+				target.NewTarget(gardenName, projectName, "", seedShoot), []client.Object{project, managedSeed}, true, config.KubeconfigAccessLevelAdmin),
 		)
 	})
 })

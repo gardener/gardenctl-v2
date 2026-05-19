@@ -115,6 +115,10 @@ type Client interface {
 	// selector rather than relying on the (conventional but not guaranteed)
 	// equality of ManagedSeed and shoot names.
 	IsManagedSeed(ctx context.Context, shootNamespace, shootName string) (bool, error)
+	// IsManagedSeedByName reports whether a seed of the given name is a managed
+	// seed (i.e. produced by a ManagedSeed resource). Lists cluster-wide so it
+	// works regardless of which namespace the ManagedSeed lives in.
+	IsManagedSeedByName(ctx context.Context, seedName string) (bool, error)
 
 	// GetBastion returns a Gardener bastion resource by namespace and name
 	GetBastion(ctx context.Context, namespace, name string) (*operationsv1alpha1.Bastion, error)
@@ -402,6 +406,18 @@ func (g *clientImpl) IsManagedSeed(ctx context.Context, shootNamespace, shootNam
 	if err := g.c.List(ctx, list,
 		client.InNamespace(shootNamespace),
 		client.MatchingFields{seedmanagement.ManagedSeedShootName: shootName},
+	); err != nil {
+		return false, err
+	}
+
+	return len(list.Items) > 0, nil
+}
+
+func (g *clientImpl) IsManagedSeedByName(ctx context.Context, seedName string) (bool, error) {
+	list := &seedmanagementv1alpha1.ManagedSeedList{}
+
+	if err := g.c.List(ctx, list,
+		client.MatchingFields{seedmanagement.ManagedSeedShootName: seedName},
 	); err != nil {
 		return false, err
 	}
