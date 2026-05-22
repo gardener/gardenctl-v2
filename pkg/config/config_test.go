@@ -455,7 +455,7 @@ provider:
 				func(value config.KubeconfigAccessLevel) {
 					Expect(value.Validate()).To(Succeed())
 				},
-				Entry("empty (use built-in default)", config.KubeconfigAccessLevel("")),
+				Entry("empty (delegate to gardenlogin's default)", config.KubeconfigAccessLevel("")),
 				Entry("admin", config.KubeconfigAccessLevelAdmin),
 				Entry("viewer", config.KubeconfigAccessLevelViewer),
 				Entry("auto", config.KubeconfigAccessLevelAuto),

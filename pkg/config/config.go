@@ -131,14 +131,13 @@ func AllKubeconfigAccessLevelStrings() []string {
 }
 
 // Validate returns an error if the access level is not one of the allowed values.
-// An empty value is treated as valid (= use the built-in default).
+// An empty value is treated as valid (= delegate to gardenlogin's default).
 func (l KubeconfigAccessLevel) Validate() error {
 	if l == "" || slices.Contains(AllKubeconfigAccessLevels, l) {
 		return nil
 	}
 
-	return fmt.Errorf("invalid kubeconfig access level %q: must be one of %q, %q, %q",
-		l, KubeconfigAccessLevelAdmin, KubeconfigAccessLevelViewer, KubeconfigAccessLevelAuto)
+	return fmt.Errorf("invalid kubeconfig access level %q: must be one of %q", l, AllKubeconfigAccessLevels)
 }
 
 var _ pflag.Value = (*KubeconfigAccessLevel)(nil)

@@ -35,8 +35,8 @@ gardenctl config set-garden prd-garden --default-shoot-access-level viewer
 ```
       --alias string                        unique alias of this Garden that can be used instead of the name to target this Garden
       --context string                      override the current-context of the garden cluster kubeconfig
-      --default-seed-access-level string    default kubeconfig access level when targeting seeds in this garden (and shoots that back a managed seed, since they physically are the seed cluster). One of "admin", "viewer", "auto". Pass an empty value to reset to the built-in default ("admin").
-      --default-shoot-access-level string   default kubeconfig access level when targeting shoots in this garden. One of "admin", "viewer", "auto". Pass an empty value to reset to the built-in default ("admin").
+      --default-seed-access-level string    default kubeconfig access level when targeting seeds in this garden (and shoots that back a managed seed, since they physically are the seed cluster). One of "admin", "viewer", "auto". Pass an empty value to unset and delegate to gardenlogin's default.
+      --default-shoot-access-level string   default kubeconfig access level when targeting shoots in this garden. One of "admin", "viewer", "auto". Pass an empty value to unset and delegate to gardenlogin's default.
   -h, --help                                help for set-garden
       --kubeconfig string                   path to kubeconfig file for this Garden cluster
       --pattern stringArray                 define regex match patterns for this garden for custom input formats for targeting.

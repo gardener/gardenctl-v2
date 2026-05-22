@@ -244,7 +244,7 @@ var _ = Describe("Client", func() {
 				_, err := gardenClient.GetSeedClientConfig(ctx, "seed-1", level)
 				Expect(err).NotTo(HaveOccurred())
 			},
-			Entry("empty (built-in default)", config.KubeconfigAccessLevel("")),
+			Entry("empty (delegate to gardenlogin's default)", config.KubeconfigAccessLevel("")),
 			Entry("admin", config.KubeconfigAccessLevelAdmin),
 			Entry("auto", config.KubeconfigAccessLevelAuto),
 		)

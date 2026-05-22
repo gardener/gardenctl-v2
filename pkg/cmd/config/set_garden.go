@@ -85,11 +85,11 @@ type setGardenOptions struct {
 	// +optional
 	Patterns []string
 	// DefaultShootAccessLevelFlag sets kubeconfigAccessLevelDefaults.shoots in the
-	// stored Garden config (admin | viewer | auto).
+	// stored Garden config (admin | viewer | auto | "" to delegate to gardenlogin's default).
 	// +optional
 	DefaultShootAccessLevelFlag accessLevelFlag
 	// DefaultSeedAccessLevelFlag sets kubeconfigAccessLevelDefaults.seeds in the
-	// stored Garden config (admin | viewer | auto).
+	// stored Garden config (admin | viewer | auto | "" to delegate to gardenlogin's default).
 	// +optional
 	DefaultSeedAccessLevelFlag accessLevelFlag
 }
@@ -173,11 +173,11 @@ Supported capturing groups: project, namespace, shoot.
 Note that if you set this flag it will overwrite the pattern list in the config file.
 You may specify any number of extra patterns.`)
 	flags.Var(&o.DefaultShootAccessLevelFlag, FlagDefaultShootAccessLevel,
-		fmt.Sprintf(`default kubeconfig access level when targeting shoots in this garden. One of %q, %q, %q. Pass an empty value to reset to the built-in default (%q).`,
-			config.KubeconfigAccessLevelAdmin, config.KubeconfigAccessLevelViewer, config.KubeconfigAccessLevelAuto, config.KubeconfigAccessLevelAdmin))
+		fmt.Sprintf(`default kubeconfig access level when targeting shoots in this garden. One of %q, %q, %q. Pass an empty value to unset and delegate to gardenlogin's default.`,
+			config.KubeconfigAccessLevelAdmin, config.KubeconfigAccessLevelViewer, config.KubeconfigAccessLevelAuto))
 	flags.Var(&o.DefaultSeedAccessLevelFlag, FlagDefaultSeedAccessLevel,
-		fmt.Sprintf(`default kubeconfig access level when targeting seeds in this garden (and shoots that back a managed seed, since they physically are the seed cluster). One of %q, %q, %q. Pass an empty value to reset to the built-in default (%q).`,
-			config.KubeconfigAccessLevelAdmin, config.KubeconfigAccessLevelViewer, config.KubeconfigAccessLevelAuto, config.KubeconfigAccessLevelAdmin))
+		fmt.Sprintf(`default kubeconfig access level when targeting seeds in this garden (and shoots that back a managed seed, since they physically are the seed cluster). One of %q, %q, %q. Pass an empty value to unset and delegate to gardenlogin's default.`,
+			config.KubeconfigAccessLevelAdmin, config.KubeconfigAccessLevelViewer, config.KubeconfigAccessLevelAuto))
 }
 
 // Run executes the command.
@@ -229,7 +229,7 @@ func (o *setGardenOptions) Run(_ util.Factory) error {
 
 	if o.DefaultShootAccessLevelFlag.Provided() || o.DefaultSeedAccessLevelFlag.Provided() {
 		fmt.Fprintf(o.IOStreams.ErrOut,
-			"Note: existing session kubeconfigs are not regenerated. Run `gardenctl target` again for the new access level to take effect.\n")
+			"\nNote: existing session kubeconfigs are not regenerated. Run `gardenctl target` again for the new access level to take effect.\n")
 	}
 
 	return nil

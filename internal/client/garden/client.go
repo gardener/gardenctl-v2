@@ -72,11 +72,14 @@ type Client interface {
 	// ListSeeds returns all Gardener seed resources
 	ListSeeds(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.SeedList, error)
 	// GetSeedClientConfig returns the client config for a seed.
+	//
 	// For managed seeds, accessLevel is honored (the call is delegated to
-	// GetShootClientConfig). For non-managed seeds the kubeconfig comes from a
-	// static <name>.login Secret which only supports admin access - a non-admin
-	// accessLevel returns an error rather than silently producing an admin
-	// kubeconfig. Pass an empty value or "admin" for non-managed seeds.
+	// GetShootClientConfig).
+	//
+	// For non-managed seeds the kubeconfig comes from a static <name>.login
+	// Secret; an explicit "viewer" accessLevel returns an error since gardenctl
+	// cannot guarantee the privileges of a static kubeconfig. Any other value
+	// (empty, "admin", "auto") returns the static kubeconfig as-is.
 	GetSeedClientConfig(ctx context.Context, name string, accessLevel config.KubeconfigAccessLevel) (clientcmd.ClientConfig, error)
 
 	// GetShoot returns a Gardener shoot resource in a namespace by name
@@ -644,7 +647,7 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string, acces
 	if accessLevel == config.KubeconfigAccessLevelViewer {
 		return nil, fmt.Errorf("seed %q is not a managed seed; gardenlogin's access-level mechanism is unavailable for static seed-login kubeconfigs. "+
 			"Re-run without %q (or with --access-level=%s) to use the static kubeconfig as-is",
-			name, accessLevel, config.KubeconfigAccessLevelAdmin)
+			name, accessLevel, config.KubeconfigAccessLevelAuto)
 	}
 
 	key := types.NamespacedName{Name: name}
