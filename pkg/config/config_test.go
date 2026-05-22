@@ -509,17 +509,17 @@ provider:
 			Expect(cfg.Validate()).To(MatchError(ContainSubstring(`shoots: invalid kubeconfig access level "guest"`)))
 		})
 
-		It("rejects an unknown managedSeeds access level", func() {
+		It("rejects an unknown seeds access level", func() {
 			cfg := &config.Config{
 				Gardens: []config.Garden{{
 					Name:       "g1",
 					Kubeconfig: "kubeconfig",
 					KubeconfigAccessLevelDefaults: &config.KubeconfigAccessLevels{
-						ManagedSeeds: config.KubeconfigAccessLevel("guest"),
+						Seeds: config.KubeconfigAccessLevel("guest"),
 					},
 				}},
 			}
-			Expect(cfg.Validate()).To(MatchError(ContainSubstring(`managedSeeds: invalid kubeconfig access level "guest"`)))
+			Expect(cfg.Validate()).To(MatchError(ContainSubstring(`seeds: invalid kubeconfig access level "guest"`)))
 		})
 
 		It("accepts a missing, partial, or valid access level config", func() {
@@ -530,8 +530,8 @@ provider:
 						Shoots: config.KubeconfigAccessLevelViewer,
 					}},
 					{Name: "g3", Kubeconfig: "kubeconfig", KubeconfigAccessLevelDefaults: &config.KubeconfigAccessLevels{
-						Shoots:       config.KubeconfigAccessLevelViewer,
-						ManagedSeeds: config.KubeconfigAccessLevelAdmin,
+						Shoots: config.KubeconfigAccessLevelViewer,
+						Seeds:  config.KubeconfigAccessLevelAdmin,
 					}},
 				},
 			}

@@ -55,6 +55,16 @@ func (cic createInterceptingClient) Create(ctx context.Context, obj client.Objec
 	return cic.Client.Create(ctx, obj, opts...)
 }
 
+// listFailingClient errors on any List call. Used to prove a code path does
+// not call List - if List were called, the wrapped error would propagate.
+type listFailingClient struct {
+	client.Client
+}
+
+func (listFailingClient) List(_ context.Context, _ client.ObjectList, _ ...client.ListOption) error {
+	return fmt.Errorf("List should not have been called")
+}
+
 var _ = Describe("Client", func() {
 	const (
 		gardenName = "my-garden"
@@ -266,6 +276,72 @@ var _ = Describe("Client", func() {
 			shoot, err := gardenClient.GetShootOfManagedSeed(ctx, "managedSeed")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(shoot.Name).To(Equal("shootOfManagedSeed"))
+		})
+	})
+
+	Describe("IsManagedSeed", func() {
+		var managedSeed *seedmanagementv1alpha1.ManagedSeed
+
+		BeforeEach(func() {
+			ctx = context.Background()
+			managedSeed = &seedmanagementv1alpha1.ManagedSeed{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "ms",
+					Namespace: "garden",
+					UID:       "00000000-0000-0000-0000-000000000001",
+				},
+				Spec: seedmanagementv1alpha1.ManagedSeedSpec{
+					Shoot: &seedmanagementv1alpha1.Shoot{Name: "shoot-foo"},
+				},
+			}
+		})
+
+		It("returns true when a matching ManagedSeed exists in the garden namespace", func() {
+			gardenClient = clientgarden.NewClient(nil, fake.NewClientWithObjects(managedSeed), gardenName)
+			ok, err := gardenClient.IsManagedSeed(ctx, "garden", "shoot-foo")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ok).To(BeTrue())
+		})
+
+		It("returns false when no ManagedSeed exists in the garden namespace", func() {
+			gardenClient = clientgarden.NewClient(nil, fake.NewClientWithObjects(), gardenName)
+			ok, err := gardenClient.IsManagedSeed(ctx, "garden", "any-shoot")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ok).To(BeFalse())
+		})
+
+		It("returns false without an API call when shootNamespace is not the garden namespace (RBAC safety)", func() {
+			// listFailingClient errors on any List call. If IsManagedSeed's
+			// short-circuit works, no List is performed and this test passes.
+			gardenClient = clientgarden.NewClient(nil, listFailingClient{Client: fake.NewClientWithObjects(managedSeed)}, gardenName)
+			ok, err := gardenClient.IsManagedSeed(ctx, "garden-myproject", "shoot-foo")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ok).To(BeFalse())
+		})
+	})
+
+	Describe("IsManagedSeedByName", func() {
+		BeforeEach(func() { ctx = context.Background() })
+
+		It("returns true when a ManagedSeed of that name exists in the garden namespace", func() {
+			managedSeed := &seedmanagementv1alpha1.ManagedSeed{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-seed",
+					Namespace: "garden",
+					UID:       "00000000-0000-0000-0000-000000000002",
+				},
+			}
+			gardenClient = clientgarden.NewClient(nil, fake.NewClientWithObjects(managedSeed), gardenName)
+			ok, err := gardenClient.IsManagedSeedByName(ctx, "my-seed")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ok).To(BeTrue())
+		})
+
+		It("returns false when no ManagedSeed of that name exists (NotFound)", func() {
+			gardenClient = clientgarden.NewClient(nil, fake.NewClientWithObjects(), gardenName)
+			ok, err := gardenClient.IsManagedSeedByName(ctx, "absent-seed")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ok).To(BeFalse())
 		})
 	})
 

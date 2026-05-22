@@ -33,7 +33,7 @@ gardenctl target control-plane --garden my-garden --project my-project --shoot m
 ### Options inherited from parent commands
 
 ```
-      --access-level string                 Override default kubeconfig access level for shoots/managed-seeds. One of "admin", "viewer", "auto".
+      --access-level string                 Override the default kubeconfig access level when targeting shoots or seeds. One of "admin", "viewer", "auto".
       --add-dir-header                      If true, adds the file directory to the header of the log messages
       --admin                               shorthand for --access-level=admin
       --alsologtostderr                     log to standard error as well as files (no effect when -logtostderr=true)

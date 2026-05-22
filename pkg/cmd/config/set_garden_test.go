@@ -30,7 +30,7 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 			Expect(cmd.Use).To(Equal("set-garden"))
 			Expect(cmd.ValidArgsFunction).NotTo(BeNil())
 			Expect(cmd.ValidArgs).To(BeNil())
-			assertAllFlagNames(cmd.Flags(), "alias", "context", "default-managed-seed-access-level", "default-shoot-access-level", "kubeconfig", "pattern")
+			assertAllFlagNames(cmd.Flags(), "alias", "context", "default-seed-access-level", "default-shoot-access-level", "kubeconfig", "pattern")
 		})
 	})
 
@@ -179,19 +179,19 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 			})
 
 			Describe("default kubeconfig access level flags", func() {
-				It("sets shoots and managedSeeds on a new garden", func() {
+				It("sets shoots and seeds on a new garden", func() {
 					options.Name = gardenIdentity3
 					Expect(options.KubeconfigFlag.Set(pathToKubeconfig)).To(Succeed())
 					Expect(options.DefaultShootAccessLevelFlag.Set(string(config.KubeconfigAccessLevelViewer))).To(Succeed())
-					Expect(options.DefaultManagedSeedAccessLevelFlag.Set(string(config.KubeconfigAccessLevelAdmin))).To(Succeed())
+					Expect(options.DefaultSeedAccessLevelFlag.Set(string(config.KubeconfigAccessLevelAdmin))).To(Succeed())
 					Expect(options.Run(nil)).To(Succeed())
 
 					assertGarden(cfg, &config.Garden{
 						Name:       gardenIdentity3,
 						Kubeconfig: pathToKubeconfig,
 						KubeconfigAccessLevelDefaults: &config.KubeconfigAccessLevels{
-							Shoots:       config.KubeconfigAccessLevelViewer,
-							ManagedSeeds: config.KubeconfigAccessLevelAdmin,
+							Shoots: config.KubeconfigAccessLevelViewer,
+							Seeds:  config.KubeconfigAccessLevelAdmin,
 						},
 					})
 				})
@@ -205,7 +205,7 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(garden.KubeconfigAccessLevelDefaults).NotTo(BeNil())
 					Expect(garden.KubeconfigAccessLevelDefaults.Shoots).To(Equal(config.KubeconfigAccessLevelViewer))
-					Expect(garden.KubeconfigAccessLevelDefaults.ManagedSeeds).To(BeEmpty())
+					Expect(garden.KubeconfigAccessLevelDefaults.Seeds).To(BeEmpty())
 				})
 
 			})

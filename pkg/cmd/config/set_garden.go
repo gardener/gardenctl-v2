@@ -24,7 +24,7 @@ import (
 
 const (
 	FlagDefaultShootAccessLevel       = "default-shoot-access-level"
-	FlagDefaultManagedSeedAccessLevel = "default-managed-seed-access-level"
+	FlagDefaultSeedAccessLevel        = "default-seed-access-level"
 )
 
 // NewCmdConfigSetGarden returns a new (config) set-garden command.
@@ -51,7 +51,7 @@ gardenctl config set-garden $CLUSTER_IDENTITY --kubeconfig $KUBECONFIG
 # configure my-garden with a context and patterns
 gardenctl config set-garden my-garden --context garden-context --pattern "^(?:landscape-dev/)?shoot--(?P<project>.+)--(?P<shoot>.+)$" --pattern "https://dashboard\.gardener\.cloud/namespace/(?P<namespace>[^/]+)/shoots/(?P<shoot>[^/]+)"
 
-# configure prd-garden so shoot kubeconfigs default to read-only viewer access (managed seed access stays at admin)
+# configure prd-garden so shoot kubeconfigs default to read-only viewer access (seed access stays at admin)
 gardenctl config set-garden prd-garden --default-shoot-access-level viewer`,
 		ValidArgsFunction: validGardenArgsFunctionWrapper(f, ioStreams),
 		RunE:              base.WrapRunE(o, f),
@@ -60,7 +60,7 @@ gardenctl config set-garden prd-garden --default-shoot-access-level viewer`,
 	o.AddFlags(cmd.Flags())
 
 	flagsutil.RegisterKubeconfigAccessLevelCompletion(cmd, FlagDefaultShootAccessLevel)
-	flagsutil.RegisterKubeconfigAccessLevelCompletion(cmd, FlagDefaultManagedSeedAccessLevel)
+	flagsutil.RegisterKubeconfigAccessLevelCompletion(cmd, FlagDefaultSeedAccessLevel)
 
 	return cmd
 }
@@ -88,10 +88,10 @@ type setGardenOptions struct {
 	// stored Garden config (admin | viewer | auto).
 	// +optional
 	DefaultShootAccessLevelFlag accessLevelFlag
-	// DefaultManagedSeedAccessLevelFlag sets kubeconfigAccessLevelDefaults.managedSeeds
-	// in the stored Garden config (admin | viewer | auto).
+	// DefaultSeedAccessLevelFlag sets kubeconfigAccessLevelDefaults.seeds in the
+	// stored Garden config (admin | viewer | auto).
 	// +optional
-	DefaultManagedSeedAccessLevelFlag accessLevelFlag
+	DefaultSeedAccessLevelFlag accessLevelFlag
 }
 
 // accessLevelFlag is a pflag.Value for config.KubeconfigAccessLevel that also
@@ -175,8 +175,8 @@ You may specify any number of extra patterns.`)
 	flags.Var(&o.DefaultShootAccessLevelFlag, FlagDefaultShootAccessLevel,
 		fmt.Sprintf(`default kubeconfig access level when targeting shoots in this garden. One of %q, %q, %q. Pass an empty value to reset to the built-in default (%q).`,
 			config.KubeconfigAccessLevelAdmin, config.KubeconfigAccessLevelViewer, config.KubeconfigAccessLevelAuto, config.KubeconfigAccessLevelAdmin))
-	flags.Var(&o.DefaultManagedSeedAccessLevelFlag, FlagDefaultManagedSeedAccessLevel,
-		fmt.Sprintf(`default kubeconfig access level when targeting managed seeds in this garden. One of %q, %q, %q. Pass an empty value to reset to the built-in default (%q).`,
+	flags.Var(&o.DefaultSeedAccessLevelFlag, FlagDefaultSeedAccessLevel,
+		fmt.Sprintf(`default kubeconfig access level when targeting seeds in this garden (and shoots that back a managed seed, since they physically are the seed cluster). One of %q, %q, %q. Pass an empty value to reset to the built-in default (%q).`,
 			config.KubeconfigAccessLevelAdmin, config.KubeconfigAccessLevelViewer, config.KubeconfigAccessLevelAuto, config.KubeconfigAccessLevelAdmin))
 }
 
@@ -227,7 +227,7 @@ func (o *setGardenOptions) Run(_ util.Factory) error {
 
 	fmt.Fprintf(o.IOStreams.Out, "Successfully configured garden %q\n", o.Name)
 
-	if o.DefaultShootAccessLevelFlag.Provided() || o.DefaultManagedSeedAccessLevelFlag.Provided() {
+	if o.DefaultShootAccessLevelFlag.Provided() || o.DefaultSeedAccessLevelFlag.Provided() {
 		fmt.Fprintf(o.IOStreams.ErrOut,
 			"Note: existing session kubeconfigs are not regenerated. Run `gardenctl target` again for the new access level to take effect.\n")
 	}
@@ -239,7 +239,7 @@ func (o *setGardenOptions) Run(_ util.Factory) error {
 // KubeconfigAccessLevelDefaults, allocating the struct lazily and clearing it when
 // both fields end up empty so we don't litter the config file with empty objects.
 func (o *setGardenOptions) applyAccessLevelFlags(garden *config.Garden) {
-	if !o.DefaultShootAccessLevelFlag.Provided() && !o.DefaultManagedSeedAccessLevelFlag.Provided() {
+	if !o.DefaultShootAccessLevelFlag.Provided() && !o.DefaultSeedAccessLevelFlag.Provided() {
 		return
 	}
 
@@ -251,11 +251,11 @@ func (o *setGardenOptions) applyAccessLevelFlags(garden *config.Garden) {
 		garden.KubeconfigAccessLevelDefaults.Shoots = o.DefaultShootAccessLevelFlag.Value()
 	}
 
-	if o.DefaultManagedSeedAccessLevelFlag.Provided() {
-		garden.KubeconfigAccessLevelDefaults.ManagedSeeds = o.DefaultManagedSeedAccessLevelFlag.Value()
+	if o.DefaultSeedAccessLevelFlag.Provided() {
+		garden.KubeconfigAccessLevelDefaults.Seeds = o.DefaultSeedAccessLevelFlag.Value()
 	}
 
-	if garden.KubeconfigAccessLevelDefaults.Shoots == "" && garden.KubeconfigAccessLevelDefaults.ManagedSeeds == "" {
+	if garden.KubeconfigAccessLevelDefaults.Shoots == "" && garden.KubeconfigAccessLevelDefaults.Seeds == "" {
 		garden.KubeconfigAccessLevelDefaults = nil
 	}
 }

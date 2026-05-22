@@ -22,7 +22,7 @@ gardenctl target value/that/matches/pattern --control-plane
 ### Options
 
 ```
-      --access-level string   Override default kubeconfig access level for shoots/managed-seeds. One of "admin", "viewer", "auto".
+      --access-level string   Override the default kubeconfig access level when targeting shoots or seeds. One of "admin", "viewer", "auto".
       --admin                 shorthand for --access-level=admin
       --control-plane         target control plane of shoot, use together with shoot argument
       --garden string         target the given garden cluster

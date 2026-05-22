@@ -25,7 +25,7 @@ gardenctl kubeconfig --garden my-garden --project my-project
 ### Options
 
 ```
-      --access-level string           Override default kubeconfig access level for shoots/managed-seeds. One of "admin", "viewer", "auto".
+      --access-level string           Override the default kubeconfig access level when targeting shoots or seeds. One of "admin", "viewer", "auto".
       --admin                         shorthand for --access-level=admin
       --allow-missing-template-keys   If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats. (default true)
       --context string                The name of the kubeconfig context to use

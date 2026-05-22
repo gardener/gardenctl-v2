@@ -29,7 +29,7 @@ import (
 func AddKubeconfigAccessLevelFlag(cmd *cobra.Command, value *config.KubeconfigAccessLevel) {
 	flags := cmd.PersistentFlags()
 	flags.Var(value, "access-level",
-		fmt.Sprintf(`Override default kubeconfig access level for shoots/managed-seeds. One of %q, %q, %q.`,
+		fmt.Sprintf(`Override the default kubeconfig access level when targeting shoots or seeds. One of %q, %q, %q.`,
 			config.KubeconfigAccessLevelAdmin, config.KubeconfigAccessLevelViewer, config.KubeconfigAccessLevelAuto))
 	addBoolAccessLevelFlag(flags, value, "admin", config.KubeconfigAccessLevelAdmin)
 	addBoolAccessLevelFlag(flags, value, "viewer", config.KubeconfigAccessLevelViewer)

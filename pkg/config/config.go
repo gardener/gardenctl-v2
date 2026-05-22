@@ -67,16 +67,19 @@ type Garden struct {
 }
 
 // KubeconfigAccessLevels defines per-scope default access levels for kubeconfig
-// requests in a garden. Non-managed seeds are not configurable here - they always use
-// the static seed-login secret, which only supports admin access.
+// requests in a garden. The Seeds default applies to any seed kubeconfig
+// request (managed or not); for non-managed seeds the static seed-login secret
+// is returned and an explicit "viewer" level is rejected by GetSeedClientConfig.
 type KubeconfigAccessLevels struct {
 	// Shoots is the default access level used when targeting a shoot.
 	// +optional
 	Shoots KubeconfigAccessLevel `json:"shoots,omitempty"`
-	// ManagedSeeds is the default access level used when targeting a managed seed
-	// (or a shoot's control plane on a managed seed).
+	// Seeds is the default access level used when targeting a seed (managed or
+	// not), or a shoot's control plane (which runs on a seed). A shoot that
+	// backs a managed seed also uses this default, since it physically is the
+	// seed cluster.
 	// +optional
-	ManagedSeeds KubeconfigAccessLevel `json:"managedSeeds,omitempty"`
+	Seeds KubeconfigAccessLevel `json:"seeds,omitempty"`
 }
 
 // Validate returns an error if any of the per-scope levels has an invalid value.
@@ -89,8 +92,8 @@ func (l *KubeconfigAccessLevels) Validate() error {
 		return fmt.Errorf("shoots: %w", err)
 	}
 
-	if err := l.ManagedSeeds.Validate(); err != nil {
-		return fmt.Errorf("managedSeeds: %w", err)
+	if err := l.Seeds.Validate(); err != nil {
+		return fmt.Errorf("seeds: %w", err)
 	}
 
 	return nil

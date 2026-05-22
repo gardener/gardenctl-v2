@@ -111,15 +111,17 @@ type Client interface {
 	// GetShootOfManagedSeed returns shoot of seed using ManagedSeed resource. An error is returned if it is not a managed seed or the referenced shoot is nil
 	GetShootOfManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.Shoot, error)
 	// IsManagedSeed reports whether the shoot identified by (shootNamespace, shootName)
-	// is referenced by a ManagedSeed resource. Uses the spec.shoot.name field
-	// selector rather than relying on the (conventional but not guaranteed)
-	// equality of ManagedSeed and shoot names.
+	// is referenced by a ManagedSeed resource. Returns false without an API call
+	// when shootNamespace is not the garden namespace, since the Gardener API
+	// server enforces that ManagedSeeds and their referenced shoots both live in
+	// the garden namespace. This also avoids a forbidden List for regular users,
+	// who typically lack ManagedSeed List permission in their project namespaces.
 	IsManagedSeed(ctx context.Context, shootNamespace, shootName string) (bool, error)
 	// IsManagedSeedByName reports whether a seed of the given name is a managed
-	// seed (i.e. produced by a ManagedSeed resource). Lists cluster-wide so it
-	// works regardless of which namespace the ManagedSeed lives in.
+	// seed. ManagedSeed.metadata.name equals the resulting Seed.metadata.name,
+	// so this is a direct Get in the garden namespace (see Gardener's
+	// utils/kubernetes.GetManagedSeedByName for the same pattern).
 	IsManagedSeedByName(ctx context.Context, seedName string) (bool, error)
-
 	// GetBastion returns a Gardener bastion resource by namespace and name
 	GetBastion(ctx context.Context, namespace, name string) (*operationsv1alpha1.Bastion, error)
 	// ListBastions returns all Gardener bastion resources, filtered by a list option
@@ -401,6 +403,10 @@ func (g *clientImpl) GetConfigMap(ctx context.Context, namespace, name string) (
 }
 
 func (g *clientImpl) IsManagedSeed(ctx context.Context, shootNamespace, shootName string) (bool, error) {
+	if shootNamespace != corev1beta1constants.GardenNamespace {
+		return false, nil
+	}
+
 	list := &seedmanagementv1alpha1.ManagedSeedList{}
 
 	if err := g.c.List(ctx, list,
@@ -414,25 +420,23 @@ func (g *clientImpl) IsManagedSeed(ctx context.Context, shootNamespace, shootNam
 }
 
 func (g *clientImpl) IsManagedSeedByName(ctx context.Context, seedName string) (bool, error) {
-	// A ManagedSeed produces a Seed of the same metadata.name, but its
-	// spec.shoot.name may differ - so the lookup is by name, not field selector.
-	list := &seedmanagementv1alpha1.ManagedSeedList{}
-	if err := g.c.List(ctx, list); err != nil {
+	managedSeed := &seedmanagementv1alpha1.ManagedSeed{}
+	key := types.NamespacedName{Namespace: corev1beta1constants.GardenNamespace, Name: seedName}
+
+	if err := g.c.Get(ctx, key, managedSeed); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+
 		return false, err
 	}
 
-	for i := range list.Items {
-		if list.Items[i].Name == seedName {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	return true, nil
 }
 
 func (g *clientImpl) GetShootOfManagedSeed(ctx context.Context, name string) (*seedmanagementv1alpha1.Shoot, error) {
 	managedSeed := &seedmanagementv1alpha1.ManagedSeed{}
-	key := types.NamespacedName{Namespace: "garden", Name: name} // Currently, managed seeds are restricted to the garden namespace
+	key := types.NamespacedName{Namespace: corev1beta1constants.GardenNamespace, Name: name} // Currently, managed seeds are restricted to the garden namespace
 
 	if err := g.c.Get(ctx, key, managedSeed); err != nil {
 		return nil, err
@@ -621,12 +625,12 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string, acces
 	if !apierrors.IsNotFound(err) {
 		logger.V(1).Info("using referred shoot of managed seed",
 			"shoot", klog.ObjectRef{
-				Namespace: "garden",
+				Namespace: corev1beta1constants.GardenNamespace,
 				Name:      shoot.Name,
 			},
 			"seed", name)
 
-		return g.GetShootClientConfig(ctx, "garden", shoot.Name, accessLevel)
+		return g.GetShootClientConfig(ctx, corev1beta1constants.GardenNamespace, shoot.Name, accessLevel)
 	}
 
 	// Non-managed seed: kubeconfig comes from a static <name>.login Secret, so
@@ -645,7 +649,7 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string, acces
 
 	key := types.NamespacedName{Name: name}
 
-	secret, err := g.GetSecret(ctx, "garden", name+".login")
+	secret, err := g.GetSecret(ctx, corev1beta1constants.GardenNamespace, name+".login")
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return nil, err
@@ -654,12 +658,12 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string, acces
 		// fallback to deprecated .oidc secret
 		var oidcErr error
 
-		secret, oidcErr = g.GetSecret(ctx, "garden", name+".oidc")
+		secret, oidcErr = g.GetSecret(ctx, corev1beta1constants.GardenNamespace, name+".oidc")
 		if oidcErr != nil {
 			return nil, fmt.Errorf("failed to get kubeconfig for seed %v: %w", key, err) // use original not-found error as cause and ignore error of fallback
 		}
 
-		klog.FromContext(ctx).Info("Using deprecated secret to obtain seed kubeconfig", "secret", klog.KRef("garden", name+".oidc"))
+		klog.FromContext(ctx).Info("Using deprecated secret to obtain seed kubeconfig", "secret", klog.KRef(corev1beta1constants.GardenNamespace, name+".oidc"))
 	}
 
 	value, ok := secret.Data["kubeconfig"]
