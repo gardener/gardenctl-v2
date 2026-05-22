@@ -94,33 +94,26 @@ type setGardenOptions struct {
 	DefaultSeedAccessLevelFlag accessLevelFlag
 }
 
-// accessLevelFlag is a pflag.Value for config.KubeconfigAccessLevel that also
-// tracks whether the flag was explicitly provided on the command line. This
-// lets set-garden distinguish "user wants to set to X" from "user did not
-// touch this field" - important when updating an existing Garden entry.
+// accessLevelFlag wraps flag.StringFlag to validate config.KubeconfigAccessLevel
+// values at parse time while inheriting the standard provided-tracking semantics
+// used by the other flags in this command.
 type accessLevelFlag struct {
-	provided bool
-	value    config.KubeconfigAccessLevel
+	flag.StringFlag
 }
 
 var _ pflag.Value = (*accessLevelFlag)(nil)
 
 func (f *accessLevelFlag) Set(value string) error {
-	candidate := config.KubeconfigAccessLevel(value)
-	if err := candidate.Validate(); err != nil {
+	if err := config.KubeconfigAccessLevel(value).Validate(); err != nil {
 		return err
 	}
 
-	f.value = candidate
-	f.provided = true
-
-	return nil
+	return f.StringFlag.Set(value)
 }
 
-func (f *accessLevelFlag) Type() string                        { return "string" }
-func (f *accessLevelFlag) String() string                      { return string(f.value) }
-func (f *accessLevelFlag) Provided() bool                      { return f.provided }
-func (f *accessLevelFlag) Value() config.KubeconfigAccessLevel { return f.value }
+func (f *accessLevelFlag) AccessLevel() config.KubeconfigAccessLevel {
+	return config.KubeconfigAccessLevel(f.Value())
+}
 
 // Complete adapts from the command line args to the data required.
 func (o *setGardenOptions) Complete(f util.Factory, _ *cobra.Command, args []string) error {
@@ -248,11 +241,11 @@ func (o *setGardenOptions) applyAccessLevelFlags(garden *config.Garden) {
 	}
 
 	if o.DefaultShootAccessLevelFlag.Provided() {
-		garden.KubeconfigAccessLevelDefaults.Shoots = o.DefaultShootAccessLevelFlag.Value()
+		garden.KubeconfigAccessLevelDefaults.Shoots = o.DefaultShootAccessLevelFlag.AccessLevel()
 	}
 
 	if o.DefaultSeedAccessLevelFlag.Provided() {
-		garden.KubeconfigAccessLevelDefaults.Seeds = o.DefaultSeedAccessLevelFlag.Value()
+		garden.KubeconfigAccessLevelDefaults.Seeds = o.DefaultSeedAccessLevelFlag.AccessLevel()
 	}
 
 	if garden.KubeconfigAccessLevelDefaults.Shoots == "" && garden.KubeconfigAccessLevelDefaults.Seeds == "" {

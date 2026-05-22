@@ -227,10 +227,12 @@ func (o *TargetOptions) Run(f util.Factory) error {
 	}
 
 	if o.Output == "" {
-		// dynamicTargetProvider.merge() wipes deeper target levels whenever
-		// --garden is set on the CLI, even immediately after TargetXXX persisted
-		// a shoot/seed. Re-apply the just-targeted leaf so EffectiveAccessLevel
-		// sees it instead of falling through to "no scope".
+		// TODO(gardener/gardenctl-v2#744): dynamicTargetProvider.merge() wipes
+		// deeper target levels whenever --garden is set on the CLI, even
+		// immediately after TargetXXX persisted a shoot/seed. Re-apply the
+		// just-targeted leaf so EffectiveAccessLevel sees it instead of
+		// falling through to "no scope". Drop this workaround once #744 fixes
+		// the root cause.
 		levelTarget := currentTarget
 		switch o.Kind {
 		case TargetKindShoot:

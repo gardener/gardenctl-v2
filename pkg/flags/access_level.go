@@ -66,6 +66,10 @@ func (b *boolAccessLevel) Set(v string) error {
 		return fmt.Errorf("invalid boolean value %q", v)
 	}
 
+	// false is rejected with a helpful hint rather than silently treated as a
+	// no-op. Treating it as a no-op would still mark the flag as Changed (so
+	// `--admin=false --viewer` would hit the mutex anyway) and would hide the
+	// likely intent error: --admin is a switch, not a toggle.
 	if !parsed {
 		return fmt.Errorf("does not accept false; omit the flag instead, or use --access-level=... to pick a different level")
 	}
