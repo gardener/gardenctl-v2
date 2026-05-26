@@ -15,6 +15,7 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/kubectlenv"
+	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/env"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
@@ -47,7 +48,7 @@ var _ = Describe("Env Commands", func() {
 
 	Describe("given a KubectlEnv instance", func() {
 		BeforeEach(func() {
-			cmd = kubectlenv.NewCmdKubectlEnv(factory, streams)
+			cmd = kubectlenv.NewCmdKubectlEnv(factory, streams, new(config.KubeconfigAccessLevel))
 		})
 
 		It("should have Use, Flags and SubCommands", func() {
