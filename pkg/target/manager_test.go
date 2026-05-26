@@ -884,6 +884,20 @@ var _ = Describe("Target Manager", func() {
 				target.NewTarget(gardenName, "", seedShoot, ""), []client.Object{managedSeed}, true, config.KubeconfigAccessLevelAdmin),
 			Entry("non-managed seed target -> no scope (static seed-login kubeconfig)",
 				target.NewTarget(gardenName, "", "some-seed", ""), []client.Object{}, false, config.KubeconfigAccessLevel("")),
+			Entry("control plane of managed-seed shoot -> seeds scope (admin)",
+				target.NewTarget(gardenName, gardenProjectName, seedShoot, seedShoot).WithControlPlane(true), []client.Object{gardenProject, managedSeed}, true, config.KubeconfigAccessLevelAdmin),
+			Entry("control plane of non-managed seed -> no scope (static seed-login kubeconfig)",
+				target.NewTarget(gardenName, gardenProjectName, "some-seed", "some-shoot").WithControlPlane(true), []client.Object{gardenProject}, false, config.KubeconfigAccessLevel("")),
+			// `target --garden X --shoot Y control-plane` wipes deeper target
+			// levels (gardener/gardenctl-v2#744); SeedName arrives empty.
+			// EffectiveAccessLevel recovers spec.seedName the same way
+			// ClientConfig does, so a managed-seed-backing shoot still displays.
+			Entry("control plane with empty SeedName (merge-wipe artifact) -> seeds scope (admin)",
+				target.NewTarget(gardenName, gardenProjectName, "", seedShoot).WithControlPlane(true),
+				[]client.Object{gardenProject, managedSeed, &gardencorev1beta1.Shoot{
+					ObjectMeta: metav1.ObjectMeta{Name: seedShoot, Namespace: corev1beta1constants.GardenNamespace, UID: "00000000-0000-0000-0000-000000000003"},
+					Spec:       gardencorev1beta1.ShootSpec{SeedName: ptr.To(seedShoot)},
+				}}, true, config.KubeconfigAccessLevelAdmin),
 			Entry("managed-seed-backing shoot -> seeds scope (admin) regardless of target path",
 				target.NewTarget(gardenName, gardenProjectName, "", seedShoot), []client.Object{gardenProject, managedSeed}, true, config.KubeconfigAccessLevelAdmin),
 		)

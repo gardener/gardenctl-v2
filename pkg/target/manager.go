@@ -179,10 +179,50 @@ const (
 	AccessScopeSeeds AccessScope = "seeds"
 )
 
+// EffectiveAccessLevel returns the access level gardenctl will request for a
+// target. The bool is false when gardenctl has no opinion (caller defers to
+// gardenlogin's default) or when displaying it would mislead - non-managed
+// seeds fall through to a static .login kubeconfig of unverifiable privileges.
 func (m *managerImpl) EffectiveAccessLevel(ctx context.Context, t Target) (config.KubeconfigAccessLevel, bool, error) {
-	scope, ok, err := m.scopeForTarget(ctx, t)
-	if err != nil || !ok {
+	scope, isShootRequest, err := m.scopeForTarget(ctx, t)
+	if err != nil || scope == "" {
 		return "", false, err
+	}
+
+	if !isShootRequest {
+		c, err := m.GardenClient(t.GardenName())
+		if err != nil {
+			return "", false, err
+		}
+
+		seedName := t.SeedName()
+		if seedName == "" {
+			// `target --garden X --shoot Y control-plane` wipes deeper target
+			// levels (#744); recover spec.seedName the same way ClientConfig does.
+			if t.ShootName() == "" {
+				return "", false, nil
+			}
+
+			shoot, err := c.FindShoot(ctx, t.WithControlPlane(false).AsListOption())
+			if err != nil {
+				return "", false, err
+			}
+
+			if shoot.Spec.SeedName == nil {
+				return "", false, nil
+			}
+
+			seedName = *shoot.Spec.SeedName
+		}
+
+		isManaged, err := c.IsManagedSeedByName(ctx, seedName)
+		if err != nil {
+			return "", false, err
+		}
+
+		if !isManaged {
+			return "", false, nil
+		}
 	}
 
 	level := m.resolveAccessLevel(t, scope)
@@ -190,15 +230,17 @@ func (m *managerImpl) EffectiveAccessLevel(ctx context.Context, t Target) (confi
 	return level, level != "", nil
 }
 
-// scopeForTarget returns the access scope a target's kubeconfig request
-// belongs to, or no scope when the static seed-login kubeconfig's privileges
-// are unknown to gardenctl (non-managed seeds). Shoot is checked before seed
-// because TargetShoot records both (from spec.seedName) but the user's intent
-// is the shoot.
+// scopeForTarget returns the access scope plus whether the kubeconfig will be
+// served via the shoot path (gardenlogin) rather than GetSeedClientConfig.
+// The bool lets EffectiveAccessLevel skip the managed-seed check on the shoot
+// path without re-deriving which branch fired.
+//
+// Order matters: ControlPlane and ShootName must be checked before SeedName,
+// since TargetShoot records the seed too (from spec.seedName).
 func (m *managerImpl) scopeForTarget(ctx context.Context, t Target) (AccessScope, bool, error) {
 	switch {
 	case t.ControlPlane():
-		return scopeForSeedTarget(ctx, m, t)
+		return AccessScopeSeeds, false, nil
 	case t.ShootName() != "":
 		c, err := m.GardenClient(t.GardenName())
 		if err != nil {
@@ -211,37 +253,13 @@ func (m *managerImpl) scopeForTarget(ctx context.Context, t Target) (AccessScope
 		}
 
 		scope, err := scopeForShoot(ctx, c, ns, t.ShootName())
-		if err != nil {
-			return "", false, err
-		}
 
-		return scope, true, nil
+		return scope, true, err
 	case t.SeedName() != "":
-		return scopeForSeedTarget(ctx, m, t)
+		return AccessScopeSeeds, false, nil
 	}
 
 	return "", false, nil
-}
-
-// scopeForSeedTarget returns the seeds scope for managed seeds, and no scope
-// for non-managed seeds (whose static seed-login kubeconfig has unknown
-// privileges - displaying a configured level would be misleading).
-func scopeForSeedTarget(ctx context.Context, m *managerImpl, t Target) (AccessScope, bool, error) {
-	c, err := m.GardenClient(t.GardenName())
-	if err != nil {
-		return "", false, err
-	}
-
-	isManaged, err := c.IsManagedSeedByName(ctx, t.SeedName())
-	if err != nil {
-		return "", false, err
-	}
-
-	if !isManaged {
-		return "", false, nil
-	}
-
-	return AccessScopeSeeds, true, nil
 }
 
 // scopeForShoot returns seeds when the shoot also backs a managed seed (same
@@ -590,13 +608,15 @@ func (m *managerImpl) updateTarget(ctx context.Context, target Target) error {
 
 func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.ClientConfig, error) {
 	if t.ControlPlane() {
-		// A shoot's control plane runs as pods in its seed; this branch returns the
-		// seed kubeconfig (namespaced to the shoot CP). GetSeedClientConfig handles
-		// the managed-vs-non-managed seed split: managed seeds honor the requested
-		// access level, non-managed seeds return the static kubeconfig (and reject
-		// an explicit "viewer" request, since the static kubeconfig's privileges
-		// cannot be verified).
-		accessLevel := m.resolveAccessLevel(t, AccessScopeSeeds)
+		scope, _, err := m.scopeForTarget(ctx, t)
+		if err != nil {
+			return nil, err
+		}
+
+		// GetSeedClientConfig handles the managed/non-managed split: managed
+		// seeds honor accessLevel; non-managed seeds return the static
+		// kubeconfig (and reject an explicit "viewer" request).
+		accessLevel := m.resolveAccessLevel(t, scope)
 
 		return m.getClientConfig(t, func(client clientgarden.Client) (clientcmd.ClientConfig, error) {
 			shoot, err := client.FindShoot(ctx, t.WithControlPlane(false).AsListOption())
@@ -640,10 +660,12 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 	}
 
 	if t.SeedName() != "" {
-		// GetSeedClientConfig honors the access level for managed seeds (via
-		// GetShootClientConfig) and returns the static seed-login Secret for
-		// non-managed seeds (rejecting an explicit "viewer" request).
-		accessLevel := m.resolveAccessLevel(t, AccessScopeSeeds)
+		scope, _, err := m.scopeForTarget(ctx, t)
+		if err != nil {
+			return nil, err
+		}
+
+		accessLevel := m.resolveAccessLevel(t, scope)
 
 		return m.getClientConfig(t, func(client clientgarden.Client) (clientcmd.ClientConfig, error) {
 			return client.GetSeedClientConfig(ctx, t.SeedName(), accessLevel)
