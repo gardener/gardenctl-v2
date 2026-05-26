@@ -91,8 +91,8 @@ gardens:
 # context: different-context # Overrides the current-context of the garden cluster kubeconfig
 # patterns: ~ # List of regex patterns for pattern targeting
 # kubeconfigAccessLevelDefaults: # Default access level requested per target scope
-#   shoots: viewer              # admin (default) | viewer | auto
-#   managedSeeds: admin         # admin (default) | viewer | auto
+#   shoots: viewer              # admin | viewer | auto (empty = gardenlogin's default)
+#   seeds: admin                # admin | viewer | auto (empty = gardenlogin's default)
 ```
 
 > [!NOTE]
@@ -101,65 +101,7 @@ gardens:
 
 ### Kubeconfig Access Level
 
-For shoots and managed seeds, `gardenctl` requests a kubeconfig from `gardenlogin` with a configurable access level:
-
-- `admin` (default) - full cluster-admin credentials.
-- `viewer` - read-only credentials with no access to encrypted resources (e.g. Secrets).
-- `auto` - try admin first; fall back to viewer if admin is denied. Convenient when you don't know your RBAC up front; for users who *do* have admin, this is effectively the same as `admin`.
-
-Set per-scope defaults per garden under `kubeconfigAccessLevelDefaults`. The `shoots` and `managedSeeds` fields are independent - for example, an admin who wants least-privilege access to customer shoots while still keeping admin access for seed-level debugging would set:
-
-```yaml
-kubeconfigAccessLevelDefaults:
-  shoots: viewer
-  managedSeeds: admin
-```
-
-Override per invocation with `--access-level` (or the `--admin` / `--viewer` shorthands), available on commands that produce a kubeconfig (`target`, `kubeconfig`):
-
-```bash
-gardenctl kubeconfig --admin                       # one-off escalation
-gardenctl target --shoot my-shoot --viewer         # one-off de-escalation
-gardenctl kubeconfig --access-level=auto           # explicit auto (no shorthand)
-```
-
-The shorthands and the full form are mutually exclusive — pass at most one.
-
-> [!NOTE]
-> Flag overrides apply only to the invocation they're passed to. They are not persisted on disk, so a subsequent `gardenctl kubeconfig` (without a flag) re-resolves from the per-garden config defaults, not from the flag you passed to an earlier `gardenctl target`. For persistent changes set them via `gardenctl config set-garden`. You may also repeat the flags on `gardenctl kubeconfig`.
-
-The same defaults can be set via the CLI rather than hand-editing the YAML:
-
-```bash
-gardenctl config set-garden prd-garden \
-  --default-shoot-access-level viewer \
-  --default-managed-seed-access-level admin
-```
-
-The access level only applies to **shoots and managed seeds**, where Gardener provides admin/viewer kubeconfig subresources that gardenlogin requests on demand. It does not apply to:
-
-- The **garden cluster itself** - gardenctl uses the user's own kubeconfig file as configured. There is no API to "downgrade" those credentials; if you want viewer-only access to the garden, point gardenctl at a kubeconfig whose underlying RBAC is read-only.
-- **Non-managed seeds** - credentials come from a static `<name>.login` Secret in the garden cluster, which only contains admin credentials. Requesting `viewer` or `auto` for a non-managed seed (via flag or the `managedSeeds` default) returns an error.
-
-> [!NOTE]
-> `auto` returns admin whenever your RBAC allows it. If you want guaranteed read-only access, configure `viewer` explicitly.
-
-#### Verifying which access level is in use
-
-When `gardenctl` explicitly chose an access level (via flag or per-garden config), it surfaces it inline after `target` and on stderr after `kubeconfig`:
-
-```console
-$ gardenctl target shoot prod-cluster --access-level=viewer
-Successfully targeted shoot "prod-cluster" (access level: viewer)
-```
-
-When neither a flag nor a per-garden config is set, `gardenctl` stays silent and lets `gardenlogin`'s own default apply (currently `auto`).
-
-For an explicit check, the access level is also embedded as a `--access-level=…` argument in the produced kubeconfig's exec plugin section (omitted when `gardenctl` deferred to `gardenlogin`'s default):
-
-```bash
-gardenctl kubeconfig | grep -- '--access-level='
-```
+`gardenctl` can request admin/viewer/auto kubeconfigs from `gardenlogin` per target scope (shoots, seeds), with per-garden defaults and per-invocation overrides via `--access-level` / `--admin` / `--viewer`. See [docs/config/access-level.md](docs/config/access-level.md) for the full reference.
 
 ### Config Path Overwrite
 
