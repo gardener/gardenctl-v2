@@ -12,4 +12,5 @@
 
 ### Configuration
 * [Configure Access Restrictions](config/access-restrictions.md)
+* [Kubeconfig Access Level](config/access-level.md)
 

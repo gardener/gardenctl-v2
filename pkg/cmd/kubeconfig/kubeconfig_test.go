@@ -23,6 +23,7 @@ import (
 	"github.com/gardener/gardenctl-v2/internal/util"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
 	cmdkubeconfig "github.com/gardener/gardenctl-v2/pkg/cmd/kubeconfig"
+	gardenconfig "github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 	targetmocks "github.com/gardener/gardenctl-v2/pkg/target/mocks"
 )
@@ -66,12 +67,13 @@ var _ = Describe("Kubeconfig Command - Options", func() {
 
 			manager.EXPECT().CurrentTarget().Return(t, nil)
 			manager.EXPECT().ClientConfig(ctx, t).Return(config, nil)
+			manager.EXPECT().EffectiveAccessLevel(ctx, t).Return(gardenconfig.KubeconfigAccessLevel(""), false, nil)
 
 			targetFlags := target.NewTargetFlags("", "", "", "", false)
 			factory.EXPECT().TargetFlags().Return(targetFlags).AnyTimes()
 
 			streams, _, out, _ = util.NewTestIOStreams()
-			cmd = cmdkubeconfig.NewCmdKubeconfig(factory, streams)
+			cmd = cmdkubeconfig.NewCmdKubeconfig(factory, streams, new(gardenconfig.KubeconfigAccessLevel))
 		})
 
 		It("should execute the kubeconfig subcommand", func() {
@@ -108,11 +110,37 @@ users: null
 				factory.EXPECT().Context().Return(ctx)
 				manager.EXPECT().CurrentTarget().Return(t, nil)
 				manager.EXPECT().ClientConfig(ctx, t).Return(config, nil)
+				manager.EXPECT().EffectiveAccessLevel(ctx, t).Return(gardenconfig.KubeconfigAccessLevel(""), false, nil)
 
 				Expect(options.Complete(factory, nil, nil)).To(Succeed())
 				Expect(options.PrintObject).NotTo(BeNil())
 				Expect(options.RawConfig).To(Equal(&rawConfig))
 			})
+
+			DescribeTable("prints the access level on stderr when applicable to the target",
+				func(level gardenconfig.KubeconfigAccessLevel, applies bool, expectNotice bool) {
+					streams, _, _, errOut := util.NewTestIOStreams()
+					options.IOStreams = streams
+
+					factory.EXPECT().Manager().Return(manager, nil)
+					factory.EXPECT().Context().Return(ctx)
+					manager.EXPECT().CurrentTarget().Return(t, nil)
+					manager.EXPECT().ClientConfig(ctx, t).Return(config, nil)
+					manager.EXPECT().EffectiveAccessLevel(ctx, t).Return(level, applies, nil)
+
+					Expect(options.Complete(factory, nil, nil)).To(Succeed())
+
+					if expectNotice {
+						Expect(errOut.String()).To(Equal("Access level: " + string(level) + "\n"))
+					} else {
+						Expect(errOut.String()).To(BeEmpty())
+					}
+				},
+				Entry("admin: shown", gardenconfig.KubeconfigAccessLevelAdmin, true, true),
+				Entry("viewer: shown", gardenconfig.KubeconfigAccessLevelViewer, true, true),
+				Entry("auto: shown", gardenconfig.KubeconfigAccessLevelAuto, true, true),
+				Entry("gardenctl did not decide a level: silent", gardenconfig.KubeconfigAccessLevel(""), false, false),
+			)
 
 			It("should fail to complete options when the target is empty", func() {
 				currentTarget := target.NewTarget("", "", "", "")

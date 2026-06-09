@@ -76,6 +76,8 @@ type FactoryImpl struct {
 	// if empty.
 	ConfigFile string
 
+	KubeconfigAccessLevel config.KubeconfigAccessLevel
+
 	// targetFlags can be used to completely override the target configuration
 	// stored on the filesystem via a CLI flags.
 	targetFlags target.TargetFlags
@@ -133,7 +135,7 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 	targetProvider := target.NewTargetProvider(filepath.Join(sessionDirectory, "target.yaml"), f.targetFlags)
 	clientProvider := internalclient.NewProvider()
 
-	return target.NewManager(cfg, targetProvider, clientProvider, sessionDirectory)
+	return target.NewManager(cfg, targetProvider, clientProvider, sessionDirectory, f.KubeconfigAccessLevel)
 }
 
 func (f *FactoryImpl) GardenHomeDir() string {

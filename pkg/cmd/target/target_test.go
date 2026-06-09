@@ -40,6 +40,7 @@ var _ = Describe("Target Command", func() {
 		streams        util.IOStreams
 		in             *util.SafeBytesBuffer
 		out            *util.SafeBytesBuffer
+		errOut         *util.SafeBytesBuffer
 		ctrl           *gomock.Controller
 		cfg            *config.Config
 		clientProvider *clientmocks.MockProvider
@@ -97,7 +98,7 @@ var _ = Describe("Target Command", func() {
 			},
 		}
 
-		streams, in, out, _ = util.NewTestIOStreams()
+		streams, in, out, errOut = util.NewTestIOStreams()
 
 		ctrl = gomock.NewController(GinkgoT())
 
@@ -122,7 +123,7 @@ var _ = Describe("Target Command", func() {
 		})
 
 		It("should reject bad options", func() {
-			cmd := cmdtarget.NewCmdTarget(factory, streams)
+			cmd := cmdtarget.NewCmdTarget(factory, streams, new(config.KubeconfigAccessLevel))
 
 			Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
 		})
@@ -176,6 +177,7 @@ var _ = Describe("Target Command", func() {
 			// run command
 			Expect(cmd.RunE(cmd, []string{shootName})).To(Succeed())
 			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q\n", shootName))
+			Expect(out.String()).NotTo(ContainSubstring("access level"))
 
 			currentTarget, err := targetProvider.Read()
 			Expect(err).NotTo(HaveOccurred())
@@ -183,6 +185,18 @@ var _ = Describe("Target Command", func() {
 			Expect(currentTarget.ProjectName()).To(Equal(projectName))
 			Expect(currentTarget.SeedName()).To(Equal(seedName))
 			Expect(currentTarget.ShootName()).To(Equal(shootName))
+		})
+
+		It("uses the per-garden shoots access level when set", func() {
+			targetProvider.Target = target.NewTarget(gardenName, projectName, "", "")
+			cfg.Gardens[0].KubeconfigAccessLevelDefaults = &config.KubeconfigAccessLevels{
+				Shoots: config.KubeconfigAccessLevelViewer,
+			}
+			cmd := cmdtarget.NewCmdTargetShoot(factory, streams)
+
+			Expect(cmd.RunE(cmd, []string{shootName})).To(Succeed())
+			Expect(errOut.String()).To(BeEmpty())
+			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q (access level: viewer)\n", shootName))
 		})
 
 		It("should be able to target a control plane", func() {
@@ -204,7 +218,7 @@ var _ = Describe("Target Command", func() {
 		})
 
 		It("should be able to target via pattern matching", func() {
-			cmd := cmdtarget.NewCmdTarget(factory, streams)
+			cmd := cmdtarget.NewCmdTarget(factory, streams, new(config.KubeconfigAccessLevel))
 
 			// run command
 			Expect(cmd.RunE(cmd, []string{fmt.Sprintf("shoot--%s--%s", projectName, shootName)})).To(Succeed())

@@ -25,6 +25,8 @@ import (
 	clientauthenticationv1beta1 "k8s.io/client-go/pkg/apis/clientauthentication/v1beta1"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+
+	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
 func init() {
@@ -140,7 +142,7 @@ func (k *shootKubeconfigRequest) validate() error {
 // If legacy is false, the shoot reference and garden cluster identity is passed via the cluster extensions,
 // which is supported starting with kubectl version v1.20.0.
 // If legacy is true, the shoot reference and garden cluster identity are passed as command line flags to the plugin.
-func (k *shootKubeconfigRequest) generate(legacy bool) (*clientcmdapi.Config, error) {
+func (k *shootKubeconfigRequest) generate(legacy bool, accessLevel config.KubeconfigAccessLevel) (*clientcmdapi.Config, error) {
 	var extension *execPluginConfig
 
 	args := []string{
@@ -165,6 +167,10 @@ func (k *shootKubeconfigRequest) generate(legacy bool) (*clientcmdapi.Config, er
 			},
 			GardenClusterIdentity: k.gardenClusterIdentity,
 		}
+	}
+
+	if accessLevel != "" {
+		args = append(args, fmt.Sprintf("--access-level=%s", accessLevel))
 	}
 
 	config := clientcmdapi.NewConfig()
@@ -212,7 +218,7 @@ func (k *shootKubeconfigRequest) generate(legacy bool) (*clientcmdapi.Config, er
 	return config, nil
 }
 
-func (g *clientImpl) GetShootClientConfig(ctx context.Context, namespace, name string) (clientcmd.ClientConfig, error) {
+func (g *clientImpl) GetShootClientConfig(ctx context.Context, namespace, name string, accessLevel config.KubeconfigAccessLevel) (clientcmd.ClientConfig, error) {
 	if len(g.name) == 0 {
 		return nil, errors.New("garden name must not be empty")
 	}
@@ -285,7 +291,7 @@ func (g *clientImpl) GetShootClientConfig(ctx context.Context, namespace, name s
 
 	legacy := constraint.Check(version)
 
-	config, err := kubeconfigRequest.generate(legacy)
+	config, err := kubeconfigRequest.generate(legacy, accessLevel)
 	if err != nil {
 		return nil, fmt.Errorf("generation failed for kubeconfig request: %w", err)
 	}

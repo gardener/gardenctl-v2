@@ -90,11 +90,18 @@ gardens:
 # name: my-name # An alternative, unique garden name for targeting
 # context: different-context # Overrides the current-context of the garden cluster kubeconfig
 # patterns: ~ # List of regex patterns for pattern targeting
+# kubeconfigAccessLevelDefaults: # Default access level requested per target scope
+#   shoots: viewer              # admin | viewer | auto (empty = gardenlogin's default)
+#   seeds: admin                # admin | viewer | auto (empty = gardenlogin's default)
 ```
 
 > [!NOTE]
 > - To use the kubeconfigs for **shoot clusters** provided by `gardenctl`, you need to have [gardenlogin](https://github.com/gardener/gardenlogin) installed as a `kubectl` auth plugin.
 > - If your **garden cluster** kubeconfig uses OIDC authentication, ensure that you have the [kubelogin](https://github.com/int128/kubelogin) `kubectl` auth plugin installed.
+
+### Kubeconfig Access Level
+
+`gardenctl` can request admin/viewer/auto kubeconfigs from `gardenlogin` per target scope (shoots, seeds), with per-garden defaults and per-invocation overrides via `--access-level` / `--admin` / `--viewer`. See [docs/config/access-level.md](docs/config/access-level.md) for the full reference.
 
 ### Config Path Overwrite
 

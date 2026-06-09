@@ -25,7 +25,9 @@ gardenctl kubectl-env fish [flags]
 ### Options inherited from parent commands
 
 ```
+      --access-level string                 Override the default kubeconfig access level when targeting shoots or seeds. One of "admin", "viewer", "auto".
       --add-dir-header                      If true, adds the file directory to the header of the log messages
+      --admin                               shorthand for --access-level=admin
       --alsologtostderr                     log to standard error as well as files (no effect when -logtostderr=true)
       --alsologtostderrthreshold severity   logs at or above this threshold go to stderr when -alsologtostderr=true (no effect when -logtostderr=true)
       --config string                       config file (default is ~/.garden/gardenctl-v2.yaml)
@@ -41,6 +43,7 @@ gardenctl kubectl-env fish [flags]
       --stderrthreshold severity            logs at or above this threshold go to stderr when writing to files and stderr (no effect when -logtostderr=true or -alsologtostderr=true unless -legacy_stderr_threshold_behavior=false) (default 2)
   -u, --unset                               Generate the script to unset the KUBECONFIG environment variable for 
   -v, --v Level                             number for the log level verbosity
+      --viewer                              shorthand for --access-level=viewer
       --vmodule moduleSpec                  comma-separated list of pattern=N settings for file-filtered logging
 ```
 

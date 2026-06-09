@@ -9,12 +9,17 @@ Generate a script that points KUBECONFIG to the currently targeted shoot, seed, 
 Each sub-command produces a shell-specific script.
 For details on how to use the printed shell script, such as applying it temporarily to your current session or permanently through your shell's startup file, refer to the corresponding sub-command's help.
 
+Note: --access-level only has an effect when linkKubeconfig is false. In symlink mode (the default) this command just points KUBECONFIG at the existing session kubeconfig, so the access level is whatever the most recent `gardenctl target` chose.
+
 
 ### Options
 
 ```
-  -h, --help    help for kubectl-env
-  -u, --unset   Generate the script to unset the KUBECONFIG environment variable for 
+      --access-level string   Override the default kubeconfig access level when targeting shoots or seeds. One of "admin", "viewer", "auto".
+      --admin                 shorthand for --access-level=admin
+  -h, --help                  help for kubectl-env
+  -u, --unset                 Generate the script to unset the KUBECONFIG environment variable for 
+      --viewer                shorthand for --access-level=viewer
 ```
 
 ### Options inherited from parent commands

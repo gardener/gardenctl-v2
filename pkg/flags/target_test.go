@@ -217,7 +217,7 @@ var _ = Describe("Target flags", func() {
 			})
 
 			It("should fail when no target is defined", func() {
-				manager, err := target.NewManager(cfg, fake.NewFakeTargetProvider(nil), nil, sessionDir)
+				manager, err := target.NewManager(cfg, fake.NewFakeTargetProvider(nil), nil, sessionDir, "")
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = flags.ProjectFlagCompletionFunc(factory.Context(), manager)
@@ -236,7 +236,7 @@ var _ = Describe("Target flags", func() {
 			})
 
 			It("should fail when no target is defined", func() {
-				manager, err := target.NewManager(cfg, fake.NewFakeTargetProvider(nil), nil, sessionDir)
+				manager, err := target.NewManager(cfg, fake.NewFakeTargetProvider(nil), nil, sessionDir, "")
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = flags.SeedFlagCompletionFunc(factory.Context(), manager)
@@ -255,7 +255,7 @@ var _ = Describe("Target flags", func() {
 			})
 
 			It("should fail when no target is defined", func() {
-				manager, err := target.NewManager(cfg, fake.NewFakeTargetProvider(nil), nil, sessionDir)
+				manager, err := target.NewManager(cfg, fake.NewFakeTargetProvider(nil), nil, sessionDir, "")
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = flags.ShootFlagCompletionFunc(factory.Context(), manager)
