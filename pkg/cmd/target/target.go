@@ -234,6 +234,7 @@ func (o *TargetOptions) Run(f util.Factory) error {
 		// falling through to "no scope". Drop this workaround once #744 fixes
 		// the root cause.
 		levelTarget := currentTarget
+
 		switch o.Kind {
 		case TargetKindShoot:
 			levelTarget = levelTarget.WithShootName(o.TargetName)

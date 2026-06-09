@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	FlagDefaultShootAccessLevel       = "default-shoot-access-level"
-	FlagDefaultSeedAccessLevel        = "default-seed-access-level"
+	FlagDefaultShootAccessLevel = "default-shoot-access-level"
+	FlagDefaultSeedAccessLevel  = "default-seed-access-level"
 )
 
 // NewCmdConfigSetGarden returns a new (config) set-garden command.

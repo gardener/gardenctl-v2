@@ -70,7 +70,8 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 		})
 
 		Describe("Validate", func() {
-			DescribeTable("Validating Name Argument",
+			DescribeTable(
+				"Validating Name Argument",
 				func(name string, matcher types.GomegaMatcher) {
 					o := cmdconfig.NewSetGardenOptions()
 					o.Name = name
@@ -82,7 +83,8 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 				Entry("when garden starts with hyphen", "-garden", MatchError("invalid garden name \"-garden\": garden name must start and end with an alphanumeric character")),
 			)
 
-			DescribeTable("Validating Pattern Flag",
+			DescribeTable(
+				"Validating Pattern Flag",
 				func(patterns []string, matcher types.GomegaMatcher) {
 					o := cmdconfig.NewSetGardenOptions()
 					o.Name = "foo"
@@ -97,7 +99,8 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 				Entry("when a pattern has an invalid subexpression name", []string{"^shoot--(?P<cluster>.+)$`"}, MatchError("pattern[0] contains an invalid subexpression \"cluster\"")),
 			)
 
-			DescribeTable("Validating Alias Flag",
+			DescribeTable(
+				"Validating Alias Flag",
 				func(alias string, shouldSetAlias bool, matcher types.GomegaMatcher) {
 					o := cmdconfig.NewSetGardenOptions()
 
@@ -207,7 +210,6 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 					Expect(garden.KubeconfigAccessLevelDefaults.Shoots).To(Equal(config.KubeconfigAccessLevelViewer))
 					Expect(garden.KubeconfigAccessLevelDefaults.Seeds).To(BeEmpty())
 				})
-
 			})
 
 			Describe("--default-*-access-level flags via real cobra flag parsing", func() {
