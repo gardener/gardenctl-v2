@@ -6,9 +6,9 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/fatih/color v1.19.0
-	github.com/gardener/gardener v1.144.0
+	github.com/gardener/gardener v1.144.1
 	github.com/gardener/gardener-extension-provider-openstack v1.55.3
-	github.com/gardener/gardener/pkg/apis v1.144.0
+	github.com/gardener/gardener/pkg/apis v1.144.1
 	github.com/gardener/machine-controller-manager v0.62.0
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/golang/mock v1.6.0
@@ -78,7 +78,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/gardener/cert-management v0.23.0 // indirect
-	github.com/gardener/etcd-druid/api v0.36.3 // indirect
+	github.com/gardener/etcd-druid/api v0.36.4 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
