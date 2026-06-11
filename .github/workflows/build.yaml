@@ -80,6 +80,19 @@ jobs:
               type: localBlob
               localReference: >-
                 gardenctl-v2-${{ matrix.args.os }}-${{ matrix.args.arch }}${{ matrix.args.os == 'windows' && '.exe' || '' }}
+            labels:
+              # `network_exposure: protected` (not `private`): no listening
+              # sockets, but consumes attacker-influenceable data from remote
+              # control planes — CVEs reachable via that path (e.g. in
+              # parsers/protocols) should not be treated as network-isolated.
+              - name: gardener.cloud/cve-categorisation
+                value:
+                  network_exposure: protected
+                  authentication_enforced: false
+                  user_interaction: end-user
+                  confidentiality_requirement: high
+                  integrity_requirement: high
+                  availability_requirement: low
 
   build-gardenctl-summary:
     name: Build Summary
