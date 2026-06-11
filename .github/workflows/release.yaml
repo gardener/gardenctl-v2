@@ -70,7 +70,7 @@ jobs:
     needs:
       - release-to-github-and-bump
     secrets:
-      GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_ID: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_ID }}
+      GARDENER_GITHUB_WORKFLOW_PKG_MNGR_CLIENT_ID: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_CLIENT_ID }}
       GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_PRIVATE_KEY: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_PRIVATE_KEY }}
     uses: ./.github/workflows/publish-to-package-repositories.yaml
     with:
