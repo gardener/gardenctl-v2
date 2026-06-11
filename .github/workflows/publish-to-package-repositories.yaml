@@ -13,9 +13,9 @@ on:
         description: |
           the OCM-Component-Descriptor from which to publish built artefacts
     secrets:
-      GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_ID:
+      GARDENER_GITHUB_WORKFLOW_PKG_MNGR_CLIENT_ID:
         required: false
-        description: App ID for the gardener-github-pkg-mngr GitHub App
+        description: Client ID for the gardener-github-pkg-mngr GitHub App
       GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_PRIVATE_KEY:
         required: false
         description: Private key for the gardener-github-pkg-mngr GitHub App
@@ -58,7 +58,7 @@ jobs:
         id: gardener-github-workflows
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1   # v3.2.0
         with:
-          app-id:      ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_ID }}
+          client-id:   ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_CLIENT_ID }}
           private-key: ${{ secrets.GARDENER_GITHUB_WORKFLOW_PKG_MNGR_APP_PRIVATE_KEY }}
           owner:       ${{ github.repository_owner }}
           repositories: |
