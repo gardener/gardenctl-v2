@@ -11,9 +11,12 @@ import (
 	"os"
 	"time"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/config"
+	"github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 func SetBastionAvailabilityChecker(f func(hostname string, port string, privateKey []byte, hostKeyCallback ssh.HostKeyCallback) error) {
@@ -61,6 +64,11 @@ var (
 	ValidateSSHPublicKey  = validateSSHPublicKey
 	ValidateHost          = validateHost
 )
+
+// CheckAccessRestrictions exposes the unexported checkAccessRestrictions method for tests.
+func (o *SSHOptions) CheckAccessRestrictions(cfg *config.Config, gardenName string, tf target.TargetFlags, shoot *gardencorev1beta1.Shoot) (bool, error) {
+	return o.checkAccessRestrictions(cfg, gardenName, tf, shoot)
+}
 
 type TestArguments struct {
 	arguments

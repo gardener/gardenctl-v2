@@ -49,6 +49,7 @@ import (
 	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
 	internalfake "github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/internal/util"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/ssh"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
@@ -1530,5 +1531,106 @@ var _ = Describe("SSH Options", func() {
 				Expect(ssh.ValidateSSHPublicKey(ecPublicKeyFile)).To(Succeed())
 			})
 		})
+	})
+})
+
+var _ = Describe("SSH Options checkAccessRestrictions", func() {
+	const gardenName = "test-garden"
+
+	var (
+		cfg   *config.Config
+		shoot *gardencorev1beta1.Shoot
+	)
+
+	BeforeEach(func() {
+		cfg = &config.Config{
+			Gardens: []config.Garden{
+				{
+					Name: gardenName,
+					AccessRestrictions: []ac.AccessRestriction{
+						{
+							Key: "controlled-access",
+							Msg: "Shoot access is restricted",
+							Options: []ac.AccessRestrictionOption{
+								{
+									Key:      "support",
+									NotifyIf: true,
+									Msg:      "Support access must be confirmed",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		shoot = &gardencorev1beta1.Shoot{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "shoot",
+				Namespace: "garden-project",
+			},
+			Spec: gardencorev1beta1.ShootSpec{
+				AccessRestrictions: []gardencorev1beta1.AccessRestrictionWithOptions{
+					{
+						AccessRestriction: gardencorev1beta1.AccessRestriction{
+							Name: "controlled-access",
+						},
+						Options: map[string]string{
+							"support": "true",
+						},
+					},
+				},
+			},
+		}
+	})
+
+	It("requires confirmation when --control-plane is set even if --shoot is not in target flags", func() {
+		// shoot is pre-targeted; user runs `gardenctl ssh --control-plane`.
+		// Scope flips to the backing shoot of the seed, so confirmation must be requested.
+		streams, in, _, _ := util.NewTestIOStreams()
+		_, _ = in.Write([]byte("\n")) // decline the prompt
+
+		options := ssh.NewSSHOptions(streams)
+		tf := target.NewTargetFlags("", "", "", "", true)
+
+		ok, err := options.CheckAccessRestrictions(cfg, gardenName, tf, shoot)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(ok).To(BeFalse(), "user declined the prompt, so the run must abort")
+	})
+
+	It("proceeds without prompting when --confirm-access-restriction is set with --control-plane", func() {
+		streams, _, _, _ := util.NewTestIOStreams()
+
+		options := ssh.NewSSHOptions(streams)
+		options.ConfirmAccessRestriction = true
+		tf := target.NewTargetFlags("", "", "", "", true)
+
+		ok, err := options.CheckAccessRestrictions(cfg, gardenName, tf, shoot)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(ok).To(BeTrue())
+	})
+
+	It("does not prompt when neither --shoot nor --control-plane is in target flags", func() {
+		// Already-targeted shoot scope without the user changing it: no fresh confirmation needed.
+		streams, _, _, _ := util.NewTestIOStreams()
+
+		options := ssh.NewSSHOptions(streams)
+		tf := target.NewTargetFlags("", "", "", "", false)
+
+		ok, err := options.CheckAccessRestrictions(cfg, gardenName, tf, shoot)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(ok).To(BeTrue())
+	})
+
+	It("requires confirmation when --shoot is set in target flags", func() {
+		streams, in, _, _ := util.NewTestIOStreams()
+		_, _ = in.Write([]byte("y\n"))
+
+		options := ssh.NewSSHOptions(streams)
+		tf := target.NewTargetFlags("", "", "", "shoot", false)
+
+		ok, err := options.CheckAccessRestrictions(cfg, gardenName, tf, shoot)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(ok).To(BeTrue())
 	})
 })
