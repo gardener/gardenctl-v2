@@ -36,14 +36,14 @@ func NewCmdConfigSetGarden(f util.Factory, ioStreams util.IOStreams) *cobra.Comm
 	}
 	cmd := &cobra.Command{
 		Use:   "set-garden",
-		Short: "Modify or add a Garden to the gardenctl configuration",
-		Long: `Modify or add a Garden to the gardenctl configuration.
-A valid Garden configuration consists of a name (required), kubeconfig path (required), a context as well as any number of patterns.
+		Short: "Modify or add a garden to the gardenctl configuration",
+		Long: `Modify or add a garden to the gardenctl configuration.
+A valid garden configuration consists of a name (required), kubeconfig path (required), a context as well as any number of patterns.
 In order to share the configuration with gardenlogin, you need to set the name to the cluster identity.`,
-		Example: `# add new Garden my-garden with no additional values
+		Example: `# add new garden my-garden with no additional values
 gardenctl config set-garden my-garden
 
-# add new Garden with name set to cluster identity and path to kubeconfig file configured
+# add new garden with name set to cluster identity and path to kubeconfig file configured
 export KUBECONFIG=~/path/to/garden-cluster/kubeconfig.yaml
 CLUSTER_IDENTITY=$(kubectl -n kube-system get configmap cluster-identity -ojsonpath={.data.cluster-identity})
 gardenctl config set-garden $CLUSTER_IDENTITY --kubeconfig $KUBECONFIG
@@ -157,9 +157,9 @@ func (o *setGardenOptions) Validate() error {
 
 // AddFlags adds flags to adjust the output to a cobra command.
 func (o *setGardenOptions) AddFlags(flags *pflag.FlagSet) {
-	flags.Var(&o.KubeconfigFlag, "kubeconfig", "path to kubeconfig file for this Garden cluster")
+	flags.Var(&o.KubeconfigFlag, "kubeconfig", "path to kubeconfig file for this garden cluster")
 	flags.Var(&o.ContextFlag, "context", "override the current-context of the garden cluster kubeconfig")
-	flags.Var(&o.Alias, "alias", "unique alias of this Garden that can be used instead of the name to target this Garden")
+	flags.Var(&o.Alias, "alias", "unique alias of this garden that can be used instead of the name to target this garden")
 	flags.StringArrayVar(&o.Patterns, "pattern", nil, `define regex match patterns for this garden for custom input formats for targeting.
 Use named capturing groups to match target values.
 Supported capturing groups: project, namespace, shoot.

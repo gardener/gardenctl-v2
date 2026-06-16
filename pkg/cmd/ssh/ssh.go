@@ -21,20 +21,20 @@ import (
 func NewCmdSSH(f util.Factory, o *SSHOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ssh [NODE_NAME]",
-		Short: "Establish an SSH connection to a node of a Shoot cluster",
-		Long: `Establish an SSH connection to a node of a Shoot cluster by specifying its name.
+		Short: "Establish an SSH connection to a node of a shoot cluster",
+		Long: `Establish an SSH connection to a node of a shoot cluster by specifying its name.
 
 A bastion is created to access the node and is automatically cleaned up afterwards.
 
-If a node name is not provided, gardenctl will display the hostnames/IPs of the Shoot worker nodes and the corresponding SSH command.
+If a node name is not provided, gardenctl will display the hostnames/IPs of the shoot worker nodes and the corresponding SSH command.
 To connect to a desired node, copy the printed SSH command, replace the target hostname accordingly, and execute the command.`,
-		Example: `# Establish an SSH connection to a specific Shoot cluster node
+		Example: `# Establish an SSH connection to a specific shoot cluster node
 gardenctl ssh my-shoot-node-1
 
 # Establish an SSH connection with custom CIDRs to allow access to the bastion host
 gardenctl ssh my-shoot-node-1 --cidr 10.1.2.3/32
 
-# Establish an SSH connection to any Shoot cluster node
+# Establish an SSH connection to any shoot cluster node
 # Copy the printed SSH command, replace the 'IP_OR_HOSTNAME' placeholder for the target hostname/IP, and execute the command to connect to the desired node
 gardenctl ssh
 
