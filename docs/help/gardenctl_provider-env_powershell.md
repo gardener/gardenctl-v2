@@ -6,8 +6,11 @@ Generate the cloud provider CLI configuration script for powershell
 
 Generate the cloud provider CLI configuration script for powershell.
 
-To load the cloud provider CLI configuration script in your current shell session:
+To configure the provider CLI for the currently targeted shoot:
 PS /> & gardenctl provider-env powershell | Invoke-Expression
+
+To configure the provider CLI for the seed infrastructure account hosting the shoot control plane:
+PS /> & gardenctl provider-env powershell --control-plane | Invoke-Expression
 
 
 ```

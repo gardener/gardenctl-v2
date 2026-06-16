@@ -1,6 +1,6 @@
 ## gardenctl config delete-garden
 
-Delete the specified Garden from the gardenctl configuration
+Delete the specified garden from the gardenctl configuration
 
 ```
 gardenctl config delete-garden [flags]

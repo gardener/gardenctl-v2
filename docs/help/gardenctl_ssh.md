@@ -1,14 +1,19 @@
 ## gardenctl ssh
 
-Establish an SSH connection to a node of a Shoot cluster
+Establish an SSH connection to a node of a shoot cluster
 
 ### Synopsis
 
-Establish an SSH connection to a node of a Shoot cluster by specifying its name.
+Establish an SSH connection to a node of a shoot cluster by specifying its name.
 
 A bastion is created to access the node and is automatically cleaned up afterwards.
 
-If a node name is not provided, gardenctl will display the hostnames/IPs of the Shoot worker nodes and the corresponding SSH command.
+When targeting a shoot control plane, gardenctl connects to nodes of the seed shoot that hosts the
+targeted shoot's control plane.
+Only managed seeds are supported, because gardenctl needs the backing shoot to create the bastion
+and determine its worker nodes.
+
+If a node name is not provided, gardenctl will display the hostnames/IPs of the shoot worker nodes and the corresponding SSH command.
 To connect to a desired node, copy the printed SSH command, replace the target hostname accordingly, and execute the command.
 
 ```
@@ -18,13 +23,16 @@ gardenctl ssh [NODE_NAME] [flags]
 ### Examples
 
 ```
-# Establish an SSH connection to a specific Shoot cluster node
+# Establish an SSH connection to a specific shoot cluster node
 gardenctl ssh my-shoot-node-1
+
+# Establish an SSH connection to a node of the seed shoot hosting a shoot control plane
+gardenctl ssh my-seed-node-1 --garden my-garden --project my-project --shoot my-shoot --control-plane
 
 # Establish an SSH connection with custom CIDRs to allow access to the bastion host
 gardenctl ssh my-shoot-node-1 --cidr 10.1.2.3/32
 
-# Establish an SSH connection to any Shoot cluster node
+# Establish an SSH connection to any shoot cluster node
 # Copy the printed SSH command, replace the 'IP_OR_HOSTNAME' placeholder for the target hostname/IP, and execute the command to connect to the desired node
 gardenctl ssh
 
@@ -62,7 +70,7 @@ gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path
       --shell string                              Shell to use for escaping arguments when printing out the SSH command. If not provided, it defaults to the GCTL_SHELL environment variable or bash.
       --shoot string                              target the given shoot cluster
       --skip-availability-check                   Skip checking for SSH bastion host availability.
-      --user string                               user is the name of the Shoot cluster node ssh login username. (default "gardener")
+      --user string                               user is the name of the shoot cluster node ssh login username. (default "gardener")
       --wait-timeout duration                     Maximum duration to wait for the bastion to become available. (default 10m0s)
 ```
 

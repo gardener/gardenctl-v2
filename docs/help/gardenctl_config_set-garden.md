@@ -1,11 +1,11 @@
 ## gardenctl config set-garden
 
-Modify or add a Garden to the gardenctl configuration
+Modify or add a garden to the gardenctl configuration
 
 ### Synopsis
 
-Modify or add a Garden to the gardenctl configuration.
-A valid Garden configuration consists of a name (required), kubeconfig path (required), a context as well as any number of patterns.
+Modify or add a garden to the gardenctl configuration.
+A valid garden configuration consists of a name (required), kubeconfig path (required), a context as well as any number of patterns.
 In order to share the configuration with gardenlogin, you need to set the name to the cluster identity.
 
 ```
@@ -15,10 +15,10 @@ gardenctl config set-garden [flags]
 ### Examples
 
 ```
-# add new Garden my-garden with no additional values
+# add new garden my-garden with no additional values
 gardenctl config set-garden my-garden
 
-# add new Garden with name set to cluster identity and path to kubeconfig file configured
+# add new garden with name set to cluster identity and path to kubeconfig file configured
 export KUBECONFIG=~/path/to/garden-cluster/kubeconfig.yaml
 CLUSTER_IDENTITY=$(kubectl -n kube-system get configmap cluster-identity -ojsonpath={.data.cluster-identity})
 gardenctl config set-garden $CLUSTER_IDENTITY --kubeconfig $KUBECONFIG
@@ -33,12 +33,12 @@ gardenctl config set-garden prd-garden --default-shoot-access-level viewer
 ### Options
 
 ```
-      --alias string                        unique alias of this Garden that can be used instead of the name to target this Garden
+      --alias string                        unique alias of this garden that can be used instead of the name to target this garden
       --context string                      override the current-context of the garden cluster kubeconfig
       --default-seed-access-level string    default kubeconfig access level when targeting seeds in this garden (and shoots that back a managed seed, since they physically are the seed cluster). One of "admin", "viewer", "auto". Pass an empty value to unset and delegate to gardenlogin's default.
       --default-shoot-access-level string   default kubeconfig access level when targeting shoots in this garden. One of "admin", "viewer", "auto". Pass an empty value to unset and delegate to gardenlogin's default.
   -h, --help                                help for set-garden
-      --kubeconfig string                   path to kubeconfig file for this Garden cluster
+      --kubeconfig string                   path to kubeconfig file for this garden cluster
       --pattern stringArray                 define regex match patterns for this garden for custom input formats for targeting.
                                             Use named capturing groups to match target values.
                                             Supported capturing groups: project, namespace, shoot.

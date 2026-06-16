@@ -41,8 +41,8 @@ The loading order follows these rules:
 ### SEE ALSO
 
 * [gardenctl](gardenctl.md)	 - Gardenctl is a utility to interact with Gardener installations
-* [gardenctl config delete-garden](gardenctl_config_delete-garden.md)	 - Delete the specified Garden from the gardenctl configuration
-* [gardenctl config set-garden](gardenctl_config_set-garden.md)	 - Modify or add a Garden to the gardenctl configuration
+* [gardenctl config delete-garden](gardenctl_config_delete-garden.md)	 - Delete the specified garden from the gardenctl configuration
+* [gardenctl config set-garden](gardenctl_config_set-garden.md)	 - Modify or add a garden to the gardenctl configuration
 * [gardenctl config set-openstack-authurl](gardenctl_config_set-openstack-authurl.md)	 - Configure allowed OpenStack auth URLs
 * [gardenctl config view](gardenctl_config_view.md)	 - Print the gardenctl configuration
 

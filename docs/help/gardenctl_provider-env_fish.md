@@ -6,8 +6,11 @@ Generate the cloud provider CLI configuration script for fish
 
 Generate the cloud provider CLI configuration script for fish.
 
-To load the cloud provider CLI configuration script in your current shell session:
+To configure the provider CLI for the currently targeted shoot:
 $ eval (gardenctl provider-env fish)
+
+To configure the provider CLI for the seed infrastructure account hosting the shoot control plane:
+$ eval (gardenctl provider-env fish --control-plane)
 
 
 ```
