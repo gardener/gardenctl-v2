@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	internalclient "github.com/gardener/gardenctl-v2/internal/client"
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
@@ -176,7 +177,7 @@ func (b *targetBuilderImpl) SetShoot(ctx context.Context, name string) TargetBui
 	return b
 }
 
-func (b *targetBuilderImpl) SetControlPlane(_ context.Context) TargetBuilder {
+func (b *targetBuilderImpl) SetControlPlane(ctx context.Context) TargetBuilder {
 	b.actions = append(b.actions, func(t *targetImpl) error {
 		if t.Garden == "" {
 			return ErrNoGardenTargeted
@@ -187,6 +188,10 @@ func (b *targetBuilderImpl) SetControlPlane(_ context.Context) TargetBuilder {
 		}
 
 		t.ControlPlaneFlag = true
+
+		if err := b.handleControlPlaneAccessRestrictions(ctx, t); err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -208,7 +213,7 @@ func (b *targetBuilderImpl) completeTargetForShoot(ctx context.Context, t *targe
 	if handler := ac.AccessRestrictionHandlerFromContext(ctx); handler != nil {
 		if garden, err := b.config.Garden(t.GardenName()); err == nil {
 			if !handler(ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)) {
-				return fmt.Errorf("%w", ErrAborted)
+				return ErrAborted
 			}
 		}
 	}
@@ -236,6 +241,42 @@ func (b *targetBuilderImpl) completeTargetForShoot(ctx context.Context, t *targe
 
 	t.Shoot = shoot.Name
 	t.ControlPlaneFlag = false
+
+	return nil
+}
+
+func (b *targetBuilderImpl) handleControlPlaneAccessRestrictions(ctx context.Context, t *targetImpl) error {
+	if !t.ControlPlane() {
+		return ErrNoControlPlaneTargeted
+	}
+
+	handler := ac.AccessRestrictionHandlerFromContext(ctx)
+	if handler == nil {
+		return nil
+	}
+
+	garden, err := b.config.Garden(t.GardenName())
+	if err != nil || len(garden.AccessRestrictions) == 0 {
+		return nil
+	}
+
+	gardenClient, err := b.getGardenClient(t.GardenName())
+	if err != nil {
+		return err
+	}
+
+	backingShoot, err := NewResolver(gardenClient).ResolveShoot(ctx, t)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	if !handler(ac.CheckAccessRestrictions(garden.AccessRestrictions, backingShoot)) {
+		return ErrAborted
+	}
 
 	return nil
 }

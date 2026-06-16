@@ -436,6 +436,7 @@ shoot:
 					shoot2Target := target.NewTarget(gardenName, "garden", "", seedName).WithControlPlane(true)
 
 					gardenClient.EXPECT().FindShoot(ctx, t.AsListOption()).Return(shoot, nil)
+					gardenClient.EXPECT().GetShootOfManagedSeed(ctx, seedName).Return(&seedmanagementv1alpha1.Shoot{Name: shoot2.Name}, nil)
 					gardenClient.EXPECT().FindShoot(ctx, shoot2Target.AsListOption()).Return(shoot2, nil)
 					gardenClient.EXPECT().GetProjectByNamespace(ctx, "garden").Return(projectGarden, nil)
 
@@ -467,7 +468,7 @@ shoot:
 
 				gardenClient.EXPECT().GetShootOfManagedSeed(ctx, "seed").Return(nil, apierrors.NewNotFound(seedmanagementv1alpha1.Resource("managedseed"), "my-seed"))
 
-				Expect(o.Run(factory)).To(MatchError(MatchRegexp("^seed is not a managed seed")))
+				Expect(o.Run(factory)).To(MatchError(MatchRegexp(`^seed "seed" is not a managed seed`)))
 			})
 		})
 	})

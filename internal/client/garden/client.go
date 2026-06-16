@@ -627,10 +627,7 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string, acces
 
 	if !apierrors.IsNotFound(err) {
 		logger.V(1).Info("using referred shoot of managed seed",
-			"shoot", klog.ObjectRef{
-				Namespace: corev1beta1constants.GardenNamespace,
-				Name:      shoot.Name,
-			},
+			"shoot", klog.KRef(corev1beta1constants.GardenNamespace, shoot.Name),
 			"seed", name)
 
 		return g.GetShootClientConfig(ctx, corev1beta1constants.GardenNamespace, shoot.Name, accessLevel)

@@ -20,7 +20,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog/v2"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
@@ -51,6 +50,8 @@ type options struct {
 	CmdPath string
 	// Target is the target used when executing the command
 	Target target.Target
+	// OriginalTarget is the target before resolving managed seeds and control planes.
+	OriginalTarget target.Target
 	// TargetFlags are the target override flags
 	TargetFlags target.TargetFlags
 	// Template is the script template
@@ -321,20 +322,24 @@ The URI is parsed and host and path are set accordingly. These are merged with d
 func (o *options) Run(f util.Factory) error {
 	ctx := f.Context()
 
-	logger := klog.FromContext(ctx)
-
 	manager, err := f.Manager()
 	if err != nil {
 		return err
 	}
 
-	o.Target, err = manager.CurrentTarget()
+	o.OriginalTarget, err = manager.CurrentTarget()
 	if err != nil {
 		return err
 	}
 
+	o.Target = o.OriginalTarget
+
 	if o.Target.GardenName() == "" {
 		return target.ErrNoGardenTargeted
+	}
+
+	if o.Target.ControlPlane() && o.Target.SeedName() != "" && o.Target.ShootName() == "" {
+		return fmt.Errorf("cannot use --control-plane with seed target %q", o.Target.SeedName())
 	}
 
 	client, err := manager.GardenClient(o.Target.GardenName())
@@ -342,34 +347,21 @@ func (o *options) Run(f util.Factory) error {
 		return fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	if o.Target.ShootName() == "" && o.Target.SeedName() != "" {
-		shoot, err := client.GetShootOfManagedSeed(ctx, o.Target.SeedName())
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return fmt.Errorf("cannot generate cloud provider CLI configuration script for non-managed seeds: %w", err)
-			}
+	requiresAccessRestrictionConfirmation := o.TargetFlags != nil && (o.TargetFlags.ShootName() != "" || o.TargetFlags.ControlPlane())
 
-			return err
-		}
+	resolver := target.NewResolver(client)
 
-		logger.V(1).Info("using referred shoot of managed seed",
-			"shoot", klog.ObjectRef{
-				Namespace: "garden",
-				Name:      shoot.Name,
-			},
-			"seed", o.Target.SeedName())
-
-		o.Target = o.Target.WithProjectName("garden").WithShootName(shoot.Name)
-	}
-
-	if o.Target.ShootName() == "" {
-		return target.ErrNoShootTargeted
-	}
-
-	shoot, err := client.FindShoot(ctx, o.Target.AsListOption())
+	resolvedTarget, err := resolver.ResolveShootTarget(ctx, o.Target)
 	if err != nil {
 		return err
 	}
+
+	shoot, err := resolver.FindShoot(ctx, resolvedTarget)
+	if err != nil {
+		return err
+	}
+
+	o.Target = resolvedTarget
 
 	if (shoot.Spec.SecretBindingName == nil || *shoot.Spec.SecretBindingName == "") &&
 		(shoot.Spec.CredentialsBindingName == nil || *shoot.Spec.CredentialsBindingName == "") {
@@ -414,7 +406,7 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	aborted, err := maybeAbortDueToAccessRestrictions(o, messages)
+	aborted, err := maybeAbortDueToAccessRestrictions(o, messages, requiresAccessRestrictionConfirmation)
 	if err != nil {
 		return err
 	}
@@ -610,7 +602,7 @@ func generateMetadata(o *options, cli string, credentialKind string) map[string]
 	metadata["unset"] = o.Unset
 	metadata["commandPath"] = o.CmdPath
 	metadata["cli"] = cli
-	metadata["targetFlags"] = getTargetFlags(o.Target)
+	metadata["targetFlags"] = getTargetFlags(o.originalTarget())
 	metadata["credentialKind"] = credentialKind
 
 	if o.Shell != "" {
@@ -619,6 +611,14 @@ func generateMetadata(o *options, cli string, credentialKind string) map[string]
 	}
 
 	return metadata
+}
+
+func (o *options) originalTarget() target.Target {
+	if o.OriginalTarget != nil {
+		return o.OriginalTarget
+	}
+
+	return o.Target
 }
 
 func getProviderCLI(providerType string) string {
@@ -635,22 +635,30 @@ func getProviderCLI(providerType string) string {
 }
 
 func getTargetFlags(t target.Target) string {
+	var targetFlags string
+
 	if t.ProjectName() != "" {
-		return fmt.Sprintf("--garden %s --project %s --shoot %s", t.GardenName(), t.ProjectName(), t.ShootName())
+		targetFlags = fmt.Sprintf("--garden %s --project %s --shoot %s", t.GardenName(), t.ProjectName(), t.ShootName())
+	} else {
+		targetFlags = fmt.Sprintf("--garden %s --seed %s --shoot %s", t.GardenName(), t.SeedName(), t.ShootName())
 	}
 
-	return fmt.Sprintf("--garden %s --seed %s --shoot %s", t.GardenName(), t.SeedName(), t.ShootName())
+	if t.ControlPlane() {
+		targetFlags += " --control-plane"
+	}
+
+	return targetFlags
 }
 
 // maybeAbortDueToAccessRestrictions processes access restriction messages and updates metadata or outputs
 // a confirmation prompt. It returns (aborted=true) when it has already written output and the caller
 // should stop further processing. When no messages or when only metadata is updated, it returns aborted=false.
-func maybeAbortDueToAccessRestrictions(o *options, messages ac.AccessRestrictionMessages) (bool, error) {
+func maybeAbortDueToAccessRestrictions(o *options, messages ac.AccessRestrictionMessages, requiresConfirmation bool) (bool, error) {
 	if len(messages) == 0 {
 		return false, nil
 	}
 
-	if o.TargetFlags.ShootName() == "" || o.ConfirmAccessRestriction {
+	if !requiresConfirmation || o.ConfirmAccessRestriction {
 		return false, nil
 	}
 
@@ -661,13 +669,14 @@ func maybeAbortDueToAccessRestrictions(o *options, messages ac.AccessRestriction
 	}
 
 	s := env.Shell(o.Shell)
+	confirmCommand := fmt.Sprintf("%s %s --confirm-access-restriction %s", o.CmdPath, getTargetFlags(o.originalTarget()), o.Shell)
 
 	if err := o.Template.ExecuteTemplate(o.IOStreams.Out, "printf", map[string]interface{}{
 		"format": messages.String() + "\n%s %s\n%s\n",
 		"arguments": []string{
 			"The cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions.",
 			"Use the --confirm-access-restriction flag to confirm the access.",
-			s.Prompt(runtime.GOOS) + s.EvalCommand(fmt.Sprintf("%s --confirm-access-restriction %s", o.CmdPath, o.Shell)),
+			s.Prompt(runtime.GOOS) + s.EvalCommand(confirmCommand),
 		},
 	}); err != nil {
 		return false, err

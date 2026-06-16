@@ -27,6 +27,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	operationsv1alpha1 "github.com/gardener/gardener/pkg/apis/operations/v1alpha1"
+	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/secrets"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/golang/mock/gomock"
@@ -89,6 +90,47 @@ func waitForBastionThenSetBastionReady(ctx context.Context, gardenClient client.
 	})
 }
 
+func newShootSSHKeypairSecret(shootName, namespace string) *corev1.Secret {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	})
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s.ssh-keypair", shootName),
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			secrets.DataKeyRSAPrivateKey: privateKeyPEM,
+		},
+	}
+}
+
+func newShootCAConfigMap(shootName, namespace string) *corev1.ConfigMap {
+	csc := &secrets.CertificateSecretConfig{
+		Name:       "ca-test",
+		CommonName: "ca-test",
+		CertType:   secrets.CACert,
+	}
+	ca, err := csc.GenerateCertificate()
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      shootName + ".ca-cluster",
+			Namespace: namespace,
+			UID:       "00000000-0000-0000-0000-000000000000",
+		},
+		Data: map[string]string{
+			"ca.crt": string(ca.CertificatePEM),
+		},
+	}
+}
+
 var _ = Describe("SSH Command", func() {
 	const (
 		gardenName           = "mygarden"
@@ -100,32 +142,33 @@ var _ = Describe("SSH Command", func() {
 	)
 
 	var (
-		ctrl                 *gomock.Controller
-		clientProvider       *clientmocks.MockProvider
-		cfg                  *config.Config
-		streams              util.IOStreams
-		out                  *util.SafeBytesBuffer
-		factory              *internalfake.Factory
-		ctx                  context.Context
-		cancel               context.CancelFunc
-		ctxTimeout           context.Context
-		cancelTimeout        context.CancelFunc
-		currentTarget        target.Target
-		testProject          *gardencorev1beta1.Project
-		testSeed             *gardencorev1beta1.Seed
-		testShoot            *gardencorev1beta1.Shoot
-		testNode             *corev1.Node
-		testMachine          *machinev1alpha1.Machine
-		pendingMachine       *machinev1alpha1.Machine
-		seedKubeconfigSecret *corev1.Secret
-		gardenClient         client.Client
-		shootClient          client.Client
-		seedClient           client.Client
-		nodePrivateKeyFile   string
-		logs                 *util.SafeBytesBuffer
-		signalChan           chan os.Signal
-		gardenHomeDir        string
-		gardenTempDir        string
+		ctrl                            *gomock.Controller
+		clientProvider                  *clientmocks.MockProvider
+		cfg                             *config.Config
+		streams                         util.IOStreams
+		out                             *util.SafeBytesBuffer
+		factory                         *internalfake.Factory
+		ctx                             context.Context
+		cancel                          context.CancelFunc
+		ctxTimeout                      context.Context
+		cancelTimeout                   context.CancelFunc
+		currentTarget                   target.Target
+		testProject                     *gardencorev1beta1.Project
+		testSeed                        *gardencorev1beta1.Seed
+		testShoot                       *gardencorev1beta1.Shoot
+		testNode                        *corev1.Node
+		testMachine                     *machinev1alpha1.Machine
+		pendingMachine                  *machinev1alpha1.Machine
+		seedKubeconfigSecret            *corev1.Secret
+		expectedShootClientConfigTarget *gardencorev1beta1.Shoot
+		gardenClient                    client.Client
+		shootClient                     client.Client
+		seedClient                      client.Client
+		nodePrivateKeyFile              string
+		logs                            *util.SafeBytesBuffer
+		signalChan                      chan os.Signal
+		gardenHomeDir                   string
+		gardenTempDir                   string
 	)
 
 	BeforeEach(func() {
@@ -218,25 +261,7 @@ var _ = Describe("SSH Command", func() {
 			},
 		}
 
-		testShootKeypair := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%s.ssh-keypair", testShoot.Name),
-				Namespace: *testProject.Spec.Namespace,
-				UID:       "00000000-0000-0000-0000-000000000000",
-			},
-		}
-
-		privateKey, err := rsa.GenerateKey(rand.Reader, 1024)
-		Expect(err).NotTo(HaveOccurred())
-
-		privateKeyPEM := pem.EncodeToMemory(&pem.Block{
-			Type:  "RSA PRIVATE KEY",
-			Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
-		})
-
-		testShootKeypair.Data = map[string][]byte{
-			secrets.DataKeyRSAPrivateKey: privateKeyPEM,
-		}
+		testShootKeypair := newShootSSHKeypairSecret(testShoot.Name, *testProject.Spec.Namespace)
 
 		testSeedKubeconfig, err := internalfake.NewConfigData("test-seed")
 		Expect(err).ToNot(HaveOccurred())
@@ -252,24 +277,7 @@ var _ = Describe("SSH Command", func() {
 			},
 		}
 
-		csc := &secrets.CertificateSecretConfig{
-			Name:       "ca-test",
-			CommonName: "ca-test",
-			CertType:   secrets.CACert,
-		}
-		ca, err := csc.GenerateCertificate()
-		Expect(err).NotTo(HaveOccurred())
-
-		caConfigMap := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      testShoot.Name + ".ca-cluster",
-				Namespace: testShoot.Namespace,
-				UID:       "00000000-0000-0000-0000-000000000000",
-			},
-			Data: map[string]string{
-				"ca.crt": string(ca.CertificatePEM),
-			},
-		}
+		caConfigMap := newShootCAConfigMap(testShoot.Name, testShoot.Namespace)
 
 		gardenClient = internalfake.Wrap(
 			fakeclient.NewClientBuilder().
@@ -329,6 +337,7 @@ var _ = Describe("SSH Command", func() {
 		clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(gardenClient, nil).AnyTimes()
 
 		currentTarget = target.NewTarget(gardenName, testProject.Name, "", testShoot.Name)
+		expectedShootClientConfigTarget = testShoot
 		targetProvider := internalfake.NewFakeTargetProvider(currentTarget)
 
 		factory = internalfake.NewFakeFactory(cfg, nil, clientProvider, targetProvider)
@@ -370,7 +379,8 @@ var _ = Describe("SSH Command", func() {
 				Do(func(clientConfig clientcmd.ClientConfig) {
 					config, err := clientConfig.RawConfig()
 					Expect(err).NotTo(HaveOccurred())
-					Expect(config.CurrentContext).To(Equal(testShoot.Namespace + "--" + testShoot.Name + "-" + testShoot.Status.AdvertisedAddresses[0].Name))
+					Expect(expectedShootClientConfigTarget).NotTo(BeNil())
+					Expect(config.CurrentContext).To(Equal(expectedShootClientConfigTarget.Namespace + "--" + expectedShootClientConfigTarget.Name + "-" + expectedShootClientConfigTarget.Status.AdvertisedAddresses[0].Name))
 				})
 		})
 
@@ -487,6 +497,125 @@ var _ = Describe("SSH Command", func() {
 
 			_, err = os.Stat(options.SSHPrivateKeyFile.String())
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("should connect to a node of the backing shoot when control-plane target flags select a shoot control plane", func() {
+			gardenProject := &gardencorev1beta1.Project{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: corev1beta1constants.GardenNamespace,
+					UID:  "00000000-0000-0000-0000-000000000001",
+				},
+				Spec: gardencorev1beta1.ProjectSpec{
+					Namespace: ptr.To(corev1beta1constants.GardenNamespace),
+				},
+			}
+			seedShoot := &gardencorev1beta1.Shoot{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "seed-shoot",
+					Namespace: corev1beta1constants.GardenNamespace,
+					UID:       "00000000-0000-0000-0000-000000000002",
+				},
+				Spec: gardencorev1beta1.ShootSpec{
+					SeedName: ptr.To("infrastructure-seed"),
+					Kubernetes: gardencorev1beta1.Kubernetes{
+						Version: "1.20.0",
+					},
+					Provider: gardencorev1beta1.Provider{
+						WorkersSettings: &gardencorev1beta1.WorkersSettings{
+							SSHAccess: &gardencorev1beta1.SSHAccess{
+								Enabled: true,
+							},
+						},
+					},
+				},
+				Status: gardencorev1beta1.ShootStatus{
+					AdvertisedAddresses: []gardencorev1beta1.ShootAdvertisedAddress{
+						{
+							Name: "external",
+							URL:  "https://api.seed-shoot.invalid",
+						},
+					},
+					TechnicalID: "shoot--garden--seed-shoot",
+				},
+			}
+			managedSeed := &seedmanagementv1alpha1.ManagedSeed{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testSeed.Name,
+					Namespace: corev1beta1constants.GardenNamespace,
+					UID:       "00000000-0000-0000-0000-000000000003",
+				},
+				Spec: seedmanagementv1alpha1.ManagedSeedSpec{
+					Shoot: &seedmanagementv1alpha1.Shoot{
+						Name: seedShoot.Name,
+					},
+				},
+			}
+
+			Expect(gardenClient.Create(ctx, gardenProject)).To(Succeed())
+			Expect(gardenClient.Create(ctx, seedShoot)).To(Succeed())
+			Expect(gardenClient.Create(ctx, managedSeed)).To(Succeed())
+			Expect(gardenClient.Create(ctx, newShootSSHKeypairSecret(seedShoot.Name, seedShoot.Namespace))).To(Succeed())
+			Expect(gardenClient.Create(ctx, newShootCAConfigMap(seedShoot.Name, seedShoot.Namespace))).To(Succeed())
+
+			factory.TargetFlagsImpl = target.NewTargetFlags("", "", "", "", false)
+			factory.TargetProviderImpl = target.NewTargetProvider(filepath.Join(gardenTempDir, "target"), factory.TargetFlagsImpl)
+			expectedShootClientConfigTarget = seedShoot
+
+			options := ssh.NewSSHOptions(streams)
+			cmd := ssh.NewCmdSSH(factory, options)
+			Expect(cmd.Flags().Set("garden", gardenName)).To(Succeed())
+			Expect(cmd.Flags().Set("project", testProject.Name)).To(Succeed())
+			Expect(cmd.Flags().Set("shoot", testShoot.Name)).To(Succeed())
+			Expect(cmd.Flags().Set("control-plane", "true")).To(Succeed())
+
+			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, seedShoot.Namespace, bastionHostname, bastionIP)
+
+			bastionKey := client.ObjectKey{Name: bastionName, Namespace: seedShoot.Namespace}
+			executedCommands := 0
+
+			ssh.SetExecSSHCommand(func(ctx context.Context, args []string, ioStreams util.IOStreams) error {
+				defer func() {
+					signalChan <- os.Interrupt
+				}()
+
+				executedCommands++
+
+				bastion := &operationsv1alpha1.Bastion{}
+				Expect(gardenClient.Get(ctx, bastionKey, bastion)).To(Succeed())
+				Expect(bastion.Spec.ShootRef.Name).To(Equal(seedShoot.Name))
+
+				bastionUID := string(bastion.UID)
+				shootUID := string(seedShoot.UID)
+
+				defaultBastionKnownHostsFile := filepath.Join(gardenTempDir, "cache", bastionUID, ".ssh", "known_hosts")
+				defaultNodeKnownHostsFile := filepath.Join(gardenHomeDir, "cache", shootUID, ".ssh", "known_hosts")
+
+				Expect(args).To(Equal([]string{
+					"-oIdentitiesOnly=yes",
+					"-oStrictHostKeyChecking=ask",
+					fmt.Sprintf("-oUserKnownHostsFile='%s'", defaultNodeKnownHostsFile),
+					fmt.Sprintf("-i%s", nodePrivateKeyFile),
+					fmt.Sprintf(
+						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'%s'\"'\"'' '%s@%s' '-p22'",
+						options.SSHPrivateKeyFile,
+						defaultBastionKnownHostsFile,
+						ssh.SSHBastionUsername,
+						bastionIP,
+					),
+					fmt.Sprintf("%s@%s", options.User, nodeHostname),
+				}))
+
+				return nil
+			})
+
+			Expect(cmd.RunE(cmd, []string{testNode.Name})).To(Succeed())
+
+			Expect(executedCommands).To(Equal(1))
+			Expect(logs.String()).To(ContainSubstring("Preparing SSH access"))
+			Expect(logs.String()).To(ContainSubstring("garden/seed-shoot"))
+
+			bastion := &operationsv1alpha1.Bastion{}
+			Expect(gardenClient.Get(ctx, bastionKey, bastion)).NotTo(Succeed())
 		})
 
 		It("should connect to a given node that has not yet joined the cluster", func() {

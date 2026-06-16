@@ -7,15 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package resolve
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/spf13/cobra"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	"github.com/gardener/gardenctl-v2/internal/util"
@@ -202,7 +198,9 @@ func (o *options) Run(f util.Factory) error {
 		return o.PrintObject(resolvedTarget)
 	}
 
-	shoot, err := findShoot(ctx, o.GardenClient, o.CurrentTarget)
+	resolver := target.NewResolver(o.GardenClient)
+
+	shoot, err := resolver.ResolveShoot(ctx, o.CurrentTarget)
 	if err != nil {
 		if errors.Is(err, target.ErrNoShootTargeted) {
 			switch o.Kind {
@@ -216,19 +214,16 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
+	if shoot.Spec.SeedName == nil || *shoot.Spec.SeedName == "" {
+		return fmt.Errorf("no seed assigned to shoot %s/%s", shoot.Namespace, shoot.Name)
+	}
+
 	if o.Kind == KindSeed {
 		resolvedTarget.Seed = &Seed{
 			Name: *shoot.Spec.SeedName,
 		}
 
 		return o.PrintObject(resolvedTarget)
-	}
-
-	if o.CurrentTarget.ControlPlane() {
-		shoot, err = findShoot(ctx, o.GardenClient, o.CurrentTarget.WithSeedName("").WithProjectName("garden").WithShootName(*shoot.Spec.SeedName).WithControlPlane(false))
-		if err != nil {
-			return err
-		}
 	}
 
 	resolvedTarget.Seed = &Seed{
@@ -263,48 +258,4 @@ func (o *options) Run(f util.Factory) error {
 	}
 
 	return o.PrintObject(resolvedTarget)
-}
-
-func findShoot(ctx context.Context, gardenclient clientgarden.Client, t target.Target) (*gardencorev1beta1.Shoot, error) {
-	opt, err := shootListOption(ctx, gardenclient, t)
-	if err != nil {
-		return nil, err
-	}
-
-	shoot, err := gardenclient.FindShoot(ctx, opt)
-	if err != nil {
-		return nil, err
-	}
-
-	if shoot.Spec.SeedName == nil {
-		return nil, fmt.Errorf("no seed assigned to shoot %s/%s", shoot.Namespace, shoot.Name)
-	}
-
-	return shoot, nil
-}
-
-// shootListOption returns the list options for the shoot.
-// If no shoot or seed (that is a managed seed) was targeted, target.ErrNoShootTargeted is returned.
-func shootListOption(ctx context.Context, gardenClient clientgarden.Client, t target.Target) (client.ListOption, error) {
-	if t.ShootName() != "" {
-		return t.AsListOption(), nil
-	}
-
-	if t.SeedName() != "" {
-		shootOfManagedSeed, err := gardenClient.GetShootOfManagedSeed(ctx, t.SeedName())
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil, fmt.Errorf("%s is not a managed seed: %w", t.SeedName(), err)
-			}
-
-			return nil, err
-		}
-
-		return clientgarden.ProjectFilter{
-			"metadata.name": shootOfManagedSeed.Name,
-			"project":       "garden",
-		}, nil
-	}
-
-	return nil, target.ErrNoShootTargeted
 }

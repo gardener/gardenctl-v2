@@ -688,40 +688,22 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	if currentTarget.ShootName() == "" && currentTarget.SeedName() != "" {
-		shoot, err := gardenClient.GetShootOfManagedSeed(ctx, currentTarget.SeedName())
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return fmt.Errorf("cannot ssh to non-managed seeds: %w", err)
-			}
-
-			return err
-		}
-
-		logger.V(1).Info("using referred shoot of managed seed",
-			"shoot", klog.ObjectRef{
-				Namespace: "garden",
-				Name:      shoot.Name,
-			},
-			"seed", currentTarget.SeedName())
-
-		currentTarget = currentTarget.WithProjectName("garden").WithShootName(shoot.Name)
-	}
-
-	if currentTarget.ShootName() == "" {
-		return target.ErrNoShootTargeted
-	}
-
-	printTargetInformation(logger, currentTarget)
-
-	// fetch targeted shoot (ctx is cancellable to stop the keep alive goroutine later)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	shoot, err := gardenClient.FindShoot(ctx, currentTarget.AsListOption())
+	resolver := target.NewResolver(gardenClient)
+
+	currentTarget, err = resolver.ResolveShootTarget(ctx, currentTarget)
 	if err != nil {
 		return err
 	}
+
+	shoot, err := resolver.FindShoot(ctx, currentTarget)
+	if err != nil {
+		return err
+	}
+
+	printTargetInformation(logger, currentTarget)
 
 	// check access restrictions
 	ok, err := o.checkAccessRestrictions(manager.Configuration(), currentTarget.GardenName(), f.TargetFlags(), shoot)

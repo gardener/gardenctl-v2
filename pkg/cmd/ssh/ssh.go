@@ -26,10 +26,18 @@ func NewCmdSSH(f util.Factory, o *SSHOptions) *cobra.Command {
 
 A bastion is created to access the node and is automatically cleaned up afterwards.
 
+When targeting a shoot control plane, gardenctl connects to nodes of the seed shoot that hosts the
+targeted shoot's control plane.
+Only managed seeds are supported, because gardenctl needs the backing shoot to create the bastion
+and determine its worker nodes.
+
 If a node name is not provided, gardenctl will display the hostnames/IPs of the shoot worker nodes and the corresponding SSH command.
 To connect to a desired node, copy the printed SSH command, replace the target hostname accordingly, and execute the command.`,
 		Example: `# Establish an SSH connection to a specific shoot cluster node
 gardenctl ssh my-shoot-node-1
+
+# Establish an SSH connection to a node of the seed shoot hosting a shoot control plane
+gardenctl ssh my-seed-node-1 --garden my-garden --project my-project --shoot my-shoot --control-plane
 
 # Establish an SSH connection with custom CIDRs to allow access to the bastion host
 gardenctl ssh my-shoot-node-1 --cidr 10.1.2.3/32
