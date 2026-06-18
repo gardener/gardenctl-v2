@@ -35,6 +35,10 @@ func NewCmdProviderEnv(f util.Factory, ioStreams util.IOStreams) *cobra.Command 
 See each sub-command's help for details on how to use the generated script.
 
 The generated script sets the environment variables for the cloud provider CLI of the targeted shoot.
+When targeting a shoot control plane, the generated script configures the provider CLI for the seed
+infrastructure account that hosts that control plane.
+Only managed seeds are supported, because gardenctl needs the backing shoot to resolve the seed
+infrastructure credentials.
 In addition, the Azure CLI requires to sign in with a service principal and the gcloud CLI requires to activate a service-account.
 Thereby the configuration location of the corresponding cloud provider CLI is pointed to a temporary folder in the
 session directory, so that the standard configuration files in the user's home folder are not affected.
@@ -77,12 +81,15 @@ Alternatively, you can use the --openstack-allowed-patterns or --openstack-allow
 	o.Options.AddFlags(cmdFlags)
 
 	for _, s := range env.ValidShells() {
+		currentTargetCommand := s.Prompt(runtime.GOOS) + s.EvalCommand(fmt.Sprintf("gardenctl %s %s", cmd.Name(), s))
+		controlPlaneCommand := s.Prompt(runtime.GOOS) + s.EvalCommand(fmt.Sprintf("gardenctl %s %s --control-plane", cmd.Name(), s))
 		cmd.AddCommand(&cobra.Command{
 			Use:   string(s),
 			Short: fmt.Sprintf("Generate the cloud provider CLI configuration script for %s", s),
 			Long: fmt.Sprintf("Generate the cloud provider CLI configuration script for %s.\n\n"+
-				"To load the cloud provider CLI configuration script in your current shell session:\n%s\n",
-				s, s.Prompt(runtime.GOOS)+s.EvalCommand(fmt.Sprintf("gardenctl %s %s", cmd.Name(), s)),
+				"To configure the provider CLI for the currently targeted shoot:\n%s\n\n"+
+				"To configure the provider CLI for the seed infrastructure account hosting the shoot control plane:\n%s\n",
+				s, currentTargetCommand, controlPlaneCommand,
 			),
 			RunE: runE,
 		})

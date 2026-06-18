@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package target_test
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -26,6 +27,7 @@ import (
 	internalclient "github.com/gardener/gardenctl-v2/internal/client"
 	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
 	"github.com/gardener/gardenctl-v2/internal/fake"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/target"
 )
@@ -403,12 +405,101 @@ var _ = Describe("Target Manager", func() {
 		})
 	})
 
+	prepareManagedSeedBackingShootWithAccessRestriction := func() {
+		cfg.Gardens[0].AccessRestrictions = []ac.AccessRestriction{
+			{
+				Key: "restricted-access",
+				Msg: "Shoot access is restricted",
+				Options: []ac.AccessRestrictionOption{
+					{
+						Key:      "support",
+						NotifyIf: true,
+						Msg:      "Support access must be confirmed",
+					},
+				},
+			},
+		}
+
+		gardenProject := &gardencorev1beta1.Project{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: corev1beta1constants.GardenNamespace,
+				UID:  "00000000-0000-0000-0000-000000000001",
+			},
+			Spec: gardencorev1beta1.ProjectSpec{
+				Namespace: ptr.To(corev1beta1constants.GardenNamespace),
+			},
+		}
+		managedSeed := &seedmanagementv1alpha1.ManagedSeed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      seed.Name,
+				Namespace: corev1beta1constants.GardenNamespace,
+				UID:       "00000000-0000-0000-0000-000000000002",
+			},
+			Spec: seedmanagementv1alpha1.ManagedSeedSpec{
+				Shoot: &seedmanagementv1alpha1.Shoot{Name: "seed-shoot"},
+			},
+		}
+		seedShoot := createTestShoot("seed-shoot", corev1beta1constants.GardenNamespace, nil)
+		seedShoot.Spec.AccessRestrictions = []gardencorev1beta1.AccessRestrictionWithOptions{
+			{
+				AccessRestriction: gardencorev1beta1.AccessRestriction{
+					Name: "restricted-access",
+				},
+				Options: map[string]string{
+					"support": "true",
+				},
+			},
+		}
+
+		Expect(gardenClient.Create(ctx, gardenProject)).To(Succeed())
+		Expect(gardenClient.Create(ctx, managedSeed)).To(Succeed())
+		Expect(gardenClient.Create(ctx, seedShoot)).To(Succeed())
+	}
+
 	It("should be able to target control plane for a shoot", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name)
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		Expect(manager.TargetControlPlane(ctx)).To(Succeed())
 		assertTargetProvider(targetProvider, t.WithControlPlane(true))
+	})
+
+	It("should check access restrictions on the managed seed backing shoot when targeting a control plane", func() {
+		prepareManagedSeedBackingShootWithAccessRestriction()
+
+		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
+
+		var handled ac.AccessRestrictionMessages
+
+		ctx := ac.WithAccessRestrictionHandler(ctx, func(messages ac.AccessRestrictionMessages) bool {
+			handled = messages
+			return true
+		})
+
+		Expect(manager.TargetControlPlane(ctx)).To(Succeed())
+		Expect(handled).To(Equal(ac.AccessRestrictionMessages{
+			{
+				Header: "Shoot access is restricted",
+				Items:  []string{"Support access must be confirmed"},
+			},
+		}))
+		assertTargetProvider(targetProvider, t.WithControlPlane(true))
+	})
+
+	It("should abort control plane targeting when managed seed backing shoot access restrictions are rejected", func() {
+		prepareManagedSeedBackingShootWithAccessRestriction()
+
+		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1GoldenShoot.Name)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
+		ctx := ac.WithAccessRestrictionHandler(ctx, func(ac.AccessRestrictionMessages) bool {
+			return false
+		})
+
+		err := manager.TargetControlPlane(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(errors.Is(err, target.ErrAborted)).To(BeTrue())
+		assertTargetProvider(targetProvider, t)
 	})
 
 	It("should fail to target control plane if shoot is not set", func() {
@@ -601,6 +692,20 @@ var _ = Describe("Target Manager", func() {
 			})
 
 			It("should return the client configuration", func() {
+				clientConfig, err := manager.ClientConfig(ctx, t)
+				Expect(err).NotTo(HaveOccurred())
+
+				currentContextName := prod1GoldenShoot.Namespace + "--" + prod1GoldenShoot.Name + "-" + prod1GoldenShoot.Status.AdvertisedAddresses[0].Name
+				assertClientConfig(clientConfig, currentContextName, "default")
+			})
+		})
+
+		Context("when shoot is targeted without a project", func() {
+			BeforeEach(func() {
+				t = target.NewTarget(gardenName, "", "", prod1GoldenShoot.Name)
+			})
+
+			It("should resolve the shoot and return the client configuration", func() {
 				clientConfig, err := manager.ClientConfig(ctx, t)
 				Expect(err).NotTo(HaveOccurred())
 

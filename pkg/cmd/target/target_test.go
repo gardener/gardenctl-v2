@@ -10,10 +10,12 @@ import (
 	"fmt"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -110,7 +112,9 @@ var _ = Describe("Target Command", func() {
 	JustBeforeEach(func() {
 		clientConfig, err := cfg.ClientConfig(gardenName)
 		Expect(err).ToNot(HaveOccurred())
-		clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).Return(gardenClient, nil).AnyTimes()
+		clientProvider.EXPECT().FromClientConfig(gomock.Eq(clientConfig)).DoAndReturn(func(_ clientcmd.ClientConfig) (client.Client, error) {
+			return gardenClient, nil
+		}).AnyTimes()
 	})
 
 	AfterEach(func() {
@@ -214,6 +218,56 @@ var _ = Describe("Target Command", func() {
 			Expect(currentTarget.ProjectName()).To(Equal(projectName))
 			Expect(currentTarget.SeedName()).To(BeEmpty())
 			Expect(currentTarget.ShootName()).To(Equal(shootName))
+			Expect(currentTarget.ControlPlane()).To(BeTrue())
+		})
+
+		It("should display access restrictions of the managed seed backing shoot when targeting a control plane", func() {
+			seedShootName := "seed-shoot"
+			gardenProject := &gardencorev1beta1.Project{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: namespace,
+					UID:  "00000000-0000-0000-0000-000000000003",
+				},
+				Spec: gardencorev1beta1.ProjectSpec{
+					Namespace: ptr.To(namespace),
+				},
+			}
+			managedSeed := &seedmanagementv1alpha1.ManagedSeed{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      seedName,
+					Namespace: namespace,
+					UID:       "00000000-0000-0000-0000-000000000001",
+				},
+				Spec: seedmanagementv1alpha1.ManagedSeedSpec{
+					Shoot: &seedmanagementv1alpha1.Shoot{Name: seedShootName},
+				},
+			}
+			seedShoot := &gardencorev1beta1.Shoot{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      seedShootName,
+					Namespace: namespace,
+					UID:       "00000000-0000-0000-0000-000000000002",
+				},
+				Spec: gardencorev1beta1.ShootSpec{
+					AccessRestrictions: []gardencorev1beta1.AccessRestrictionWithOptions{
+						{
+							AccessRestriction: gardencorev1beta1.AccessRestriction{
+								Name: "a",
+							},
+						},
+					},
+				},
+			}
+			gardenClient = internalfake.NewClientWithObjects(project, gardenProject, seed, shoot, managedSeed, seedShoot)
+
+			targetProvider.Target = target.NewTarget(gardenName, projectName, "", shootName)
+			cmd := cmdtarget.NewCmdTargetControlPlane(factory, streams)
+
+			Expect(cmd.RunE(cmd, []string{})).To(Succeed())
+			Expect(out.String()).To(MatchRegexp(`(?s)Access strictly prohibited.*Successfully targeted control plane of shoot %q\n`, shootName))
+
+			currentTarget, err := targetProvider.Read()
+			Expect(err).NotTo(HaveOccurred())
 			Expect(currentTarget.ControlPlane()).To(BeTrue())
 		})
 

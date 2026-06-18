@@ -6,8 +6,11 @@ Generate the cloud provider CLI configuration script for zsh
 
 Generate the cloud provider CLI configuration script for zsh.
 
-To load the cloud provider CLI configuration script in your current shell session:
+To configure the provider CLI for the currently targeted shoot:
 $ eval "$(gardenctl provider-env zsh)"
+
+To configure the provider CLI for the seed infrastructure account hosting the shoot control plane:
+$ eval "$(gardenctl provider-env zsh --control-plane)"
 
 
 ```

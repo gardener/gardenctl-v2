@@ -39,10 +39,10 @@ gardenctl kubeconfig
 # Print the kubeconfig for the current target in json format
 gardenctl kubeconfig --output json
 
-# Print the Shoot cluster kubeconfig for my-shoot
+# Print the shoot cluster kubeconfig for my-shoot
 gardenctl kubeconfig --garden my-garden --project my-project --shoot my-shoot
 
-# Print the Garden cluster kubeconfig of my-garden. The namespace of the project my-project is set as default
+# Print the garden cluster kubeconfig of my-garden. The namespace of the project my-project is set as default
 gardenctl kubeconfig --garden my-garden --project my-project`,
 		RunE: base.WrapRunE(o, f),
 	}

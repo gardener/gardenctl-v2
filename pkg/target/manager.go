@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -247,12 +248,12 @@ func (m *managerImpl) scopeForTarget(ctx context.Context, t Target) (AccessScope
 			return "", false, err
 		}
 
-		ns, err := resolveShootNamespace(ctx, c, t)
+		shootKey, err := resolveShootKey(ctx, c, t)
 		if err != nil {
 			return "", false, err
 		}
 
-		scope, err := scopeForShoot(ctx, c, ns, t.ShootName())
+		scope, err := scopeForShoot(ctx, c, shootKey.Namespace, shootKey.Name)
 
 		return scope, true, err
 	case t.SeedName() != "":
@@ -277,25 +278,30 @@ func scopeForShoot(ctx context.Context, c clientgarden.Client, namespace, shootN
 	return AccessScopeShoots, nil
 }
 
-// resolveShootNamespace returns the namespace of the shoot identified by t,
-// either from the Project status (when targeted by project) or by finding the
-// shoot cluster-wide.
-func resolveShootNamespace(ctx context.Context, c clientgarden.Client, t Target) (string, error) {
-	if t.ProjectName() != "" {
-		ns, err := getProjectNamespace(ctx, c, t.ProjectName())
+// resolveShootKey returns the namespace/name of the effective shoot identified
+// by t, either from the resolved target's project namespace or by finding the
+// shoot cluster-wide when no project is targeted.
+func resolveShootKey(ctx context.Context, c clientgarden.Client, t Target) (types.NamespacedName, error) {
+	resolvedTarget, err := NewResolver(c).ResolveShootTarget(ctx, t)
+	if err != nil {
+		return types.NamespacedName{}, err
+	}
+
+	if resolvedTarget.ProjectName() != "" {
+		namespace, err := getProjectNamespace(ctx, c, resolvedTarget.ProjectName())
 		if err != nil {
-			return "", err
+			return types.NamespacedName{}, err
 		}
 
-		return *ns, nil
+		return types.NamespacedName{Namespace: *namespace, Name: resolvedTarget.ShootName()}, nil
 	}
 
-	shoot, err := c.FindShoot(ctx, t.AsListOption())
+	shoot, err := c.FindShoot(ctx, resolvedTarget.AsListOption())
 	if err != nil {
-		return "", err
+		return types.NamespacedName{}, err
 	}
 
-	return shoot.Namespace, nil
+	return types.NamespacedName{Namespace: shoot.Namespace, Name: shoot.Name}, nil
 }
 
 // resolveAccessLevel returns the effective kubeconfig access level for a target+scope.
@@ -625,7 +631,7 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 			}
 
 			if shoot.Spec.SeedName == nil || *shoot.Spec.SeedName == "" {
-				return nil, fmt.Errorf("shoot %q has not yet been assigned to a seed", t.ShootName())
+				return nil, fmt.Errorf("no seed assigned to shoot %s/%s", shoot.Namespace, shoot.Name)
 			}
 
 			if shoot.Status.TechnicalID == "" {
@@ -643,19 +649,19 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 
 	if t.ShootName() != "" {
 		return m.getClientConfig(t, func(client clientgarden.Client) (clientcmd.ClientConfig, error) {
-			namespace, err := resolveShootNamespace(ctx, client, t)
+			shootKey, err := resolveShootKey(ctx, client, t)
 			if err != nil {
 				return nil, err
 			}
 
-			scope, err := scopeForShoot(ctx, client, namespace, t.ShootName())
+			scope, err := scopeForShoot(ctx, client, shootKey.Namespace, shootKey.Name)
 			if err != nil {
 				return nil, err
 			}
 
 			accessLevel := m.resolveAccessLevel(t, scope)
 
-			return client.GetShootClientConfig(ctx, namespace, t.ShootName(), accessLevel)
+			return client.GetShootClientConfig(ctx, shootKey.Namespace, shootKey.Name, accessLevel)
 		})
 	}
 
@@ -940,19 +946,6 @@ func writeRawConfig(config clientcmd.ClientConfig) ([]byte, error) {
 	}
 
 	return clientcmd.Write(rawConfig)
-}
-
-func getProjectNamespace(ctx context.Context, client clientgarden.Client, name string) (*string, error) {
-	project, err := client.GetProject(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-
-	if project.Spec.Namespace == nil || *project.Spec.Namespace == "" {
-		return nil, fmt.Errorf("project %q has not yet been assigned to a namespace", name)
-	}
-
-	return project.Spec.Namespace, nil
 }
 
 func clientConfigWithNamespace(clientConfig clientcmd.ClientConfig, namespace string) (clientcmd.ClientConfig, error) {

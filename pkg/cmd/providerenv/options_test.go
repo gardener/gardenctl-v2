@@ -26,6 +26,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardensecurityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
+	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
@@ -33,6 +34,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
@@ -40,6 +42,7 @@ import (
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	gardenclientmocks "github.com/gardener/gardenctl-v2/internal/client/garden/mocks"
 	utilmocks "github.com/gardener/gardenctl-v2/internal/util/mocks"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/providerenv"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 	"github.com/gardener/gardenctl-v2/pkg/env"
@@ -434,6 +437,228 @@ var _ = Describe("Env Commands - Options", func() {
 				})
 			})
 
+			Context("when the control plane is targeted", func() {
+				var (
+					currentTarget              target.Target
+					seedName                   string
+					seedShootName              string
+					seedRegion                 string
+					seedCredentialsBinding     *gardensecurityv1alpha1.CredentialsBinding
+					seedCredentialsBindingName string
+					seedSecretRef              *corev1.SecretReference
+					seedSecret                 *corev1.Secret
+					seedCloudProfileRef        *gardencorev1beta1.CloudProfileReference
+					seedCloudProfile           *clientgarden.CloudProfileUnion
+					seedShoot                  *gardencorev1beta1.Shoot
+				)
+
+				BeforeEach(func() {
+					factory.EXPECT().Manager().Return(manager, nil).Times(2)
+					manager.EXPECT().GardenClient(t.GardenName()).Return(client, nil)
+
+					factory.EXPECT().TargetFlags().Return(tf)
+					factory.EXPECT().GardenHomeDir().Return(gardenHomeDir)
+					manager.EXPECT().SessionDir().Return(sessionDir)
+					manager.EXPECT().Configuration().Return(cfg)
+					factory.EXPECT().GetSessionID().Return("test-session-id", nil)
+					Expect(options.Complete(factory, mockCmd, nil)).To(Succeed())
+
+					seedName = "seed"
+					seedShootName = "seed-shoot"
+					seedRegion = "seed-region"
+					seedCredentialsBindingName = "seed-credentials-binding"
+					currentTarget = t.WithSeedName("").WithControlPlane(true)
+					seedSecretRef = &corev1.SecretReference{
+						Namespace: "seed-private",
+						Name:      "seed-secret",
+					}
+					seedCloudProfileRef = &gardencorev1beta1.CloudProfileReference{
+						Kind: corev1beta1constants.CloudProfileReferenceKindCloudProfile,
+						Name: "seed-cloud-profile",
+					}
+				})
+
+				JustBeforeEach(func() {
+					shoot.Spec.SeedName = &seedName
+
+					seedShoot = &gardencorev1beta1.Shoot{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      seedShootName,
+							Namespace: corev1beta1constants.GardenNamespace,
+							UID:       "00000000-0000-0000-0000-000000000001",
+						},
+						Spec: gardencorev1beta1.ShootSpec{
+							CloudProfile:           seedCloudProfileRef,
+							Region:                 seedRegion,
+							CredentialsBindingName: &seedCredentialsBindingName,
+							Provider:               *provider.DeepCopy(),
+						},
+					}
+					seedCredentialsBinding = &gardensecurityv1alpha1.CredentialsBinding{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      seedCredentialsBindingName,
+							Namespace: seedShoot.Namespace,
+							UID:       "00000000-0000-0000-0000-000000000001",
+						},
+						CredentialsRef: corev1.ObjectReference{
+							Kind:       "Secret",
+							APIVersion: corev1.SchemeGroupVersion.String(),
+							Namespace:  seedSecretRef.Namespace,
+							Name:       seedSecretRef.Name,
+						},
+					}
+					seedSecret = &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: seedSecretRef.Namespace,
+							Name:      seedSecretRef.Name,
+							UID:       "00000000-0000-0000-0000-000000000001",
+						},
+						Data: map[string][]byte{
+							"serviceaccount.json": []byte(`{"type":"service_account","project_id":"seed-project-12345","client_email":"seed-service-account@seed-project-12345.iam.gserviceaccount.com"}`),
+						},
+					}
+					seedCloudProfile = &clientgarden.CloudProfileUnion{
+						CloudProfile: &gardencorev1beta1.CloudProfile{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: seedCloudProfileRef.Name,
+								UID:  "00000000-0000-0000-0000-000000000001",
+							},
+							Spec: gardencorev1beta1.CloudProfileSpec{
+								Type: provider.Type,
+								ProviderConfig: &runtime.RawExtension{
+									Object: providerConfig,
+									Raw:    nil,
+								},
+							},
+						},
+					}
+				})
+
+				It("uses the managed seed shoot credentials for a control-plane target", func() {
+					manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+					client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
+					client.EXPECT().GetShootOfManagedSeed(ctx, seedName).Return(&seedmanagementv1alpha1.Shoot{Name: seedShootName}, nil)
+					client.EXPECT().FindShoot(ctx, clientgarden.ProjectFilter{
+						"metadata.name": seedShootName,
+						"project":       corev1beta1constants.GardenNamespace,
+					}).Return(seedShoot, nil)
+					client.EXPECT().GetCredentialsBinding(ctx, seedShoot.Namespace, seedCredentialsBindingName).Return(seedCredentialsBinding, nil)
+					client.EXPECT().GetCloudProfile(ctx, *seedShoot.Spec.CloudProfile, seedShoot.Namespace).Return(seedCloudProfile, nil)
+					manager.EXPECT().Configuration().Return(cfg)
+					client.EXPECT().GetSecret(ctx, seedSecretRef.Namespace, seedSecretRef.Name).Return(seedSecret, nil)
+
+					Expect(options.Run(factory)).To(Succeed())
+
+					hash := computeTestHash("test-session-id", t.GardenName(), seedShoot.Namespace, seedShoot.Name)
+					expected := strings.NewReplacer(
+						"PLACEHOLDER_CONFIG_DIR", filepath.Join(sessionDir, ".config", "gcloud"),
+						"PLACEHOLDER_SESSION_DIR", sessionDir,
+						"PLACEHOLDER_HASH", hash,
+					).Replace(readTestFile("gcp/export.bash"))
+					expected = strings.Replace(expected, "--project project --shoot shoot -u bash", "--project project --shoot shoot --control-plane -u bash", 1)
+					Expect(options.String()).To(Equal(expected))
+
+					projectID, err := os.ReadFile(filepath.Join(sessionDir, "provider-env", "."+hash+"-project_id.txt"))
+					Expect(err).NotTo(HaveOccurred())
+					Expect(string(projectID)).To(Equal("seed-project-12345"))
+				})
+
+				It("requires confirmation for access restrictions on the managed seed shoot", func() {
+					options.TargetFlags = target.NewTargetFlags("", "", "", "", true)
+					cfg.Gardens[0].AccessRestrictions = []ac.AccessRestriction{
+						{
+							Key: "controlled-access",
+							Msg: "Shoot access is restricted",
+							Options: []ac.AccessRestrictionOption{
+								{
+									Key:      "support",
+									NotifyIf: true,
+									Msg:      "Support access must be confirmed",
+								},
+							},
+						},
+					}
+					seedShoot.Spec.AccessRestrictions = []gardencorev1beta1.AccessRestrictionWithOptions{
+						{
+							AccessRestriction: gardencorev1beta1.AccessRestriction{
+								Name: "controlled-access",
+							},
+							Options: map[string]string{
+								"support": "true",
+							},
+						},
+					}
+
+					manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+					client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
+					client.EXPECT().GetShootOfManagedSeed(ctx, seedName).Return(&seedmanagementv1alpha1.Shoot{Name: seedShootName}, nil)
+					client.EXPECT().FindShoot(ctx, clientgarden.ProjectFilter{
+						"metadata.name": seedShootName,
+						"project":       corev1beta1constants.GardenNamespace,
+					}).Return(seedShoot, nil)
+					client.EXPECT().GetCredentialsBinding(ctx, seedShoot.Namespace, seedCredentialsBindingName).Return(seedCredentialsBinding, nil)
+					client.EXPECT().GetCloudProfile(ctx, *seedShoot.Spec.CloudProfile, seedShoot.Namespace).Return(seedCloudProfile, nil)
+					manager.EXPECT().Configuration().Return(cfg)
+
+					Expect(options.Run(factory)).To(Succeed())
+					Expect(options.String()).To(ContainSubstring("Shoot access is restricted"))
+					Expect(options.String()).To(ContainSubstring("Support access must be confirmed"))
+					Expect(options.String()).To(ContainSubstring("gardenctl provider-env --garden test --project project --shoot shoot --control-plane --confirm-access-restriction bash"))
+				})
+
+				It("does not require confirmation again when the control plane was already targeted", func() {
+					cfg.Gardens[0].AccessRestrictions = []ac.AccessRestriction{
+						{
+							Key: "controlled-access",
+							Msg: "Shoot access is restricted",
+							Options: []ac.AccessRestrictionOption{
+								{
+									Key:      "support",
+									NotifyIf: true,
+									Msg:      "Support access must be confirmed",
+								},
+							},
+						},
+					}
+					seedShoot.Spec.AccessRestrictions = []gardencorev1beta1.AccessRestrictionWithOptions{
+						{
+							AccessRestriction: gardencorev1beta1.AccessRestriction{
+								Name: "controlled-access",
+							},
+							Options: map[string]string{
+								"support": "true",
+							},
+						},
+					}
+
+					manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+					client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
+					client.EXPECT().GetShootOfManagedSeed(ctx, seedName).Return(&seedmanagementv1alpha1.Shoot{Name: seedShootName}, nil)
+					client.EXPECT().FindShoot(ctx, clientgarden.ProjectFilter{
+						"metadata.name": seedShootName,
+						"project":       corev1beta1constants.GardenNamespace,
+					}).Return(seedShoot, nil)
+					client.EXPECT().GetCredentialsBinding(ctx, seedShoot.Namespace, seedCredentialsBindingName).Return(seedCredentialsBinding, nil)
+					client.EXPECT().GetCloudProfile(ctx, *seedShoot.Spec.CloudProfile, seedShoot.Namespace).Return(seedCloudProfile, nil)
+					manager.EXPECT().Configuration().Return(cfg)
+					client.EXPECT().GetSecret(ctx, seedSecretRef.Namespace, seedSecretRef.Name).Return(seedSecret, nil)
+
+					Expect(options.Run(factory)).To(Succeed())
+					Expect(options.String()).To(ContainSubstring("Shoot access is restricted"))
+					Expect(options.String()).To(ContainSubstring("Support access must be confirmed"))
+					Expect(options.String()).NotTo(ContainSubstring("--confirm-access-restriction"))
+				})
+
+				It("fails clearly when the shoot's seed is not managed", func() {
+					manager.EXPECT().CurrentTarget().Return(currentTarget, nil)
+					client.EXPECT().FindShoot(ctx, currentTarget.AsListOption()).Return(shoot, nil)
+					client.EXPECT().GetShootOfManagedSeed(ctx, seedName).Return(nil, apierrors.NewNotFound(seedmanagementv1alpha1.Resource("managedseed"), seedName))
+
+					err := options.Run(factory)
+					Expect(err).To(MatchError(ContainSubstring(`seed "seed" is not a managed seed`)))
+				})
+			})
+
 			Context("when an error occurs before running the command", func() {
 				err := errors.New("error")
 
@@ -460,6 +685,12 @@ var _ = Describe("Env Commands - Options", func() {
 					manager.EXPECT().CurrentTarget().Return(t.WithSeedName(""), nil)
 					manager.EXPECT().GardenClient(t.GardenName()).Return(nil, err)
 					Expect(options.Run(factory)).To(MatchError("failed to create garden cluster client: error"))
+				})
+
+				It("should fail when control-plane is requested for a seed target", func() {
+					factory.EXPECT().Manager().Return(manager, nil)
+					manager.EXPECT().CurrentTarget().Return(target.NewTarget(t.GardenName(), "", t.SeedName(), "").WithControlPlane(true), nil)
+					Expect(options.Run(factory)).To(MatchError(`cannot use --control-plane with seed target "seed"`))
 				})
 
 				Context("and the error occurs with the GardenClient instance", func() {

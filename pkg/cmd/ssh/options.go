@@ -63,7 +63,7 @@ import (
 const (
 	// SSHBastionUsername is the system username on the bastion host.
 	SSHBastionUsername = "gardener"
-	// DefaultUsername is the default Shoot cluster node ssh login username.
+	// DefaultUsername is the default shoot cluster node ssh login username.
 	DefaultUsername = "gardener"
 	// SSHPort is the TCP port on a bastion instance that allows incoming SSH.
 	SSHPort = 22
@@ -218,12 +218,12 @@ type SSHOptions struct {
 	// NodeStrictHostKeyChecking controls the SSH strict host key checking behavior for the shoot node.
 	NodeStrictHostKeyChecking StrictHostKeyChecking
 
-	// NodeName is the name of the Shoot cluster node that the user wants to
+	// NodeName is the name of the shoot cluster node that the user wants to
 	// connect to. If this is left empty, gardenctl will only establish the
 	// connection to the bastion host and leave it up to the user to SSH to the node themselves.
 	NodeName string
 
-	// User is the name of the Shoot cluster node ssh login username
+	// User is the name of the shoot cluster node ssh login username
 	User string
 
 	// Shell is the shell to use for escaping arguments (bash, zsh, fish, powershell)
@@ -313,7 +313,7 @@ func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 	flagSet.StringSliceVar(&o.NodeUserKnownHostsFiles, "node-user-known-hosts-file", o.NodeUserKnownHostsFiles, "Path to a custom known hosts file for verifying remote hosts' public keys during SSH connection to the shoot node. If not provided, defaults to <garden_home_dir>/cache/<shoot_uid>/.ssh/known_hosts.")
 	flagSet.Var(&o.NodeStrictHostKeyChecking, "node-strict-host-key-checking", "Specifies how the SSH client performs host key checking for the shoot node. Valid options are 'yes', 'no', or 'ask'.")
 	flagSet.BoolVarP(&o.ConfirmAccessRestriction, "confirm-access-restriction", "y", o.ConfirmAccessRestriction, "Bypasses the need for confirmation of any access restrictions. Set this flag only if you are fully aware of the access restrictions.")
-	flagSet.StringVar(&o.User, "user", o.User, "user is the name of the Shoot cluster node ssh login username.")
+	flagSet.StringVar(&o.User, "user", o.User, "user is the name of the shoot cluster node ssh login username.")
 	flagSet.StringVar(&o.Shell, "shell", o.Shell, "Shell to use for escaping arguments when printing out the SSH command. If not provided, it defaults to the GCTL_SHELL environment variable or bash.")
 	o.Options.AddFlags(flagSet)
 }
@@ -688,40 +688,22 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	if currentTarget.ShootName() == "" && currentTarget.SeedName() != "" {
-		shoot, err := gardenClient.GetShootOfManagedSeed(ctx, currentTarget.SeedName())
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return fmt.Errorf("cannot ssh to non-managed seeds: %w", err)
-			}
-
-			return err
-		}
-
-		logger.V(1).Info("using referred shoot of managed seed",
-			"shoot", klog.ObjectRef{
-				Namespace: "garden",
-				Name:      shoot.Name,
-			},
-			"seed", currentTarget.SeedName())
-
-		currentTarget = currentTarget.WithProjectName("garden").WithShootName(shoot.Name)
-	}
-
-	if currentTarget.ShootName() == "" {
-		return target.ErrNoShootTargeted
-	}
-
-	printTargetInformation(logger, currentTarget)
-
-	// fetch targeted shoot (ctx is cancellable to stop the keep alive goroutine later)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	shoot, err := gardenClient.FindShoot(ctx, currentTarget.AsListOption())
+	resolver := target.NewResolver(gardenClient)
+
+	currentTarget, err = resolver.ResolveShootTarget(ctx, currentTarget)
 	if err != nil {
 		return err
 	}
+
+	shoot, err := resolver.FindShoot(ctx, currentTarget)
+	if err != nil {
+		return err
+	}
+
+	printTargetInformation(logger, currentTarget)
 
 	// check access restrictions
 	ok, err := o.checkAccessRestrictions(manager.Configuration(), currentTarget.GardenName(), f.TargetFlags(), shoot)
@@ -1067,7 +1049,7 @@ func getNodeNamesFromMachinesOrNodes(ctx context.Context, manager target.Manager
 	}
 
 	if currentTarget.ShootName() == "" {
-		return nil, errors.New("no Shoot cluster targeted")
+		return nil, errors.New("no shoot cluster targeted")
 	}
 
 	nodeNames, err := getNodeNamesFromMachines(ctx, manager, currentTarget)
@@ -1473,7 +1455,7 @@ func (o *SSHOptions) checkAccessRestrictions(cfg *config.Config, gardenName stri
 		return false, err
 	}
 
-	askForConfirmation := tf.ShootName() != "" && !o.ConfirmAccessRestriction
+	askForConfirmation := (tf.ShootName() != "" || tf.ControlPlane()) && !o.ConfirmAccessRestriction
 	handler := ac.NewAccessRestrictionHandler(o.IOStreams.In, o.IOStreams.ErrOut, askForConfirmation) // do not write access restriction to stdout, otherwise it would break the output format
 
 	return handler(ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)), nil

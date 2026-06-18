@@ -1,6 +1,6 @@
 # Configure Cloud Provider CLIs with provider-env
 
-The `provider-env` command generates a shell script to configure cloud provider CLIs (aws, az, gcloud, openstack, aliyun, hcloud) for the currently targeted Shoot. Evaluate the generated script in your shell to export the required environment variables and perform any necessary provider CLI setup.
+The `provider-env` command generates a shell script to configure cloud provider CLIs (aws, az, gcloud, openstack, aliyun, hcloud) for the currently targeted shoot or managed seed. Evaluate the generated script in your shell to export the required environment variables and perform any necessary provider CLI setup.
 
 ## Basic usage
 
@@ -10,12 +10,17 @@ Generate and evaluate the script for your shell. Example for `bash`:
 eval "$(gardenctl provider-env bash)"
 ```
 
+The `gardenctl rc` aliases described in the [Recommended Shell Configuration](../../README.md#recommended-shell-configuration) provide shortcuts for these commands: `gp` for the default provider environment and `gpc` for `--control-plane`.
+
 Alternatively, you can generate the script for other shells using subcommands: `bash`, `zsh`, `fish`, `powershell`.
 
 The generated script:
-- Sets provider-specific environment variables for the targeted Shoot
+- Sets provider-specific environment variables for the target
 - Uses a temporary session directory so your default CLI configs are not modified
 - Supports `--unset` to clean up and log out/revoke credentials
+
+> [!NOTE]
+> `provider-env` can resolve provider credentials for shoots and managed seeds. It cannot generate provider credentials for non-managed seeds.
 
 Ensure the respective provider CLI is installed on your system. See the `gardenctl provider-env` [help](https://github.com/gardener/gardenctl-v2/blob/master/docs/help/gardenctl_provider-env.md#synopsis) for links.
 
@@ -25,7 +30,7 @@ To override templates or add support for an out-of-tree provider, place a templa
 
 ## OpenStack: Allowed `authURL` patterns (required)
 
-For Shoots with provider type `openstack`, `gardenctl` validates the `authURL` (the OpenStack Keystone authentication endpoint) from the credentials against a list of allowed patterns.  
+For OpenStack targets, `gardenctl` validates the `authURL` (the OpenStack Keystone authentication endpoint) from the credentials against a list of allowed patterns.  
 You can configure allowed patterns via the gardenctl configuration file or via command-line flags.  
 
 > [!NOTE]

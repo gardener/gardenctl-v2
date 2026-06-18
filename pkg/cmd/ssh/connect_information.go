@@ -19,12 +19,12 @@ import (
 )
 
 // ConnectInformation holds connect information required to establish an SSH connection
-// to Shoot worker nodes.
+// to shoot worker nodes.
 type ConnectInformation struct {
 	// Bastion holds information about the bastion host used to connect to the worker nodes.
 	Bastion Bastion `json:"bastion"`
 
-	// NodeHostname is the name of the Shoot cluster node that the user wants to connect to.
+	// NodeHostname is the name of the shoot cluster node that the user wants to connect to.
 	NodeHostname string `json:"nodeHostname,omitempty"`
 
 	// NodePrivateKeyFiles is a list of file paths containing the private SSH keys for the worker nodes.
@@ -33,7 +33,7 @@ type ConnectInformation struct {
 	// Nodes is a list of Node objects containing information about the worker nodes.
 	Nodes []Node `json:"nodes"`
 
-	// User is the name of the Shoot cluster node ssh login username
+	// User is the name of the shoot cluster node ssh login username
 	User string `json:"user,omitempty"`
 
 	// Shell is the shell to use for escaping arguments (bash, zsh, fish, powershell)
