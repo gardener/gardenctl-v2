@@ -309,11 +309,12 @@ func (mr *MockManagerMockRecorder) TargetShoot(arg0, arg1 interface{}) *gomock.C
 }
 
 // UnsetTargetControlPlane mocks base method.
-func (m *MockManager) UnsetTargetControlPlane(arg0 context.Context) error {
+func (m *MockManager) UnsetTargetControlPlane(arg0 context.Context) (target.Target, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UnsetTargetControlPlane", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(target.Target)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // UnsetTargetControlPlane indicates an expected call of UnsetTargetControlPlane.
@@ -323,12 +324,13 @@ func (mr *MockManagerMockRecorder) UnsetTargetControlPlane(arg0 interface{}) *go
 }
 
 // UnsetTargetGarden mocks base method.
-func (m *MockManager) UnsetTargetGarden(arg0 context.Context) (string, error) {
+func (m *MockManager) UnsetTargetGarden(arg0 context.Context) (string, target.Target, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UnsetTargetGarden", arg0)
 	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(target.Target)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // UnsetTargetGarden indicates an expected call of UnsetTargetGarden.
@@ -338,12 +340,13 @@ func (mr *MockManagerMockRecorder) UnsetTargetGarden(arg0 interface{}) *gomock.C
 }
 
 // UnsetTargetProject mocks base method.
-func (m *MockManager) UnsetTargetProject(arg0 context.Context) (string, error) {
+func (m *MockManager) UnsetTargetProject(arg0 context.Context) (string, target.Target, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UnsetTargetProject", arg0)
 	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(target.Target)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // UnsetTargetProject indicates an expected call of UnsetTargetProject.
@@ -353,12 +356,13 @@ func (mr *MockManagerMockRecorder) UnsetTargetProject(arg0 interface{}) *gomock.
 }
 
 // UnsetTargetSeed mocks base method.
-func (m *MockManager) UnsetTargetSeed(arg0 context.Context) (string, error) {
+func (m *MockManager) UnsetTargetSeed(arg0 context.Context) (string, target.Target, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UnsetTargetSeed", arg0)
 	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(target.Target)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // UnsetTargetSeed indicates an expected call of UnsetTargetSeed.
@@ -368,12 +372,13 @@ func (mr *MockManagerMockRecorder) UnsetTargetSeed(arg0 interface{}) *gomock.Cal
 }
 
 // UnsetTargetShoot mocks base method.
-func (m *MockManager) UnsetTargetShoot(arg0 context.Context) (string, error) {
+func (m *MockManager) UnsetTargetShoot(arg0 context.Context) (string, target.Target, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UnsetTargetShoot", arg0)
 	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(target.Target)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // UnsetTargetShoot indicates an expected call of UnsetTargetShoot.
