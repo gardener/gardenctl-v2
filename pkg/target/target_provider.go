@@ -160,6 +160,8 @@ func merge(t Target, tf TargetFlags) (Target, error) {
 		return newTarget, nil
 	}
 
+	pathFlagProvided := targetPathFlagProvided(tf)
+
 	// Setting a garden resets all deeper targeting levels, allowing
 	// the user to "move up". For example, when they have targeted a shoot,
 	// simply specifying "--garden mygarden" should target the garden, not
@@ -198,8 +200,14 @@ func merge(t Target, tf TargetFlags) (Target, error) {
 		newTarget = newTarget.WithShootName(tf.ShootName())
 	}
 
-	if tf.ControlPlane() {
-		newTarget = newTarget.WithControlPlane(tf.ControlPlane())
+	// Path selector resets shoot-bound control-plane state.
+	if pathFlagProvided {
+		newTarget = newTarget.WithControlPlane(false)
+	}
+
+	// Explicit --control-plane wins.
+	if tf.ControlPlane().Provided() {
+		newTarget = newTarget.WithControlPlane(tf.ControlPlane().Value())
 	}
 
 	if err := newTarget.Validate(); err != nil {
@@ -207,4 +215,15 @@ func merge(t Target, tf TargetFlags) (Target, error) {
 	}
 
 	return newTarget, nil
+}
+
+// targetPathFlagProvided reports whether the user explicitly supplied any
+// garden/project/seed/shoot selector field. Used to decide if a stale
+// ControlPlane flag from the persisted target should be cleared. Including
+// ControlPlane in the comparison would be self-defeating.
+func targetPathFlagProvided(tf TargetFlags) bool {
+	return tf.GardenName() != "" ||
+		tf.ProjectName() != "" ||
+		tf.SeedName() != "" ||
+		tf.ShootName() != ""
 }

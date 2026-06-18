@@ -1455,7 +1455,9 @@ func (o *SSHOptions) checkAccessRestrictions(cfg *config.Config, gardenName stri
 		return false, err
 	}
 
-	askForConfirmation := (tf.ShootName() != "" || tf.ControlPlane()) && !o.ConfirmAccessRestriction
+	controlPlane := tf.ControlPlane()
+	controlPlaneRequested := controlPlane.Provided() && controlPlane.Value()
+	askForConfirmation := (tf.ShootName() != "" || controlPlaneRequested) && !o.ConfirmAccessRestriction
 	handler := ac.NewAccessRestrictionHandler(o.IOStreams.In, o.IOStreams.ErrOut, askForConfirmation) // do not write access restriction to stdout, otherwise it would break the output format
 
 	return handler(ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)), nil

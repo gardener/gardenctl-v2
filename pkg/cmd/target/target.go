@@ -119,6 +119,9 @@ type TargetOptions struct {
 	Kind TargetKind
 	// TargetName is the object name of the targeted kind
 	TargetName string
+
+	// unsetControlPlane is true when --control-plane=false is the requested operation.
+	unsetControlPlane bool
 }
 
 // NewTargetOptions returns initialized TargetOptions.
@@ -141,10 +144,19 @@ func (o *TargetOptions) Complete(f util.Factory, _ *cobra.Command, args []string
 	}
 
 	tf := f.TargetFlags()
+	controlPlane := tf.ControlPlane()
+	targetControlPlaneRequested := controlPlane.Provided() && controlPlane.Value()
+	unsetControlPlaneRequested := controlPlane.Provided() && !controlPlane.Value()
+	o.unsetControlPlane = false
+
+	if len(args) == 0 && targetControlPlaneRequested && tf.ShootName() == "" &&
+		(tf.GardenName() != "" || tf.ProjectName() != "" || tf.SeedName() != "") {
+		return errors.New("cannot use --control-plane without --shoot when specifying target flags")
+	}
 
 	if o.Kind == "" {
 		switch {
-		case tf.ControlPlane():
+		case targetControlPlaneRequested:
 			o.Kind = TargetKindControlPlane
 		case tf.ShootName() != "":
 			o.Kind = TargetKindShoot
@@ -154,8 +166,15 @@ func (o *TargetOptions) Complete(f util.Factory, _ *cobra.Command, args []string
 			o.Kind = TargetKindSeed
 		case tf.GardenName() != "":
 			o.Kind = TargetKindGarden
+		case unsetControlPlaneRequested:
+			// --control-plane=false alone: drop control-plane from current target.
+			// When combined with target path flags, those flags drive the kind;
+			// path targeting clears or leaves unset shoot-bound control-plane state.
+			o.Kind = TargetKindControlPlane
 		}
 	}
+
+	o.unsetControlPlane = o.Kind == TargetKindControlPlane && unsetControlPlaneRequested
 
 	if o.TargetName == "" {
 		switch o.Kind {
@@ -212,7 +231,12 @@ func (o *TargetOptions) Run(f util.Factory) error {
 	case TargetKindPattern:
 		currentTarget, err = manager.TargetMatchPattern(ctx, f.TargetFlags(), o.TargetName)
 	case TargetKindControlPlane:
-		currentTarget, err = manager.TargetControlPlane(ctx)
+		if o.unsetControlPlane {
+			// TODO UnsetTargetControlPlane should return current target and should not error when no control plane is targeted
+			err = manager.UnsetTargetControlPlane(ctx)
+		} else {
+			currentTarget, err = manager.TargetControlPlane(ctx)
+		}
 	}
 
 	if err != nil {
@@ -237,9 +261,16 @@ func (o *TargetOptions) Run(f util.Factory) error {
 			levelSuffix = fmt.Sprintf(" (access level: %s)", level)
 		}
 
-		if o.Kind == TargetKindControlPlane {
-			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted control plane of shoot %q%s\n", currentTarget.ShootName(), levelSuffix)
-		} else if o.Kind != "" {
+		switch o.Kind {
+		case TargetKindControlPlane:
+			if o.unsetControlPlane {
+				fmt.Fprintf(o.IOStreams.Out, "Successfully unset targeted control plane for %q%s\n", currentTarget.ShootName(), levelSuffix)
+			} else {
+				fmt.Fprintf(o.IOStreams.Out, "Successfully targeted control plane of shoot %q%s\n", currentTarget.ShootName(), levelSuffix)
+			}
+		case "":
+			// no output
+		default:
 			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q%s\n", o.Kind, o.TargetName, levelSuffix)
 		}
 	}

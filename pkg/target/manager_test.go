@@ -9,6 +9,7 @@ package target_test
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -18,6 +19,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
@@ -660,12 +662,46 @@ var _ = Describe("Target Manager", func() {
 		assertTargetProvider(targetProvider, t.WithControlPlane(false))
 	})
 
-	It("should fail if no control plane targeted", func() {
+	It("should persist explicit control-plane clearing from a dynamic target provider", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name).WithControlPlane(true)
+
+		tmpFile, err := os.CreateTemp("", "gardenertarget*")
+		Expect(err).NotTo(HaveOccurred())
+
+		defer os.Remove(tmpFile.Name())
+		defer tmpFile.Close()
+
+		targetProvider := target.NewTargetProvider(tmpFile.Name(), nil)
+		Expect(targetProvider.Write(t)).To(Succeed())
+
+		tf := target.NewTargetFlags("", "", "", "", false)
+		flags := &pflag.FlagSet{}
+		tf.AddControlPlaneFlag(flags)
+		Expect(flags.Parse([]string{"--control-plane=false"})).To(Succeed())
+
+		dynamicTargetProvider := target.NewTargetProvider(tmpFile.Name(), tf)
+		manager, err := target.NewManager(cfg, dynamicTargetProvider, clientProvider, sessionDir, "")
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(manager.UnsetTargetControlPlane(ctx)).To(Succeed())
+		assertTargetProvider(targetProvider, t.WithControlPlane(false))
+	})
+
+	It("should fail if no shoot targeted when unsetting control plane", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		unsetErr := manager.UnsetTargetControlPlane(ctx)
-		Expect(unsetErr).To(HaveOccurred())
+		Expect(unsetErr).To(MatchError(target.ErrNoShootTargeted))
+		assertTargetProvider(targetProvider, t)
+	})
+
+	It("should fail if shoot targeted but no control plane", func() {
+		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name)
+		manager, targetProvider := createTestManager(t, cfg, clientProvider)
+
+		unsetErr := manager.UnsetTargetControlPlane(ctx)
+		Expect(unsetErr).To(MatchError(target.ErrNoControlPlaneTargeted))
 		assertTargetProvider(targetProvider, t)
 	})
 

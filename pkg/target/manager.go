@@ -515,7 +515,7 @@ func (m *managerImpl) TargetControlPlane(ctx context.Context) (Target, error) {
 
 	tb.Init(currentTarget)
 
-	target, err := tb.SetControlPlane(ctx).Build()
+	target, err := tb.SetControlPlane(ctx, true).Build()
 	if err != nil {
 		return nil, err
 	}
@@ -584,8 +584,8 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, tf TargetFlags, va
 		tb.SetShoot(ctx, tm.Shoot)
 	}
 
-	if tf.ControlPlane() {
-		tb.SetControlPlane(ctx)
+	if tf.ControlPlane().Provided() {
+		tb.SetControlPlane(ctx, tf.ControlPlane().Value())
 	}
 
 	target, err := tb.Build()
@@ -606,11 +606,6 @@ func (m *managerImpl) updateTarget(ctx context.Context, target Target) (Target, 
 
 		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	return target, nil
 }
 
 func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.ClientConfig, error) {

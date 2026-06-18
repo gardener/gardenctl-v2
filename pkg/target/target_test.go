@@ -36,6 +36,9 @@ var _ = Describe("Target", func() {
 			// invalid because both project and seed are defined without a shoot
 			Expect(target.NewTarget("a", "b", "c", "").Validate()).NotTo(Succeed())
 
+			// invalid because control-plane targets are shoot-specific
+			Expect(target.NewTarget("a", "b", "", "").WithControlPlane(true).Validate()).To(MatchError("control-plane requires a shoot target"))
+
 			// valid shoot names (DNS label compliant)
 			Expect(target.NewTarget("a", "b", "", "my-shoot").Validate()).To(Succeed())
 			Expect(target.NewTarget("a", "b", "", "shoot-123").Validate()).To(Succeed())

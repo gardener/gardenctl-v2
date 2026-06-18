@@ -347,7 +347,11 @@ func (o *options) Run(f util.Factory) error {
 		return fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	requiresAccessRestrictionConfirmation := o.TargetFlags != nil && (o.TargetFlags.ShootName() != "" || o.TargetFlags.ControlPlane())
+	requiresAccessRestrictionConfirmation := false
+	if o.TargetFlags != nil {
+		controlPlaneRequested := o.TargetFlags.ControlPlane().Provided() && o.TargetFlags.ControlPlane().Value()
+		requiresAccessRestrictionConfirmation = o.TargetFlags.ShootName() != "" || controlPlaneRequested
+	}
 
 	resolver := target.NewResolver(client)
 
