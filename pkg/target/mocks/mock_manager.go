@@ -219,11 +219,12 @@ func (mr *MockManagerMockRecorder) ShootNames(arg0 interface{}) *gomock.Call {
 }
 
 // TargetControlPlane mocks base method.
-func (m *MockManager) TargetControlPlane(arg0 context.Context) error {
+func (m *MockManager) TargetControlPlane(arg0 context.Context) (target.Target, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TargetControlPlane", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(target.Target)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // TargetControlPlane indicates an expected call of TargetControlPlane.
@@ -233,11 +234,12 @@ func (mr *MockManagerMockRecorder) TargetControlPlane(arg0 interface{}) *gomock.
 }
 
 // TargetGarden mocks base method.
-func (m *MockManager) TargetGarden(arg0 context.Context, arg1 string) error {
+func (m *MockManager) TargetGarden(arg0 context.Context, arg1 string) (target.Target, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TargetGarden", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(target.Target)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // TargetGarden indicates an expected call of TargetGarden.
@@ -247,11 +249,12 @@ func (mr *MockManagerMockRecorder) TargetGarden(arg0, arg1 interface{}) *gomock.
 }
 
 // TargetMatchPattern mocks base method.
-func (m *MockManager) TargetMatchPattern(arg0 context.Context, arg1 target.TargetFlags, arg2 string) error {
+func (m *MockManager) TargetMatchPattern(arg0 context.Context, arg1 target.TargetFlags, arg2 string) (target.Target, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TargetMatchPattern", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(target.Target)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // TargetMatchPattern indicates an expected call of TargetMatchPattern.
@@ -261,11 +264,12 @@ func (mr *MockManagerMockRecorder) TargetMatchPattern(arg0, arg1, arg2 interface
 }
 
 // TargetProject mocks base method.
-func (m *MockManager) TargetProject(arg0 context.Context, arg1 string) error {
+func (m *MockManager) TargetProject(arg0 context.Context, arg1 string) (target.Target, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TargetProject", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(target.Target)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // TargetProject indicates an expected call of TargetProject.
@@ -275,11 +279,12 @@ func (mr *MockManagerMockRecorder) TargetProject(arg0, arg1 interface{}) *gomock
 }
 
 // TargetSeed mocks base method.
-func (m *MockManager) TargetSeed(arg0 context.Context, arg1 string) error {
+func (m *MockManager) TargetSeed(arg0 context.Context, arg1 string) (target.Target, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TargetSeed", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(target.Target)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // TargetSeed indicates an expected call of TargetSeed.
@@ -289,11 +294,12 @@ func (mr *MockManagerMockRecorder) TargetSeed(arg0, arg1 interface{}) *gomock.Ca
 }
 
 // TargetShoot mocks base method.
-func (m *MockManager) TargetShoot(arg0 context.Context, arg1 string) error {
+func (m *MockManager) TargetShoot(arg0 context.Context, arg1 string) (target.Target, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TargetShoot", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(target.Target)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // TargetShoot indicates an expected call of TargetShoot.
