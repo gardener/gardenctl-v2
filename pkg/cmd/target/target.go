@@ -198,19 +198,21 @@ func (o *TargetOptions) Run(f util.Factory) error {
 	handler := ac.NewAccessRestrictionHandler(o.IOStreams.In, o.IOStreams.Out, askForConfirmation)
 	ctx := ac.WithAccessRestrictionHandler(f.Context(), handler)
 
+	var currentTarget target.Target
+
 	switch o.Kind {
 	case TargetKindGarden:
-		err = manager.TargetGarden(ctx, o.TargetName)
+		currentTarget, err = manager.TargetGarden(ctx, o.TargetName)
 	case TargetKindProject:
-		err = manager.TargetProject(ctx, o.TargetName)
+		currentTarget, err = manager.TargetProject(ctx, o.TargetName)
 	case TargetKindSeed:
-		err = manager.TargetSeed(ctx, o.TargetName)
+		currentTarget, err = manager.TargetSeed(ctx, o.TargetName)
 	case TargetKindShoot:
-		err = manager.TargetShoot(ctx, o.TargetName)
+		currentTarget, err = manager.TargetShoot(ctx, o.TargetName)
 	case TargetKindPattern:
-		err = manager.TargetMatchPattern(ctx, f.TargetFlags(), o.TargetName)
+		currentTarget, err = manager.TargetMatchPattern(ctx, f.TargetFlags(), o.TargetName)
 	case TargetKindControlPlane:
-		err = manager.TargetControlPlane(ctx)
+		currentTarget, err = manager.TargetControlPlane(ctx)
 	}
 
 	if err != nil {
@@ -221,32 +223,10 @@ func (o *TargetOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	currentTarget, err := manager.CurrentTarget()
-	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
-	}
-
 	if o.Output == "" {
-		// TODO(gardener/gardenctl-v2#744): dynamicTargetProvider.merge() wipes
-		// deeper target levels whenever --garden is set on the CLI, even
-		// immediately after TargetXXX persisted a shoot/seed. Re-apply the
-		// just-targeted leaf so EffectiveAccessLevel sees it instead of
-		// falling through to "no scope". Drop this workaround once #744 fixes
-		// the root cause.
-		levelTarget := currentTarget
-
-		switch o.Kind {
-		case TargetKindShoot:
-			levelTarget = levelTarget.WithShootName(o.TargetName)
-		case TargetKindSeed:
-			levelTarget = levelTarget.WithSeedName(o.TargetName)
-		case TargetKindControlPlane:
-			levelTarget = levelTarget.WithControlPlane(true)
-		}
-
 		var levelSuffix string
 
-		level, ok, lvlErr := manager.EffectiveAccessLevel(ctx, levelTarget)
+		level, ok, lvlErr := manager.EffectiveAccessLevel(ctx, currentTarget)
 		switch {
 		case lvlErr != nil:
 			// Display-path soft-warn: the kubeconfig itself is already correct

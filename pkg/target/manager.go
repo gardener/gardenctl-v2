@@ -61,19 +61,19 @@ type Manager interface {
 
 	// TargetGarden sets the garden target configuration
 	// This implicitly unsets project, seed and shoot target configuration
-	TargetGarden(ctx context.Context, name string) error
+	TargetGarden(ctx context.Context, name string) (Target, error)
 	// TargetProject sets the project target configuration
 	// This implicitly unsets seed and shoot target configuration
-	TargetProject(ctx context.Context, name string) error
+	TargetProject(ctx context.Context, name string) (Target, error)
 	// TargetSeed sets the seed target configuration
 	// This implicitly unsets project and shoot target configuration
-	TargetSeed(ctx context.Context, name string) error
+	TargetSeed(ctx context.Context, name string) (Target, error)
 	// TargetShoot sets the shoot target configuration
 	// This implicitly unsets seed target configuration
 	// It will also configure appropriate project and seed values if not already set
-	TargetShoot(ctx context.Context, name string) error
+	TargetShoot(ctx context.Context, name string) (Target, error)
 	// TargetControlPlane sets the control plane target flag
-	TargetControlPlane(ctx context.Context) error
+	TargetControlPlane(ctx context.Context) (Target, error)
 	// UnsetTargetGarden unsets the garden target configuration
 	// This implicitly unsets project, shoot and seed target configuration
 	UnsetTargetGarden(ctx context.Context) (string, error)
@@ -90,7 +90,7 @@ type Manager interface {
 	// Garden, Project and Shoot values are determined by matching the provided value
 	// against patterns defined in gardenctl configuration. Some values may only match a subset
 	// of a pattern
-	TargetMatchPattern(ctx context.Context, tf TargetFlags, value string) error
+	TargetMatchPattern(ctx context.Context, tf TargetFlags, value string) (Target, error)
 
 	// ClientConfig returns the client config for a target.
 	// The kubeconfig access level (admin/viewer/auto) is resolved internally from the
@@ -198,8 +198,8 @@ func (m *managerImpl) EffectiveAccessLevel(ctx context.Context, t Target) (confi
 
 		seedName := t.SeedName()
 		if seedName == "" {
-			// `target --garden X --shoot Y control-plane` wipes deeper target
-			// levels (#744); recover spec.seedName the same way ClientConfig does.
+			// Recover spec.seedName for control-plane targets that do not
+			// carry it, matching the ClientConfig lookup path.
 			if t.ShootName() == "" {
 				return "", false, nil
 			}
@@ -338,22 +338,22 @@ func (m *managerImpl) Configuration() *config.Config {
 	return m.config
 }
 
-func (m *managerImpl) TargetGarden(ctx context.Context, identity string) error {
+func (m *managerImpl) TargetGarden(ctx context.Context, identity string) (Target, error) {
 	tb, err := NewTargetBuilder(m.config, m.clientProvider)
 	if err != nil {
-		return fmt.Errorf("failed to create new target builder: %w", err)
+		return nil, fmt.Errorf("failed to create new target builder: %w", err)
 	}
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
+		return nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
 
 	target, err := tb.SetGarden(identity).Build()
 	if err != nil {
-		return fmt.Errorf("failed to build target: %w", err)
+		return nil, fmt.Errorf("failed to build target: %w", err)
 	}
 
 	return m.updateTarget(ctx, target)
@@ -381,22 +381,22 @@ func (m *managerImpl) UnsetTargetGarden(ctx context.Context) (string, error) {
 	})
 }
 
-func (m *managerImpl) TargetProject(ctx context.Context, projectName string) error {
+func (m *managerImpl) TargetProject(ctx context.Context, projectName string) (Target, error) {
 	tb, err := NewTargetBuilder(m.config, m.clientProvider)
 	if err != nil {
-		return fmt.Errorf("failed to create new target builder: %w", err)
+		return nil, fmt.Errorf("failed to create new target builder: %w", err)
 	}
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
+		return nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
 
 	target, err := tb.SetProject(ctx, projectName).Build()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return m.updateTarget(ctx, target)
@@ -422,22 +422,22 @@ func (m *managerImpl) UnsetTargetProject(ctx context.Context) (string, error) {
 	})
 }
 
-func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
+func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) (Target, error) {
 	tb, err := NewTargetBuilder(m.config, m.clientProvider)
 	if err != nil {
-		return fmt.Errorf("failed to create new target builder: %w", err)
+		return nil, fmt.Errorf("failed to create new target builder: %w", err)
 	}
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
+		return nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
 
 	target, err := tb.SetSeed(ctx, seedName).Build()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return m.updateTarget(ctx, target)
@@ -461,22 +461,22 @@ func (m *managerImpl) UnsetTargetSeed(ctx context.Context) (string, error) {
 	})
 }
 
-func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
+func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) (Target, error) {
 	tb, err := NewTargetBuilder(m.config, m.clientProvider)
 	if err != nil {
-		return fmt.Errorf("failed to create new target builder: %w", err)
+		return nil, fmt.Errorf("failed to create new target builder: %w", err)
 	}
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
+		return nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
 
 	target, err := tb.SetShoot(ctx, shootName).Build()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return m.updateTarget(ctx, target)
@@ -502,22 +502,22 @@ func (m *managerImpl) UnsetTargetShoot(ctx context.Context) (string, error) {
 	})
 }
 
-func (m *managerImpl) TargetControlPlane(ctx context.Context) error {
+func (m *managerImpl) TargetControlPlane(ctx context.Context) (Target, error) {
 	tb, err := NewTargetBuilder(m.config, m.clientProvider)
 	if err != nil {
-		return fmt.Errorf("failed to create new target builder: %w", err)
+		return nil, fmt.Errorf("failed to create new target builder: %w", err)
 	}
 
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
+		return nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	tb.Init(currentTarget)
 
 	target, err := tb.SetControlPlane(ctx).Build()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return m.updateTarget(ctx, target)
@@ -540,36 +540,32 @@ func (m *managerImpl) UnsetTargetControlPlane(ctx context.Context) error {
 	})
 }
 
-func (m *managerImpl) TargetMatchPattern(ctx context.Context, tf TargetFlags, value string) error {
+func (m *managerImpl) TargetMatchPattern(ctx context.Context, tf TargetFlags, value string) (Target, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
+		return nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	gardenName := currentTarget.GardenName()
 
 	if m.config == nil {
-		return errors.New("config must not be nil")
+		return nil, errors.New("config must not be nil")
 	}
 
 	tm, err := m.config.MatchPattern(gardenName, value)
 	if err != nil {
-		return fmt.Errorf("error occurred while trying to match value: %w", err)
+		return nil, fmt.Errorf("error occurred while trying to match value: %w", err)
 	}
 
 	tb, err := NewTargetBuilder(m.config, m.clientProvider)
 	if err != nil {
-		return fmt.Errorf("failed to create new target builder: %w", err)
+		return nil, fmt.Errorf("failed to create new target builder: %w", err)
 	}
 
 	tb.Init(currentTarget)
 
-	if err != nil {
-		return err
-	}
-
 	if tm.Project != "" && tm.Namespace != "" {
-		return fmt.Errorf("project %q and Namespace %q set in target match value. It is forbidden to have both values set", tm.Project, tm.Namespace)
+		return nil, fmt.Errorf("project %q and Namespace %q set in target match value. It is forbidden to have both values set", tm.Project, tm.Namespace)
 	}
 
 	if tm.Garden != "" {
@@ -594,14 +590,14 @@ func (m *managerImpl) TargetMatchPattern(ctx context.Context, tf TargetFlags, va
 
 	target, err := tb.Build()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return m.updateTarget(ctx, target)
 }
 
-func (m *managerImpl) updateTarget(ctx context.Context, target Target) error {
-	return m.patchTarget(ctx, func(t *targetImpl) error {
+func (m *managerImpl) updateTarget(ctx context.Context, target Target) (Target, error) {
+	err := m.patchTarget(ctx, func(t *targetImpl) error {
 		t.Garden = target.GardenName()
 		t.Project = target.ProjectName()
 		t.Seed = target.SeedName()
@@ -610,6 +606,11 @@ func (m *managerImpl) updateTarget(ctx context.Context, target Target) error {
 
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return target, nil
 }
 
 func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.ClientConfig, error) {

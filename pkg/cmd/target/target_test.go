@@ -8,6 +8,7 @@ package target_test
 
 import (
 	"fmt"
+	"os"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
@@ -201,6 +202,31 @@ var _ = Describe("Target Command", func() {
 			Expect(cmd.RunE(cmd, []string{shootName})).To(Succeed())
 			Expect(errOut.String()).To(BeEmpty())
 			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q (access level: viewer)\n", shootName))
+		})
+
+		It("uses the returned target for access level output when the garden flag is set", func() {
+			targetFile, err := os.CreateTemp("", "gardenctl-target-*")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(targetFile.Close()).To(Succeed())
+			DeferCleanup(os.Remove, targetFile.Name())
+
+			factory.TargetProviderImpl = target.NewTargetProvider(targetFile.Name(), factory.TargetFlags())
+			cfg.Gardens[0].KubeconfigAccessLevelDefaults = &config.KubeconfigAccessLevels{
+				Shoots: config.KubeconfigAccessLevelViewer,
+			}
+			cmd := cmdtarget.NewCmdTargetShoot(factory, streams)
+			Expect(cmd.Flags().Set("garden", gardenName)).To(Succeed())
+
+			Expect(cmd.RunE(cmd, []string{shootName})).To(Succeed())
+			Expect(errOut.String()).To(BeEmpty())
+			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q (access level: viewer)\n", shootName))
+
+			persistedTarget, err := target.NewTargetProvider(targetFile.Name(), nil).Read()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(persistedTarget.GardenName()).To(Equal(gardenName))
+			Expect(persistedTarget.ProjectName()).To(Equal(projectName))
+			Expect(persistedTarget.SeedName()).To(Equal(seedName))
+			Expect(persistedTarget.ShootName()).To(Equal(shootName))
 		})
 
 		It("should be able to target a control plane", func() {
