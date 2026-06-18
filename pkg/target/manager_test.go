@@ -582,17 +582,22 @@ var _ = Describe("Target Manager", func() {
 		t := target.NewTarget(gardenName, "", "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		Expect(manager.UnsetTargetGarden(ctx)).Should(Equal(gardenName))
-		assertTargetProvider(targetProvider, target.NewTarget("", "", "", ""))
+		expected := target.NewTarget("", "", "", "")
+		targetName, currentTarget, err := manager.UnsetTargetGarden(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(targetName).To(Equal(gardenName))
+		Expect(currentTarget).To(Equal(expected))
+		assertTargetProvider(targetProvider, expected)
 	})
 
 	It("should fail if no garden selected", func() {
 		t := target.NewTarget("", "", "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		res, unsetErr := manager.UnsetTargetGarden(ctx)
+		res, currentTarget, unsetErr := manager.UnsetTargetGarden(ctx)
 		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
+		Expect(currentTarget).To(Equal(t))
 		assertTargetProvider(targetProvider, t)
 	})
 
@@ -601,27 +606,36 @@ var _ = Describe("Target Manager", func() {
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		// Unset Garden
-		Expect(manager.UnsetTargetGarden(ctx)).Should(Equal(gardenName))
+		expected := target.NewTarget("", "", "", "")
+		targetName, currentTarget, err := manager.UnsetTargetGarden(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(targetName).To(Equal(gardenName))
+		Expect(currentTarget).To(Equal(expected))
 
 		// should also unset project, seed and shoot
-		assertTargetProvider(targetProvider, target.NewTarget("", "", "", ""))
+		assertTargetProvider(targetProvider, expected)
 	})
 
 	It("should be able to unset selected project", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		Expect(manager.UnsetTargetProject(ctx)).Should(Equal(prod1Project.Name))
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
+		expected := target.NewTarget(gardenName, "", "", "")
+		targetName, currentTarget, err := manager.UnsetTargetProject(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(targetName).To(Equal(prod1Project.Name))
+		Expect(currentTarget).To(Equal(expected))
+		assertTargetProvider(targetProvider, expected)
 	})
 
 	It("should fail if no project selected", func() {
 		t := target.NewTarget(gardenName, "", "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		res, unsetErr := manager.UnsetTargetProject(ctx)
+		res, currentTarget, unsetErr := manager.UnsetTargetProject(ctx)
 		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
+		Expect(currentTarget).To(Equal(t))
 		assertTargetProvider(targetProvider, t)
 	})
 
@@ -630,27 +644,36 @@ var _ = Describe("Target Manager", func() {
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
 		// Unset Project
-		Expect(manager.UnsetTargetProject(ctx)).Should(Equal(prod1Project.Name))
+		expected := target.NewTarget(gardenName, "", "", "")
+		targetName, currentTarget, err := manager.UnsetTargetProject(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(targetName).To(Equal(prod1Project.Name))
+		Expect(currentTarget).To(Equal(expected))
 
 		// should also unset shoot
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
+		assertTargetProvider(targetProvider, expected)
 	})
 
 	It("should be able to unset selected shoot", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name)
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		Expect(manager.UnsetTargetShoot(ctx)).Should(Equal(prod1AmbiguousShoot.Name))
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, "", ""))
+		expected := target.NewTarget(gardenName, prod1Project.Name, "", "")
+		targetName, currentTarget, err := manager.UnsetTargetShoot(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(targetName).To(Equal(prod1AmbiguousShoot.Name))
+		Expect(currentTarget).To(Equal(expected))
+		assertTargetProvider(targetProvider, expected)
 	})
 
 	It("should fail if no shoot selected", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		res, unsetErr := manager.UnsetTargetShoot(ctx)
+		res, currentTarget, unsetErr := manager.UnsetTargetShoot(ctx)
 		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
+		Expect(currentTarget).To(Equal(t))
 		assertTargetProvider(targetProvider, t)
 	})
 
@@ -658,11 +681,14 @@ var _ = Describe("Target Manager", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name).WithControlPlane(true)
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		Expect(manager.UnsetTargetControlPlane(ctx)).To(Succeed())
-		assertTargetProvider(targetProvider, t.WithControlPlane(false))
+		expected := t.WithControlPlane(false)
+		currentTarget, err := manager.UnsetTargetControlPlane(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(currentTarget).To(Equal(expected))
+		assertTargetProvider(targetProvider, expected)
 	})
 
-	It("should persist explicit control-plane clearing from a dynamic target provider", func() {
+	It("should persist explicit control-plane clearing from a dynamic target provider through unset", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name).WithControlPlane(true)
 
 		tmpFile, err := os.CreateTemp("", "gardenertarget*")
@@ -683,25 +709,30 @@ var _ = Describe("Target Manager", func() {
 		manager, err := target.NewManager(cfg, dynamicTargetProvider, clientProvider, sessionDir, "")
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(manager.UnsetTargetControlPlane(ctx)).To(Succeed())
-		assertTargetProvider(targetProvider, t.WithControlPlane(false))
+		expected := t.WithControlPlane(false)
+		currentTarget, err := manager.UnsetTargetControlPlane(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(currentTarget).To(Equal(expected))
+		assertTargetProvider(targetProvider, expected)
 	})
 
 	It("should fail if no shoot targeted when unsetting control plane", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		unsetErr := manager.UnsetTargetControlPlane(ctx)
+		currentTarget, unsetErr := manager.UnsetTargetControlPlane(ctx)
 		Expect(unsetErr).To(MatchError(target.ErrNoShootTargeted))
+		Expect(currentTarget).To(Equal(t))
 		assertTargetProvider(targetProvider, t)
 	})
 
-	It("should fail if shoot targeted but no control plane", func() {
+	It("should no-op if shoot targeted but no control plane", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", prod1AmbiguousShoot.Name)
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		unsetErr := manager.UnsetTargetControlPlane(ctx)
-		Expect(unsetErr).To(MatchError(target.ErrNoControlPlaneTargeted))
+		currentTarget, unsetErr := manager.UnsetTargetControlPlane(ctx)
+		Expect(unsetErr).NotTo(HaveOccurred())
+		Expect(currentTarget).To(Equal(t))
 		assertTargetProvider(targetProvider, t)
 	})
 
@@ -709,17 +740,22 @@ var _ = Describe("Target Manager", func() {
 		t := target.NewTarget(gardenName, "", seed.Name, "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		Expect(manager.UnsetTargetSeed(ctx)).Should(Equal(seed.Name))
-		assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
+		expected := target.NewTarget(gardenName, "", "", "")
+		targetName, currentTarget, err := manager.UnsetTargetSeed(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(targetName).To(Equal(seed.Name))
+		Expect(currentTarget).To(Equal(expected))
+		assertTargetProvider(targetProvider, expected)
 	})
 
 	It("should fail if no seed selected", func() {
 		t := target.NewTarget(gardenName, prod1Project.Name, "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-		res, unsetErr := manager.UnsetTargetSeed(ctx)
+		res, currentTarget, unsetErr := manager.UnsetTargetSeed(ctx)
 		Expect(unsetErr).To(HaveOccurred())
 		Expect(res).To(BeEmpty())
+		Expect(currentTarget).To(Equal(t))
 		assertTargetProvider(targetProvider, t)
 	})
 

@@ -232,8 +232,7 @@ func (o *TargetOptions) Run(f util.Factory) error {
 		currentTarget, err = manager.TargetMatchPattern(ctx, f.TargetFlags(), o.TargetName)
 	case TargetKindControlPlane:
 		if o.unsetControlPlane {
-			// TODO UnsetTargetControlPlane should return current target and should not error when no control plane is targeted
-			err = manager.UnsetTargetControlPlane(ctx)
+			currentTarget, err = manager.UnsetTargetControlPlane(ctx)
 		} else {
 			currentTarget, err = manager.TargetControlPlane(ctx)
 		}
