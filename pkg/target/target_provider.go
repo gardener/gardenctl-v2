@@ -128,17 +128,11 @@ type dynamicTargetProvider struct {
 
 var _ TargetProvider = &dynamicTargetProvider{}
 
-// Read returns the current target from the TargetFile if no CLI
-// flags were given, and tries to construct a meaningful target
-// otherwise.
+// Read returns the persisted target with CLI target flags applied as an
+// overlay. Empty flags leave the persisted target unchanged; provided flags
+// update the described scope, and the merged target is validated before it is
+// returned.
 func (p *dynamicTargetProvider) Read() (Target, error) {
-	// user gave everything we needed
-	if p.targetFlags.IsTargetValid() {
-		return p.targetFlags.ToTarget(), nil
-	}
-
-	// user didn't specify anything at all or _some_ flags;
-	// in both cases we need to read the current target from disk
 	current, err := p.delegate.Read()
 	if err != nil {
 		return nil, err
@@ -153,6 +147,18 @@ func (p *dynamicTargetProvider) Write(t Target) error {
 }
 
 // merge returns a new target with the specified target flags merged into it.
+//
+// Target flags describe a requested selector path:
+//
+//	garden -> project -> shoot
+//	garden -> seed    -> shoot
+//
+// Persisted target values are used only for context above the first explicitly
+// provided selector level. Once a flag starts a selector path, stale deeper
+// values and sibling branch values are cleared unless they are explicitly
+// provided as flags too. For example, --shoot keeps the current project or seed
+// selector, but --garden G --shoot S starts at garden scope and does not inherit
+// the persisted project or seed.
 func merge(t Target, tf TargetFlags) (Target, error) {
 	newTarget := t.DeepCopy()
 
