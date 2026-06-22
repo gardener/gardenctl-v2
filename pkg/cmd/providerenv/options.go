@@ -348,6 +348,7 @@ func (o *options) Run(f util.Factory) error {
 	}
 
 	requiresAccessRestrictionConfirmation := false
+
 	if o.TargetFlags != nil {
 		controlPlaneRequested := o.TargetFlags.ControlPlane().Provided() && o.TargetFlags.ControlPlane().Value()
 		requiresAccessRestrictionConfirmation = o.TargetFlags.ShootName() != "" || controlPlaneRequested
