@@ -7,14 +7,14 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/fatih/color v1.19.0
 	github.com/gardener/gardener v1.145.0
-	github.com/gardener/gardener-extension-provider-openstack v1.55.3
+	github.com/gardener/gardener-extension-provider-openstack v1.56.0
 	github.com/gardener/gardener/pkg/apis v1.145.0
 	github.com/gardener/machine-controller-manager v0.62.0
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/onsi/ginkgo/v2 v2.31.0
+	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.42.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
