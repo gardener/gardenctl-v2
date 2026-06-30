@@ -119,6 +119,9 @@ type TargetOptions struct {
 	Kind TargetKind
 	// TargetName is the object name of the targeted kind
 	TargetName string
+
+	// unsetControlPlane is true when --control-plane=false is the requested operation.
+	unsetControlPlane bool
 }
 
 // NewTargetOptions returns initialized TargetOptions.
@@ -141,10 +144,19 @@ func (o *TargetOptions) Complete(f util.Factory, _ *cobra.Command, args []string
 	}
 
 	tf := f.TargetFlags()
+	controlPlane := tf.ControlPlane()
+	targetControlPlaneRequested := controlPlane.Provided() && controlPlane.Value()
+	unsetControlPlaneRequested := controlPlane.Provided() && !controlPlane.Value()
+	o.unsetControlPlane = false
+
+	if len(args) == 0 && targetControlPlaneRequested && tf.ShootName() == "" &&
+		(tf.GardenName() != "" || tf.ProjectName() != "" || tf.SeedName() != "") {
+		return errors.New("cannot use --control-plane without --shoot when specifying target flags")
+	}
 
 	if o.Kind == "" {
 		switch {
-		case tf.ControlPlane():
+		case targetControlPlaneRequested:
 			o.Kind = TargetKindControlPlane
 		case tf.ShootName() != "":
 			o.Kind = TargetKindShoot
@@ -154,8 +166,15 @@ func (o *TargetOptions) Complete(f util.Factory, _ *cobra.Command, args []string
 			o.Kind = TargetKindSeed
 		case tf.GardenName() != "":
 			o.Kind = TargetKindGarden
+		case unsetControlPlaneRequested:
+			// --control-plane=false alone: drop control-plane from current target.
+			// When combined with target path flags, those flags drive the kind;
+			// path targeting clears or leaves unset shoot-bound control-plane state.
+			o.Kind = TargetKindControlPlane
 		}
 	}
+
+	o.unsetControlPlane = o.Kind == TargetKindControlPlane && unsetControlPlaneRequested
 
 	if o.TargetName == "" {
 		switch o.Kind {
@@ -198,19 +217,25 @@ func (o *TargetOptions) Run(f util.Factory) error {
 	handler := ac.NewAccessRestrictionHandler(o.IOStreams.In, o.IOStreams.Out, askForConfirmation)
 	ctx := ac.WithAccessRestrictionHandler(f.Context(), handler)
 
+	var currentTarget target.Target
+
 	switch o.Kind {
 	case TargetKindGarden:
-		err = manager.TargetGarden(ctx, o.TargetName)
+		currentTarget, err = manager.TargetGarden(ctx, o.TargetName)
 	case TargetKindProject:
-		err = manager.TargetProject(ctx, o.TargetName)
+		currentTarget, err = manager.TargetProject(ctx, o.TargetName)
 	case TargetKindSeed:
-		err = manager.TargetSeed(ctx, o.TargetName)
+		currentTarget, err = manager.TargetSeed(ctx, o.TargetName)
 	case TargetKindShoot:
-		err = manager.TargetShoot(ctx, o.TargetName)
+		currentTarget, err = manager.TargetShoot(ctx, o.TargetName)
 	case TargetKindPattern:
-		err = manager.TargetMatchPattern(ctx, f.TargetFlags(), o.TargetName)
+		currentTarget, err = manager.TargetMatchPattern(ctx, f.TargetFlags(), o.TargetName)
 	case TargetKindControlPlane:
-		err = manager.TargetControlPlane(ctx)
+		if o.unsetControlPlane {
+			currentTarget, err = manager.UnsetTargetControlPlane(ctx)
+		} else {
+			currentTarget, err = manager.TargetControlPlane(ctx)
+		}
 	}
 
 	if err != nil {
@@ -221,32 +246,10 @@ func (o *TargetOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	currentTarget, err := manager.CurrentTarget()
-	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
-	}
-
 	if o.Output == "" {
-		// TODO(gardener/gardenctl-v2#744): dynamicTargetProvider.merge() wipes
-		// deeper target levels whenever --garden is set on the CLI, even
-		// immediately after TargetXXX persisted a shoot/seed. Re-apply the
-		// just-targeted leaf so EffectiveAccessLevel sees it instead of
-		// falling through to "no scope". Drop this workaround once #744 fixes
-		// the root cause.
-		levelTarget := currentTarget
-
-		switch o.Kind {
-		case TargetKindShoot:
-			levelTarget = levelTarget.WithShootName(o.TargetName)
-		case TargetKindSeed:
-			levelTarget = levelTarget.WithSeedName(o.TargetName)
-		case TargetKindControlPlane:
-			levelTarget = levelTarget.WithControlPlane(true)
-		}
-
 		var levelSuffix string
 
-		level, ok, lvlErr := manager.EffectiveAccessLevel(ctx, levelTarget)
+		level, ok, lvlErr := manager.EffectiveAccessLevel(ctx, currentTarget)
 		switch {
 		case lvlErr != nil:
 			// Display-path soft-warn: the kubeconfig itself is already correct
@@ -257,9 +260,16 @@ func (o *TargetOptions) Run(f util.Factory) error {
 			levelSuffix = fmt.Sprintf(" (access level: %s)", level)
 		}
 
-		if o.Kind == TargetKindControlPlane {
-			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted control plane of shoot %q%s\n", currentTarget.ShootName(), levelSuffix)
-		} else if o.Kind != "" {
+		switch o.Kind {
+		case TargetKindControlPlane:
+			if o.unsetControlPlane {
+				fmt.Fprintf(o.IOStreams.Out, "Successfully unset targeted control plane for %q%s\n", currentTarget.ShootName(), levelSuffix)
+			} else {
+				fmt.Fprintf(o.IOStreams.Out, "Successfully targeted control plane of shoot %q%s\n", currentTarget.ShootName(), levelSuffix)
+			}
+		case "":
+			// no output
+		default:
 			fmt.Fprintf(o.IOStreams.Out, "Successfully targeted %s %q%s\n", o.Kind, o.TargetName, levelSuffix)
 		}
 	}
