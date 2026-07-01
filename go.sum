@@ -166,8 +166,8 @@ github.com/gardener/gardener-extension-provider-openstack v1.56.0 h1:WWBwt8qmmrW
 github.com/gardener/gardener-extension-provider-openstack v1.56.0/go.mod h1:19VXh6ny5NJHm/vtljEAxzkrRKAjf6LWcZVCYlMYdik=
 github.com/gardener/gardener/pkg/apis v1.145.0 h1:E9mnDYOKOoOEJnpGCPpFuS0OX32uoOnv27a03b/nlP0=
 github.com/gardener/gardener/pkg/apis v1.145.0/go.mod h1:LsjZw5/3awWSMDnKg4bgftM1kW9Dkeor/ged5DNHVPI=
-github.com/gardener/machine-controller-manager v0.62.0 h1:XZWjAsXlNVj3S7M0AXcLkhNDGRRNm3Tc6ZFlTPPy3sc=
-github.com/gardener/machine-controller-manager v0.62.0/go.mod h1:ICsymXK4VHm7NVr8Mpl6USvYcTZjUNSk6+XaVu/dd74=
+github.com/gardener/machine-controller-manager v0.62.1 h1:TQ4Qs9aaYTqSkqFownIaEAvnrYoNpBMcp7ZMYVEgUWM=
+github.com/gardener/machine-controller-manager v0.62.1/go.mod h1:ICsymXK4VHm7NVr8Mpl6USvYcTZjUNSk6+XaVu/dd74=
 github.com/ghodss/yaml v0.0.0-20150909031657-73d445a93680/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/gkampitakis/ciinfo v0.3.2 h1:JcuOPk8ZU7nZQjdUhctuhQofk7BGHuIy0c9Ez8BNhXs=
 github.com/gkampitakis/ciinfo v0.3.2/go.mod h1:1NIwaOcFChN4fa/B0hEBdAb6npDlFL8Bwx4dfRLRqAo=
