@@ -1376,6 +1376,48 @@ var _ = Describe("SSH Options", func() {
 		)
 	})
 
+	Describe("GetNodeHostname", func() {
+		DescribeTable("should return a valid preferred node address",
+			func(addresses []corev1.NodeAddress, expectedHostname string) {
+				node := &corev1.Node{Status: corev1.NodeStatus{Addresses: addresses}}
+
+				hostname, err := ssh.GetNodeHostname(node)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(hostname).To(Equal(expectedHostname))
+			},
+			Entry("internal IP", []corev1.NodeAddress{
+				{Type: corev1.NodeInternalIP, Address: "192.0.2.1"},
+				{Type: corev1.NodeInternalDNS, Address: "node.example.invalid"},
+			}, "192.0.2.1"),
+			Entry("internal DNS", []corev1.NodeAddress{
+				{Type: corev1.NodeInternalDNS, Address: "node.example.invalid"},
+			}, "node.example.invalid"),
+			Entry("IPv6", []corev1.NodeAddress{
+				{Type: corev1.NodeInternalIP, Address: "2001:db8::1"},
+			}, "2001:db8::1"),
+		)
+
+		DescribeTable("should reject an invalid preferred node address",
+			func(addresses []corev1.NodeAddress) {
+				node := &corev1.Node{Status: corev1.NodeStatus{Addresses: addresses}}
+
+				_, err := ssh.GetNodeHostname(node)
+
+				Expect(err).To(MatchError(ContainSubstring("invalid node")))
+			},
+			Entry("shell metacharacters in internal IP", []corev1.NodeAddress{
+				{Type: corev1.NodeInternalIP, Address: "192.0.2.1;injected"},
+			}),
+			Entry("shell metacharacters in internal DNS", []corev1.NodeAddress{
+				{Type: corev1.NodeInternalDNS, Address: "node.example.invalid;injected"},
+			}),
+			Entry("unspecified IP", []corev1.NodeAddress{
+				{Type: corev1.NodeInternalIP, Address: "0.0.0.0"},
+			}),
+		)
+	})
+
 	Context("SSH key validation", Ordered, func() {
 		var (
 			privateKey       *rsa.PrivateKey

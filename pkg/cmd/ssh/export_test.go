@@ -63,6 +63,7 @@ var (
 	ValidateSSHPrivateKey = validateSSHPrivateKey
 	ValidateSSHPublicKey  = validateSSHPublicKey
 	ValidateHost          = validateHost
+	GetNodeHostname       = getNodeHostname
 )
 
 // CheckAccessRestrictions exposes the unexported checkAccessRestrictions method for tests.
