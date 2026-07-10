@@ -7,9 +7,15 @@ permissions:
 on:
   workflow_call:
     inputs:
+      component-descriptor-artifact:
+        type: string
+        required: false
+        description: |
+          Name of the GHA artifact (as output by cc-utils release workflow) containing the
+          OCM-Component-Descriptor. Takes precedence over `component-descriptor`.
       component-descriptor:
         type: string
-        required: true
+        required: false
         description: |
           the OCM-Component-Descriptor from which to publish built artefacts
     secrets:
@@ -67,9 +73,21 @@ jobs:
           permission-contents: write
 
       - uses: gardener/cc-utils/.github/actions/trusted-checkout@v1 # zizmor: ignore[unpinned-uses,ref-confusion] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
+      - name: download-component-descriptor-artifact
+        if: ${{ inputs.component-descriptor-artifact != '' }}
+        uses: gardener/cc-utils/.github/actions/download-artifact@v1 # zizmor: ignore[unpinned-uses,ref-confusion] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
+        with:
+          name: ${{ inputs.component-descriptor-artifact }}
+          path: /tmp/cd-artifact
+      - name: extract-component-descriptor-artifact
+        if: ${{ inputs.component-descriptor-artifact != '' }}
+        run: |
+          set -eu
+          tar xf /tmp/cd-artifact/component-descriptor.tar.gz \
+            -C /tmp component-descriptor.yaml
       - name: export-version-from-input
         id: export-version
-        if: ${{ inputs.version != '' && inputs.component-descriptor == '' }}
+        if: ${{ inputs.version != '' && inputs.component-descriptor == '' && inputs.component-descriptor-artifact == '' }}
         env:
           VERSION: ${{ inputs.version }}
         run: |
@@ -77,13 +95,15 @@ jobs:
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
       - name: Read-Digests
         id: read-digests
-        if: ${{ inputs.component-descriptor != '' }}
+        if: ${{ inputs.component-descriptor != '' || inputs.component-descriptor-artifact != '' }}
         env:
           COMPONENT_DESCRIPTOR: ${{ inputs.component-descriptor }}
         run: |
           set -euo pipefail
 
-          printenv COMPONENT_DESCRIPTOR > /tmp/component-descriptor.yaml
+          if [ ! -f /tmp/component-descriptor.yaml ]; then
+            printenv COMPONENT_DESCRIPTOR > /tmp/component-descriptor.yaml
+          fi
 
           source .github/workflows/export-digests-from-component-descriptor.sh \
             /tmp/component-descriptor.yaml
@@ -101,7 +121,7 @@ jobs:
 
       - name: Use dummy hashes (skip‑build)
         id: dummy-hashes
-        if: ${{ inputs.component-descriptor == '' }}
+        if: ${{ inputs.component-descriptor == '' && inputs.component-descriptor-artifact == '' }}
         run: |
           set -euo pipefail
           dummy=0000000000000000000000000000000000000000000000000000000000000000
