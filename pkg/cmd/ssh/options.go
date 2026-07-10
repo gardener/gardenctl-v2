@@ -1415,6 +1415,10 @@ func getNodeHostname(node *corev1.Node) (string, error) {
 	// as the shoot nodes, we prefer the internal IP/hostname.
 	for _, k := range []corev1.NodeAddressType{corev1.NodeInternalIP, corev1.NodeInternalDNS, corev1.NodeExternalIP, corev1.NodeExternalDNS} {
 		if addr := addresses[k]; addr != "" {
+			if err := validateHost(addr); err != nil {
+				return "", fmt.Errorf("invalid node %s address: %w", k, err)
+			}
+
 			return addr, nil
 		}
 	}
