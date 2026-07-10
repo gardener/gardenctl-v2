@@ -13,11 +13,6 @@ on:
         description: |
           Name of the GHA artifact (as output by cc-utils release workflow) containing the
           OCM-Component-Descriptor. Takes precedence over `component-descriptor`.
-      component-descriptor:
-        type: string
-        required: false
-        description: |
-          the OCM-Component-Descriptor from which to publish built artefacts
     secrets:
       GARDENER_GITHUB_WORKFLOW_PKG_MNGR_CLIENT_ID:
         required: false
