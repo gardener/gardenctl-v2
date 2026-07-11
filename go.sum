@@ -162,8 +162,8 @@ github.com/gardener/etcd-druid/api v0.36.4 h1:o/17ciPrbh/w+igKMUuglW7N9XLjoMh7Av
 github.com/gardener/etcd-druid/api v0.36.4/go.mod h1:RwZzKp8K415AS0zg8VoODjBxYepCAUYyLgXnZc1bmbo=
 github.com/gardener/gardener v1.146.1 h1:mbKYQVmuiqI+YdivnDTqGWp34rZ5y3GlK39uZSpllWA=
 github.com/gardener/gardener v1.146.1/go.mod h1:BL4tsbuXJkgPlotTOFcU0BKQHAf21l6z/OQo7A3grTU=
-github.com/gardener/gardener-extension-provider-openstack v1.56.1 h1:cVXuqpo3A3TqcbKtTIuybN44DkGaM3BMdx338RlV/A0=
-github.com/gardener/gardener-extension-provider-openstack v1.56.1/go.mod h1:utL48lua49yNy/t3cVQU7cwXWv4P+qI1PPdjBZqEfNg=
+github.com/gardener/gardener-extension-provider-openstack v1.57.0 h1:QQXVSOC+9c94r21BbcLW1gQfxJ95zmo0e18Aoy32BhQ=
+github.com/gardener/gardener-extension-provider-openstack v1.57.0/go.mod h1:N397cSwvKwFl/as2g39eeXyFj3gON83KQb7TliQX9nI=
 github.com/gardener/gardener/pkg/apis v1.146.1 h1:s1wRxBS4RV1Z9BFErqTPtjClktcc9gphqPqMHEer3uw=
 github.com/gardener/gardener/pkg/apis v1.146.1/go.mod h1:S6v1kxYVnqIYsGE2P3emsTUs27bduXEHRYpLx4Zpd9I=
 github.com/gardener/machine-controller-manager v0.62.1 h1:TQ4Qs9aaYTqSkqFownIaEAvnrYoNpBMcp7ZMYVEgUWM=
@@ -663,8 +663,8 @@ golang.org/x/tools v0.0.0-20191125144606-a911d9008d1f/go.mod h1:b+2E5dAYhXwXZwtn
 golang.org/x/tools v0.0.0-20191227053925-7b8e75db28f4/go.mod h1:TB2adYChydJhpapKDTa4BR/hXlZSLoq2Wpct/0txZ28=
 golang.org/x/tools v0.0.0-20200616133436-c1934b75d054/go.mod h1:EkVYQZoAsY45+roYkvgYkIh4xh/qjgUK9TdY2XT94GE=
 golang.org/x/tools v0.1.1/go.mod h1:o0xws9oXOQQZyjljx8fwUC0k7L1pTE6eaCbjGeHmOkk=
-golang.org/x/tools v0.46.0 h1:7jTurBkPZu4moS/Uy4OQT1M+QBlsj3wejyZwsT8Z7rk=
-golang.org/x/tools v0.46.0/go.mod h1:FrD85F8l+NWL+9XWBSyVSHO6Ne4jutsfIFba7AWQ5Ys=
+golang.org/x/tools v0.47.0 h1:7Kn5x/d1svx/PzryTsqeoZN4TZwqeH5pGWjefhLi/1Q=
+golang.org/x/tools v0.47.0/go.mod h1:dFHnyTvFWY212G+h7ZY4Vsp/K3U4/7W9TyVaAul8uCA=
 golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
