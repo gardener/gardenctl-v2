@@ -7,7 +7,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/fatih/color v1.19.0
 	github.com/gardener/gardener v1.146.1
-	github.com/gardener/gardener-extension-provider-openstack v1.56.1
+	github.com/gardener/gardener-extension-provider-openstack v1.57.0
 	github.com/gardener/gardener/pkg/apis v1.146.1
 	github.com/gardener/machine-controller-manager v0.62.1
 	github.com/go-jose/go-jose/v4 v4.1.4
@@ -178,7 +178,7 @@ require (
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	golang.org/x/tools v0.46.0 // indirect
+	golang.org/x/tools v0.47.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
