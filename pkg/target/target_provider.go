@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"sigs.k8s.io/yaml"
 )
@@ -29,9 +30,18 @@ type TargetWriter interface {
 
 //go:generate mockgen -destination=./mocks/mock_target_trovider.go -package=mocks github.com/gardener/gardenctl-v2/pkg/target TargetProvider
 
-// TargetProvider can read and write targets.
+// PersistedTargetReader can read the target exactly as persisted, without
+// command-local overlays such as CLI target flags.
+type PersistedTargetReader interface {
+	// ReadPersisted returns the persisted target before command-local overlays.
+	ReadPersisted() (Target, error)
+}
+
+// TargetProvider can read effective targets, read persisted targets, and write
+// targets.
 type TargetProvider interface {
 	TargetReader
+	PersistedTargetReader
 	TargetWriter
 }
 
@@ -41,7 +51,10 @@ type fsTargetProvider struct {
 	targetFile string
 }
 
-var _ TargetProvider = &fsTargetProvider{}
+var (
+	_ TargetProvider        = &fsTargetProvider{}
+	_ PersistedTargetReader = &fsTargetProvider{}
+)
 
 func (p *fsTargetProvider) Read() (Target, error) {
 	f, err := os.Open(p.targetFile)
@@ -77,6 +90,10 @@ func (p *fsTargetProvider) Read() (Target, error) {
 	}
 
 	return target, nil
+}
+
+func (p *fsTargetProvider) ReadPersisted() (Target, error) {
+	return p.Read()
 }
 
 // Write takes a target and saves it permanently.
@@ -115,8 +132,8 @@ func NewTargetProvider(targetFile string, targetFlags TargetFlags) TargetProvide
 // to change the target for individual gardenctl commands
 // on-the-fly without changing the file on disk every time.
 //
-// If no CLI flags are given, this functions identical to the
-// regular TargetProvider from NewFilesystemTargetProvider().
+// If no CLI flags are given, this functions identical to the regular
+// filesystem TargetProvider.
 //
 // Otherwise, the flags are used to augment the existing target.
 type dynamicTargetProvider struct {
@@ -126,19 +143,16 @@ type dynamicTargetProvider struct {
 	targetFlags TargetFlags
 }
 
-var _ TargetProvider = &dynamicTargetProvider{}
+var (
+	_ TargetProvider        = &dynamicTargetProvider{}
+	_ PersistedTargetReader = &dynamicTargetProvider{}
+)
 
-// Read returns the current target from the TargetFile if no CLI
-// flags were given, and tries to construct a meaningful target
-// otherwise.
+// Read returns the persisted target with CLI target flags applied as an
+// overlay. Empty flags leave the persisted target unchanged; provided flags
+// update the described scope, and the merged target is validated before it is
+// returned.
 func (p *dynamicTargetProvider) Read() (Target, error) {
-	// user gave everything we needed
-	if p.targetFlags.IsTargetValid() {
-		return p.targetFlags.ToTarget(), nil
-	}
-
-	// user didn't specify anything at all or _some_ flags;
-	// in both cases we need to read the current target from disk
 	current, err := p.delegate.Read()
 	if err != nil {
 		return nil, err
@@ -147,18 +161,98 @@ func (p *dynamicTargetProvider) Read() (Target, error) {
 	return merge(current, p.targetFlags)
 }
 
+func (p *dynamicTargetProvider) ReadPersisted() (Target, error) {
+	return p.delegate.Read()
+}
+
 // Write takes a target and saves it permanently.
 func (p *dynamicTargetProvider) Write(t Target) error {
 	return p.delegate.Write(t)
 }
 
+func combine(cliFlags TargetFlags, patternFlags TargetFlags) (TargetFlags, error) {
+	result := &targetFlagsImpl{
+		gardenName:   combineStringField(cliFlags.GardenName(), patternFlags.GardenName()),
+		projectName:  combineStringField(cliFlags.ProjectName(), patternFlags.ProjectName()),
+		seedName:     combineStringField(cliFlags.SeedName(), patternFlags.SeedName()),
+		shootName:    combineStringField(cliFlags.ShootName(), patternFlags.ShootName()),
+		controlPlane: NewBoolFlag(false),
+	}
+
+	var conflicts []string
+
+	addStringConflict := func(flagName, cliValue, patternValue string) {
+		if cliValue != "" && patternValue != "" && cliValue != patternValue {
+			conflicts = append(conflicts, fmt.Sprintf("--%s=%s contradicts pattern (%s=%s)", flagName, cliValue, flagName, patternValue))
+		}
+	}
+	addBoolConflict := func(flagName string, cliFlag, patternFlag BoolFlag) {
+		if cliFlag.Provided() && patternFlag.Provided() && cliFlag.Value() != patternFlag.Value() {
+			conflicts = append(conflicts, fmt.Sprintf("--%s=%t contradicts pattern (%s=%t)", flagName, cliFlag.Value(), flagName, patternFlag.Value()))
+		}
+	}
+
+	// Today's pattern keys are garden, project, namespace, shoot (see
+	// pkg/config/config.go PatternKey constants); seed and controlPlane can
+	// never be set by a pattern, so those checks are defensive and only fire
+	// if the pattern key set ever grows.
+	addStringConflict("garden", cliFlags.GardenName(), patternFlags.GardenName())
+	addStringConflict("project", cliFlags.ProjectName(), patternFlags.ProjectName())
+	addStringConflict("seed", cliFlags.SeedName(), patternFlags.SeedName())
+	addStringConflict("shoot", cliFlags.ShootName(), patternFlags.ShootName())
+	addBoolConflict("control-plane", cliFlags.ControlPlane(), patternFlags.ControlPlane())
+
+	cliCP := cliFlags.ControlPlane()
+
+	patternCP := patternFlags.ControlPlane()
+	switch {
+	case cliCP.Provided():
+		result.controlPlane = newProvidedBoolFlag(cliCP.Value())
+	case patternCP.Provided():
+		result.controlPlane = newProvidedBoolFlag(patternCP.Value())
+	}
+
+	if len(conflicts) > 0 {
+		return nil, errors.New(strings.Join(conflicts, "; "))
+	}
+
+	return result, nil
+}
+
+func combineStringField(cliValue, patternValue string) string {
+	if patternValue != "" {
+		return patternValue
+	}
+
+	return cliValue
+}
+
 // merge returns a new target with the specified target flags merged into it.
+//
+// merge returns a Target value, not a record of flag presence. String selector
+// flags are represented by their non-empty values; control-plane is different
+// because BoolFlag preserves explicit false separately from omission. Callers
+// that need that distinction must inspect tf.ControlPlane().Provided().
+//
+// Target flags describe a requested selector path:
+//
+//	garden -> project -> shoot
+//	garden -> seed    -> shoot
+//
+// Persisted target values are used only for context above the first explicitly
+// provided selector level. Once a flag starts a selector path, stale deeper
+// values and sibling branch values are cleared unless they are explicitly
+// provided as flags too. For example, --shoot keeps the current project or seed
+// selector, but --garden G --shoot S starts at garden scope and does not inherit
+// the persisted project or seed.
 func merge(t Target, tf TargetFlags) (Target, error) {
 	newTarget := t.DeepCopy()
 
 	if tf.IsEmpty() {
 		return newTarget, nil
 	}
+
+	pathFlagProvided := targetPathFlagProvided(tf)
 
 	// Setting a garden resets all deeper targeting levels, allowing
 	// the user to "move up". For example, when they have targeted a shoot,
@@ -177,7 +271,7 @@ func merge(t Target, tf TargetFlags) (Target, error) {
 		}
 
 		// All three specified: the shoot is looked up via project and the
-		// seed is validated later in completeTargetForShoot.
+		// seed is validated during manager enrichment.
 		newTarget = newTarget.WithProjectName(tf.ProjectName()).WithSeedName(tf.SeedName()).WithShootName(tf.ShootName())
 
 	case tf.ProjectName() != "":
@@ -198,8 +292,14 @@ func merge(t Target, tf TargetFlags) (Target, error) {
 		newTarget = newTarget.WithShootName(tf.ShootName())
 	}
 
-	if tf.ControlPlane() {
-		newTarget = newTarget.WithControlPlane(tf.ControlPlane())
+	// Path selector resets shoot-bound control-plane state.
+	if pathFlagProvided {
+		newTarget = newTarget.WithControlPlane(false)
+	}
+
+	// Explicit --control-plane wins.
+	if tf.ControlPlane().Provided() {
+		newTarget = newTarget.WithControlPlane(tf.ControlPlane().Value())
 	}
 
 	if err := newTarget.Validate(); err != nil {
@@ -207,4 +307,15 @@ func merge(t Target, tf TargetFlags) (Target, error) {
 	}
 
 	return newTarget, nil
+}
+
+// targetPathFlagProvided reports whether the user explicitly supplied any
+// garden/project/seed/shoot selector field. Used to decide if a stale
+// ControlPlane flag from the persisted target should be cleared. Including
+// ControlPlane in the comparison would be self-defeating.
+func targetPathFlagProvided(tf TargetFlags) bool {
+	return tf.GardenName() != "" ||
+		tf.ProjectName() != "" ||
+		tf.SeedName() != "" ||
+		tf.ShootName() != ""
 }

@@ -35,6 +35,12 @@ func (p *TargetProvider) Read() (target.Target, error) {
 	return p.Target, nil
 }
 
+// ReadPersisted returns the target as persisted. The fake provider has no
+// command-local overlays, so this is identical to Read.
+func (p *TargetProvider) ReadPersisted() (target.Target, error) {
+	return p.Read()
+}
+
 // Write takes a target and saves it permanently.
 func (p *TargetProvider) Write(t target.Target) error {
 	p.Target = t

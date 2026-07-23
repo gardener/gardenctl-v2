@@ -14,6 +14,8 @@ import (
 	"os"
 	"path/filepath"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/clientcmd"
@@ -21,6 +23,7 @@ import (
 
 	internalclient "github.com/gardener/gardenctl-v2/internal/client"
 	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
+	"github.com/gardener/gardenctl-v2/pkg/ac"
 	"github.com/gardener/gardenctl-v2/pkg/config"
 )
 
@@ -61,36 +64,36 @@ type Manager interface {
 
 	// TargetGarden sets the garden target configuration
 	// This implicitly unsets project, seed and shoot target configuration
-	TargetGarden(ctx context.Context, name string) error
+	TargetGarden(ctx context.Context, name string) (Target, error)
 	// TargetProject sets the project target configuration
 	// This implicitly unsets seed and shoot target configuration
-	TargetProject(ctx context.Context, name string) error
+	TargetProject(ctx context.Context, name string) (Target, error)
 	// TargetSeed sets the seed target configuration
 	// This implicitly unsets project and shoot target configuration
-	TargetSeed(ctx context.Context, name string) error
+	TargetSeed(ctx context.Context, name string) (Target, error)
 	// TargetShoot sets the shoot target configuration
 	// This implicitly unsets seed target configuration
 	// It will also configure appropriate project and seed values if not already set
-	TargetShoot(ctx context.Context, name string) error
+	TargetShoot(ctx context.Context, name string) (Target, error)
 	// TargetControlPlane sets the control plane target flag
-	TargetControlPlane(ctx context.Context) error
+	TargetControlPlane(ctx context.Context) (Target, error)
 	// UnsetTargetGarden unsets the garden target configuration
 	// This implicitly unsets project, shoot and seed target configuration
-	UnsetTargetGarden(ctx context.Context) (string, error)
+	UnsetTargetGarden(ctx context.Context) (string, Target, error)
 	// UnsetTargetProject unsets the project target configuration
 	// This implicitly unsets shoot target configuration
-	UnsetTargetProject(ctx context.Context) (string, error)
+	UnsetTargetProject(ctx context.Context) (string, Target, error)
 	// UnsetTargetSeed unsets the garden seed configuration
-	UnsetTargetSeed(ctx context.Context) (string, error)
+	UnsetTargetSeed(ctx context.Context) (string, Target, error)
 	// UnsetTargetShoot unsets the garden shoot configuration
-	UnsetTargetShoot(ctx context.Context) (string, error)
+	UnsetTargetShoot(ctx context.Context) (string, Target, error)
 	// UnsetTargetControlPlane unsets the control plane flag
-	UnsetTargetControlPlane(ctx context.Context) error
+	UnsetTargetControlPlane(ctx context.Context) (Target, error)
 	// TargetMatchPattern replaces the whole target
 	// Garden, Project and Shoot values are determined by matching the provided value
 	// against patterns defined in gardenctl configuration. Some values may only match a subset
 	// of a pattern
-	TargetMatchPattern(ctx context.Context, tf TargetFlags, value string) error
+	TargetMatchPattern(ctx context.Context, tf TargetFlags, value string) (Target, error)
 
 	// ClientConfig returns the client config for a target.
 	// The kubeconfig access level (admin/viewer/auto) is resolved internally from the
@@ -131,6 +134,8 @@ type managerImpl struct {
 	// flagAccessLevel is the value of the global --access-level flag.
 	// Empty when unset. Takes precedence over per-garden config defaults.
 	flagAccessLevel config.KubeconfigAccessLevel
+
+	currentTarget Target
 }
 
 var _ Manager = &managerImpl{}
@@ -191,19 +196,23 @@ func (m *managerImpl) EffectiveAccessLevel(ctx context.Context, t Target) (confi
 	}
 
 	if !isShootRequest {
+		seedName := t.SeedName()
+		if seedName == "" && t.ShootName() == "" {
+			// A control-plane or seed scope without a known seed name and
+			// without a shoot to recover it from has nothing to look up;
+			// ClientConfig will surface the underlying problem,
+			// EffectiveAccessLevel just stays silent.
+			return "", false, nil
+		}
+
 		c, err := m.GardenClient(t.GardenName())
 		if err != nil {
 			return "", false, err
 		}
 
-		seedName := t.SeedName()
 		if seedName == "" {
-			// `target --garden X --shoot Y control-plane` wipes deeper target
-			// levels (#744); recover spec.seedName the same way ClientConfig does.
-			if t.ShootName() == "" {
-				return "", false, nil
-			}
-
+			// Recover spec.seedName for control-plane targets that do not
+			// carry it, matching the ClientConfig lookup path.
 			shoot, err := c.FindShoot(ctx, t.WithControlPlane(false).AsListOption())
 			if err != nil {
 				return "", false, err
@@ -331,46 +340,68 @@ func (m *managerImpl) resolveAccessLevel(t Target, scope AccessScope) config.Kub
 }
 
 func (m *managerImpl) CurrentTarget() (Target, error) {
-	return m.targetProvider.Read()
+	if m.currentTarget != nil {
+		return m.currentTarget.DeepCopy(), nil
+	}
+
+	currentTarget, err := m.targetProvider.Read()
+	if err != nil {
+		return nil, err
+	}
+
+	if currentTarget == nil {
+		return nil, errors.New("target provider returned nil target")
+	}
+
+	m.currentTarget = currentTarget.DeepCopy()
+
+	return m.currentTarget.DeepCopy(), nil
 }
 
 func (m *managerImpl) Configuration() *config.Config {
 	return m.config
 }
 
-func (m *managerImpl) TargetGarden(ctx context.Context, identity string) error {
-	tb, err := NewTargetBuilder(m.config, m.clientProvider)
-	if err != nil {
-		return fmt.Errorf("failed to create new target builder: %w", err)
+func (m *managerImpl) TargetGarden(ctx context.Context, identity string) (Target, error) {
+	if identity == "" {
+		return nil, errors.New("garden identity must not be empty")
 	}
 
-	currentTarget, err := m.CurrentTarget()
+	// Resolve to the canonical garden name (so an alias becomes its underlying
+	// name) before handing off to the overlay path. merge() does not perform
+	// this lookup.
+	garden, err := m.config.Garden(identity)
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
+		return nil, fmt.Errorf("failed to set target garden: %w", err)
 	}
 
-	tb.Init(currentTarget)
-
-	target, err := tb.SetGarden(identity).Build()
+	current, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to build target: %w", err)
+		return nil, fmt.Errorf("failed to get current target: %w", err)
+	}
+
+	overlay := &targetFlagsImpl{gardenName: garden.Name}
+
+	target, err := m.applyOverlay(ctx, current, overlay)
+	if err != nil {
+		return nil, err
 	}
 
 	return m.updateTarget(ctx, target)
 }
 
-func (m *managerImpl) UnsetTargetGarden(ctx context.Context) (string, error) {
+func (m *managerImpl) UnsetTargetGarden(ctx context.Context) (string, Target, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %w", err)
+		return "", nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedGarden := currentTarget.GardenName()
 	if targetedGarden == "" {
-		return "", ErrNoGardenTargeted
+		return "", currentTarget, ErrNoGardenTargeted
 	}
 
-	return targetedGarden, m.patchTarget(ctx, func(t *targetImpl) error {
+	target, err := m.patchTarget(ctx, func(t *targetImpl) error {
 		t.Garden = ""
 		t.Project = ""
 		t.Seed = ""
@@ -379,158 +410,162 @@ func (m *managerImpl) UnsetTargetGarden(ctx context.Context) (string, error) {
 
 		return nil
 	})
+
+	return targetedGarden, target, err
 }
 
-func (m *managerImpl) TargetProject(ctx context.Context, projectName string) error {
-	tb, err := NewTargetBuilder(m.config, m.clientProvider)
-	if err != nil {
-		return fmt.Errorf("failed to create new target builder: %w", err)
+func (m *managerImpl) TargetProject(ctx context.Context, projectName string) (Target, error) {
+	if projectName == "" {
+		return nil, errors.New("project name must not be empty")
 	}
 
-	currentTarget, err := m.CurrentTarget()
+	current, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
+		return nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
-	tb.Init(currentTarget)
+	overlay := &targetFlagsImpl{projectName: projectName}
 
-	target, err := tb.SetProject(ctx, projectName).Build()
+	target, err := m.applyOverlay(ctx, current, overlay)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return m.updateTarget(ctx, target)
 }
 
-func (m *managerImpl) UnsetTargetProject(ctx context.Context) (string, error) {
+func (m *managerImpl) UnsetTargetProject(ctx context.Context) (string, Target, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %w", err)
+		return "", nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedName := currentTarget.ProjectName()
 	if targetedName == "" {
-		return "", ErrNoProjectTargeted
+		return "", currentTarget, ErrNoProjectTargeted
 	}
 
-	return targetedName, m.patchTarget(ctx, func(t *targetImpl) error {
+	target, err := m.patchTarget(ctx, func(t *targetImpl) error {
 		t.Project = ""
+		t.Seed = ""
 		t.Shoot = ""
 		t.ControlPlaneFlag = false
 
 		return nil
 	})
+
+	return targetedName, target, err
 }
 
-func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) error {
-	tb, err := NewTargetBuilder(m.config, m.clientProvider)
-	if err != nil {
-		return fmt.Errorf("failed to create new target builder: %w", err)
+func (m *managerImpl) TargetSeed(ctx context.Context, seedName string) (Target, error) {
+	if seedName == "" {
+		return nil, errors.New("seed name must not be empty")
 	}
 
-	currentTarget, err := m.CurrentTarget()
+	current, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
+		return nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
-	tb.Init(currentTarget)
+	overlay := &targetFlagsImpl{seedName: seedName}
 
-	target, err := tb.SetSeed(ctx, seedName).Build()
+	target, err := m.applyOverlay(ctx, current, overlay)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return m.updateTarget(ctx, target)
 }
 
-func (m *managerImpl) UnsetTargetSeed(ctx context.Context) (string, error) {
+func (m *managerImpl) UnsetTargetSeed(ctx context.Context) (string, Target, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %w", err)
+		return "", nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedName := currentTarget.SeedName()
 	if targetedName == "" {
-		return "", ErrNoSeedTargeted
+		return "", currentTarget, ErrNoSeedTargeted
 	}
 
-	return targetedName, m.patchTarget(ctx, func(t *targetImpl) error {
+	target, err := m.patchTarget(ctx, func(t *targetImpl) error {
 		t.Seed = ""
 
 		return nil
 	})
+
+	return targetedName, target, err
 }
 
-func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) error {
-	tb, err := NewTargetBuilder(m.config, m.clientProvider)
-	if err != nil {
-		return fmt.Errorf("failed to create new target builder: %w", err)
+func (m *managerImpl) TargetShoot(ctx context.Context, shootName string) (Target, error) {
+	if shootName == "" {
+		return nil, errors.New("shoot name must not be empty")
 	}
 
-	currentTarget, err := m.CurrentTarget()
+	current, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
+		return nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
-	tb.Init(currentTarget)
+	overlay := &targetFlagsImpl{shootName: shootName}
 
-	target, err := tb.SetShoot(ctx, shootName).Build()
+	target, err := m.applyOverlay(ctx, current, overlay)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return m.updateTarget(ctx, target)
 }
 
-func (m *managerImpl) UnsetTargetShoot(ctx context.Context) (string, error) {
+func (m *managerImpl) UnsetTargetShoot(ctx context.Context) (string, Target, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current target: %w", err)
+		return "", nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
 	targetedName := currentTarget.ShootName()
 	if targetedName == "" {
-		return "", ErrNoShootTargeted
+		return "", currentTarget, ErrNoShootTargeted
 	}
 
-	return targetedName, m.patchTarget(ctx, func(t *targetImpl) error {
+	target, err := m.patchTarget(ctx, func(t *targetImpl) error {
 		t.Shoot = ""
 		t.Seed = ""
 		t.ControlPlaneFlag = false
 
 		return nil
 	})
+
+	return targetedName, target, err
 }
 
-func (m *managerImpl) TargetControlPlane(ctx context.Context) error {
-	tb, err := NewTargetBuilder(m.config, m.clientProvider)
+func (m *managerImpl) TargetControlPlane(ctx context.Context) (Target, error) {
+	current, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to create new target builder: %w", err)
+		return nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
-	currentTarget, err := m.CurrentTarget()
-	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
-	}
+	overlay := &targetFlagsImpl{controlPlane: newProvidedBoolFlag(true)}
 
-	tb.Init(currentTarget)
-
-	target, err := tb.SetControlPlane(ctx).Build()
+	target, err := m.applyOverlay(ctx, current, overlay)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return m.updateTarget(ctx, target)
 }
 
-func (m *managerImpl) UnsetTargetControlPlane(ctx context.Context) error {
+func (m *managerImpl) UnsetTargetControlPlane(ctx context.Context) (Target, error) {
 	currentTarget, err := m.CurrentTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
+		return nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
-	if !currentTarget.ControlPlane() {
-		return ErrNoControlPlaneTargeted
+	// A control plane only exists in the context of a shoot, so unsetting it
+	// without a targeted shoot is meaningless. Reject early with a clear error
+	// rather than silently patching nothing.
+	if currentTarget.ShootName() == "" {
+		return currentTarget, ErrNoShootTargeted
 	}
 
 	return m.patchTarget(ctx, func(t *targetImpl) error {
@@ -540,76 +575,368 @@ func (m *managerImpl) UnsetTargetControlPlane(ctx context.Context) error {
 	})
 }
 
-func (m *managerImpl) TargetMatchPattern(ctx context.Context, tf TargetFlags, value string) error {
-	currentTarget, err := m.CurrentTarget()
+func (m *managerImpl) TargetMatchPattern(ctx context.Context, tf TargetFlags, value string) (Target, error) {
+	persistedTarget, err := m.persistedTarget()
 	if err != nil {
-		return fmt.Errorf("failed to get current target: %w", err)
+		return nil, fmt.Errorf("failed to get current target: %w", err)
 	}
 
-	gardenName := currentTarget.GardenName()
-
-	if m.config == nil {
-		return errors.New("config must not be nil")
-	}
-
-	tm, err := m.config.MatchPattern(gardenName, value)
+	overlay, err := m.resolvePatternOverlay(ctx, tf, persistedTarget, value)
 	if err != nil {
-		return fmt.Errorf("error occurred while trying to match value: %w", err)
+		return nil, err
 	}
 
-	tb, err := NewTargetBuilder(m.config, m.clientProvider)
+	target, err := m.applyOverlay(ctx, persistedTarget, overlay)
 	if err != nil {
-		return fmt.Errorf("failed to create new target builder: %w", err)
-	}
-
-	tb.Init(currentTarget)
-
-	if err != nil {
-		return err
-	}
-
-	if tm.Project != "" && tm.Namespace != "" {
-		return fmt.Errorf("project %q and Namespace %q set in target match value. It is forbidden to have both values set", tm.Project, tm.Namespace)
-	}
-
-	if tm.Garden != "" {
-		tb.SetGarden(tm.Garden)
-	}
-
-	if tm.Project != "" {
-		tb.SetProject(ctx, tm.Project)
-	}
-
-	if tm.Namespace != "" {
-		tb.SetNamespace(ctx, tm.Namespace)
-	}
-
-	if tm.Shoot != "" {
-		tb.SetShoot(ctx, tm.Shoot)
-	}
-
-	if tf.ControlPlane() {
-		tb.SetControlPlane(ctx)
-	}
-
-	target, err := tb.Build()
-	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return m.updateTarget(ctx, target)
 }
 
-func (m *managerImpl) updateTarget(ctx context.Context, target Target) error {
-	return m.patchTarget(ctx, func(t *targetImpl) error {
-		t.Garden = target.GardenName()
-		t.Project = target.ProjectName()
-		t.Seed = target.SeedName()
-		t.Shoot = target.ShootName()
-		t.ControlPlaneFlag = target.ControlPlane()
+func (m *managerImpl) persistedTarget() (Target, error) {
+	persistedTarget, err := m.targetProvider.ReadPersisted()
+	if err != nil {
+		return nil, err
+	}
 
+	if persistedTarget == nil {
+		return nil, errors.New("target provider returned nil target")
+	}
+
+	return persistedTarget.DeepCopy(), nil
+}
+
+// resolvePatternOverlay matches value against the pattern set for the
+// preferred garden, then unions the resulting pattern fields with the CLI
+// flags into a single overlay. CLI flags fill fields the pattern leaves
+// unset; agreement is fine; disagreement on the same field is rejected so
+// the user sees their self-contradiction instead of a silent winner.
+func (m *managerImpl) resolvePatternOverlay(ctx context.Context, tf TargetFlags, persistedTarget Target, value string) (TargetFlags, error) {
+	gardenName := tf.GardenName()
+	if gardenName == "" {
+		gardenName = persistedTarget.GardenName()
+	}
+
+	tm, err := m.config.MatchPattern(gardenName, value)
+	if err != nil {
+		return nil, fmt.Errorf("error occurred while trying to match value: %w", err)
+	}
+
+	patternFlags, err := m.patternToFlags(ctx, tm)
+	if err != nil {
+		return nil, err
+	}
+
+	return combine(tf, patternFlags)
+}
+
+func (m *managerImpl) patternToFlags(ctx context.Context, tm *config.PatternMatch) (TargetFlags, error) {
+	if tm.Project != "" && tm.Namespace != "" {
+		return nil, fmt.Errorf("project %q and Namespace %q set in target match value. It is forbidden to have both values set", tm.Project, tm.Namespace)
+	}
+
+	projectName := tm.Project
+	if tm.Namespace != "" {
+		var err error
+
+		projectName, err = getProjectNameByNamespace(ctx, tm.Garden, tm.Namespace, m.config, m.clientProvider)
+		if err != nil {
+			return nil, fmt.Errorf("failed to set target project: %w", err)
+		}
+	}
+
+	return &targetFlagsImpl{
+		gardenName:   tm.Garden,
+		projectName:  projectName,
+		shootName:    tm.Shoot,
+		controlPlane: NewBoolFlag(false),
+	}, nil
+}
+
+func getProjectNameByNamespace(ctx context.Context, gardenName string, name string, cfg *config.Config, clientProvider internalclient.Provider) (string, error) {
+	gardenClient, err := newGardenClient(gardenName, cfg, clientProvider)
+	if err != nil {
+		return "", err
+	}
+
+	namespace, err := gardenClient.GetNamespace(ctx, name)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch namespace: %w", err)
+	}
+
+	projectName := namespace.Labels["project.gardener.cloud/name"]
+	if projectName == "" {
+		return "", fmt.Errorf("namespace %q is not related to a gardener project", name)
+	}
+
+	return projectName, nil
+}
+
+// applyOverlay produces the final persisted Target by overlaying tf onto
+// persisted. Single source of truth for set-target behavior: shape rules, API
+// existence checks, project/seed enrichment, and access-restriction prompts.
+// Pattern path and direct Target* path both route through this. Unset* methods
+// use patchTarget instead because they mutate the current target by clearing
+// selected levels and preserving the remaining prefix.
+//
+// Important caller-side invariant: the direct Target* methods pass
+// CurrentTarget() (which the dynamic provider has already overlaid with global
+// CLI flags), while TargetMatchPattern passes PersistedTarget() (raw) because
+// resolvePatternOverlay re-incorporates CLI flags via combine(); using
+// CurrentTarget() there would double-apply them. Don't "simplify" this.
+func (m *managerImpl) applyOverlay(ctx context.Context, persisted Target, tf TargetFlags) (Target, error) {
+	// 1. Pure shape pass: clearing of deeper levels, control-plane reset, and
+	// shape validation (DNS-name regex etc. via targetImpl.Validate()).
+	merged, err := merge(persisted, tf)
+	if err != nil {
+		return nil, err
+	}
+
+	merged, err = m.validateAndEnrich(ctx, merged)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := m.gateAccessRestrictions(ctx, merged); err != nil {
+		return nil, err
+	}
+
+	return merged, nil
+}
+
+// validateAndEnrich runs API existence checks unconditionally on whichever
+// fields are non-empty in t, mirroring the always-validate semantics of the
+// builder's Set* actions. When a shoot is set, validateShoot is the only API
+// call needed for project+seed scope (completeTargetFromShoot fills and
+// canonicalizes values from the shoot object); otherwise project and/or seed
+// are checked individually.
+func (m *managerImpl) validateAndEnrich(ctx context.Context, t Target) (Target, error) {
+	impl, ok := t.(*targetImpl)
+	if !ok {
+		return nil, errors.New("target must be using targetImpl as its underlying type")
+	}
+
+	if impl.Garden == "" {
+		// No garden means no API client to talk to. merge()'s Validate already
+		// rejects deeper levels without a garden, so by the time we get here a
+		// garden-less target is also field-less — nothing to validate.
+		return impl, nil
+	}
+
+	switch {
+	case impl.Shoot != "":
+		shoot, err := m.validateShoot(ctx, impl, impl.Shoot)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := m.completeTargetFromShoot(ctx, impl, shoot); err != nil {
+			return nil, err
+		}
+	case impl.Project != "" && impl.Seed != "":
+		// Both set without a shoot is rejected by merge(); defensive only.
+		if _, err := m.validateProject(ctx, impl.Garden, impl.Project); err != nil {
+			return nil, fmt.Errorf("failed to set target project: %w", err)
+		}
+
+		if _, err := m.validateSeed(ctx, impl.Garden, impl.Seed); err != nil {
+			return nil, fmt.Errorf("failed to set target seed: %w", err)
+		}
+	case impl.Project != "":
+		if _, err := m.validateProject(ctx, impl.Garden, impl.Project); err != nil {
+			return nil, fmt.Errorf("failed to set target project: %w", err)
+		}
+	case impl.Seed != "":
+		if _, err := m.validateSeed(ctx, impl.Garden, impl.Seed); err != nil {
+			return nil, fmt.Errorf("failed to set target seed: %w", err)
+		}
+	}
+
+	return impl, nil
+}
+
+// validateShoot confirms the named shoot exists in t's project/seed scope and
+// returns the API object. No writes to t.
+func (m *managerImpl) validateShoot(ctx context.Context, t *targetImpl, name string) (*gardencorev1beta1.Shoot, error) {
+	gardenClient, err := m.getGardenClient(t.GardenName())
+	if err != nil {
+		return nil, err
+	}
+
+	shoot, err := gardenClient.FindShoot(ctx, t.WithShootName(name).AsListOption())
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch shoot: %w", err)
+	}
+
+	if t.Seed != "" && shoot.Spec.SeedName != nil && t.Seed != *shoot.Spec.SeedName {
+		return nil, fmt.Errorf("the specified seed %q does not match the actual seed %q of shoot %q", t.Seed, *shoot.Spec.SeedName, name)
+	}
+
+	return shoot, nil
+}
+
+// completeTargetFromShoot fills missing project, syncs seed, and canonicalizes
+// the shoot name from API truth. Assumes validateShoot has already gated scope
+// agreement; do not call this without that gate.
+func (m *managerImpl) completeTargetFromShoot(ctx context.Context, t *targetImpl, shoot *gardencorev1beta1.Shoot) error {
+	if t.Project == "" {
+		gardenClient, err := m.getGardenClient(t.GardenName())
+		if err != nil {
+			return err
+		}
+
+		project, err := gardenClient.GetProjectByNamespace(ctx, shoot.Namespace)
+		if err != nil {
+			return fmt.Errorf("failed to fetch parent project for shoot: %w", err)
+		}
+
+		t.Project = project.Name
+	}
+
+	if shoot.Spec.SeedName != nil {
+		t.Seed = *shoot.Spec.SeedName
+	} else {
+		t.Seed = ""
+	}
+
+	t.Shoot = shoot.Name
+
+	return nil
+}
+
+// gateAccessRestrictions runs the access-restriction prompts for a finalized
+// target. Two distinct objects can carry restrictions:
+//
+//   - the selected shoot (when t.ShootName() is set), and
+//   - the backing shoot of the managed seed that hosts the control plane
+//     (when t.ControlPlane() is set; this is a different shoot from the one
+//     above and must be resolved via NewResolver.ResolveShoot).
+//
+// Both prompts fire when both scopes are present (e.g. `target shoot foo
+// --control-plane`); each runs against its own object. The gate refetches
+// shoots from the API rather than threading them out of validation — it
+// keeps validateAndEnrich's signature clean and the extra LIST is negligible
+// for an interactive CLI.
+func (m *managerImpl) gateAccessRestrictions(ctx context.Context, t Target) error {
+	handler := ac.AccessRestrictionHandlerFromContext(ctx)
+	if handler == nil {
 		return nil
-	})
+	}
+
+	if t.GardenName() == "" {
+		return nil
+	}
+
+	garden, err := m.config.Garden(t.GardenName())
+	if err != nil {
+		return err
+	}
+
+	if len(garden.AccessRestrictions) == 0 {
+		// Nothing configured on this garden — no shoot needs to be fetched.
+		return nil
+	}
+
+	gardenClient, err := m.getGardenClient(t.GardenName())
+	if err != nil {
+		return err
+	}
+
+	resolver := NewResolver(gardenClient)
+
+	if t.ShootName() != "" {
+		shoot, err := resolver.FindShoot(ctx, t.WithControlPlane(false))
+		if err != nil {
+			return err
+		}
+
+		if !handler(ac.CheckAccessRestrictions(garden.AccessRestrictions, shoot)) {
+			return ErrAborted
+		}
+	}
+
+	if t.ControlPlane() {
+		backingShoot, err := resolver.ResolveShoot(ctx, t)
+		if err != nil {
+			// Non-managed seeds have no backing shoot to attach access
+			// restrictions to
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+
+			return err
+		}
+
+		if !handler(ac.CheckAccessRestrictions(garden.AccessRestrictions, backingShoot)) {
+			return ErrAborted
+		}
+	}
+
+	return nil
+}
+
+// validateProject ensures that the project exists and that a corresponding
+// namespace is set, otherwise an error is returned.
+func (m *managerImpl) validateProject(ctx context.Context, gardenName string, name string) (*gardencorev1beta1.Project, error) {
+	gardenClient, err := m.getGardenClient(gardenName)
+	if err != nil {
+		return nil, err
+	}
+
+	project, err := gardenClient.GetProject(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch project: %w", err)
+	}
+
+	if project.Spec.Namespace == nil || *project.Spec.Namespace == "" {
+		return nil, errors.New("project does not have a corresponding namespace set; most likely it has not yet been fully created")
+	}
+
+	return project, nil
+}
+
+// validateSeed ensures that the seed exists, otherwise an error is returned.
+func (m *managerImpl) validateSeed(ctx context.Context, gardenName string, name string) (*gardencorev1beta1.Seed, error) {
+	gardenClient, err := m.getGardenClient(gardenName)
+	if err != nil {
+		return nil, err
+	}
+
+	seed, err := gardenClient.GetSeed(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve seed: %w", err)
+	}
+
+	return seed, nil
+}
+
+func (m *managerImpl) getGardenClient(gardenName string) (clientgarden.Client, error) {
+	return newGardenClient(gardenName, m.config, m.clientProvider)
+}
+
+func (m *managerImpl) updateTarget(ctx context.Context, target Target) (Target, error) {
+	if target == nil {
+		return nil, errors.New("target must not be nil")
+	}
+
+	targetToWrite := target.DeepCopy()
+
+	if err := m.targetProvider.Write(targetToWrite); err != nil {
+		return nil, err
+	}
+
+	m.currentTarget = targetToWrite.DeepCopy()
+
+	if !m.config.SymlinkTargetKubeconfig() {
+		return m.currentTarget.DeepCopy(), nil
+	}
+
+	if err := m.updateClientConfigSymlink(ctx, targetToWrite); err != nil {
+		return nil, err
+	}
+
+	return m.currentTarget.DeepCopy(), nil
 }
 
 func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.ClientConfig, error) {
@@ -774,32 +1101,24 @@ func (m *managerImpl) getClientConfig(t Target, loadClientConfig func(clientgard
 	return loadClientConfig(client)
 }
 
-func (m *managerImpl) patchTarget(ctx context.Context, patch func(t *targetImpl) error) error {
-	target, err := m.targetProvider.Read()
+func (m *managerImpl) patchTarget(ctx context.Context, patch func(t *targetImpl) error) (Target, error) {
+	target, err := m.CurrentTarget()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// this is horrible cheating
-	impl, ok := target.(*targetImpl)
+	targetCopy := target.DeepCopy()
+
+	impl, ok := targetCopy.(*targetImpl)
 	if !ok {
-		return errors.New("target must be using targetImpl as its underlying type")
+		return nil, errors.New("target must be using targetImpl as its underlying type")
 	}
 
 	if err := patch(impl); err != nil {
-		return err
+		return nil, err
 	}
 
-	err = m.targetProvider.Write(impl)
-	if err != nil {
-		return err
-	}
-
-	if !m.config.SymlinkTargetKubeconfig() {
-		return nil
-	}
-
-	return m.updateClientConfigSymlink(ctx, target)
+	return m.updateTarget(ctx, impl)
 }
 
 func (m *managerImpl) updateClientConfigSymlink(ctx context.Context, target Target) error {
@@ -833,7 +1152,7 @@ func (m *managerImpl) updateClientConfigSymlink(ctx context.Context, target Targ
 func (m *managerImpl) getTarget(t Target) (Target, error) {
 	var err error
 	if t == nil {
-		t, err = m.targetProvider.Read()
+		t, err = m.CurrentTarget()
 	}
 
 	return t, err
