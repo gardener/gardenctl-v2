@@ -467,9 +467,52 @@ var _ = Describe("Target Manager", func() {
 			assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1GoldenShoot.Name))
 		})
 
+		It("should allow a garden alias to agree with the pattern garden identity", func() {
+			const gardenAlias = "garden-alias"
+
+			cfg.Gardens[0].Alias = gardenAlias
+
+			t := target.NewTarget("", "", "", "")
+			manager, targetProvider := createTestManager(t, cfg, clientProvider)
+
+			tf := target.NewTargetFlags(gardenAlias, prod1Project.Name, "", prod1GoldenShoot.Name, false)
+
+			_, err := manager.TargetMatchPattern(ctx, tf, fmt.Sprintf("%s/shoot--%s--%s", gardenName, prod1Project.Name, prod1GoldenShoot.Name))
+			Expect(err).To(Succeed())
+			assertTargetProvider(targetProvider, target.NewTarget(gardenName, prod1Project.Name, seed.Name, prod1GoldenShoot.Name))
+		})
+
+		It("should preserve explicit --control-plane=false when normalizing a garden alias", func() {
+			const gardenAlias = "garden-alias"
+
+			cfg.Gardens[0].Alias = gardenAlias
+
+			persisted := target.NewTarget("", "", "", "")
+			manager, _ := createTestManager(persisted, cfg, clientProvider)
+
+			tf := target.NewTargetFlags(gardenAlias, prod1Project.Name, "", prod1GoldenShoot.Name, false)
+			flags := &pflag.FlagSet{}
+			tf.AddControlPlaneFlag(flags)
+			Expect(flags.Parse([]string{"--control-plane=false"})).To(Succeed())
+
+			overlay, err := target.ResolvePatternOverlay(
+				ctx,
+				manager,
+				tf,
+				persisted,
+				fmt.Sprintf("%s/shoot--%s--%s", gardenName, prod1Project.Name, prod1GoldenShoot.Name),
+			)
+			Expect(err).To(Succeed())
+			Expect(overlay.ControlPlane().Provided()).To(BeTrue())
+			Expect(overlay.ControlPlane().Value()).To(BeFalse())
+		})
+
 		It("should reject contradictions between CLI flags and a pattern", func() {
+			const otherGardenAlias = "other-garden-alias"
+
 			cfg.Gardens = append(cfg.Gardens, config.Garden{
 				Name:       "other-garden",
+				Alias:      otherGardenAlias,
 				Kubeconfig: gardenKubeconfig,
 				Patterns:   []string{"^does-not-match$"},
 			})
@@ -477,11 +520,11 @@ var _ = Describe("Target Manager", func() {
 			t := target.NewTarget("", "", "", "")
 			manager, targetProvider := createTestManager(t, cfg, clientProvider)
 
-			tf := target.NewTargetFlags("other-garden", prod2Project.Name, "", "other-shoot", false)
+			tf := target.NewTargetFlags(otherGardenAlias, prod2Project.Name, "", "other-shoot", false)
 
 			_, err := manager.TargetMatchPattern(ctx, tf, fmt.Sprintf("shoot--%s--%s", prod1Project.Name, prod1GoldenShoot.Name))
 			Expect(err).To(MatchError(And(
-				ContainSubstring(fmt.Sprintf("--garden=other-garden contradicts pattern (garden=%s)", gardenName)),
+				ContainSubstring(fmt.Sprintf("--garden=%s contradicts pattern (garden=%s)", otherGardenAlias, gardenName)),
 				ContainSubstring(fmt.Sprintf("--project=%s contradicts pattern (project=%s)", prod2Project.Name, prod1Project.Name)),
 				ContainSubstring(fmt.Sprintf("--shoot=other-shoot contradicts pattern (shoot=%s)", prod1GoldenShoot.Name)),
 			)))

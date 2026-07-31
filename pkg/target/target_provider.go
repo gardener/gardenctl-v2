@@ -170,7 +170,7 @@ func (p *dynamicTargetProvider) Write(t Target) error {
 	return p.delegate.Write(t)
 }
 
-func combine(cliFlags TargetFlags, patternFlags TargetFlags) (TargetFlags, error) {
+func combine(cliFlags TargetFlags, patternFlags TargetFlags, gardenNameForComparison string) (TargetFlags, error) {
 	result := &targetFlagsImpl{
 		gardenName:   combineStringField(cliFlags.GardenName(), patternFlags.GardenName()),
 		projectName:  combineStringField(cliFlags.ProjectName(), patternFlags.ProjectName()),
@@ -186,6 +186,13 @@ func combine(cliFlags TargetFlags, patternFlags TargetFlags) (TargetFlags, error
 			conflicts = append(conflicts, fmt.Sprintf("--%s=%s contradicts pattern (%s=%s)", flagName, cliValue, flagName, patternValue))
 		}
 	}
+	// Garden aliases are compared by canonical identity, but conflicts still
+	// report the value supplied by the user.
+	addGardenConflict := func(cliValue, patternValue string) {
+		if cliValue != "" && patternValue != "" && gardenNameForComparison != patternValue {
+			conflicts = append(conflicts, fmt.Sprintf("--garden=%s contradicts pattern (garden=%s)", cliValue, patternValue))
+		}
+	}
 	addBoolConflict := func(flagName string, cliFlag, patternFlag BoolFlag) {
 		if cliFlag.Provided() && patternFlag.Provided() && cliFlag.Value() != patternFlag.Value() {
 			conflicts = append(conflicts, fmt.Sprintf("--%s=%t contradicts pattern (%s=%t)", flagName, cliFlag.Value(), flagName, patternFlag.Value()))
@@ -196,7 +203,7 @@ func combine(cliFlags TargetFlags, patternFlags TargetFlags) (TargetFlags, error
 	// pkg/config/config.go PatternKey constants); seed and controlPlane can
 	// never be set by a pattern, so those checks are defensive and only fire
 	// if the pattern key set ever grows.
-	addStringConflict("garden", cliFlags.GardenName(), patternFlags.GardenName())
+	addGardenConflict(cliFlags.GardenName(), patternFlags.GardenName())
 	addStringConflict("project", cliFlags.ProjectName(), patternFlags.ProjectName())
 	addStringConflict("seed", cliFlags.SeedName(), patternFlags.SeedName())
 	addStringConflict("shoot", cliFlags.ShootName(), patternFlags.ShootName())

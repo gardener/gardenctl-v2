@@ -614,6 +614,16 @@ func (m *managerImpl) persistedTarget() (Target, error) {
 // the user sees their self-contradiction instead of a silent winner.
 func (m *managerImpl) resolvePatternOverlay(ctx context.Context, tf TargetFlags, persistedTarget Target, value string) (TargetFlags, error) {
 	gardenName := tf.GardenName()
+	// Resolve the CLI garden name or alias to its canonical identity.
+	if gardenName != "" {
+		garden, err := m.config.Garden(gardenName)
+		if err != nil {
+			return nil, fmt.Errorf("error occurred while trying to match value: %w", err)
+		}
+
+		gardenName = garden.Name
+	}
+
 	if gardenName == "" {
 		gardenName = persistedTarget.GardenName()
 	}
@@ -628,7 +638,7 @@ func (m *managerImpl) resolvePatternOverlay(ctx context.Context, tf TargetFlags,
 		return nil, err
 	}
 
-	return combine(tf, patternFlags)
+	return combine(tf, patternFlags, gardenName)
 }
 
 func (m *managerImpl) patternToFlags(ctx context.Context, tm *config.PatternMatch) (TargetFlags, error) {
