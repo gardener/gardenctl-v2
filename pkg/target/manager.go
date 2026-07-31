@@ -718,9 +718,12 @@ func (m *managerImpl) validateAndEnrich(ctx context.Context, t Target) (Target, 
 	}
 
 	if impl.Garden == "" {
-		// No garden means no API client to talk to. merge()'s Validate already
-		// rejects deeper levels without a garden, so by the time we get here a
-		// garden-less target is also field-less — nothing to validate.
+		if !impl.IsEmpty() {
+			return nil, ErrNoGardenTargeted
+		}
+
+		// No garden and no child target means there is no API client to talk
+		// to and nothing to validate.
 		return impl, nil
 	}
 

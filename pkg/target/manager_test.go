@@ -256,6 +256,27 @@ var _ = Describe("Target Manager", func() {
 		assertTargetProvider(targetProvider, t)
 	})
 
+	DescribeTable("should reject targeting a child without a garden before persisting",
+		func(targetChild func(target.Manager) (target.Target, error)) {
+			t := target.NewTarget("", "", "", "")
+			cfg.LinkKubeconfig = ptr.To(true)
+			manager, targetProvider := createTestManager(t, cfg, clientProvider)
+
+			_, err := targetChild(manager)
+			Expect(err).To(MatchError(target.ErrNoGardenTargeted))
+			assertTargetProvider(targetProvider, t)
+		},
+		Entry("project", func(manager target.Manager) (target.Target, error) {
+			return manager.TargetProject(ctx, "project")
+		}),
+		Entry("seed", func(manager target.Manager) (target.Target, error) {
+			return manager.TargetSeed(ctx, "seed")
+		}),
+		Entry("shoot", func(manager target.Manager) (target.Target, error) {
+			return manager.TargetShoot(ctx, "shoot")
+		}),
+	)
+
 	It("should be able to target valid projects", func() {
 		t := target.NewTarget(gardenName, "", "", "")
 		manager, targetProvider := createTestManager(t, cfg, clientProvider)
