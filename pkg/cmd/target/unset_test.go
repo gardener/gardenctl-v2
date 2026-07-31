@@ -190,6 +190,21 @@ var _ = Describe("Target Unset Command", func() {
 		Expect(currentTarget.ShootName()).To(Equal(shootName))
 		Expect(currentTarget.ControlPlane()).To(BeFalse())
 	})
+
+	It("should fail to unset control plane if no control plane is targeted", func() {
+		targetProvider.Target = currentTarget.WithProjectName(projectName).WithShootName(shootName)
+		cmd := cmdtarget.NewCmdUnset(factory, streams)
+
+		Expect(cmd.RunE(cmd, []string{"control-plane"})).To(MatchError(target.ErrNoControlPlaneTargeted))
+
+		currentTarget, err := targetProvider.Read()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(currentTarget.GardenName()).To(Equal(gardenName))
+		Expect(currentTarget.ProjectName()).To(Equal(projectName))
+		Expect(currentTarget.SeedName()).To(BeEmpty())
+		Expect(currentTarget.ShootName()).To(Equal(shootName))
+		Expect(currentTarget.ControlPlane()).To(BeFalse())
+	})
 })
 
 var _ = Describe("Target Unset Options", func() {

@@ -8,6 +8,7 @@ package target_test
 
 import (
 	"fmt"
+	"os"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	seedmanagementv1alpha1 "github.com/gardener/gardener/pkg/apis/seedmanagement/v1alpha1"
@@ -132,6 +133,45 @@ var _ = Describe("Target Command", func() {
 			Expect(cmd.RunE(cmd, nil)).NotTo(Succeed())
 		})
 
+		It("should reject control-plane flag without a shoot when targeting a garden", func() {
+			cmd := cmdtarget.NewCmdTarget(factory, streams, new(config.KubeconfigAccessLevel))
+			Expect(cmd.Flags().Set("garden", gardenName)).To(Succeed())
+			Expect(cmd.Flags().Set("control-plane", "true")).To(Succeed())
+
+			Expect(cmd.RunE(cmd, nil)).To(MatchError(ContainSubstring("cannot use --control-plane without --shoot when specifying target flags")))
+		})
+
+		It("should reject control-plane flag without a shoot when targeting a project", func() {
+			cmd := cmdtarget.NewCmdTarget(factory, streams, new(config.KubeconfigAccessLevel))
+			Expect(cmd.Flags().Set("garden", gardenName)).To(Succeed())
+			Expect(cmd.Flags().Set("project", projectName)).To(Succeed())
+			Expect(cmd.Flags().Set("control-plane", "true")).To(Succeed())
+
+			Expect(cmd.RunE(cmd, nil)).To(MatchError(ContainSubstring("cannot use --control-plane without --shoot when specifying target flags")))
+		})
+
+		DescribeTable("should allow --control-plane=false while targeting a garden",
+			func(startTarget target.Target) {
+				targetProvider.Target = startTarget
+				cmd := cmdtarget.NewCmdTarget(factory, streams, new(config.KubeconfigAccessLevel))
+				Expect(cmd.Flags().Set("garden", gardenName)).To(Succeed())
+				Expect(cmd.Flags().Set("control-plane", "false")).To(Succeed())
+
+				Expect(cmd.RunE(cmd, nil)).To(Succeed())
+				Expect(out.String()).To(ContainSubstring("Successfully targeted garden %q\n", gardenName))
+
+				currentTarget, err := targetProvider.Read()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(currentTarget.GardenName()).To(Equal(gardenName))
+				Expect(currentTarget.ProjectName()).To(BeEmpty())
+				Expect(currentTarget.SeedName()).To(BeEmpty())
+				Expect(currentTarget.ShootName()).To(BeEmpty())
+				Expect(currentTarget.ControlPlane()).To(BeFalse())
+			},
+			Entry("when no control plane was targeted", target.NewTarget("", "", "", "")),
+			Entry("when a control plane was targeted", target.NewTarget(gardenName, projectName, "", shootName).WithControlPlane(true)),
+		)
+
 		It("should be able to target a garden", func() {
 			cmd := cmdtarget.NewCmdTargetGarden(factory, streams)
 
@@ -203,6 +243,31 @@ var _ = Describe("Target Command", func() {
 			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q (access level: viewer)\n", shootName))
 		})
 
+		It("uses the returned target for access level output when the garden flag is set", func() {
+			targetFile, err := os.CreateTemp("", "gardenctl-target-*")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(targetFile.Close()).To(Succeed())
+			DeferCleanup(os.Remove, targetFile.Name())
+
+			factory.TargetProviderImpl = target.NewTargetProvider(targetFile.Name(), factory.TargetFlags())
+			cfg.Gardens[0].KubeconfigAccessLevelDefaults = &config.KubeconfigAccessLevels{
+				Shoots: config.KubeconfigAccessLevelViewer,
+			}
+			cmd := cmdtarget.NewCmdTargetShoot(factory, streams)
+			Expect(cmd.Flags().Set("garden", gardenName)).To(Succeed())
+
+			Expect(cmd.RunE(cmd, []string{shootName})).To(Succeed())
+			Expect(errOut.String()).To(BeEmpty())
+			Expect(out.String()).To(ContainSubstring("Successfully targeted shoot %q (access level: viewer)\n", shootName))
+
+			persistedTarget, err := target.NewTargetProvider(targetFile.Name(), nil).Read()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(persistedTarget.GardenName()).To(Equal(gardenName))
+			Expect(persistedTarget.ProjectName()).To(Equal(projectName))
+			Expect(persistedTarget.SeedName()).To(Equal(seedName))
+			Expect(persistedTarget.ShootName()).To(Equal(shootName))
+		})
+
 		It("should be able to target a control plane", func() {
 			// user has already targeted a garden, project and shoot
 			targetProvider.Target = target.NewTarget(gardenName, projectName, "", shootName)
@@ -216,9 +281,43 @@ var _ = Describe("Target Command", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(currentTarget.GardenName()).To(Equal(gardenName))
 			Expect(currentTarget.ProjectName()).To(Equal(projectName))
-			Expect(currentTarget.SeedName()).To(BeEmpty())
+			Expect(currentTarget.SeedName()).To(Equal(seedName))
 			Expect(currentTarget.ShootName()).To(Equal(shootName))
 			Expect(currentTarget.ControlPlane()).To(BeTrue())
+		})
+
+		It("should clear the targeted control plane when the flag is explicitly false", func() {
+			targetProvider.Target = target.NewTarget(gardenName, projectName, "", shootName).WithControlPlane(true)
+			cmd := cmdtarget.NewCmdTarget(factory, streams, new(config.KubeconfigAccessLevel))
+			Expect(cmd.Flags().Set("control-plane", "false")).To(Succeed())
+
+			Expect(cmd.RunE(cmd, []string{})).To(Succeed())
+			Expect(out.String()).To(ContainSubstring("Successfully unset targeted control plane for %q\n", shootName))
+
+			currentTarget, err := targetProvider.Read()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(currentTarget.GardenName()).To(Equal(gardenName))
+			Expect(currentTarget.ProjectName()).To(Equal(projectName))
+			Expect(currentTarget.SeedName()).To(BeEmpty())
+			Expect(currentTarget.ShootName()).To(Equal(shootName))
+			Expect(currentTarget.ControlPlane()).To(BeFalse())
+		})
+
+		It("should no-op when standalone control-plane clearing finds no control plane targeted", func() {
+			targetProvider.Target = target.NewTarget(gardenName, projectName, "", shootName)
+			cmd := cmdtarget.NewCmdTarget(factory, streams, new(config.KubeconfigAccessLevel))
+			Expect(cmd.Flags().Set("control-plane", "false")).To(Succeed())
+
+			Expect(cmd.RunE(cmd, []string{})).To(Succeed())
+			Expect(out.String()).To(ContainSubstring("Successfully unset targeted control plane for %q\n", shootName))
+
+			currentTarget, err := targetProvider.Read()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(currentTarget.GardenName()).To(Equal(gardenName))
+			Expect(currentTarget.ProjectName()).To(Equal(projectName))
+			Expect(currentTarget.SeedName()).To(BeEmpty())
+			Expect(currentTarget.ShootName()).To(Equal(shootName))
+			Expect(currentTarget.ControlPlane()).To(BeFalse())
 		})
 
 		It("should display access restrictions of the managed seed backing shoot when targeting a control plane", func() {

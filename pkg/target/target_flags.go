@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package target
 
 import (
+	"strconv"
+
 	"github.com/spf13/pflag"
 )
 
@@ -20,8 +22,8 @@ type TargetFlags interface {
 	SeedName() string
 	// ShootName returns the value that is tied to the corresponding cobra flag.
 	ShootName() string
-	// ControlPlane returns the value that is tied to the corresponding cobra flag.
-	ControlPlane() bool
+	// ControlPlane returns the value and presence state that are tied to the corresponding cobra flag.
+	ControlPlane() BoolFlag
 
 	// AddFlags binds all target configuration flags to a given flagset
 	AddFlags(flags *pflag.FlagSet)
@@ -50,12 +52,17 @@ type TargetFlags interface {
 }
 
 func NewTargetFlags(garden, project, seed, shoot string, controlPlane bool) TargetFlags {
+	controlPlaneFlag := NewBoolFlag(false)
+	if controlPlane {
+		controlPlaneFlag = newProvidedBoolFlag(true)
+	}
+
 	return &targetFlagsImpl{
 		gardenName:   garden,
 		projectName:  project,
 		seedName:     seed,
 		shootName:    shoot,
-		controlPlane: controlPlane,
+		controlPlane: controlPlaneFlag,
 	}
 }
 
@@ -64,7 +71,7 @@ type targetFlagsImpl struct {
 	projectName  string
 	seedName     string
 	shootName    string
-	controlPlane bool
+	controlPlane BoolFlag
 }
 
 func (tf *targetFlagsImpl) GardenName() string {
@@ -83,7 +90,7 @@ func (tf *targetFlagsImpl) ShootName() string {
 	return tf.shootName
 }
 
-func (tf *targetFlagsImpl) ControlPlane() bool {
+func (tf *targetFlagsImpl) ControlPlane() BoolFlag {
 	return tf.controlPlane
 }
 
@@ -112,15 +119,16 @@ func (tf *targetFlagsImpl) AddShootFlag(flags *pflag.FlagSet) {
 }
 
 func (tf *targetFlagsImpl) AddControlPlaneFlag(flags *pflag.FlagSet) {
-	flags.BoolVar(&tf.controlPlane, "control-plane", tf.controlPlane, "target control plane of shoot, use together with shoot argument")
+	flags.Var(&tf.controlPlane, "control-plane", "target control plane of shoot, use together with shoot argument")
+	flags.Lookup("control-plane").NoOptDefVal = "true"
 }
 
 func (tf *targetFlagsImpl) ToTarget() Target {
-	return NewTarget(tf.gardenName, tf.projectName, tf.seedName, tf.shootName).WithControlPlane(tf.controlPlane)
+	return NewTarget(tf.gardenName, tf.projectName, tf.seedName, tf.shootName).WithControlPlane(tf.ControlPlane().Value())
 }
 
 func (tf *targetFlagsImpl) IsEmpty() bool {
-	return tf.gardenName == "" && tf.projectName == "" && tf.seedName == "" && tf.shootName == "" && !tf.controlPlane
+	return tf.gardenName == "" && tf.projectName == "" && tf.seedName == "" && tf.shootName == "" && !tf.ControlPlane().Provided()
 }
 
 func (tf *targetFlagsImpl) IsTargetValid() bool {
@@ -130,4 +138,53 @@ func (tf *targetFlagsImpl) IsTargetValid() bool {
 	}
 
 	return tf.ToTarget().Validate() == nil
+}
+
+// BoolFlag is a boolean flag compatible with pflag that keeps track of
+// whether it had a value supplied or not.
+type BoolFlag struct {
+	// If Set has been invoked this value is true.
+	provided bool
+	// The exact value provided on the flag.
+	value bool
+}
+
+func NewBoolFlag(defaultVal bool) BoolFlag {
+	return BoolFlag{value: defaultVal}
+}
+
+func newProvidedBoolFlag(value bool) BoolFlag {
+	return BoolFlag{provided: true, value: value}
+}
+
+func (f BoolFlag) String() string {
+	return strconv.FormatBool(f.value)
+}
+
+func (f BoolFlag) Value() bool {
+	return f.value
+}
+
+func (f *BoolFlag) Set(value string) error {
+	boolVal, err := strconv.ParseBool(value)
+	if err != nil {
+		return err
+	}
+
+	f.value = boolVal
+	f.provided = true
+
+	return nil
+}
+
+func (f BoolFlag) Provided() bool {
+	return f.provided
+}
+
+func (f *BoolFlag) Type() string {
+	return "bool"
+}
+
+func (f *BoolFlag) IsBoolFlag() bool {
+	return true
 }

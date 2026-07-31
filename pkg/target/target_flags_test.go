@@ -57,6 +57,23 @@ var _ = Describe("Target Flags", func() {
 		Expect(names).To(Equal([]string{"garden", "project", "seed", "shoot", "control-plane"}))
 	})
 
+	DescribeTable("should parse control-plane flag values",
+		func(args []string, expectedValue bool, expectedProvided bool) {
+			flags := &pflag.FlagSet{}
+			tf := target.NewTargetFlags("", "", "", "", false)
+			tf.AddControlPlaneFlag(flags)
+
+			Expect(flags.Parse(args)).To(Succeed())
+			Expect(tf.ControlPlane().Value()).To(Equal(expectedValue))
+			Expect(tf.ControlPlane().Provided()).To(Equal(expectedProvided))
+			Expect(tf.IsEmpty()).To(Equal(!expectedProvided))
+		},
+		Entry("omitted", []string{}, false, false),
+		Entry("without value", []string{"--control-plane"}, true, true),
+		Entry("explicit true", []string{"--control-plane=true"}, true, true),
+		Entry("explicit false", []string{"--control-plane=false"}, false, true),
+	)
+
 	It("should validate target flags", func() {
 		Expect(target.NewTargetFlags("", "project", "", "shoot", false).IsTargetValid()).To(BeFalse())
 		Expect(target.NewTargetFlags("garden", "", "", "shoot", false).IsTargetValid()).To(BeTrue())
@@ -67,6 +84,7 @@ var _ = Describe("Target Flags", func() {
 		Expect(target.NewTargetFlags("garden", "project", "", "shoot", false).IsTargetValid()).To(BeTrue())
 		Expect(target.NewTargetFlags("garden", "", "seed", "shoot", false).IsTargetValid()).To(BeTrue())
 		Expect(target.NewTargetFlags("garden", "project", "", "shoot", true).IsTargetValid()).To(BeTrue())
+		Expect(target.NewTargetFlags("garden", "project", "", "", true).IsTargetValid()).To(BeFalse())
 	})
 
 	It("should convert to target", func() {

@@ -265,10 +265,22 @@ var _ = Describe("Target flags", func() {
 	})
 
 	Describe("Depending on the factory implementation", func() {
-		var factory *util.FactoryImpl
+		var (
+			ctrl           *gomock.Controller
+			clientProvider *clientmocks.MockProvider
+			factory        *util.FactoryImpl
+		)
 
 		BeforeEach(func() {
+			ctrl = gomock.NewController(GinkgoT())
+			clientProvider = clientmocks.NewMockProvider(ctrl)
+
 			factory = util.NewFactoryImpl()
+			factory.ClientProvider = clientProvider
+		})
+
+		AfterEach(func() {
+			ctrl.Finish()
 		})
 
 		Context("when wrapping completion functions", func() {
@@ -312,7 +324,36 @@ var _ = Describe("Target flags", func() {
 
 		Context("when running a command with target flags", func() {
 			It("should override current target", func() {
+				seedName := "test-seed1"
 				shootName := "newshoot"
+				testProject := &gardencorev1beta1.Project{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: projectName,
+						UID:  "00000000-0000-0000-0000-000000000000",
+					},
+					Spec: gardencorev1beta1.ProjectSpec{
+						Namespace: ptr.To("garden-" + projectName),
+					},
+				}
+				testSeed := &gardencorev1beta1.Seed{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: seedName,
+						UID:  "00000000-0000-0000-0000-000000000000",
+					},
+				}
+				testShoot := &gardencorev1beta1.Shoot{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      shootName,
+						Namespace: *testProject.Spec.Namespace,
+						UID:       "00000000-0000-0000-0000-000000000000",
+					},
+					Spec: gardencorev1beta1.ShootSpec{
+						SeedName: ptr.To(seedName),
+					},
+				}
+				gardenClient := fake.NewClientWithObjects(testProject, testSeed, testShoot)
+				clientProvider.EXPECT().FromClientConfig(gomock.Any()).Return(gardenClient, nil).AnyTimes()
+
 				args := []string{
 					fmt.Sprintf("--shoot=%s", shootName),
 					"target",
@@ -326,23 +367,24 @@ var _ = Describe("Target flags", func() {
 				Expect(factory.ConfigFile).To(Equal(configFile))
 				Expect(factory.GardenHomeDirectory).To(Equal(gardenHomeDir))
 
-				manager, err := factory.Manager()
-				Expect(err).NotTo(HaveOccurred())
-
 				// check target flags values
 				tf := factory.TargetFlags()
 				Expect(tf.GardenName()).To(BeEmpty())
 				Expect(tf.ProjectName()).To(BeEmpty())
 				Expect(tf.SeedName()).To(BeEmpty())
 				Expect(tf.ShootName()).To(Equal(shootName))
+				Expect(tf.ControlPlane().Provided()).To(BeFalse())
+				Expect(tf.ControlPlane().Value()).To(BeFalse())
 
-				// check current target values
-				current, err := manager.CurrentTarget()
+				// check persisted target values
+				targetProvider := target.NewTargetProvider(filepath.Join(sessionDir, "target.yaml"), nil)
+				current, err := targetProvider.Read()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(current.GardenName()).To(Equal(gardenName1))
 				Expect(current.ProjectName()).To(Equal(projectName))
-				Expect(current.SeedName()).To(BeEmpty())
+				Expect(current.SeedName()).To(Equal(seedName))
 				Expect(current.ShootName()).To(Equal(shootName))
+				Expect(current.ControlPlane()).To(BeTrue())
 			})
 		})
 	})

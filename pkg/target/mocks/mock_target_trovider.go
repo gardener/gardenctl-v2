@@ -49,6 +49,21 @@ func (mr *MockTargetProviderMockRecorder) Read() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Read", reflect.TypeOf((*MockTargetProvider)(nil).Read))
 }
 
+// ReadPersisted mocks base method.
+func (m *MockTargetProvider) ReadPersisted() (target.Target, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadPersisted")
+	ret0, _ := ret[0].(target.Target)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadPersisted indicates an expected call of ReadPersisted.
+func (mr *MockTargetProviderMockRecorder) ReadPersisted() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadPersisted", reflect.TypeOf((*MockTargetProvider)(nil).ReadPersisted))
+}
+
 // Write mocks base method.
 func (m *MockTargetProvider) Write(arg0 target.Target) error {
 	m.ctrl.T.Helper()

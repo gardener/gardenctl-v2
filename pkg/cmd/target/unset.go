@@ -15,6 +15,7 @@ import (
 
 	"github.com/gardener/gardenctl-v2/internal/util"
 	"github.com/gardener/gardenctl-v2/pkg/cmd/base"
+	targetlib "github.com/gardener/gardenctl-v2/pkg/target"
 )
 
 // NewCmdUnset returns a new (target) unset command.
@@ -92,21 +93,29 @@ func (o *UnsetOptions) Run(f util.Factory) error {
 
 	switch o.Kind {
 	case TargetKindGarden:
-		targetName, err = manager.UnsetTargetGarden(ctx)
+		targetName, _, err = manager.UnsetTargetGarden(ctx)
 	case TargetKindProject:
-		targetName, err = manager.UnsetTargetProject(ctx)
+		targetName, _, err = manager.UnsetTargetProject(ctx)
 	case TargetKindSeed:
-		targetName, err = manager.UnsetTargetSeed(ctx)
+		targetName, _, err = manager.UnsetTargetSeed(ctx)
 	case TargetKindShoot:
-		targetName, err = manager.UnsetTargetShoot(ctx)
+		targetName, _, err = manager.UnsetTargetShoot(ctx)
 	case TargetKindControlPlane:
 		currentTarget, targetErr := manager.CurrentTarget()
 		if targetErr != nil {
 			return targetErr
 		}
 
-		targetName = currentTarget.ShootName()
-		err = manager.UnsetTargetControlPlane(ctx)
+		if !currentTarget.ControlPlane() {
+			return targetlib.ErrNoControlPlaneTargeted
+		}
+
+		currentTarget, targetErr = manager.UnsetTargetControlPlane(ctx)
+		if targetErr == nil {
+			targetName = currentTarget.ShootName()
+		}
+
+		err = targetErr
 	default:
 		err = errors.New("invalid kind")
 	}

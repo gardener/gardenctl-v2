@@ -81,6 +81,10 @@ type FactoryImpl struct {
 	// targetFlags can be used to completely override the target configuration
 	// stored on the filesystem via a CLI flags.
 	targetFlags target.TargetFlags
+
+	// ClientProvider overrides the Kubernetes client provider used by Manager.
+	// If unset, Manager uses the real provider.
+	ClientProvider internalclient.Provider
 }
 
 var _ Factory = &FactoryImpl{}
@@ -133,7 +137,11 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 	}
 
 	targetProvider := target.NewTargetProvider(filepath.Join(sessionDirectory, "target.yaml"), f.targetFlags)
-	clientProvider := internalclient.NewProvider()
+
+	clientProvider := f.ClientProvider
+	if clientProvider == nil {
+		clientProvider = internalclient.NewProvider()
+	}
 
 	return target.NewManager(cfg, targetProvider, clientProvider, sessionDirectory, f.KubeconfigAccessLevel)
 }

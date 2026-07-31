@@ -98,6 +98,14 @@ func (t *targetImpl) Validate() error {
 		return errors.New("seed and project must not be configured at the same time without a shoot")
 	}
 
+	if t.ControlPlaneFlag && t.Shoot == "" {
+		return errors.New("control-plane requires a shoot target")
+	}
+
+	if t.ControlPlaneFlag && t.Garden == "" {
+		return errors.New("control-plane requires a garden target")
+	}
+
 	if t.Garden != "" {
 		if err := config.ValidateGardenName(t.Garden); err != nil {
 			return err
