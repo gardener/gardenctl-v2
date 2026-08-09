@@ -6,9 +6,9 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/fatih/color v1.19.0
-	github.com/gardener/gardener v1.148.1
+	github.com/gardener/gardener v1.148.2
 	github.com/gardener/gardener-extension-provider-openstack v1.57.0
-	github.com/gardener/gardener/pkg/apis v1.148.1
+	github.com/gardener/gardener/pkg/apis v1.148.2
 	github.com/gardener/machine-controller-manager v0.62.1
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/golang/mock v1.6.0
@@ -140,6 +140,7 @@ require (
 	github.com/mdlayher/vsock v1.2.1 // indirect
 	github.com/miekg/dns v1.1.72 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
+	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/moby/spdystream v0.5.1 // indirect
 	github.com/moby/term v0.5.2 // indirect
