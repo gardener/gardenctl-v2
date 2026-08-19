@@ -53,7 +53,7 @@ type Garden struct {
 	Context string `json:"context,omitempty"`
 	// Patterns is a list of regex patterns that can be defined to use custom input formats for targeting
 	// Use named capturing groups to match target values.
-	// Supported capturing groups: project, namespace, shoot
+	// Supported capturing groups: project, namespace, shoot, seed
 	// +optional
 	Patterns []string `json:"patterns,omitempty"`
 	// AccessRestrictions is a list of access restriction definitions
@@ -461,6 +461,8 @@ type PatternMatch struct {
 	Namespace string
 	// Shoot is the matched Shoot
 	Shoot string
+	// Seed is the matched Seed
+	Seed string
 }
 
 // PatternKey is a key that can be used to identify a value in a pattern.
@@ -473,7 +475,20 @@ const (
 	PatternKeyNamespace = PatternKey("namespace")
 	// PatternKeyShoot is used to identify a Shoot.
 	PatternKeyShoot = PatternKey("shoot")
+	// PatternKeySeed is used to identify a Seed.
+	PatternKeySeed = PatternKey("seed")
 )
+
+// IsPatternKey reports whether name is a supported named capturing group
+// for targeting patterns.
+func IsPatternKey(name string) bool {
+	switch PatternKey(name) {
+	case PatternKeyProject, PatternKeyNamespace, PatternKeyShoot, PatternKeySeed:
+		return true
+	default:
+		return false
+	}
+}
 
 // MatchPattern matches a string against patterns defined in gardenctl config.
 // If matched, the function creates and returns a PatternMatch from the provided target string.
@@ -547,6 +562,8 @@ func matchPattern(patterns []string, value string) (*PatternMatch, error) {
 				tm.Namespace = matches[i]
 			case PatternKeyShoot:
 				tm.Shoot = matches[i]
+			case PatternKeySeed:
+				tm.Seed = matches[i]
 			}
 		}
 

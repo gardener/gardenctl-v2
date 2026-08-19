@@ -199,10 +199,10 @@ func combine(cliFlags TargetFlags, patternFlags TargetFlags, gardenNameForCompar
 		}
 	}
 
-	// Today's pattern keys are garden, project, namespace, shoot (see
-	// pkg/config/config.go PatternKey constants); seed and controlPlane can
-	// never be set by a pattern, so those checks are defensive and only fire
-	// if the pattern key set ever grows.
+	// Pattern keys are project, namespace, shoot, and seed (see pkg/config
+	// PatternKey). Garden identity comes from the garden that owns the matching
+	// pattern. controlPlane cannot be set by a pattern, so that check is
+	// defensive and only fires if the pattern key set ever grows.
 	addGardenConflict(cliFlags.GardenName(), patternFlags.GardenName())
 	addStringConflict("project", cliFlags.ProjectName(), patternFlags.ProjectName())
 	addStringConflict("seed", cliFlags.SeedName(), patternFlags.SeedName())
