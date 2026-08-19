@@ -95,6 +95,7 @@ var _ = Describe("Config Subcommand SetGarden", func() {
 				Entry("when 1st pattern is empty", []string{""}, Succeed()),
 				Entry("when 1st pattern is empty and 2nd pattern is not empty", []string{"", "foo"}, MatchError("pattern[0] must not be empty")),
 				Entry("when all patterns are valid", []string{"^shoot--(?P<project>.+)--(?P<shoot>.+)$`"}, Succeed()),
+				Entry("when a pattern has a seed subexpression", []string{`^https://dashboard\.gardener\.cloud/seeds/(?P<seed>[^/]+)$`}, Succeed()),
 				Entry("when a pattern is not a valid regular expression", []string{"("}, MatchError(MatchRegexp(`^pattern\[0\] is not a valid regular expression`))),
 				Entry("when a pattern has an invalid subexpression name", []string{"^shoot--(?P<cluster>.+)$`"}, MatchError("pattern[0] contains an invalid subexpression \"cluster\"")),
 			)

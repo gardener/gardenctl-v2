@@ -385,6 +385,24 @@ var _ = Describe("Target Command", func() {
 			Expect(currentTarget.ShootName()).To(Equal(shootName))
 		})
 
+		It("should be able to target a seed via a dashboard seed URL pattern", func() {
+			cfg.Gardens[0].Patterns = append(cfg.Gardens[0].Patterns,
+				`^https://dashboard\.gardener\.cloud/seeds/(?P<seed>[^/]+)$`,
+			)
+			cmd := cmdtarget.NewCmdTarget(factory, streams, new(config.KubeconfigAccessLevel))
+
+			url := fmt.Sprintf("https://dashboard.gardener.cloud/seeds/%s", seedName)
+			Expect(cmd.RunE(cmd, []string{url})).To(Succeed())
+			Expect(out.String()).To(ContainSubstring("Successfully targeted pattern %q\n", url))
+
+			currentTarget, err := targetProvider.Read()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(currentTarget.GardenName()).To(Equal(gardenName))
+			Expect(currentTarget.ProjectName()).To(BeEmpty())
+			Expect(currentTarget.SeedName()).To(Equal(seedName))
+			Expect(currentTarget.ShootName()).To(BeEmpty())
+		})
+
 		Context("when the shoot has access restrictions", func() {
 			BeforeEach(func() {
 				shoot.Spec.AccessRestrictions = []gardencorev1beta1.AccessRestrictionWithOptions{

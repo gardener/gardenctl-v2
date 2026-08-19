@@ -74,6 +74,14 @@ var _ = Describe("Config", func() {
 		return value
 	}
 
+	It("should extract a seed from a dashboard seed URL pattern", func() {
+		cfg.Gardens[0].Patterns = []string{`^https://dashboard\.gardener\.cloud/seeds/(?P<seed>[^/]+)$`}
+
+		match, err := cfg.MatchPattern("", "https://dashboard.gardener.cloud/seeds/seed-02")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(match).To(Equal(&config.PatternMatch{Garden: clusterIdentity1, Seed: "seed-02"}))
+	})
+
 	DescribeTable("MatchPattern returns a match",
 		func(currentGardenName string, patternPrefix string, expectedGarden string) {
 			value := patternValue(patternPrefix)

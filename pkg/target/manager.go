@@ -90,7 +90,7 @@ type Manager interface {
 	// UnsetTargetControlPlane unsets the control plane flag
 	UnsetTargetControlPlane(ctx context.Context) (Target, error)
 	// TargetMatchPattern replaces the whole target
-	// Garden, Project and Shoot values are determined by matching the provided value
+	// Garden, Project, Seed and Shoot values are determined by matching the provided value
 	// against patterns defined in gardenctl configuration. Some values may only match a subset
 	// of a pattern
 	TargetMatchPattern(ctx context.Context, tf TargetFlags, value string) (Target, error)
@@ -659,6 +659,7 @@ func (m *managerImpl) patternToFlags(ctx context.Context, tm *config.PatternMatc
 	return &targetFlagsImpl{
 		gardenName:   tm.Garden,
 		projectName:  projectName,
+		seedName:     tm.Seed,
 		shootName:    tm.Shoot,
 		controlPlane: NewBoolFlag(false),
 	}, nil

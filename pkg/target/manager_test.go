@@ -438,6 +438,48 @@ var _ = Describe("Target Manager", func() {
 			assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", "", ""))
 		})
 
+		It("should be able to target a seed by matching a dashboard seed URL pattern", func() {
+			cfg.Gardens[0].Patterns = append(cfg.Gardens[0].Patterns,
+				`^https://dashboard\.gardener\.cloud/seeds/(?P<seed>[^/]+)$`,
+			)
+
+			t := target.NewTarget("", "", "", "")
+			manager, targetProvider := createTestManager(t, cfg, clientProvider)
+
+			url := fmt.Sprintf("https://dashboard.gardener.cloud/seeds/%s", seed.Name)
+			_, err := manager.TargetMatchPattern(ctx, tf, url)
+			Expect(err).To(Succeed())
+			assertTargetProvider(targetProvider, target.NewTarget(gardenName, "", seed.Name, ""))
+		})
+
+		It("should not target anything if the seed from a pattern does not exist", func() {
+			cfg.Gardens[0].Patterns = append(cfg.Gardens[0].Patterns,
+				`^https://dashboard\.gardener\.cloud/seeds/(?P<seed>[^/]+)$`,
+			)
+
+			t := target.NewTarget(gardenName, "", "", "")
+			manager, targetProvider := createTestManager(t, cfg, clientProvider)
+
+			_, err := manager.TargetMatchPattern(ctx, tf, "https://dashboard.gardener.cloud/seeds/does-not-exist")
+			Expect(err).NotTo(Succeed())
+			assertTargetProvider(targetProvider, t)
+		})
+
+		It("should reject contradictions between --seed and a seed pattern", func() {
+			cfg.Gardens[0].Patterns = append(cfg.Gardens[0].Patterns,
+				`^https://dashboard\.gardener\.cloud/seeds/(?P<seed>[^/]+)$`,
+			)
+
+			t := target.NewTarget("", "", "", "")
+			manager, targetProvider := createTestManager(t, cfg, clientProvider)
+
+			tf := target.NewTargetFlags("", "", "other-seed", "", false)
+			url := fmt.Sprintf("https://dashboard.gardener.cloud/seeds/%s", seed.Name)
+			_, err := manager.TargetMatchPattern(ctx, tf, url)
+			Expect(err).To(MatchError(ContainSubstring(fmt.Sprintf("--seed=other-seed contradicts pattern (seed=%s)", seed.Name))))
+			assertTargetProvider(targetProvider, t)
+		})
+
 		It("should be able to target valid project by matching a pattern containing a namespace", func() {
 			t := target.NewTarget(gardenName, "", "", "")
 			manager, targetProvider := createTestManager(t, cfg, clientProvider)
