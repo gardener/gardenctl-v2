@@ -3,9 +3,9 @@
 aliases:
   gardenctl-v2-reviewers:
   - grolu
-  - klocke-io
+  - julestree
   - petersutter
   gardenctl-v2-approvers:
   - grolu
-  - klocke-io
+  - julestree
   - petersutter
