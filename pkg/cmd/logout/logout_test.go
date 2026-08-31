@@ -27,10 +27,10 @@ import (
 )
 
 const (
-	testIssuer    = "https://oidc.example.com"
-	otherIssuer   = "https://other.example.com"
-	testGarden    = "my-garden"
-	testClientID  = "my-client"
+	testIssuer   = "https://oidc.example.com"
+	otherIssuer  = "https://other.example.com"
+	testGarden   = "my-garden"
+	testClientID = "my-client"
 )
 
 // makeJWT builds a minimal JWT whose payload contains the given iss claim.
@@ -38,6 +38,7 @@ func makeJWT(iss string) string {
 	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256","typ":"JWT"}`))
 	payload, _ := json.Marshal(map[string]string{"iss": iss, "sub": "user"})
 	encodedPayload := base64.RawURLEncoding.EncodeToString(payload)
+
 	return header + "." + encodedPayload + ".fakesig"
 }
 
@@ -49,6 +50,7 @@ func writeCacheFile(dir, name, iss string) string {
 	})
 	path := filepath.Join(dir, name)
 	Expect(os.WriteFile(path, data, 0o600)).To(Succeed())
+
 	return path
 }
 
@@ -64,6 +66,7 @@ func writeGardenKubeconfig(dir, issuerURL, cacheDir string) string {
 	cfg.Clusters["ctx"] = cluster
 
 	authInfo := clientcmdapi.NewAuthInfo()
+
 	args := []string{
 		"oidc-login",
 		"get-token",
@@ -73,6 +76,7 @@ func writeGardenKubeconfig(dir, issuerURL, cacheDir string) string {
 	if cacheDir != "" {
 		args = append(args, fmt.Sprintf("--token-cache-dir=%s", cacheDir))
 	}
+
 	authInfo.Exec = &clientcmdapi.ExecConfig{
 		Command:    "kubectl-oidc-login",
 		Args:       args,
@@ -87,6 +91,7 @@ func writeGardenKubeconfig(dir, issuerURL, cacheDir string) string {
 
 	path := filepath.Join(dir, "kubeconfig.yaml")
 	Expect(clientcmd.WriteToFile(*cfg, path)).To(Succeed())
+
 	return path
 }
 
@@ -154,6 +159,7 @@ var _ = Describe("RemoveCachedTokens", func() {
 
 	BeforeEach(func() {
 		var err error
+
 		cacheDir, err = os.MkdirTemp("", "oidc-cache-*")
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -191,6 +197,7 @@ var _ = Describe("RemoveCachedTokens", func() {
 
 	It("skips .lock files", func() {
 		writeCacheFile(cacheDir, "token-matching", testIssuer)
+
 		// write a matching .lock file — should not be removed
 		lockData, _ := json.Marshal(map[string]string{"id_token": makeJWT(testIssuer)})
 		Expect(os.WriteFile(filepath.Join(cacheDir, "token-matching.lock"), lockData, 0o600)).To(Succeed())
@@ -216,6 +223,7 @@ var _ = Describe("RemoveCachedTokens", func() {
 		for i := range 3 {
 			writeCacheFile(cacheDir, fmt.Sprintf("token-%d", i), testIssuer)
 		}
+
 		writeCacheFile(cacheDir, "token-other", otherIssuer)
 
 		removed, err := cmdlogout.RemoveCachedTokens(cacheDir, testIssuer)
@@ -247,6 +255,7 @@ var _ = Describe("Logout Command", func() {
 		streams, _, out, errOut = util.NewTestIOStreams()
 
 		var err error
+
 		tmpDir, err = os.MkdirTemp("", "gardenctl-logout-*")
 		Expect(err).NotTo(HaveOccurred())
 
@@ -269,6 +278,7 @@ var _ = Describe("Logout Command", func() {
 				{Name: testGarden, Kubeconfig: kubeconfigPath},
 			},
 		}
+
 		factory.EXPECT().Manager().Return(manager, nil)
 		manager.EXPECT().Configuration().Return(cfg)
 
@@ -292,6 +302,7 @@ var _ = Describe("Logout Command", func() {
 				{Name: testGarden, Kubeconfig: kubeconfigPath},
 			},
 		}
+
 		factory.EXPECT().Manager().Return(manager, nil)
 		manager.EXPECT().Configuration().Return(cfg)
 
@@ -323,6 +334,7 @@ var _ = Describe("Logout Command", func() {
 				{Name: testGarden, Kubeconfig: kubeconfigPath},
 			},
 		}
+
 		factory.EXPECT().Manager().Return(manager, nil)
 		manager.EXPECT().Configuration().Return(cfg)
 
@@ -339,6 +351,7 @@ var _ = Describe("Logout Command", func() {
 				{Name: testGarden, Kubeconfig: filepath.Join(tmpDir, "kc.yaml")},
 			},
 		}
+
 		factory.EXPECT().Manager().Return(manager, nil)
 		manager.EXPECT().Configuration().Return(cfg)
 
@@ -357,6 +370,7 @@ var _ = Describe("Logout Command", func() {
 				{Name: "other-garden", Kubeconfig: kubeconfigPath},
 			},
 		}
+
 		factory.EXPECT().Manager().Return(manager, nil)
 		manager.EXPECT().Configuration().Return(cfg)
 
