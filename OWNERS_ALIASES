@@ -3,9 +3,11 @@
 aliases:
   gardenctl-v2-reviewers:
   - grolu
+  - chrisstiefel
   - julestree
   - petersutter
   gardenctl-v2-approvers:
   - grolu
+  - chrisstiefel
   - julestree
   - petersutter
