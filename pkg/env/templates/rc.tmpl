@@ -10,6 +10,7 @@ alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval "$(gardenctl kubectl-env {{.shell}})"'
 alias {{.prefix}}p='eval "$(gardenctl provider-env {{.shell}})"'
 alias {{.prefix}}pc='eval "$(gardenctl provider-env --control-plane {{.shell}})"'
+alias {{.prefix}}ps='eval "$(gardenctl provider-env --control-plane=false {{.shell}})"'
 alias {{.prefix}}cv='gardenctl config view'
 {{if not .noCompletion -}}
 source <(gardenctl completion {{.shell}})
@@ -32,6 +33,7 @@ alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval "$(gardenctl kubectl-env {{.shell}})"'
 alias {{.prefix}}p='eval "$(gardenctl provider-env {{.shell}})"'
 alias {{.prefix}}pc='eval "$(gardenctl provider-env --control-plane {{.shell}})"'
+alias {{.prefix}}ps='eval "$(gardenctl provider-env --control-plane=false {{.shell}})"'
 alias {{.prefix}}cv='gardenctl config view'
 {{if not .noCompletion -}}
 if (( $+commands[gardenctl] )); then
@@ -66,6 +68,7 @@ alias {{.prefix}}tc-='gardenctl target unset control-plane'
 alias {{.prefix}}k='eval (gardenctl kubectl-env {{.shell}})'
 alias {{.prefix}}p='eval (gardenctl provider-env {{.shell}})'
 alias {{.prefix}}pc='eval (gardenctl provider-env --control-plane {{.shell}})'
+alias {{.prefix}}ps='eval (gardenctl provider-env --control-plane=false {{.shell}})'
 alias {{.prefix}}cv='gardenctl config view'
 {{if not .noCompletion -}}
 gardenctl completion {{.shell}} | source
@@ -106,6 +109,10 @@ function Gardenctl-ProviderEnv-ControlPlane {
   gardenctl provider-env --control-plane {{.shell}} | Out-String | Invoke-Expression
 }
 Set-Alias -Name {{.prefix}}pc -Value Gardenctl-ProviderEnv-ControlPlane -Option AllScope -Force
+function Gardenctl-ProviderEnv-Shoot {
+  gardenctl provider-env --control-plane=false {{.shell}} | Out-String | Invoke-Expression
+}
+Set-Alias -Name {{.prefix}}ps -Value Gardenctl-ProviderEnv-Shoot -Option AllScope -Force
 function Gardenctl-Config-View {
   gardenctl config view
 }
