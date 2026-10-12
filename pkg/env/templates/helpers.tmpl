@@ -1,7 +1,7 @@
 {{define "usage-hint"}}{{if .unset}}{{template "unset-hint" .}}{{else}}{{template "export-hint" .}}{{end}}{{end}}
 
 {{define "export-hint" -}}
-{{if .notification}}{{template "printf" dict "format" .notification}}
+{{if .notification}}{{template "printf" dict "shell" .shell "format" .notification "lines" (splitList "\n" (trimSuffix "\n" .notification))}}
 {{end -}}
 {{if not (eq .shell "powershell")}}
 {{end -}}
@@ -18,4 +18,5 @@
 
 {{define "eval-cmd"}}{{if eq .shell "powershell"}}& {{.cmd}} | Invoke-Expression{{else if eq .shell "fish" -}}eval ({{.cmd}}){{else}}eval $({{.cmd}}){{end}}{{end}}
 
-{{define "printf"}}{{if .format}}printf {{.format | replace "\n" "\\n" | shellEscape}}{{range .arguments}} {{. | shellEscape}}{{end}}{{end}}{{end}}
+{{define "printf"}}{{if eq .shell "powershell"}}{{range .lines}}Write-Output {{. | shellEscape}};
+{{end}}{{else if .format}}printf {{.format | replace "\n" "\\n" | shellEscape}}{{range .arguments}} {{. | shellEscape}}{{end}}{{end}}{{end}}

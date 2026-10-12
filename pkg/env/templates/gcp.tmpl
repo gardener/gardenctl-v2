@@ -52,5 +52,10 @@ $Env:GOOGLE_CREDENTIALS_ACCOUNT = gcloud auth list --filter=status:ACTIVE --form
 {{define "gcp-usage-hint"}}{{if not .unset}}{{template "revoke-hint" .}}{{end}}{{template "usage-hint" .}}{{end}}
 
 {{define "revoke-hint" -}}
+{{if eq .shell "powershell" -}}
+Write-Output 'Run the following command to revoke access credentials:';
+Write-Output {{printf "%s& %s %s -u %s | Invoke-Expression" .prompt .commandPath .targetFlags .shell | shellEscape}};
+{{else -}}
 printf 'Run the following command to revoke access credentials:\n{{.prompt}}{{template "eval-cmd" dict "shell" .shell "cmd" (printf "%s %s -u %s" .commandPath .targetFlags .shell)}}\n';
+{{end -}}
 {{end}}

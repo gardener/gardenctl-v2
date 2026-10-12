@@ -91,6 +91,27 @@ var _ = Describe("Env Commands - Template", func() {
 			Entry("export environment variables", false, "\n# Run this command to configure %s for your shell:\n# eval $(%s %s)\n"),
 			Entry("unset environment variables", true, "\n# Run this command to reset the %s configuration for your shell:\n# eval $(%s -u %s)\n"),
 		)
+
+		Context("with a PowerShell notification", func() {
+			BeforeEach(func() {
+				shell = "powershell"
+				cli = "test"
+			})
+
+			It("renders every untrusted notification line as an escaped PowerShell statement", func() {
+				metadata["notification"] = "100% restricted; $(Get-Item Env:PATH)\nDon't run 'injected'; Write-Output $Env:PATH\n"
+				metadata["unset"] = false
+
+				Expect(t.ExecuteTemplate(out, "usage-hint", metadata)).To(Succeed())
+				Expect(out.String()).To(Equal(`Write-Output '100% restricted; $(Get-Item Env:PATH)';
+Write-Output 'Don''t run ''injected''; Write-Output $Env:PATH';
+
+# Run this command to configure test for your shell:
+# & gardenctl provider-env powershell | Invoke-Expression
+`))
+				Expect(out.String()).NotTo(MatchRegexp(`(?m)^\s*printf(?:\s|$)`))
+			})
+		})
 	})
 
 	Describe("parsing the kubernetes template", func() {
@@ -152,6 +173,20 @@ printf 'Run the following command to revoke access credentials:\n$ eval $(garden
 # eval $(gardenctl provider-env PLACEHOLDER_SHELL)
 `
 
+		const powershellExportFormat = `$Env:CLOUDSDK_CORE_PROJECT = Get-Content -Raw 'PLACEHOLDER_PROJECT_ID_FILE';
+$Env:CLOUDSDK_COMPUTE_REGION = Get-Content -Raw 'PLACEHOLDER_REGION_FILE';
+$Env:CLOUDSDK_CONFIG = 'PLACEHOLDER_CONFIG_DIR';
+gcloud auth login --cred-file 'PLACEHOLDER_CREDENTIALS_FILE';
+$Env:GOOGLE_CREDENTIALS_ACCOUNT = gcloud auth list --filter=status:ACTIVE --format='value(account)';
+Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_CREDENTIALS_FILE';
+Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_PROJECT_ID_FILE';
+Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_REGION_FILE';
+Write-Output 'Run the following command to revoke access credentials:';
+Write-Output '$ & gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL | Invoke-Expression';
+# Run this command to configure gcloud for your shell:
+# & gardenctl provider-env PLACEHOLDER_SHELL | Invoke-Expression
+`
+
 		const unsetFormat = `gcloud auth revoke --verbosity=error -- "$GOOGLE_CREDENTIALS_ACCOUNT";
 unset GOOGLE_CREDENTIALS_ACCOUNT;
 unset CLOUDSDK_CORE_PROJECT;
@@ -204,6 +239,28 @@ unset CLOUDSDK_CONFIG;
 			Entry("export environment variables", false, exportFormat),
 			Entry("unset environment variables", true, unsetFormat),
 		)
+
+		Context("when executing the PowerShell template", func() {
+			BeforeEach(func() {
+				shell = "powershell"
+			})
+
+			It("renders the revoke hint with PowerShell-native output", func() {
+				metadata["shell"] = shell
+				metadata["unset"] = false
+
+				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
+				expected := strings.NewReplacer(
+					"PLACEHOLDER_SHELL", shell,
+					"PLACEHOLDER_PROJECT_ID_FILE", projectIDFile,
+					"PLACEHOLDER_REGION_FILE", regionFile,
+					"PLACEHOLDER_CREDENTIALS_FILE", credentialsFile,
+					"PLACEHOLDER_CONFIG_DIR", configDir,
+				).Replace(powershellExportFormat)
+				Expect(out.String()).To(Equal(expected))
+				Expect(out.String()).NotTo(MatchRegexp(`(?m)^\s*printf(?:\s|$)`))
+			})
+		})
 
 		Context("with workload identity credentials", func() {
 			const exportFormatWorkloadIdentity = `export CLOUDSDK_CORE_PROJECT=$(< 'PLACEHOLDER_PROJECT_ID_FILE');
@@ -269,7 +326,8 @@ Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_CLIENT_ID_FILE';
 Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_CLIENT_SECRET_FILE';
 Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_SUBSCRIPTION_ID_FILE';
 Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_TENANT_ID_FILE';
-printf 'Run the following command to log out and remove access to Azure subscriptions:\n$ & gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL | Invoke-Expression\n';
+Write-Output 'Run the following command to log out and remove access to Azure subscriptions:';
+Write-Output '$ & gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL | Invoke-Expression';
 # Run this command to configure az for your shell:
 # & gardenctl provider-env PLACEHOLDER_SHELL | Invoke-Expression
 `
@@ -310,7 +368,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 			data["configDir"] = configDir
 		})
 
-		DescribeTable("executing the bash template",
+		DescribeTable("executing the PowerShell template",
 			func(unset bool, format string) {
 				metadata["shell"] = shell
 				metadata["unset"] = unset
@@ -325,6 +383,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 					"PLACEHOLDER_CONFIG_DIR", configDir,
 				).Replace(format)
 				Expect(out.String()).To(Equal(expected))
+				Expect(out.String()).NotTo(MatchRegexp(`(?m)^\s*printf(?:\s|$)`))
 			},
 			Entry("export environment variables", false, exportFormat),
 			Entry("unset environment variables", true, unsetFormat),

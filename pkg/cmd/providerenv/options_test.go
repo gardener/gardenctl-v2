@@ -223,6 +223,37 @@ var _ = Describe("Env Commands - Options", func() {
 			})
 		})
 
+		Describe("handling access restriction confirmations", func() {
+			BeforeEach(func() {
+				shell = "powershell"
+
+				var err error
+
+				baseTemplate, err = env.NewTemplate(shell, "helpers")
+				Expect(err).NotTo(HaveOccurred())
+
+				options.Target = target.NewTarget("garden", "project", "", "shoot")
+			})
+
+			It("renders untrusted text as independently parseable PowerShell output lines", func() {
+				messages := ac.AccessRestrictionMessages{{
+					Header: "Restricted'; Write-Output $Env:PATH; '",
+					Items:  []string{"100% access\n$(Get-Item Env:PATH)"},
+				}}
+
+				aborted, err := options.MaybeAbortDueToAccessRestrictions(messages, true)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(aborted).To(BeTrue())
+				Expect(options.String()).NotTo(MatchRegexp(`(?m)^\s*printf(?:\s|$)`))
+				Expect(options.String()).To(ContainSubstring("Write-Output '│ Restricted''; Write-Output $Env:PATH; ''"))
+				Expect(options.String()).To(ContainSubstring("gardenctl provider-env --garden garden --project project --shoot shoot --confirm-access-restriction powershell | Invoke-Expression"))
+
+				for _, line := range strings.Split(strings.TrimSuffix(options.String(), "\n"), "\n") {
+					Expect(line).To(MatchRegexp(`^Write-Output '.*';$`))
+				}
+			})
+		})
+
 		Describe("running the provider-env command with the given options", func() {
 			var (
 				manager                *targetmocks.MockManager
