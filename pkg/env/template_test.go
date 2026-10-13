@@ -70,14 +70,17 @@ var _ = Describe("Env Commands - Template", func() {
 
 		DescribeTable("executing the eval-cmd template",
 			func(shell string, format string) {
+				tmpl, err := env.NewTemplate(shell, "helpers")
+				Expect(err).NotTo(HaveOccurred())
+
 				cmd := fmt.Sprintf("%s %s", commandPath, shell)
 				metadata["shell"] = shell
 				metadata["cmd"] = cmd
-				Expect(t.ExecuteTemplate(out, "eval-cmd", metadata)).To(Succeed())
+				Expect(tmpl.ExecuteTemplate(out, "eval-cmd", metadata)).To(Succeed())
 				Expect(out.String()).To(Equal(fmt.Sprintf(format, cmd)))
 			},
-			Entry("shell is bash", "bash", "eval $(%s)"),
-			Entry("shell is zsh", "zsh", "eval $(%s)"),
+			Entry("shell is bash", "bash", `eval "$(%s)"`),
+			Entry("shell is zsh", "zsh", `eval "$(%s)"`),
 			Entry("shell is fish", "fish", "eval (%s)"),
 			Entry("shell is powershell", "powershell", "& %s | Invoke-Expression"),
 		)
@@ -88,8 +91,8 @@ var _ = Describe("Env Commands - Template", func() {
 				Expect(t.ExecuteTemplate(out, "usage-hint", metadata)).To(Succeed())
 				Expect(out.String()).To(Equal(fmt.Sprintf(format, cli, commandPath, shell)))
 			},
-			Entry("export environment variables", false, "\n# Run this command to configure %s for your shell:\n# eval $(%s %s)\n"),
-			Entry("unset environment variables", true, "\n# Run this command to reset the %s configuration for your shell:\n# eval $(%s -u %s)\n"),
+			Entry("export environment variables", false, "\n# Run this command to configure %s for your shell:\n# eval \"$(%s %s)\"\n"),
+			Entry("unset environment variables", true, "\n# Run this command to reset the %s configuration for your shell:\n# eval \"$(%s -u %s)\"\n"),
 		)
 
 		DescribeTable("rendering an untrusted notification as one escaped output statement per line",
@@ -109,13 +112,13 @@ var _ = Describe("Env Commands - Template", func() {
 printf '%s\n' 'Don'"'"'t run '"'"'injected'"'"'; Write-Output $Env:PATH';
 
 # Run this command to configure test for your shell:
-# eval $(gardenctl provider-env bash)
+# eval "$(gardenctl provider-env bash)"
 `),
 			Entry("shell is zsh", "zsh", `printf '%s\n' '100% %s restricted; $(id) \n[31m';
 printf '%s\n' 'Don'"'"'t run '"'"'injected'"'"'; Write-Output $Env:PATH';
 
 # Run this command to configure test for your shell:
-# eval $(gardenctl provider-env zsh)
+# eval "$(gardenctl provider-env zsh)"
 `),
 			Entry("shell is fish", "fish", `printf '%s\n' '100% %s restricted; $(id) \\n[31m';
 printf '%s\n' 'Don'\''t run '\''injected'\''; Write-Output $Env:PATH';
@@ -150,13 +153,13 @@ Write-Output 'Don''t run ''injected''; Write-Output $Env:PATH';
 		const exportFormat = `export KUBECONFIG='PLACEHOLDER_FILENAME';
 
 # Run this command to configure kubectl for your shell:
-# eval $(gardenctl kubectl-env PLACEHOLDER_SHELL)
+# eval "$(gardenctl kubectl-env PLACEHOLDER_SHELL)"
 `
 
 		const unsetFormat = `unset KUBECONFIG;
 
 # Run this command to reset the kubectl configuration for your shell:
-# eval $(gardenctl kubectl-env -u PLACEHOLDER_SHELL)
+# eval "$(gardenctl kubectl-env -u PLACEHOLDER_SHELL)"
 `
 
 		pathToKubeconfig := "/path/to/.kube/config"
@@ -203,7 +206,7 @@ printf '%s\n' 'Run the following command to revoke access credentials:';
 printf '%s\n' '$ eval "$(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)"';
 
 # Run this command to configure gcloud for your shell:
-# eval $(gardenctl provider-env PLACEHOLDER_SHELL)
+# eval "$(gardenctl provider-env PLACEHOLDER_SHELL)"
 `
 
 		const powershellExportFormat = `$Env:CLOUDSDK_CORE_PROJECT = Get-Content -Raw 'PLACEHOLDER_PROJECT_ID_FILE';
@@ -227,7 +230,7 @@ unset CLOUDSDK_COMPUTE_REGION;
 unset CLOUDSDK_CONFIG;
 
 # Run this command to reset the gcloud configuration for your shell:
-# eval $(gardenctl provider-env -u PLACEHOLDER_SHELL)
+# eval "$(gardenctl provider-env -u PLACEHOLDER_SHELL)"
 `
 
 		var (
@@ -332,7 +335,7 @@ printf '%s\n' 'Run the following command to revoke access credentials:';
 printf '%s\n' '$ eval "$(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)"';
 
 # Run this command to configure gcloud for your shell:
-# eval $(gardenctl provider-env PLACEHOLDER_SHELL)
+# eval "$(gardenctl provider-env PLACEHOLDER_SHELL)"
 `
 
 			var (
@@ -480,7 +483,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 			const exportFormat = `export TEST_TOKEN='PLACEHOLDER_TEST_TOKEN';
 
 # Run this command to configure test for your shell:
-# eval $(gardenctl provider-env PLACEHOLDER_SHELL)
+# eval "$(gardenctl provider-env PLACEHOLDER_SHELL)"
 `
 
 			var token string

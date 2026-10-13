@@ -422,8 +422,12 @@ var _ = Describe("Env Commands - Options", func() {
 					})
 
 					It("should print how to reset configuration for powershell", func() {
+						tmpl, err := env.NewTemplate("powershell", "helpers")
+						Expect(err).NotTo(HaveOccurred())
+
 						options.Unset = true
 						options.Shell = "powershell"
+						options.Template = tmpl
 						Expect(options.Run(factory)).To(Succeed())
 						Expect(options.String()).To(Equal(readTestFile("gcp/unset.pwsh")))
 					})
@@ -923,6 +927,11 @@ var _ = Describe("Env Commands - Options", func() {
 					BeforeEach(func() {
 						unset = true
 						shell = "powershell"
+
+						var err error
+
+						baseTemplate, err = env.NewTemplate(shell, "helpers")
+						Expect(err).NotTo(HaveOccurred())
 
 						// Initialize options with Complete() to set up default patterns
 						factory := utilmocks.NewMockFactory(ctrl)
@@ -1743,7 +1752,7 @@ var _ = Describe("Env Commands - Options", func() {
 					Expect(match).NotTo(BeNil())
 					Expect(len(match)).To(Equal(3))
 					Expect(match[1]).To(Equal(fmt.Sprintf("# Run this command to configure %s for your shell:", cli)))
-					Expect(match[2]).To(Equal(fmt.Sprintf("# eval $(%s %s)", options.CmdPath, shell)))
+					Expect(match[2]).To(Equal(fmt.Sprintf(`# eval "$(%s %s)"`, options.CmdPath, shell)))
 				})
 			})
 
@@ -1760,7 +1769,7 @@ var _ = Describe("Env Commands - Options", func() {
 					Expect(match).NotTo(BeNil())
 					Expect(len(match)).To(Equal(3))
 					Expect(match[1]).To(Equal(fmt.Sprintf("# Run this command to reset the %s configuration for your shell:", cli)))
-					Expect(match[2]).To(Equal(fmt.Sprintf("# eval $(%s -u %s)", options.CmdPath, shell)))
+					Expect(match[2]).To(Equal(fmt.Sprintf(`# eval "$(%s -u %s)"`, options.CmdPath, shell)))
 				})
 			})
 		})

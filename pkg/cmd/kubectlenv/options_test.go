@@ -254,7 +254,7 @@ var _ = Describe("Env Commands - Options", func() {
 					Expect(match).NotTo(BeNil())
 					Expect(len(match)).To(Equal(3))
 					Expect(match[1]).To(Equal("# Run this command to configure kubectl for your shell:"))
-					Expect(match[2]).To(Equal(fmt.Sprintf("# eval $(%s %s)", options.CmdPath, shell)))
+					Expect(match[2]).To(Equal(fmt.Sprintf(`# eval "$(%s %s)"`, options.CmdPath, shell)))
 				})
 			})
 
@@ -271,7 +271,7 @@ var _ = Describe("Env Commands - Options", func() {
 					Expect(match).NotTo(BeNil())
 					Expect(len(match)).To(Equal(3))
 					Expect(match[1]).To(Equal("# Run this command to reset the kubectl configuration for your shell:"))
-					Expect(match[2]).To(Equal(fmt.Sprintf("# eval $(%s -u %s)", options.CmdPath, shell)))
+					Expect(match[2]).To(Equal(fmt.Sprintf(`# eval "$(%s -u %s)"`, options.CmdPath, shell)))
 				})
 			})
 		})

@@ -13,4 +13,4 @@ printf '%s\n' 'Run the following command to revoke access credentials:';
 printf '%s\n' '$ eval "$(gardenctl provider-env --garden test --project project --shoot shoot -u bash)"';
 
 # Run this command to configure gcloud for your shell:
-# eval $(gardenctl provider-env bash)
+# eval "$(gardenctl provider-env bash)"
