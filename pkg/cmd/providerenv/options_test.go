@@ -237,7 +237,7 @@ var _ = Describe("Env Commands - Options", func() {
 					Items:  []string{"100% %s access\n$(id)"},
 				}}
 
-				aborted, err := options.MaybeAbortDueToAccessRestrictions(messages, true)
+				aborted, err := options.RequireAccessRestrictionConfirmation(messages, true)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(aborted).To(BeTrue())
 				Expect(options.String()).To(ContainSubstring(escapedHeader))

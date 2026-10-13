@@ -62,8 +62,8 @@ func (o *TestOptions) GenerateMetadata(cli string, credentialKind string) map[st
 	return generateMetadata(&o.options, cli, credentialKind)
 }
 
-func (o *TestOptions) MaybeAbortDueToAccessRestrictions(messages ac.AccessRestrictionMessages, requiresConfirmation bool) (bool, error) {
-	return maybeAbortDueToAccessRestrictions(&o.options, messages, requiresConfirmation)
+func (o *TestOptions) RequireAccessRestrictionConfirmation(messages ac.AccessRestrictionMessages, requiresConfirmation bool) (bool, error) {
+	return requireAccessRestrictionConfirmation(&o.options, messages, requiresConfirmation)
 }
 
 func (o *TestOptions) String() string {

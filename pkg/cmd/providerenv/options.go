@@ -347,11 +347,11 @@ func (o *options) Run(f util.Factory) error {
 		return fmt.Errorf("failed to create garden cluster client: %w", err)
 	}
 
-	requiresAccessRestrictionConfirmation := false
+	confirmationRequired := false
 
 	if o.TargetFlags != nil {
 		controlPlaneRequested := o.TargetFlags.ControlPlane().Provided() && o.TargetFlags.ControlPlane().Value()
-		requiresAccessRestrictionConfirmation = o.TargetFlags.ShootName() != "" || controlPlaneRequested
+		confirmationRequired = o.TargetFlags.ShootName() != "" || controlPlaneRequested
 	}
 
 	resolver := target.NewResolver(client)
@@ -411,7 +411,7 @@ func (o *options) Run(f util.Factory) error {
 		return err
 	}
 
-	aborted, err := maybeAbortDueToAccessRestrictions(o, messages, requiresAccessRestrictionConfirmation)
+	aborted, err := requireAccessRestrictionConfirmation(o, messages, confirmationRequired)
 	if err != nil {
 		return err
 	}
@@ -655,10 +655,10 @@ func getTargetFlags(t target.Target) string {
 	return targetFlags
 }
 
-// maybeAbortDueToAccessRestrictions processes access restriction messages and updates metadata or outputs
-// a confirmation prompt. It returns (aborted=true) when it has already written output and the caller
-// should stop further processing. When no messages or when only metadata is updated, it returns aborted=false.
-func maybeAbortDueToAccessRestrictions(o *options, messages ac.AccessRestrictionMessages, requiresConfirmation bool) (bool, error) {
+// requireAccessRestrictionConfirmation writes a confirmation prompt instead of the provider script when
+// access restrictions require a confirmation that was not given. It returns (aborted=true) when it has
+// written the prompt and the caller should stop further processing.
+func requireAccessRestrictionConfirmation(o *options, messages ac.AccessRestrictionMessages, requiresConfirmation bool) (bool, error) {
 	if len(messages) == 0 {
 		return false, nil
 	}
