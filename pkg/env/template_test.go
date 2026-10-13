@@ -92,26 +92,58 @@ var _ = Describe("Env Commands - Template", func() {
 			Entry("unset environment variables", true, "\n# Run this command to reset the %s configuration for your shell:\n# eval $(%s -u %s)\n"),
 		)
 
-		Context("with a PowerShell notification", func() {
-			BeforeEach(func() {
-				shell = "powershell"
-				cli = "test"
-			})
+		DescribeTable("rendering an untrusted notification as one escaped output statement per line",
+			func(shell string, expected string) {
+				tmpl, err := env.NewTemplate(shell, "helpers")
+				Expect(err).NotTo(HaveOccurred())
 
-			It("renders every untrusted notification line as an escaped PowerShell statement", func() {
-				metadata["notification"] = "100% restricted; $(Get-Item Env:PATH)\nDon't run 'injected'; Write-Output $Env:PATH\n"
+				metadata["shell"] = shell
+				metadata["cli"] = "test"
 				metadata["unset"] = false
+				metadata["notification"] = "100% %s restricted; $(id) \\n\x1b[31m\nDon't run 'injected'; Write-Output $Env:PATH\n"
 
-				Expect(t.ExecuteTemplate(out, "usage-hint", metadata)).To(Succeed())
-				Expect(out.String()).To(Equal(`Write-Output '100% restricted; $(Get-Item Env:PATH)';
-Write-Output 'Don''t run ''injected''; Write-Output $Env:PATH';
+				Expect(tmpl.ExecuteTemplate(out, "usage-hint", metadata)).To(Succeed())
+				Expect(out.String()).To(Equal(expected))
+			},
+			Entry("shell is bash", "bash", `printf '%s\n' '100% %s restricted; $(id) \n[31m';
+printf '%s\n' 'Don'"'"'t run '"'"'injected'"'"'; Write-Output $Env:PATH';
 
 # Run this command to configure test for your shell:
+# eval $(gardenctl provider-env bash)
+`),
+			Entry("shell is zsh", "zsh", `printf '%s\n' '100% %s restricted; $(id) \n[31m';
+printf '%s\n' 'Don'"'"'t run '"'"'injected'"'"'; Write-Output $Env:PATH';
+
+# Run this command to configure test for your shell:
+# eval $(gardenctl provider-env zsh)
+`),
+			Entry("shell is fish", "fish", `printf '%s\n' '100% %s restricted; $(id) \\n[31m';
+printf '%s\n' 'Don'\''t run '\''injected'\''; Write-Output $Env:PATH';
+
+# Run this command to configure test for your shell:
+# eval (gardenctl provider-env fish)
+`),
+			// Invoke-Expression rejects empty lines, so none may be emitted for PowerShell.
+			Entry("shell is powershell", "powershell", `Write-Output '100% %s restricted; $(id) \n[31m';
+Write-Output 'Don''t run ''injected''; Write-Output $Env:PATH';
+# Run this command to configure test for your shell:
 # & gardenctl provider-env powershell | Invoke-Expression
-`))
-				Expect(out.String()).NotTo(MatchRegexp(`(?m)^\s*printf(?:\s|$)`))
-			})
-		})
+`),
+		)
+
+		DescribeTable("executing the print-lines template",
+			func(shell string, text string, expected string) {
+				tmpl, err := env.NewTemplate(shell, "helpers")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(tmpl.ExecuteTemplate(out, "print-lines", text)).To(Succeed())
+				Expect(out.String()).To(Equal(expected))
+			},
+			Entry("text is empty", "bash", "", ""),
+			Entry("text has no trailing newline", "bash", "a", "printf '%s\\n' 'a';\n"),
+			Entry("text contains an empty line", "bash", "a\n\nb\n", "printf '%s\\n' 'a';\nprintf '%s\\n' '';\nprintf '%s\\n' 'b';\n"),
+			Entry("text contains an empty line for powershell", "powershell", "a\n\nb\n", "Write-Output 'a';\nWrite-Output '';\nWrite-Output 'b';\n"),
+		)
 	})
 
 	Describe("parsing the kubernetes template", func() {
@@ -167,7 +199,8 @@ export GOOGLE_CREDENTIALS_ACCOUNT=$(gcloud auth list --filter=status:ACTIVE --fo
 rm -f -- 'PLACEHOLDER_CREDENTIALS_FILE';
 rm -f -- 'PLACEHOLDER_PROJECT_ID_FILE';
 rm -f -- 'PLACEHOLDER_REGION_FILE';
-printf 'Run the following command to revoke access credentials:\n$ eval $(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)\n';
+printf '%s\n' 'Run the following command to revoke access credentials:';
+printf '%s\n' '$ eval "$(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)"';
 
 # Run this command to configure gcloud for your shell:
 # eval $(gardenctl provider-env PLACEHOLDER_SHELL)
@@ -258,9 +291,30 @@ unset CLOUDSDK_CONFIG;
 					"PLACEHOLDER_CONFIG_DIR", configDir,
 				).Replace(powershellExportFormat)
 				Expect(out.String()).To(Equal(expected))
-				Expect(out.String()).NotTo(MatchRegexp(`(?m)^\s*printf(?:\s|$)`))
 			})
 		})
+
+		DescribeTable("escaping untrusted target flags in the revoke hint",
+			func(shell string, expected string) {
+				tmpl, err := env.NewTemplate(shell, "helpers", providerType)
+				Expect(err).NotTo(HaveOccurred())
+
+				metadata["shell"] = shell
+				metadata["targetFlags"] = "--garden g'; touch pwned; '%s --project project --shoot shoot"
+
+				Expect(tmpl.ExecuteTemplate(out, "revoke-hint", metadata)).To(Succeed())
+				Expect(out.String()).To(Equal(expected))
+			},
+			Entry("shell is bash", "bash", `printf '%s\n' 'Run the following command to revoke access credentials:';
+printf '%s\n' '$ eval "$(gardenctl provider-env --garden g'"'"'; touch pwned; '"'"'%s --project project --shoot shoot -u bash)"';
+`),
+			Entry("shell is fish", "fish", `printf '%s\n' 'Run the following command to revoke access credentials:';
+printf '%s\n' '$ eval (gardenctl provider-env --garden g'\''; touch pwned; '\''%s --project project --shoot shoot -u fish)';
+`),
+			Entry("shell is powershell", "powershell", `Write-Output 'Run the following command to revoke access credentials:';
+Write-Output '$ & gardenctl provider-env --garden g''; touch pwned; ''%s --project project --shoot shoot -u powershell | Invoke-Expression';
+`),
+		)
 
 		Context("with workload identity credentials", func() {
 			const exportFormatWorkloadIdentity = `export CLOUDSDK_CORE_PROJECT=$(< 'PLACEHOLDER_PROJECT_ID_FILE');
@@ -274,7 +328,8 @@ rm -f -- 'PLACEHOLDER_PROJECT_ID_FILE';
 rm -f -- 'PLACEHOLDER_REGION_FILE';
 rm -f -- 'PLACEHOLDER_SUBJECT_FILE';
 rm -f -- 'PLACEHOLDER_TOKEN_FILE';
-printf 'Run the following command to revoke access credentials:\n$ eval $(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)\n';
+printf '%s\n' 'Run the following command to revoke access credentials:';
+printf '%s\n' '$ eval "$(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)"';
 
 # Run this command to configure gcloud for your shell:
 # eval $(gardenctl provider-env PLACEHOLDER_SHELL)
@@ -383,7 +438,6 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 					"PLACEHOLDER_CONFIG_DIR", configDir,
 				).Replace(format)
 				Expect(out.String()).To(Equal(expected))
-				Expect(out.String()).NotTo(MatchRegexp(`(?m)^\s*printf(?:\s|$)`))
 			},
 			Entry("export environment variables", false, exportFormat),
 			Entry("unset environment variables", true, unsetFormat),

@@ -11,7 +11,8 @@ rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-clientSecret.tx
 rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-region.txt';
 rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-subscriptionID.txt';
 rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-tenantID.txt';
-printf 'Run the following command to log out and remove access to Azure subscriptions:\n$ eval (gardenctl provider-env --garden test --project project --shoot shoot -u fish)\n';
+printf '%s\n' 'Run the following command to log out and remove access to Azure subscriptions:';
+printf '%s\n' '$ eval (gardenctl provider-env --garden test --project project --shoot shoot -u fish)';
 
 # Run this command to configure az for your shell:
 # eval (gardenctl provider-env fish)

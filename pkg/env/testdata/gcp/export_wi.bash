@@ -9,7 +9,8 @@ rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-project_id.txt'
 rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-region.txt';
 rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-subject.txt';
 rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-token.txt';
-printf 'Run the following command to revoke access credentials:\n$ eval $(gardenctl provider-env --garden test --project project --shoot shoot -u bash)\n';
+printf '%s\n' 'Run the following command to revoke access credentials:';
+printf '%s\n' '$ eval "$(gardenctl provider-env --garden test --project project --shoot shoot -u bash)"';
 
 # Run this command to configure gcloud for your shell:
 # eval $(gardenctl provider-env bash)

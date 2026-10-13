@@ -223,36 +223,47 @@ var _ = Describe("Env Commands - Options", func() {
 			})
 		})
 
-		Describe("handling access restriction confirmations", func() {
-			BeforeEach(func() {
-				shell = "powershell"
-
-				var err error
-
-				baseTemplate, err = env.NewTemplate(shell, "helpers")
+		DescribeTable("rendering access restriction confirmations as one escaped output statement per line",
+			func(shell string, statementPattern string, escapedHeader string, confirmCommand string) {
+				tmpl, err := env.NewTemplate(shell, "helpers")
 				Expect(err).NotTo(HaveOccurred())
 
+				options.Shell = shell
+				options.Template = tmpl
 				options.Target = target.NewTarget("garden", "project", "", "shoot")
-			})
 
-			It("renders untrusted text as independently parseable PowerShell output lines", func() {
 				messages := ac.AccessRestrictionMessages{{
 					Header: "Restricted'; Write-Output $Env:PATH; '",
-					Items:  []string{"100% access\n$(Get-Item Env:PATH)"},
+					Items:  []string{"100% %s access\n$(id)"},
 				}}
 
 				aborted, err := options.MaybeAbortDueToAccessRestrictions(messages, true)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(aborted).To(BeTrue())
-				Expect(options.String()).NotTo(MatchRegexp(`(?m)^\s*printf(?:\s|$)`))
-				Expect(options.String()).To(ContainSubstring("Write-Output '│ Restricted''; Write-Output $Env:PATH; ''"))
-				Expect(options.String()).To(ContainSubstring("gardenctl provider-env --garden garden --project project --shoot shoot --confirm-access-restriction powershell | Invoke-Expression"))
+				Expect(options.String()).To(ContainSubstring(escapedHeader))
+				Expect(options.String()).To(ContainSubstring("100% %s access"))
+				Expect(options.String()).To(ContainSubstring(confirmCommand))
 
 				for _, line := range strings.Split(strings.TrimSuffix(options.String(), "\n"), "\n") {
-					Expect(line).To(MatchRegexp(`^Write-Output '.*';$`))
+					Expect(line).To(MatchRegexp(statementPattern))
 				}
-			})
-		})
+			},
+			Entry("shell is bash", "bash",
+				`^printf '%s\\n' '.*';$`,
+				`'│ Restricted'"'"'; Write-Output $Env:PATH; '"'"'`,
+				`eval "$(gardenctl provider-env --garden garden --project project --shoot shoot --confirm-access-restriction bash)"`,
+			),
+			Entry("shell is fish", "fish",
+				`^printf '%s\\n' '.*';$`,
+				`'│ Restricted'\''; Write-Output $Env:PATH; '\''`,
+				`eval (gardenctl provider-env --garden garden --project project --shoot shoot --confirm-access-restriction fish)`,
+			),
+			Entry("shell is powershell", "powershell",
+				`^Write-Output '.*';$`,
+				`'│ Restricted''; Write-Output $Env:PATH; ''`,
+				`& gardenctl provider-env --garden garden --project project --shoot shoot --confirm-access-restriction powershell | Invoke-Expression`,
+			),
+		)
 
 		Describe("running the provider-env command with the given options", func() {
 			var (
@@ -1435,6 +1446,11 @@ var _ = Describe("Env Commands - Options", func() {
 					BeforeEach(func() {
 						shell = "fish"
 						providerType = "azure"
+
+						var err error
+
+						baseTemplate, err = env.NewTemplate(shell, "helpers")
+						Expect(err).NotTo(HaveOccurred())
 
 						factory := utilmocks.NewMockFactory(ctrl)
 						manager := targetmocks.NewMockManager(ctrl)

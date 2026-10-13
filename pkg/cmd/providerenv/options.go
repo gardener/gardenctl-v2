@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -676,21 +675,12 @@ func maybeAbortDueToAccessRestrictions(o *options, messages ac.AccessRestriction
 
 	s := env.Shell(o.Shell)
 	confirmCommand := fmt.Sprintf("%s %s --confirm-access-restriction %s", o.CmdPath, getTargetFlags(o.originalTarget()), o.Shell)
-	confirmationMessage := "The cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions."
-	confirmationHint := "Use the --confirm-access-restriction flag to confirm the access."
-	lines := strings.Split(strings.TrimSuffix(messages.String(), "\n"), "\n")
-	lines = append(lines, "", confirmationMessage+" "+confirmationHint, s.Prompt(runtime.GOOS)+s.EvalCommand(confirmCommand))
+	text := messages.String() + "\n" +
+		"The cloud provider CLI configuration script can only be generated if you confirm the access despite the existing restrictions. " +
+		"Use the --confirm-access-restriction flag to confirm the access.\n" +
+		s.Prompt(runtime.GOOS) + s.EvalCommand(confirmCommand) + "\n"
 
-	if err := o.Template.ExecuteTemplate(o.IOStreams.Out, "printf", map[string]interface{}{
-		"shell":  o.Shell,
-		"format": messages.String() + "\n%s %s\n%s\n",
-		"arguments": []string{
-			confirmationMessage,
-			confirmationHint,
-			s.Prompt(runtime.GOOS) + s.EvalCommand(confirmCommand),
-		},
-		"lines": lines,
-	}); err != nil {
+	if err := o.Template.ExecuteTemplate(o.IOStreams.Out, "print-lines", text); err != nil {
 		return false, err
 	}
 
