@@ -28,9 +28,10 @@ var fsys embed.FS
 // Template provides an abstraction for go templates.
 //
 // A Template instance is bound to a specific shell at construction time and
-// exposes shell-aware escaping via the "shellEscape" template function. The
-// ExecuteTemplate method selects which named template ({{define "name"}}) to
-// execute.
+// exposes shell-aware template functions: "shellEscape" quotes values,
+// "printLines" renders text as escaped output statements, and "evalCommand"
+// wraps a command so that its output is evaluated. The ExecuteTemplate method
+// selects which named template ({{define "name"}}) to execute.
 type Template interface {
 	// ParseFiles parses the named files and associates the resulting templates with t.
 	ParseFiles(filenames ...string) error
@@ -46,8 +47,8 @@ type templateImpl struct {
 var _ Template = &templateImpl{}
 
 // NewTemplate creates a new Template instance for the given shell with the
-// provided filenames. The shell determines how values are escaped via the
-// "shellEscape" template function.
+// provided filenames. The shell determines the syntax produced by the
+// shell-aware template functions.
 func NewTemplate(shell string, filenames ...string) (Template, error) {
 	return newTemplateImpl(shell, filenames...)
 }
@@ -62,7 +63,11 @@ func newTemplateImpl(shell string, filenames ...string) (*templateImpl, error) {
 		delegate: template.
 			New("base").
 			Funcs(sprigv3.TxtFuncMap()).
-			Funcs(template.FuncMap{"shellEscape": shellEscapeFn}),
+			Funcs(template.FuncMap{
+				"shellEscape": shellEscapeFn,
+				"printLines":  printLinesFor(Shell(shell), shellEscapeFn),
+				"evalCommand": Shell(shell).EvalCommand,
+			}),
 	}
 
 	if len(filenames) > 0 {

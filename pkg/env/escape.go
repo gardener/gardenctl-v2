@@ -105,6 +105,31 @@ func shellEscapePOSIX(values ...interface{}) string {
 	return strings.Join(out, " ")
 }
 
+// printLinesFor returns a function that renders text as one output statement per line.
+// Every line must be escaped and emitted separately: the escapers strip newlines, and
+// "& gardenctl ... | Invoke-Expression" evaluates each line of the script on its own.
+// The text must never become part of the printf format string.
+func printLinesFor(shell Shell, escape func(values ...interface{}) string) func(text string) string {
+	command := `printf '%s\n'`
+	if shell == powershell {
+		command = "Write-Output"
+	}
+
+	return func(text string) string {
+		if text == "" {
+			return ""
+		}
+
+		var b strings.Builder
+
+		for _, line := range strings.Split(strings.TrimSuffix(text, "\n"), "\n") {
+			b.WriteString(command + " " + escape(line) + ";\n")
+		}
+
+		return b.String()
+	}
+}
+
 // ShellEscapeFor returns a shell-aware escape function suitable for use in templates or callers.
 // It implements POSIX-like escaping for bash/zsh, a fish-safe variant, and a
 // PowerShell-safe escaper. All escapers also strip non-printable characters.

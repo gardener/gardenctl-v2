@@ -70,14 +70,17 @@ var _ = Describe("Env Commands - Template", func() {
 
 		DescribeTable("executing the eval-cmd template",
 			func(shell string, format string) {
+				tmpl, err := env.NewTemplate(shell, "helpers")
+				Expect(err).NotTo(HaveOccurred())
+
 				cmd := fmt.Sprintf("%s %s", commandPath, shell)
 				metadata["shell"] = shell
 				metadata["cmd"] = cmd
-				Expect(t.ExecuteTemplate(out, "eval-cmd", metadata)).To(Succeed())
+				Expect(tmpl.ExecuteTemplate(out, "eval-cmd", metadata)).To(Succeed())
 				Expect(out.String()).To(Equal(fmt.Sprintf(format, cmd)))
 			},
-			Entry("shell is bash", "bash", "eval $(%s)"),
-			Entry("shell is zsh", "zsh", "eval $(%s)"),
+			Entry("shell is bash", "bash", `eval "$(%s)"`),
+			Entry("shell is zsh", "zsh", `eval "$(%s)"`),
 			Entry("shell is fish", "fish", "eval (%s)"),
 			Entry("shell is powershell", "powershell", "& %s | Invoke-Expression"),
 		)
@@ -88,8 +91,61 @@ var _ = Describe("Env Commands - Template", func() {
 				Expect(t.ExecuteTemplate(out, "usage-hint", metadata)).To(Succeed())
 				Expect(out.String()).To(Equal(fmt.Sprintf(format, cli, commandPath, shell)))
 			},
-			Entry("export environment variables", false, "\n# Run this command to configure %s for your shell:\n# eval $(%s %s)\n"),
-			Entry("unset environment variables", true, "\n# Run this command to reset the %s configuration for your shell:\n# eval $(%s -u %s)\n"),
+			Entry("export environment variables", false, "\n# Run this command to configure %s for your shell:\n# eval \"$(%s %s)\"\n"),
+			Entry("unset environment variables", true, "\n# Run this command to reset the %s configuration for your shell:\n# eval \"$(%s -u %s)\"\n"),
+		)
+
+		DescribeTable("rendering an untrusted notification as one escaped output statement per line",
+			func(shell string, expected string) {
+				tmpl, err := env.NewTemplate(shell, "helpers")
+				Expect(err).NotTo(HaveOccurred())
+
+				metadata["shell"] = shell
+				metadata["cli"] = "test"
+				metadata["unset"] = false
+				metadata["notification"] = "100% %s restricted; $(id) \\n\x1b[31m\nDon't run 'injected'; Write-Output $Env:PATH\n"
+
+				Expect(tmpl.ExecuteTemplate(out, "usage-hint", metadata)).To(Succeed())
+				Expect(out.String()).To(Equal(expected))
+			},
+			Entry("shell is bash", "bash", `printf '%s\n' '100% %s restricted; $(id) \n[31m';
+printf '%s\n' 'Don'"'"'t run '"'"'injected'"'"'; Write-Output $Env:PATH';
+
+# Run this command to configure test for your shell:
+# eval "$(gardenctl provider-env bash)"
+`),
+			Entry("shell is zsh", "zsh", `printf '%s\n' '100% %s restricted; $(id) \n[31m';
+printf '%s\n' 'Don'"'"'t run '"'"'injected'"'"'; Write-Output $Env:PATH';
+
+# Run this command to configure test for your shell:
+# eval "$(gardenctl provider-env zsh)"
+`),
+			Entry("shell is fish", "fish", `printf '%s\n' '100% %s restricted; $(id) \\n[31m';
+printf '%s\n' 'Don'\''t run '\''injected'\''; Write-Output $Env:PATH';
+
+# Run this command to configure test for your shell:
+# eval (gardenctl provider-env fish)
+`),
+			// Invoke-Expression rejects empty lines, so none may be emitted for PowerShell.
+			Entry("shell is powershell", "powershell", `Write-Output '100% %s restricted; $(id) \n[31m';
+Write-Output 'Don''t run ''injected''; Write-Output $Env:PATH';
+# Run this command to configure test for your shell:
+# & gardenctl provider-env powershell | Invoke-Expression
+`),
+		)
+
+		DescribeTable("executing the print-lines template",
+			func(shell string, text string, expected string) {
+				tmpl, err := env.NewTemplate(shell, "helpers")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(tmpl.ExecuteTemplate(out, "print-lines", text)).To(Succeed())
+				Expect(out.String()).To(Equal(expected))
+			},
+			Entry("text is empty", "bash", "", ""),
+			Entry("text has no trailing newline", "bash", "a", "printf '%s\\n' 'a';\n"),
+			Entry("text contains an empty line", "bash", "a\n\nb\n", "printf '%s\\n' 'a';\nprintf '%s\\n' '';\nprintf '%s\\n' 'b';\n"),
+			Entry("text contains an empty line for powershell", "powershell", "a\n\nb\n", "Write-Output 'a';\nWrite-Output '';\nWrite-Output 'b';\n"),
 		)
 	})
 
@@ -97,13 +153,13 @@ var _ = Describe("Env Commands - Template", func() {
 		const exportFormat = `export KUBECONFIG='PLACEHOLDER_FILENAME';
 
 # Run this command to configure kubectl for your shell:
-# eval $(gardenctl kubectl-env PLACEHOLDER_SHELL)
+# eval "$(gardenctl kubectl-env PLACEHOLDER_SHELL)"
 `
 
 		const unsetFormat = `unset KUBECONFIG;
 
 # Run this command to reset the kubectl configuration for your shell:
-# eval $(gardenctl kubectl-env -u PLACEHOLDER_SHELL)
+# eval "$(gardenctl kubectl-env -u PLACEHOLDER_SHELL)"
 `
 
 		pathToKubeconfig := "/path/to/.kube/config"
@@ -146,10 +202,25 @@ export GOOGLE_CREDENTIALS_ACCOUNT=$(gcloud auth list --filter=status:ACTIVE --fo
 rm -f -- 'PLACEHOLDER_CREDENTIALS_FILE';
 rm -f -- 'PLACEHOLDER_PROJECT_ID_FILE';
 rm -f -- 'PLACEHOLDER_REGION_FILE';
-printf 'Run the following command to revoke access credentials:\n$ eval $(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)\n';
+printf '%s\n' 'Run the following command to revoke access credentials:';
+printf '%s\n' '$ eval "$(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)"';
 
 # Run this command to configure gcloud for your shell:
-# eval $(gardenctl provider-env PLACEHOLDER_SHELL)
+# eval "$(gardenctl provider-env PLACEHOLDER_SHELL)"
+`
+
+		const powershellExportFormat = `$Env:CLOUDSDK_CORE_PROJECT = Get-Content -Raw 'PLACEHOLDER_PROJECT_ID_FILE';
+$Env:CLOUDSDK_COMPUTE_REGION = Get-Content -Raw 'PLACEHOLDER_REGION_FILE';
+$Env:CLOUDSDK_CONFIG = 'PLACEHOLDER_CONFIG_DIR';
+gcloud auth login --cred-file 'PLACEHOLDER_CREDENTIALS_FILE';
+$Env:GOOGLE_CREDENTIALS_ACCOUNT = gcloud auth list --filter=status:ACTIVE --format='value(account)';
+Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_CREDENTIALS_FILE';
+Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_PROJECT_ID_FILE';
+Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_REGION_FILE';
+Write-Output 'Run the following command to revoke access credentials:';
+Write-Output '$ & gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL | Invoke-Expression';
+# Run this command to configure gcloud for your shell:
+# & gardenctl provider-env PLACEHOLDER_SHELL | Invoke-Expression
 `
 
 		const unsetFormat = `gcloud auth revoke --verbosity=error -- "$GOOGLE_CREDENTIALS_ACCOUNT";
@@ -159,7 +230,7 @@ unset CLOUDSDK_COMPUTE_REGION;
 unset CLOUDSDK_CONFIG;
 
 # Run this command to reset the gcloud configuration for your shell:
-# eval $(gardenctl provider-env -u PLACEHOLDER_SHELL)
+# eval "$(gardenctl provider-env -u PLACEHOLDER_SHELL)"
 `
 
 		var (
@@ -205,6 +276,49 @@ unset CLOUDSDK_CONFIG;
 			Entry("unset environment variables", true, unsetFormat),
 		)
 
+		Context("when executing the PowerShell template", func() {
+			BeforeEach(func() {
+				shell = "powershell"
+			})
+
+			It("renders the revoke hint with PowerShell-native output", func() {
+				metadata["shell"] = shell
+				metadata["unset"] = false
+
+				Expect(t.ExecuteTemplate(out, shell, data)).To(Succeed())
+				expected := strings.NewReplacer(
+					"PLACEHOLDER_SHELL", shell,
+					"PLACEHOLDER_PROJECT_ID_FILE", projectIDFile,
+					"PLACEHOLDER_REGION_FILE", regionFile,
+					"PLACEHOLDER_CREDENTIALS_FILE", credentialsFile,
+					"PLACEHOLDER_CONFIG_DIR", configDir,
+				).Replace(powershellExportFormat)
+				Expect(out.String()).To(Equal(expected))
+			})
+		})
+
+		DescribeTable("escaping untrusted target flags in the revoke hint",
+			func(shell string, expected string) {
+				tmpl, err := env.NewTemplate(shell, "helpers", providerType)
+				Expect(err).NotTo(HaveOccurred())
+
+				metadata["shell"] = shell
+				metadata["targetFlags"] = "--garden g'; touch pwned; '%s --project project --shoot shoot"
+
+				Expect(tmpl.ExecuteTemplate(out, "revoke-hint", metadata)).To(Succeed())
+				Expect(out.String()).To(Equal(expected))
+			},
+			Entry("shell is bash", "bash", `printf '%s\n' 'Run the following command to revoke access credentials:';
+printf '%s\n' '$ eval "$(gardenctl provider-env --garden g'"'"'; touch pwned; '"'"'%s --project project --shoot shoot -u bash)"';
+`),
+			Entry("shell is fish", "fish", `printf '%s\n' 'Run the following command to revoke access credentials:';
+printf '%s\n' '$ eval (gardenctl provider-env --garden g'\''; touch pwned; '\''%s --project project --shoot shoot -u fish)';
+`),
+			Entry("shell is powershell", "powershell", `Write-Output 'Run the following command to revoke access credentials:';
+Write-Output '$ & gardenctl provider-env --garden g''; touch pwned; ''%s --project project --shoot shoot -u powershell | Invoke-Expression';
+`),
+		)
+
 		Context("with workload identity credentials", func() {
 			const exportFormatWorkloadIdentity = `export CLOUDSDK_CORE_PROJECT=$(< 'PLACEHOLDER_PROJECT_ID_FILE');
 export CLOUDSDK_COMPUTE_REGION=$(< 'PLACEHOLDER_REGION_FILE');
@@ -217,10 +331,11 @@ rm -f -- 'PLACEHOLDER_PROJECT_ID_FILE';
 rm -f -- 'PLACEHOLDER_REGION_FILE';
 rm -f -- 'PLACEHOLDER_SUBJECT_FILE';
 rm -f -- 'PLACEHOLDER_TOKEN_FILE';
-printf 'Run the following command to revoke access credentials:\n$ eval $(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)\n';
+printf '%s\n' 'Run the following command to revoke access credentials:';
+printf '%s\n' '$ eval "$(gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL)"';
 
 # Run this command to configure gcloud for your shell:
-# eval $(gardenctl provider-env PLACEHOLDER_SHELL)
+# eval "$(gardenctl provider-env PLACEHOLDER_SHELL)"
 `
 
 			var (
@@ -269,7 +384,8 @@ Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_CLIENT_ID_FILE';
 Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_CLIENT_SECRET_FILE';
 Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_SUBSCRIPTION_ID_FILE';
 Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_TENANT_ID_FILE';
-printf 'Run the following command to log out and remove access to Azure subscriptions:\n$ & gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL | Invoke-Expression\n';
+Write-Output 'Run the following command to log out and remove access to Azure subscriptions:';
+Write-Output '$ & gardenctl provider-env --garden garden --project project --shoot shoot -u PLACEHOLDER_SHELL | Invoke-Expression';
 # Run this command to configure az for your shell:
 # & gardenctl provider-env PLACEHOLDER_SHELL | Invoke-Expression
 `
@@ -310,7 +426,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 			data["configDir"] = configDir
 		})
 
-		DescribeTable("executing the bash template",
+		DescribeTable("executing the PowerShell template",
 			func(unset bool, format string) {
 				metadata["shell"] = shell
 				metadata["unset"] = unset
@@ -367,7 +483,7 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 			const exportFormat = `export TEST_TOKEN='PLACEHOLDER_TEST_TOKEN';
 
 # Run this command to configure test for your shell:
-# eval $(gardenctl provider-env PLACEHOLDER_SHELL)
+# eval "$(gardenctl provider-env PLACEHOLDER_SHELL)"
 `
 
 			var token string

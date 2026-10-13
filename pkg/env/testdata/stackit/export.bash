@@ -25,4 +25,4 @@ rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-tenantName.txt'
 rm -f -- 'PLACEHOLDER_SESSION_DIR/provider-env/.PLACEHOLDER_HASH-username.txt';
 
 # Run this command to configure stackit for your shell:
-# eval $(gardenctl provider-env bash)
+# eval "$(gardenctl provider-env bash)"

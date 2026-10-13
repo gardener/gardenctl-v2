@@ -223,6 +223,48 @@ var _ = Describe("Env Commands - Options", func() {
 			})
 		})
 
+		DescribeTable("rendering access restriction confirmations as one escaped output statement per line",
+			func(shell string, statementPattern string, escapedHeader string, confirmCommand string) {
+				tmpl, err := env.NewTemplate(shell, "helpers")
+				Expect(err).NotTo(HaveOccurred())
+
+				options.Shell = shell
+				options.Template = tmpl
+				options.Target = target.NewTarget("garden", "project", "", "shoot")
+
+				messages := ac.AccessRestrictionMessages{{
+					Header: "Restricted'; Write-Output $Env:PATH; '",
+					Items:  []string{"100% %s access\n$(id)"},
+				}}
+
+				aborted, err := options.RequireAccessRestrictionConfirmation(messages, true)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(aborted).To(BeTrue())
+				Expect(options.String()).To(ContainSubstring(escapedHeader))
+				Expect(options.String()).To(ContainSubstring("100% %s access"))
+				Expect(options.String()).To(ContainSubstring(confirmCommand))
+
+				for _, line := range strings.Split(strings.TrimSuffix(options.String(), "\n"), "\n") {
+					Expect(line).To(MatchRegexp(statementPattern))
+				}
+			},
+			Entry("shell is bash", "bash",
+				`^printf '%s\\n' '.*';$`,
+				`'│ Restricted'"'"'; Write-Output $Env:PATH; '"'"'`,
+				`eval "$(gardenctl provider-env --garden garden --project project --shoot shoot --confirm-access-restriction bash)"`,
+			),
+			Entry("shell is fish", "fish",
+				`^printf '%s\\n' '.*';$`,
+				`'│ Restricted'\''; Write-Output $Env:PATH; '\''`,
+				`eval (gardenctl provider-env --garden garden --project project --shoot shoot --confirm-access-restriction fish)`,
+			),
+			Entry("shell is powershell", "powershell",
+				`^Write-Output '.*';$`,
+				`'│ Restricted''; Write-Output $Env:PATH; ''`,
+				`& gardenctl provider-env --garden garden --project project --shoot shoot --confirm-access-restriction powershell | Invoke-Expression`,
+			),
+		)
+
 		Describe("running the provider-env command with the given options", func() {
 			var (
 				manager                *targetmocks.MockManager
@@ -380,8 +422,12 @@ var _ = Describe("Env Commands - Options", func() {
 					})
 
 					It("should print how to reset configuration for powershell", func() {
+						tmpl, err := env.NewTemplate("powershell", "helpers")
+						Expect(err).NotTo(HaveOccurred())
+
 						options.Unset = true
 						options.Shell = "powershell"
+						options.Template = tmpl
 						Expect(options.Run(factory)).To(Succeed())
 						Expect(options.String()).To(Equal(readTestFile("gcp/unset.pwsh")))
 					})
@@ -881,6 +927,11 @@ var _ = Describe("Env Commands - Options", func() {
 					BeforeEach(func() {
 						unset = true
 						shell = "powershell"
+
+						var err error
+
+						baseTemplate, err = env.NewTemplate(shell, "helpers")
+						Expect(err).NotTo(HaveOccurred())
 
 						// Initialize options with Complete() to set up default patterns
 						factory := utilmocks.NewMockFactory(ctrl)
@@ -1405,6 +1456,11 @@ var _ = Describe("Env Commands - Options", func() {
 						shell = "fish"
 						providerType = "azure"
 
+						var err error
+
+						baseTemplate, err = env.NewTemplate(shell, "helpers")
+						Expect(err).NotTo(HaveOccurred())
+
 						factory := utilmocks.NewMockFactory(ctrl)
 						manager := targetmocks.NewMockManager(ctrl)
 
@@ -1696,7 +1752,7 @@ var _ = Describe("Env Commands - Options", func() {
 					Expect(match).NotTo(BeNil())
 					Expect(len(match)).To(Equal(3))
 					Expect(match[1]).To(Equal(fmt.Sprintf("# Run this command to configure %s for your shell:", cli)))
-					Expect(match[2]).To(Equal(fmt.Sprintf("# eval $(%s %s)", options.CmdPath, shell)))
+					Expect(match[2]).To(Equal(fmt.Sprintf(`# eval "$(%s %s)"`, options.CmdPath, shell)))
 				})
 			})
 
@@ -1713,7 +1769,7 @@ var _ = Describe("Env Commands - Options", func() {
 					Expect(match).NotTo(BeNil())
 					Expect(len(match)).To(Equal(3))
 					Expect(match[1]).To(Equal(fmt.Sprintf("# Run this command to reset the %s configuration for your shell:", cli)))
-					Expect(match[2]).To(Equal(fmt.Sprintf("# eval $(%s -u %s)", options.CmdPath, shell)))
+					Expect(match[2]).To(Equal(fmt.Sprintf(`# eval "$(%s -u %s)"`, options.CmdPath, shell)))
 				})
 			})
 		})
