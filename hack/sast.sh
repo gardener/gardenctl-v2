@@ -6,6 +6,12 @@
 
 set -e
 
+# Only allow execution via make (ensures correct versions from tools/bin).
+if [ "$INVOKED_FROM_MAKE" != "true" ]; then
+  echo "Please run this script by execuing 'make sast' or 'make sast-report'"
+  exit 1
+fi
+
 root_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
 
 gosec_report="false"

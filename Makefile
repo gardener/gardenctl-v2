@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 REPO_ROOT      := $(shell git rev-parse --show-toplevel)
+export INVOKED_FROM_MAKE=true
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -64,7 +65,7 @@ check-generate: ## Verify if code generation is up-to-date by running generate a
 	@hack/check-generate.sh $(REPO_ROOT)
 
 .PHONY: lint
-lint: ## Run golangci-lint against code.
+lint: $(GOLANGCI_LINT) ## Run golangci-lint against code.
 	@./hack/golangci-lint.sh
 
 .PHONY: sast
