@@ -7,6 +7,7 @@
 set -o errexit
 set -o pipefail
 
+# Only allow execution via make (ensures correct versions from tools/bin).
 if [ "$INVOKED_FROM_MAKE" != "true" ]; then
   echo "Please run this script by execuing 'make lint'"
   exit 1
