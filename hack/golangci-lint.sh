@@ -7,7 +7,10 @@
 set -o errexit
 set -o pipefail
 
-source "$(dirname "${BASH_SOURCE[0]}")/setup-tools-env.sh"
+if [ "$INVOKED_FROM_MAKE" != "true" ]; then
+  echo "Please run this script by execuing 'make lint'"
+  exit 1
+fi
 
 if [ -z "$SOURCE_PATH" ]; then
   SOURCE_PATH="$(dirname "$0")/.."

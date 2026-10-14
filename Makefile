@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 REPO_ROOT      := $(shell git rev-parse --show-toplevel)
+export INVOKED_FROM_MAKE=true
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
