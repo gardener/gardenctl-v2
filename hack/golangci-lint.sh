@@ -7,13 +7,13 @@
 set -o errexit
 set -o pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/setup-tools-env.sh"
+
 if [ -z "$SOURCE_PATH" ]; then
   SOURCE_PATH="$(dirname "$0")/.."
 fi
 export SOURCE_PATH="$(readlink -f "$SOURCE_PATH")"
 
-# renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION=v2.12.2
 
 GOLANGCI_LINT_TIMEOUT="${GOLANGCI_LINT_TIMEOUT:-5m}"
 GOLANGCI_LINT_VERBOSE="${GOLANGCI_LINT_VERBOSE:-0}"

@@ -6,6 +6,8 @@
 
 set -e
 
+source "$(dirname "${BASH_SOURCE[0]}")/setup-tools-env.sh"
+
 root_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
 
 gosec_report="false"
