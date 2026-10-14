@@ -64,7 +64,7 @@ check-generate: ## Verify if code generation is up-to-date by running generate a
 	@hack/check-generate.sh $(REPO_ROOT)
 
 .PHONY: lint
-lint: ## Run golangci-lint against code.
+lint: $(GOLANGCI_LINT) ## Run golangci-lint against code.
 	@./hack/golangci-lint.sh
 
 .PHONY: sast
