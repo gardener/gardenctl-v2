@@ -15,7 +15,7 @@ MOCKGEN                    := $(TOOLS_BIN_DIR)/mockgen
 # renovate: datasource=github-releases depName=securego/gosec
 GOSEC_VERSION ?= v2.29.0
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION ?= v2.12.2
+GOLANGCI_LINT_VERSION ?= v2.14.0
 
 export TOOLS_BIN_DIR := $(TOOLS_BIN_DIR)
 export PATH := $(abspath $(TOOLS_BIN_DIR)):$(PATH)
