@@ -1,5 +1,9 @@
 # Documentation Index
 
+## Getting Started
+
+* [Installation, prerequisites, and Windows setup](../README.md#installation)
+
 ## Concepts
 
 * [Interaction with other CLIs](concepts/cli_interaction.md)
@@ -13,4 +17,3 @@
 ### Configuration
 * [Configure Access Restrictions](config/access-restrictions.md)
 * [Kubeconfig Access Level](config/access-level.md)
-

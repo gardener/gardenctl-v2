@@ -1,4 +1,8 @@
 # Targeting
+
+> [!IMPORTANT]
+> Before targeting a cluster, install `kubectl`, `kubelogin`, and `gardenlogin` as described in the [prerequisites](../../README.md#prerequisites). On Windows, use WSL or PowerShell; Windows Command Prompt (`cmd.exe`) is not supported.
+
 You can set a target to use it in subsequent commands.
 
 The target has a hierarchical structure that looks like this:
@@ -38,6 +42,24 @@ gardenctl target --garden landscape-dev --project my-project --shoot my-shoot
 # target control plane
 gardenctl target --garden landscape-dev --project my-project --shoot my-shoot --control-plane
 ```
+
+## Windows symbolic links
+
+By default, targeting creates a symbolic link for the current kubeconfig. Native Windows users must enable Developer Mode, run PowerShell as Administrator, or disable kubeconfig symlinks; otherwise `gardenctl target` fails when Windows denies creation of the link.
+
+To disable symlinks persistently, add this setting to `~/.garden/gardenctl-v2.yaml`:
+
+```yaml
+linkKubeconfig: false
+```
+
+Alternatively, set `$Env:GCTL_LINK_KUBECONFIG = "false"` for the current PowerShell session. With symlinks disabled, update `KUBECONFIG` after changing the target:
+
+```powershell
+& gardenctl kubectl-env powershell | Invoke-Expression
+```
+
+See the complete [Windows setup](../../README.md#windows) for the supported environments and required tools.
 
 The target flags can be used with other commands as well. If used with other commands than target, they will
 not modify the current target though. In these cases the flags describe the target selector for only that
