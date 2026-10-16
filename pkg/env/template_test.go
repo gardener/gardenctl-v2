@@ -376,9 +376,9 @@ printf '%s\n' '$ eval "$(gardenctl provider-env --garden garden --project projec
 $Env:AZURE_TENANT_ID = Get-Content -Raw 'PLACEHOLDER_TENANT_ID_FILE';
 $Env:AZURE_SUBSCRIPTION_ID = Get-Content -Raw 'PLACEHOLDER_SUBSCRIPTION_ID_FILE';
 $Env:AZURE_CONFIG_DIR = 'PLACEHOLDER_CONFIG_DIR';
-$AZURE_CLIENT_SECRET = Get-Content -Raw 'PLACEHOLDER_CLIENT_SECRET_FILE';
-az login --service-principal --username "$Env:AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$Env:AZURE_TENANT_ID";
-Remove-Variable -Name AZURE_CLIENT_SECRET;
+$AZURE_CLIENT_SECRET_FILE_ARGUMENT = '@' + 'PLACEHOLDER_CLIENT_SECRET_FILE';
+az login --service-principal --username "$Env:AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET_FILE_ARGUMENT" --tenant "$Env:AZURE_TENANT_ID";
+Remove-Variable -Name AZURE_CLIENT_SECRET_FILE_ARGUMENT;
 az account set --subscription "$Env:AZURE_SUBSCRIPTION_ID";
 Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_CLIENT_ID_FILE';
 Remove-Item -Force -ErrorAction SilentlyContinue 'PLACEHOLDER_CLIENT_SECRET_FILE';
@@ -444,6 +444,51 @@ Remove-Item -ErrorAction SilentlyContinue Env:\AZURE_CONFIG_DIR;
 			},
 			Entry("export environment variables", false, exportFormat),
 			Entry("unset environment variables", true, unsetFormat),
+		)
+
+		DescribeTable("passing Azure login credentials by file",
+			func(shell, credentialKind, fileKey, argument string) {
+				const credentialFile = "/tmp/credential.txt"
+
+				tmpl, err := env.NewTemplate(shell, "helpers", providerType)
+				Expect(err).NotTo(HaveOccurred())
+
+				metadata["shell"] = shell
+				metadata["unset"] = false
+				metadata["credentialKind"] = credentialKind
+				dataFiles := map[string]interface{}{
+					"clientID":       clientIDFile,
+					"tenantID":       tenantIDFile,
+					"subscriptionID": subscriptionIDFile,
+					fileKey:          credentialFile,
+				}
+				data["dataFiles"] = dataFiles
+
+				Expect(tmpl.ExecuteTemplate(out, shell, data)).To(Succeed())
+
+				if shell == "powershell" {
+					variable := "AZURE_CLIENT_SECRET_FILE_ARGUMENT"
+					if credentialKind == "WorkloadIdentity" {
+						variable = "AZURE_FEDERATED_TOKEN_FILE_ARGUMENT"
+					}
+
+					Expect(out.String()).To(ContainSubstring("$" + variable + " = '@' + '/tmp/credential.txt';"))
+					Expect(out.String()).To(ContainSubstring(argument + ` "$` + variable + `"`))
+					Expect(out.String()).To(ContainSubstring("Remove-Variable -Name " + variable + ";"))
+
+					return
+				}
+
+				Expect(out.String()).To(ContainSubstring(argument + " @'/tmp/credential.txt'"))
+			},
+			Entry("client secret in PowerShell", "powershell", "Secret", "clientSecret", "--password"),
+			Entry("federated token in PowerShell", "powershell", "WorkloadIdentity", "token", "--federated-token"),
+			Entry("client secret in Bash", "bash", "Secret", "clientSecret", "--password"),
+			Entry("federated token in Bash", "bash", "WorkloadIdentity", "token", "--federated-token"),
+			Entry("client secret in Zsh", "zsh", "Secret", "clientSecret", "--password"),
+			Entry("federated token in Zsh", "zsh", "WorkloadIdentity", "token", "--federated-token"),
+			Entry("client secret in Fish", "fish", "Secret", "clientSecret", "--password"),
+			Entry("federated token in Fish", "fish", "WorkloadIdentity", "token", "--federated-token"),
 		)
 	})
 
