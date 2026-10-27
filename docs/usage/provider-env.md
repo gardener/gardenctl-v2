@@ -24,6 +24,21 @@ The generated script:
 
 Ensure the respective provider CLI is installed on your system. See the `gardenctl provider-env` [help](https://github.com/gardener/gardenctl-v2/blob/master/docs/help/gardenctl_provider-env.md#synopsis) for links.
 
+## OpenStack on Windows
+
+Before using `provider-env` for OpenStack on Windows:
+
+- use WSL or PowerShell; Windows Command Prompt (`cmd.exe`) is not supported;
+- install `kubectl`, `kubelogin`, `gardenlogin`, and the OpenStack CLI in the same environment as `gardenctl`; and
+- enable Windows Developer Mode, run PowerShell as Administrator, or disable kubeconfig symlinks. Without one of these options, `gardenctl target` fails when Windows denies creation of the symbolic link.
+
+See the [Windows setup](../../README.md#windows) for configuration details. If you set `linkKubeconfig: false`, update `KUBECONFIG` after targeting and then configure the OpenStack environment:
+
+```powershell
+& gardenctl kubectl-env powershell | Invoke-Expression
+& gardenctl provider-env powershell | Invoke-Expression
+```
+
 ## Overriding templates or adding custom providers
 
 To override templates or add support for an out-of-tree provider, place a template file under the `templates` directory in your gardenctl home (`$GCTL_HOME` or `$HOME/.garden`). Use existing templates under `pkg/env/templates/` as reference.
