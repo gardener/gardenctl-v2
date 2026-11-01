@@ -7,7 +7,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/fatih/color v1.19.0
 	github.com/gardener/gardener v1.154.0
-	github.com/gardener/gardener-extension-provider-openstack v1.58.0
+	github.com/gardener/gardener-extension-provider-openstack v1.59.1
 	github.com/gardener/gardener/pkg/apis v1.154.0
 	github.com/gardener/machine-controller-manager v0.63.1
 	github.com/go-jose/go-jose/v4 v4.1.6

@@ -185,8 +185,8 @@ github.com/gardener/etcd-druid/api v0.39.0 h1:/EOXls5u2l11XL6Ejdc9l+bSGBUEDdENPV
 github.com/gardener/etcd-druid/api v0.39.0/go.mod h1:HsqEM/h4XuxPC4cFDm20V9TPAUqv0tjtnzds/nZ5p7Y=
 github.com/gardener/gardener v1.154.0 h1:JydoG2652n9za9DNwXkjVX80qsvdGjMAbIRr0bzWmoE=
 github.com/gardener/gardener v1.154.0/go.mod h1:IeWy7bwQ388HkfHCZRKc6Mnt41A4lngKxoqQJk/GFxo=
-github.com/gardener/gardener-extension-provider-openstack v1.58.0 h1:vvGV8kueb6P3OkhXND/NytysMFaCJWFlaEATrsMOyYU=
-github.com/gardener/gardener-extension-provider-openstack v1.58.0/go.mod h1:Gbj+X7VvsmJjzH2U0UIzetkK2NxC+s3CSxvmIVyYJIw=
+github.com/gardener/gardener-extension-provider-openstack v1.59.1 h1:AT63iFoF3fnjfLnVvSZ3zRUzrwBBINdS2NrV2ZtCjCE=
+github.com/gardener/gardener-extension-provider-openstack v1.59.1/go.mod h1:PKR9pTtdDRBWwdGEjEs1wsOoXw0TMvDoCNpGwHQBe9c=
 github.com/gardener/gardener/pkg/apis v1.154.0 h1:L+oiOLNa0oCTgZK2lWbp/o4re6lgNykRaepX/seTebo=
 github.com/gardener/gardener/pkg/apis v1.154.0/go.mod h1:nyhCMuYjnF14E79VG8yRJGwfUO0UeJMC0iZRSdMUhaU=
 github.com/gardener/machine-controller-manager v0.63.1 h1:OUlDDARMAqwIH2zyEvMmGTFqc/VgFc0bH1LskhLoGk8=
