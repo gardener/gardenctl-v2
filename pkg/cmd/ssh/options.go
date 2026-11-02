@@ -314,7 +314,7 @@ func (o *SSHOptions) AddFlags(flagSet *pflag.FlagSet) {
 	flagSet.StringVar(&o.BastionName, "bastion-name", o.BastionName, "Name of the bastion. If a bastion with this name doesn't exist, it will be created. If it does exist, the provided public SSH key must match the one used during the bastion's creation.")
 	flagSet.StringVar(&o.BastionHost, "bastion-host", o.BastionHost, "Override the hostname or IP address of the bastion used for the SSH client command. If not provided, the address will be automatically determined.")
 	flagSet.StringVar(&o.BastionPort, "bastion-port", o.BastionPort, "SSH port of the bastion used for the SSH client command. Defaults to port 22")
-	flagSet.StringSliceVar(&o.BastionUserKnownHostsFiles, "bastion-user-known-hosts-file", o.BastionUserKnownHostsFiles, "Path to a custom known hosts file for verifying remote hosts' public keys during SSH connection to the bastion. If not provided, defaults to <temp_dir>/garden/cache/<bastion_uid>/.ssh/known_hosts")
+	flagSet.StringSliceVar(&o.BastionUserKnownHostsFiles, "bastion-user-known-hosts-file", o.BastionUserKnownHostsFiles, "Path to a custom known hosts file for verifying remote hosts' public keys during SSH connection to the bastion. If not provided, defaults to <temp_dir>/garden-<uid>/cache/<bastion_uid>/.ssh/known_hosts (<temp_dir>\\garden\\cache\\<bastion_uid>\\.ssh\\known_hosts on Windows)")
 	flagSet.Var(&o.BastionStrictHostKeyChecking, "bastion-strict-host-key-checking", "Specifies how the SSH client performs host key checking for the bastion host. Valid options are 'yes', 'no', or 'ask'.")
 	flagSet.StringSliceVar(&o.NodeUserKnownHostsFiles, "node-user-known-hosts-file", o.NodeUserKnownHostsFiles, "Path to a custom known hosts file for verifying remote hosts' public keys during SSH connection to the shoot node. If not provided, defaults to <garden_home_dir>/cache/<shoot_uid>/.ssh/known_hosts.")
 	flagSet.Var(&o.NodeStrictHostKeyChecking, "node-strict-host-key-checking", "Specifies how the SSH client performs host key checking for the shoot node. Valid options are 'yes', 'no', or 'ask'.")
@@ -848,7 +848,10 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		// short-lived and become irrelevant once the bastion is terminated.
 		// Additionally, since bastion public IPs can be reused, storing keys separately
 		// prevents unnecessary host key warnings.
-		tempDir := f.GardenTempDir()
+		tempDir, err := util.EnsurePrivateDir(f.GardenTempDir())
+		if err != nil {
+			return err
+		}
 
 		knownHostsFile, err := normalizeKnownHostsFile(filepath.Join(tempDir, "cache", string(bastion.UID), ".ssh", "known_hosts"))
 		if err != nil {

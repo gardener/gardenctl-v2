@@ -42,7 +42,8 @@ type Factory interface {
 	Clock() Clock
 	// GardenHomeDir returns the user's gardenctl configuration directory (e.g., ~/.garden), where persistent configuration files like gardenctl-v2.yaml are stored.
 	GardenHomeDir() string
-	// GardenTempDir returns the base directory for temporary data (e.g., /tmp/garden), including session directories and SSH known hosts files.
+	// GardenTempDir returns the base directory for temporary data (e.g., /tmp/garden-1000), including session directories and SSH known hosts files.
+	// Callers must pass it to EnsurePrivateDir and use the returned path.
 	GardenTempDir() string
 	// GetSessionID returns the session ID for the current shell session.
 	// The session ID is derived from the GCTL_SESSION_ID environment variable,
@@ -92,8 +93,18 @@ var _ Factory = &FactoryImpl{}
 func NewFactoryImpl() *FactoryImpl {
 	return &FactoryImpl{
 		targetFlags:         target.NewTargetFlags("", "", "", "", false),
-		GardenTempDirectory: filepath.Join(os.TempDir(), "garden"),
+		GardenTempDirectory: DefaultGardenTempDir(),
 	}
+}
+
+// DefaultGardenTempDir returns the per-user base directory for temporary data, e.g. /tmp/garden-1000.
+// On Windows, where the temporary directory is already per user, it returns <temp>\garden.
+func DefaultGardenTempDir() string {
+	if uid := os.Geteuid(); uid >= 0 {
+		return filepath.Join(os.TempDir(), fmt.Sprintf("garden-%d", uid))
+	}
+
+	return filepath.Join(os.TempDir(), "garden")
 }
 
 func (f *FactoryImpl) Context() context.Context {
@@ -111,25 +122,12 @@ func (f *FactoryImpl) Manager() (target.Manager, error) {
 		return nil, err
 	}
 
-	sessionsDirectory := filepath.Join(f.GardenTempDir(), "sessions")
-
-	err = os.MkdirAll(sessionsDirectory, 0o700)
+	tempDir, err := EnsurePrivateDir(f.GardenTempDir())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create sessions directory: %w", err)
+		return nil, err
 	}
 
-	sessionDirectory := filepath.Join(sessionsDirectory, sid)
-	// Do not create sessionDirectory (if it does not exist) before the migration.
-	// Creating it prematurely will cause the migration (moving the folder) to fail.
-
-	// Migration logic
-	oldSessionDirectory := filepath.Join(os.TempDir(), "garden", sid)
-	if _, err := os.Stat(oldSessionDirectory); err == nil {
-		err = os.Rename(oldSessionDirectory, sessionDirectory)
-		if err != nil {
-			return nil, fmt.Errorf("failed to migrate session directory: %w", err)
-		}
-	}
+	sessionDirectory := filepath.Join(tempDir, "sessions", sid)
 
 	err = os.MkdirAll(sessionDirectory, 0o700)
 	if err != nil {

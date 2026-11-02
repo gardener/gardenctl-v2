@@ -367,6 +367,9 @@ var _ = Describe("SSH Command", func() {
 		gardenTempDir, err = os.MkdirTemp("", "garden-temp-*")
 		Expect(err).ToNot(HaveOccurred())
 
+		gardenTempDir, err = filepath.EvalSymlinks(gardenTempDir)
+		Expect(err).ToNot(HaveOccurred())
+
 		factory.GardenTempDirectory = gardenTempDir
 	})
 

@@ -46,6 +46,7 @@ var _ = Describe("Gardenctl command", func() {
 
 		BeforeEach(func() {
 			factory = util.NewFactoryImpl()
+			factory.GardenTempDirectory = gardenTempDir
 		})
 
 		Context("when running the completion command", func() {

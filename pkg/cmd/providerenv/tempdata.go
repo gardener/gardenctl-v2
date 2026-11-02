@@ -107,8 +107,8 @@ func (t *TempDataWriter) WriteField(field string, value string) (string, error) 
 	filepath := filepath.Join(t.dataDir, filename)
 
 	// Write file with restrictive permissions (owner read/write only)
-	// This will overwrite any existing file from a previous run
-	if err := os.WriteFile(filepath, []byte(value), 0o600); err != nil {
+	// This will replace any existing file from a previous run
+	if err := writePrivateFile(filepath, []byte(value)); err != nil {
 		return "", fmt.Errorf("failed to write field %q: %w", field, err)
 	}
 
