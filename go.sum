@@ -187,8 +187,8 @@ github.com/gardener/gardener v1.154.0 h1:JydoG2652n9za9DNwXkjVX80qsvdGjMAbIRr0bz
 github.com/gardener/gardener v1.154.0/go.mod h1:IeWy7bwQ388HkfHCZRKc6Mnt41A4lngKxoqQJk/GFxo=
 github.com/gardener/gardener-extension-provider-openstack v1.59.1 h1:AT63iFoF3fnjfLnVvSZ3zRUzrwBBINdS2NrV2ZtCjCE=
 github.com/gardener/gardener-extension-provider-openstack v1.59.1/go.mod h1:PKR9pTtdDRBWwdGEjEs1wsOoXw0TMvDoCNpGwHQBe9c=
-github.com/gardener/gardener/pkg/apis v1.154.0 h1:L+oiOLNa0oCTgZK2lWbp/o4re6lgNykRaepX/seTebo=
-github.com/gardener/gardener/pkg/apis v1.154.0/go.mod h1:nyhCMuYjnF14E79VG8yRJGwfUO0UeJMC0iZRSdMUhaU=
+github.com/gardener/gardener/pkg/apis v1.154.1 h1:TqjGF11KR0zlM0RIkCWebEMVDbT4RGhzqM4UgLHHWTQ=
+github.com/gardener/gardener/pkg/apis v1.154.1/go.mod h1:nyhCMuYjnF14E79VG8yRJGwfUO0UeJMC0iZRSdMUhaU=
 github.com/gardener/machine-controller-manager v0.63.1 h1:OUlDDARMAqwIH2zyEvMmGTFqc/VgFc0bH1LskhLoGk8=
 github.com/gardener/machine-controller-manager v0.63.1/go.mod h1:MU2Cyrwvh+jYYvRUGxUMx8LNmFUvGog01YHlpsCiRrM=
 github.com/gardener/pvc-autoscaler v0.3.1 h1:XMapVWBh0wrJk9Ac8WCIj6Ze7RH0FB1gP8q9XbpcyxI=
