@@ -160,6 +160,10 @@ var _ = Describe("TempDataWriter", func() {
 		})
 
 		It("should replace a pre-existing file instead of writing into it", func() {
+			if runtime.GOOS == "windows" {
+				Skip("an open file cannot be replaced and permission bits are not reported on Windows")
+			}
+
 			path := filepath.Join(writer.DataDirectory(), "."+writer.GetPrefix()+"-secret.txt")
 			Expect(os.MkdirAll(writer.DataDirectory(), 0o700)).To(Succeed())
 			Expect(os.WriteFile(path, []byte("planted"), 0o666)).To(Succeed())
