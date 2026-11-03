@@ -91,15 +91,15 @@ func DefaultSTACKITAllowedPatterns() []allowpattern.Pattern {
 		},
 		{
 			Field:      "keyType",
-			RegexValue: ptr.To("^USER_MANAGED|SYSTEM_MANAGED$"),
+			RegexValue: ptr.To("^(USER_MANAGED|SYSTEM_MANAGED)$"),
 		},
 		{
 			Field:      "keyOrigin",
-			RegexValue: ptr.To("^USER_PROVIDED|GENERATED$"),
+			RegexValue: ptr.To("^(USER_PROVIDED|GENERATED)$"),
 		},
 		{
 			Field:      "keyAlgorithm",
-			RegexValue: ptr.To("^RSA_2048|RSA_4096$"),
+			RegexValue: ptr.To("^(RSA_2048|RSA_4096)$"),
 		},
 		{
 			Field:      "iss",
