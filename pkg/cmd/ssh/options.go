@@ -76,6 +76,12 @@ const (
 // digits, underscores, or hyphens.
 var allowedUsernameRegex = regexp.MustCompile(`^[a-z_][a-z0-9_-]*$`)
 
+// allowedKnownHostsFileRegex defines the allowed known hosts file pattern after normalization to slashes.
+// Paths are passed to OpenSSH without quoting, because quoting, escaping and expansion of the
+// UserKnownHostsFile value differ between OpenSSH releases and between the shells that may run the
+// ProxyCommand. Only characters that all of them interpret literally are allowed.
+var allowedKnownHostsFileRegex = regexp.MustCompile(`^(?:[A-Za-z]:)?/[A-Za-z0-9._/-]*$`)
+
 // wrappers used for unit tests only.
 var (
 	// keepAliveInterval is the interval in which bastions should be given the
@@ -526,6 +532,20 @@ func (o *SSHOptions) Validate() error {
 		}
 	}
 
+	bastionUserKnownHostsFiles, err := normalizeKnownHostsFiles(o.BastionUserKnownHostsFiles)
+	if err != nil {
+		return fmt.Errorf("invalid bastion-user-known-hosts-file: %w", err)
+	}
+
+	o.BastionUserKnownHostsFiles = bastionUserKnownHostsFiles
+
+	nodeUserKnownHostsFiles, err := normalizeKnownHostsFiles(o.NodeUserKnownHostsFiles)
+	if err != nil {
+		return fmt.Errorf("invalid node-user-known-hosts-file: %w", err)
+	}
+
+	o.NodeUserKnownHostsFiles = nodeUserKnownHostsFiles
+
 	content, err := os.ReadFile(o.SSHPublicKeyFile.String())
 	if err != nil {
 		return fmt.Errorf("invalid SSH public key file: %w", err)
@@ -551,6 +571,36 @@ func (o *SSHOptions) Validate() error {
 	}
 
 	return nil
+}
+
+// normalizeKnownHostsFile returns the known hosts file path in the form that is used for host key
+// verification and passed to OpenSSH. A path that OpenSSH might resolve differently is rejected.
+func normalizeKnownHostsFile(file string) (string, error) {
+	if !filepath.IsAbs(file) {
+		return "", fmt.Errorf("known hosts file %q must be an absolute path", file)
+	}
+
+	normalized := filepath.ToSlash(file)
+	if !allowedKnownHostsFileRegex.MatchString(normalized) {
+		return "", fmt.Errorf("known hosts file %q must only contain ASCII letters, digits, '.', '_', '-' and path separators", file)
+	}
+
+	return normalized, nil
+}
+
+func normalizeKnownHostsFiles(files []string) ([]string, error) {
+	var normalized []string
+
+	for _, file := range files {
+		n, err := normalizeKnownHostsFile(file)
+		if err != nil {
+			return nil, err
+		}
+
+		normalized = append(normalized, n)
+	}
+
+	return normalized, nil
 }
 
 // validateHost validates that the given value is either a sane IP address or a
@@ -799,7 +849,11 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		// Additionally, since bastion public IPs can be reused, storing keys separately
 		// prevents unnecessary host key warnings.
 		tempDir := f.GardenTempDir()
-		knownHostsFile := filepath.Join(tempDir, "cache", string(bastion.UID), ".ssh", "known_hosts")
+
+		knownHostsFile, err := normalizeKnownHostsFile(filepath.Join(tempDir, "cache", string(bastion.UID), ".ssh", "known_hosts"))
+		if err != nil {
+			return fmt.Errorf("invalid default known hosts file for bastion, use --bastion-user-known-hosts-file to specify one: %w", err)
+		}
 
 		if err := os.MkdirAll(filepath.Dir(knownHostsFile), 0o700); err != nil {
 			return fmt.Errorf("failed to create directory for bastion known hosts file: %w", err)
@@ -815,7 +869,11 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		// because shoot nodes are typically longer-lived than bastions. This ensures that
 		// node keys are preserved across system restarts, avoiding repeated verification.
 		gardenHomeDir := f.GardenHomeDir()
-		knownHostsFile := filepath.Join(gardenHomeDir, "cache", string(shoot.UID), ".ssh", "known_hosts")
+
+		knownHostsFile, err := normalizeKnownHostsFile(filepath.Join(gardenHomeDir, "cache", string(shoot.UID), ".ssh", "known_hosts"))
+		if err != nil {
+			return fmt.Errorf("invalid default known hosts file for shoot node, use --node-user-known-hosts-file to specify one: %w", err)
+		}
 
 		if err := os.MkdirAll(filepath.Dir(knownHostsFile), 0o700); err != nil {
 			return fmt.Errorf("failed to create directory for node known hosts file: %w", err)

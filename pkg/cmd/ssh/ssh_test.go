@@ -464,10 +464,10 @@ var _ = Describe("SSH Command", func() {
 				Expect(args).To(Equal([]string{
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
-					fmt.Sprintf("-oUserKnownHostsFile='%s'", defaultNodeKnownHostsFile),
+					"-oUserKnownHostsFile=" + defaultNodeKnownHostsFile,
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'%s'\"'\"'' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile=%s' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
 						defaultBastionKnownHostsFile,
 						ssh.SSHBastionUsername,
@@ -594,10 +594,10 @@ var _ = Describe("SSH Command", func() {
 				Expect(args).To(Equal([]string{
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
-					fmt.Sprintf("-oUserKnownHostsFile='%s'", defaultNodeKnownHostsFile),
+					"-oUserKnownHostsFile=" + defaultNodeKnownHostsFile,
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'%s'\"'\"'' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile=%s' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
 						defaultBastionKnownHostsFile,
 						ssh.SSHBastionUsername,
@@ -653,10 +653,10 @@ var _ = Describe("SSH Command", func() {
 				Expect(args).To(Equal([]string{
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
-					fmt.Sprintf("-oUserKnownHostsFile='%s'", defaultNodeKnownHostsFile),
+					"-oUserKnownHostsFile=" + defaultNodeKnownHostsFile,
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'%s'\"'\"'' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile=%s' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
 						defaultBastionKnownHostsFile,
 						ssh.SSHBastionUsername,
@@ -918,10 +918,10 @@ var _ = Describe("SSH Command", func() {
 				Expect(args).To(Equal([]string{
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
-					"-oUserKnownHostsFile='/custom/node/known_hosts'",
+					"-oUserKnownHostsFile=/custom/node/known_hosts",
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'/custom/bastion/known_hosts'\"'\"'' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile=/custom/bastion/known_hosts' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
 						ssh.SSHBastionUsername,
 						bastionIP,
@@ -953,6 +953,24 @@ var _ = Describe("SSH Command", func() {
 
 			_, err = os.Stat(options.SSHPrivateKeyFile.String())
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("should reject a default known hosts file that OpenSSH could resolve differently", func() {
+			options := ssh.NewSSHOptions(streams)
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			factory.GardenHomeDirectory = filepath.Join(gardenHomeDir, "garden home")
+
+			ssh.SetExecSSHCommand(func(ctx context.Context, args []string, ioStreams util.IOStreams) error {
+				Fail("ssh must not be executed")
+
+				return nil
+			})
+
+			Expect(cmd.RunE(cmd, []string{testNode.Name})).To(MatchError(ContainSubstring("invalid default known hosts file for shoot node, use --node-user-known-hosts-file to specify one")))
+
+			_, err := os.Stat(factory.GardenHomeDirectory)
+			Expect(err).To(MatchError(os.ErrNotExist))
 		})
 	})
 
@@ -1344,6 +1362,44 @@ var _ = Describe("SSH Options", func() {
 			Entry("multicast IP", "224.0.0.1", "multicast addresses are not allowed"),
 			Entry("hostname containing semicolon", "bastion;example.com", "does not conform to DNS naming rules"),
 			Entry("hostname not conforming to DNS rules", "INVALID_HOST", "does not conform to DNS naming rules"),
+		)
+
+		It("should accept absolute known hosts files with allowed characters", func() {
+			bastionFiles := []string{"/path/to/known-hosts_1.0", "/path/to/known_hosts2"}
+			nodeFiles := []string{"/Path/To/.ssh/known_hosts"}
+			o.BastionUserKnownHostsFiles = bastionFiles
+			o.NodeUserKnownHostsFiles = nodeFiles
+			Expect(o.Validate()).To(Succeed())
+			Expect(o.BastionUserKnownHostsFiles).To(Equal(bastionFiles))
+			Expect(o.NodeUserKnownHostsFiles).To(Equal(nodeFiles))
+		})
+
+		DescribeTable("known hosts files validation - invalid cases",
+			func(file string) {
+				o.BastionUserKnownHostsFiles = []string{"/path/to/known_hosts", file}
+				Expect(o.Validate()).To(MatchError(ContainSubstring("invalid bastion-user-known-hosts-file")))
+
+				o.BastionUserKnownHostsFiles = nil
+				o.NodeUserKnownHostsFiles = []string{file}
+				Expect(o.Validate()).To(MatchError(ContainSubstring("invalid node-user-known-hosts-file")))
+			},
+			Entry("empty path", ""),
+			Entry("relative path", "known_hosts"),
+			Entry("OpenSSH keyword none", "none"),
+			Entry("leading tilde", "~/.ssh/known_hosts"),
+			Entry("space", "/path/a b/known_hosts"),
+			Entry("tab", "/path/a\tb/known_hosts"),
+			Entry("newline", "/path/a\nb/known_hosts"),
+			Entry("single quote", "/path/it's/known_hosts"),
+			Entry("unicode single quote", "/path/it’s/known_hosts"),
+			Entry("double quote", `/path/a"b/known_hosts`),
+			Entry("backslash", `/path/a\b/known_hosts`),
+			Entry("percent token", "/path/%d/known_hosts"),
+			Entry("environment variable", "/path/${HOME}/known_hosts"),
+			Entry("comment", "/path/#/known_hosts"),
+			Entry("equals sign", "/path/a=b/known_hosts"),
+			Entry("semicolon", "/path/a;b/known_hosts"),
+			Entry("non-ASCII letter", "/path/jörg/known_hosts"),
 		)
 	})
 

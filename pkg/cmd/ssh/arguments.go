@@ -43,19 +43,15 @@ func (a *arguments) String() string {
 	return sb.String()
 }
 
-func userKnownHostsFilesArgument(userKnownHostsFiles []string, shellEscapeFn func(values ...interface{}) string) *argument {
+// userKnownHostsFilesArgument returns the UserKnownHostsFile option. The value is parsed by OpenSSH
+// itself, so it must not be shell escaped. The paths are not quoted either; they must have been
+// normalized with normalizeKnownHostsFile.
+func userKnownHostsFilesArgument(userKnownHostsFiles []string) *argument {
 	if len(userKnownHostsFiles) == 0 {
 		return nil
 	}
 
-	var escapedHostsFiles []string
-	for _, path := range userKnownHostsFiles {
-		escapedHostsFiles = append(escapedHostsFiles, shellEscapeFn(path))
-	}
-
-	userKnownHostsFilesValue := strings.Join(escapedHostsFiles, " ")
-
-	return &argument{value: fmt.Sprintf("-oUserKnownHostsFile=%s", userKnownHostsFilesValue)}
+	return &argument{value: "-oUserKnownHostsFile=" + strings.Join(userKnownHostsFiles, " ")}
 }
 
 func sshCommandArguments(
@@ -71,8 +67,8 @@ func sshCommandArguments(
 	user string,
 	shellEscapeFn func(values ...interface{}) string,
 ) arguments {
-	bastionUserKnownHostsFilesArg := userKnownHostsFilesArgument(bastionUserKnownHostsFiles, shellEscapeFn)
-	nodeUserKnownHostsFilesArg := userKnownHostsFilesArgument(nodeUserKnownHostsFiles, shellEscapeFn)
+	bastionUserKnownHostsFilesArg := userKnownHostsFilesArgument(bastionUserKnownHostsFiles)
+	nodeUserKnownHostsFilesArg := userKnownHostsFilesArgument(nodeUserKnownHostsFiles)
 
 	proxyCmdArgs := sshProxyCmdArguments(
 		bastionHost,
