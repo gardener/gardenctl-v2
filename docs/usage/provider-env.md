@@ -29,13 +29,13 @@ Ensure the respective provider CLI is installed on your system. See the `gardenc
 Before using `provider-env` for OpenStack on Windows:
 
 - use WSL or PowerShell; Windows Command Prompt (`cmd.exe`) is not supported;
-- install `kubectl`, `kubelogin`, `gardenlogin`, and the OpenStack CLI in the same environment as `gardenctl`; and
+- install `kubectl`, `gardenlogin`, and the OpenStack CLI in the same environment as `gardenctl`;
+- if the garden cluster kubeconfig uses OIDC authentication, install `kubelogin` in the same environment as `gardenctl`; and
 - enable Windows Developer Mode, run PowerShell as Administrator, or disable kubeconfig symlinks. Without one of these options, `gardenctl target` fails when Windows denies creation of the symbolic link.
 
-See the [Windows setup](../../README.md#windows) for configuration details. If you set `linkKubeconfig: false`, update `KUBECONFIG` after targeting and then configure the OpenStack environment:
+See the [Windows setup](../../README.md#windows) for configuration details. Then configure the OpenStack environment:
 
 ```powershell
-& gardenctl kubectl-env powershell | Invoke-Expression
 & gardenctl provider-env powershell | Invoke-Expression
 ```
 

@@ -1,7 +1,7 @@
 # Targeting
 
 > [!IMPORTANT]
-> Before targeting a cluster, install `kubectl`, `kubelogin`, and `gardenlogin` as described in the [prerequisites](../../README.md#prerequisites). On Windows, use WSL or PowerShell; Windows Command Prompt (`cmd.exe`) is not supported.
+> Before targeting a cluster, install `kubectl` and `gardenlogin` as described in the [prerequisites](../../README.md#prerequisites). If the garden cluster kubeconfig uses OIDC authentication, also install `kubelogin`. On Windows, use WSL or PowerShell; Windows Command Prompt (`cmd.exe`) is not supported.
 
 You can set a target to use it in subsequent commands.
 
