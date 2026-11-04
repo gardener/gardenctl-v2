@@ -60,10 +60,11 @@ func SetRSAKeyBitsForTest(bits int) {
 }
 
 var (
-	ValidateSSHPrivateKey = validateSSHPrivateKey
-	ValidateSSHPublicKey  = validateSSHPublicKey
-	ValidateHost          = validateHost
-	GetNodeHostname       = getNodeHostname
+	ValidateSSHPrivateKey   = validateSSHPrivateKey
+	ValidateSSHPublicKey    = validateSSHPublicKey
+	ValidateHost            = validateHost
+	NormalizeKnownHostsFile = normalizeKnownHostsFile
+	GetNodeHostname         = getNodeHostname
 )
 
 // CheckAccessRestrictions exposes the unexported checkAccessRestrictions method for tests.
@@ -73,6 +74,16 @@ func (o *SSHOptions) CheckAccessRestrictions(cfg *config.Config, gardenName stri
 
 type TestArguments struct {
 	arguments
+}
+
+// Values returns the argument values as they are passed to the ssh process.
+func (a TestArguments) Values() []string {
+	values := make([]string, 0, len(a.list))
+	for _, arg := range a.list {
+		values = append(values, arg.value)
+	}
+
+	return values
 }
 
 func SSHCommandArguments(

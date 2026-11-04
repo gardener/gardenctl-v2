@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -89,6 +90,16 @@ func waitForBastionThenSetBastionReady(ctx context.Context, gardenClient client.
 			Reason: "Testing",
 		}}
 	})
+}
+
+// absPath returns an absolute path in the native format of the current platform.
+func absPath(elem ...string) string {
+	root := "/"
+	if runtime.GOOS == "windows" {
+		root = `C:\`
+	}
+
+	return filepath.Join(append([]string{root}, elem...)...)
 }
 
 func newShootSSHKeypairSecret(shootName, namespace string) *corev1.Secret {
@@ -458,16 +469,16 @@ var _ = Describe("SSH Command", func() {
 				bastionUID := string(bastion.UID)
 				shootUID := string(testShoot.UID)
 
-				defaultBastionKnownHostsFile := filepath.Join(gardenTempDir, "cache", bastionUID, ".ssh", "known_hosts")
-				defaultNodeKnownHostsFile := filepath.Join(gardenHomeDir, "cache", shootUID, ".ssh", "known_hosts")
+				defaultBastionKnownHostsFile := filepath.ToSlash(filepath.Join(gardenTempDir, "cache", bastionUID, ".ssh", "known_hosts"))
+				defaultNodeKnownHostsFile := filepath.ToSlash(filepath.Join(gardenHomeDir, "cache", shootUID, ".ssh", "known_hosts"))
 
 				Expect(args).To(Equal([]string{
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
-					fmt.Sprintf("-oUserKnownHostsFile='%s'", defaultNodeKnownHostsFile),
+					"-oUserKnownHostsFile=" + defaultNodeKnownHostsFile,
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'%s'\"'\"'' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile=%s' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
 						defaultBastionKnownHostsFile,
 						ssh.SSHBastionUsername,
@@ -588,16 +599,16 @@ var _ = Describe("SSH Command", func() {
 				bastionUID := string(bastion.UID)
 				shootUID := string(seedShoot.UID)
 
-				defaultBastionKnownHostsFile := filepath.Join(gardenTempDir, "cache", bastionUID, ".ssh", "known_hosts")
-				defaultNodeKnownHostsFile := filepath.Join(gardenHomeDir, "cache", shootUID, ".ssh", "known_hosts")
+				defaultBastionKnownHostsFile := filepath.ToSlash(filepath.Join(gardenTempDir, "cache", bastionUID, ".ssh", "known_hosts"))
+				defaultNodeKnownHostsFile := filepath.ToSlash(filepath.Join(gardenHomeDir, "cache", shootUID, ".ssh", "known_hosts"))
 
 				Expect(args).To(Equal([]string{
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
-					fmt.Sprintf("-oUserKnownHostsFile='%s'", defaultNodeKnownHostsFile),
+					"-oUserKnownHostsFile=" + defaultNodeKnownHostsFile,
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'%s'\"'\"'' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile=%s' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
 						defaultBastionKnownHostsFile,
 						ssh.SSHBastionUsername,
@@ -647,16 +658,16 @@ var _ = Describe("SSH Command", func() {
 				bastionUID := string(bastion.UID)
 				shootUID := string(testShoot.UID)
 
-				defaultBastionKnownHostsFile := filepath.Join(gardenTempDir, "cache", bastionUID, ".ssh", "known_hosts")
-				defaultNodeKnownHostsFile := filepath.Join(gardenHomeDir, "cache", shootUID, ".ssh", "known_hosts")
+				defaultBastionKnownHostsFile := filepath.ToSlash(filepath.Join(gardenTempDir, "cache", bastionUID, ".ssh", "known_hosts"))
+				defaultNodeKnownHostsFile := filepath.ToSlash(filepath.Join(gardenHomeDir, "cache", shootUID, ".ssh", "known_hosts"))
 
 				Expect(args).To(Equal([]string{
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
-					fmt.Sprintf("-oUserKnownHostsFile='%s'", defaultNodeKnownHostsFile),
+					"-oUserKnownHostsFile=" + defaultNodeKnownHostsFile,
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'%s'\"'\"'' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile=%s' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
 						defaultBastionKnownHostsFile,
 						ssh.SSHBastionUsername,
@@ -899,8 +910,10 @@ var _ = Describe("SSH Command", func() {
 			cmd := ssh.NewCmdSSH(factory, options)
 
 			// Set custom known hosts files
-			options.BastionUserKnownHostsFiles = []string{"/custom/bastion/known_hosts"}
-			options.NodeUserKnownHostsFiles = []string{"/custom/node/known_hosts"}
+			bastionKnownHostsFile := absPath("custom", "bastion", "known_hosts")
+			nodeKnownHostsFile := absPath("custom", "node", "known_hosts")
+			options.BastionUserKnownHostsFiles = []string{bastionKnownHostsFile}
+			options.NodeUserKnownHostsFiles = []string{nodeKnownHostsFile}
 
 			// Simulate the bastion being ready
 			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
@@ -918,11 +931,12 @@ var _ = Describe("SSH Command", func() {
 				Expect(args).To(Equal([]string{
 					"-oIdentitiesOnly=yes",
 					"-oStrictHostKeyChecking=ask",
-					"-oUserKnownHostsFile='/custom/node/known_hosts'",
+					"-oUserKnownHostsFile=" + filepath.ToSlash(nodeKnownHostsFile),
 					fmt.Sprintf("-i%s", nodePrivateKeyFile),
 					fmt.Sprintf(
-						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile='\"'\"'/custom/bastion/known_hosts'\"'\"'' '%s@%s' '-p22'",
+						"-oProxyCommand=ssh '-W[%%h]:%%p' -oStrictHostKeyChecking=ask -oIdentitiesOnly=yes '-i%s' '-oUserKnownHostsFile=%s' '%s@%s' '-p22'",
 						options.SSHPrivateKeyFile,
+						filepath.ToSlash(bastionKnownHostsFile),
 						ssh.SSHBastionUsername,
 						bastionIP,
 					),
@@ -953,6 +967,24 @@ var _ = Describe("SSH Command", func() {
 
 			_, err = os.Stat(options.SSHPrivateKeyFile.String())
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("should reject a default known hosts file that OpenSSH could resolve differently", func() {
+			options := ssh.NewSSHOptions(streams)
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			factory.GardenHomeDirectory = filepath.Join(gardenHomeDir, "garden home")
+
+			ssh.SetExecSSHCommand(func(ctx context.Context, args []string, ioStreams util.IOStreams) error {
+				Fail("ssh must not be executed")
+
+				return nil
+			})
+
+			Expect(cmd.RunE(cmd, []string{testNode.Name})).To(MatchError(ContainSubstring("invalid default known hosts file for shoot node, use --node-user-known-hosts-file to specify one")))
+
+			_, err := os.Stat(factory.GardenHomeDirectory)
+			Expect(err).To(MatchError(os.ErrNotExist))
 		})
 	})
 
@@ -1344,6 +1376,45 @@ var _ = Describe("SSH Options", func() {
 			Entry("multicast IP", "224.0.0.1", "multicast addresses are not allowed"),
 			Entry("hostname containing semicolon", "bastion;example.com", "does not conform to DNS naming rules"),
 			Entry("hostname not conforming to DNS rules", "INVALID_HOST", "does not conform to DNS naming rules"),
+		)
+
+		It("should accept absolute known hosts files with allowed characters", func() {
+			bastionFile1 := absPath("path", "to", "known-hosts_1.0")
+			bastionFile2 := absPath("path", "to", "known_hosts2")
+			nodeFile := absPath("Path", "To", ".ssh", "known_hosts")
+			o.BastionUserKnownHostsFiles = []string{bastionFile1, bastionFile2}
+			o.NodeUserKnownHostsFiles = []string{nodeFile}
+			Expect(o.Validate()).To(Succeed())
+			Expect(o.BastionUserKnownHostsFiles).To(Equal([]string{filepath.ToSlash(bastionFile1), filepath.ToSlash(bastionFile2)}))
+			Expect(o.NodeUserKnownHostsFiles).To(Equal([]string{filepath.ToSlash(nodeFile)}))
+		})
+
+		DescribeTable("known hosts files validation - invalid cases",
+			func(file string) {
+				o.BastionUserKnownHostsFiles = []string{"/path/to/known_hosts", file}
+				Expect(o.Validate()).To(MatchError(ContainSubstring("invalid bastion-user-known-hosts-file")))
+
+				o.BastionUserKnownHostsFiles = nil
+				o.NodeUserKnownHostsFiles = []string{file}
+				Expect(o.Validate()).To(MatchError(ContainSubstring("invalid node-user-known-hosts-file")))
+			},
+			Entry("empty path", ""),
+			Entry("relative path", "known_hosts"),
+			Entry("OpenSSH keyword none", "none"),
+			Entry("leading tilde", "~/.ssh/known_hosts"),
+			Entry("space", "/path/a b/known_hosts"),
+			Entry("tab", "/path/a\tb/known_hosts"),
+			Entry("newline", "/path/a\nb/known_hosts"),
+			Entry("single quote", "/path/it's/known_hosts"),
+			Entry("unicode single quote", "/path/it’s/known_hosts"),
+			Entry("double quote", `/path/a"b/known_hosts`),
+			Entry("backslash", `/path/a\b/known_hosts`),
+			Entry("percent token", "/path/%d/known_hosts"),
+			Entry("environment variable", "/path/${HOME}/known_hosts"),
+			Entry("comment", "/path/#/known_hosts"),
+			Entry("equals sign", "/path/a=b/known_hosts"),
+			Entry("semicolon", "/path/a;b/known_hosts"),
+			Entry("non-ASCII letter", "/path/jörg/known_hosts"),
 		)
 	})
 
