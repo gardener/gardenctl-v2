@@ -9,6 +9,7 @@ on:
         type: string
 
 permissions:
+  contents: read
   id-token: write # required for GitHub OIDC Federation Service token
 
 jobs:
