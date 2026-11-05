@@ -7,8 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package providerenv_test
 
 import (
+	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -155,6 +157,55 @@ var _ = Describe("TempDataWriter", func() {
 			Expect(writer.GetFilePath("field1")).To(ContainSubstring("field1.txt"))
 			Expect(writer.GetFilePath("field2")).To(ContainSubstring("field2.txt"))
 			Expect(writer.GetFilePath("nonexistent")).To(BeEmpty())
+		})
+
+		It("should replace a pre-existing file instead of writing into it", func() {
+			if runtime.GOOS == "windows" {
+				Skip("an open file cannot be replaced and permission bits are not reported on Windows")
+			}
+
+			path := filepath.Join(writer.DataDirectory(), "."+writer.GetPrefix()+"-secret.txt")
+			Expect(os.MkdirAll(writer.DataDirectory(), 0o700)).To(Succeed())
+			Expect(os.WriteFile(path, []byte("planted"), 0o666)).To(Succeed())
+			Expect(os.Chmod(path, 0o666)).To(Succeed())
+
+			planted, err := os.Open(path)
+			Expect(err).NotTo(HaveOccurred())
+
+			defer planted.Close()
+
+			Expect(writer.WriteField("secret", "s3cr3t")).To(Equal(path))
+
+			info, err := os.Stat(path)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.Mode().Perm()).To(Equal(os.FileMode(0o600)))
+			Expect(os.ReadFile(path)).To(Equal([]byte("s3cr3t")))
+
+			// a handle opened on the planted file must not see the secret
+			plantedContent, err := io.ReadAll(planted)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(plantedContent)).To(Equal("planted"))
+		})
+
+		It("should replace a pre-existing symlink instead of following it", func() {
+			if runtime.GOOS == "windows" {
+				Skip("creating symlinks requires elevated privileges on Windows")
+			}
+
+			linkTarget := filepath.Join(tempDir, "link-target")
+			Expect(os.WriteFile(linkTarget, []byte("untouched"), 0o666)).To(Succeed())
+
+			path := filepath.Join(writer.DataDirectory(), "."+writer.GetPrefix()+"-secret.txt")
+			Expect(os.MkdirAll(writer.DataDirectory(), 0o700)).To(Succeed())
+			Expect(os.Symlink(linkTarget, path)).To(Succeed())
+
+			Expect(writer.WriteField("secret", "s3cr3t")).To(Equal(path))
+
+			info, err := os.Lstat(path)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.Mode().IsRegular()).To(BeTrue())
+			Expect(os.ReadFile(path)).To(Equal([]byte("s3cr3t")))
+			Expect(os.ReadFile(linkTarget)).To(Equal([]byte("untouched")))
 		})
 
 		It("should fail when directory cannot be created", func() {

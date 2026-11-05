@@ -25,6 +25,7 @@ import (
 
 var (
 	gardenHomeDir string
+	gardenTempDir string
 	sessionDir    string
 	configFile    string
 	cfg           *config.Config
@@ -54,8 +55,10 @@ var _ = BeforeSuite(func() {
 	sessionID := uuid.New().String()
 	prevSID, hadSID := os.LookupEnv(envSessionID)
 	Expect(os.Setenv(envSessionID, sessionID)).To(Succeed())
-	sessionDir = filepath.Join(os.TempDir(), "garden", "sessions", sessionID)
-	Expect(os.MkdirAll(sessionDir, os.ModePerm))
+
+	gardenTempDir = makeTempGardenHomeDir()
+	sessionDir = filepath.Join(gardenTempDir, "sessions", sessionID)
+	Expect(os.MkdirAll(sessionDir, 0o700)).To(Succeed())
 
 	cfg = &config.Config{
 		Filename:       configFile,
@@ -87,7 +90,7 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	Expect(os.RemoveAll(gardenHomeDir)).To(Succeed())
-	Expect(os.RemoveAll(sessionDir)).To(Succeed())
+	Expect(os.RemoveAll(gardenTempDir)).To(Succeed())
 })
 
 func makeTempGardenHomeDir() string {

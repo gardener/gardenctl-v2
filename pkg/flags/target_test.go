@@ -276,6 +276,7 @@ var _ = Describe("Target flags", func() {
 			clientProvider = clientmocks.NewMockProvider(ctrl)
 
 			factory = util.NewFactoryImpl()
+			factory.GardenTempDirectory = gardenTempDir
 			factory.ClientProvider = clientProvider
 		})
 
