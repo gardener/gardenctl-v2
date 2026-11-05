@@ -14,9 +14,10 @@ import (
 	"path/filepath"
 )
 
-// EnsurePrivateDir creates dir with mode 0700 if it does not exist and verifies that it can be trusted:
+// EnsurePrivateDir creates dir with mode 0700 if it does not exist and verifies that it can be trusted and used:
 // it must be a directory (not a symlink), and on Unix it must be owned by the current user, must not be
-// accessible by group or others, and all of its parent directories must be protected against other users.
+// accessible by group or others, must be readable, writable and searchable by the owner, and all of its
+// parent directories must be protected against other users.
 // An existing directory that fails these checks is never modified; an error is returned instead.
 //
 // It returns the verified absolute path with all symlinks in the parent resolved. Callers must use the

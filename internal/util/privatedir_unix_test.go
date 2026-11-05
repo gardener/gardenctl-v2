@@ -64,6 +64,26 @@ var _ = Describe("EnsurePrivateDir", func() {
 		expectMode(dir, 0o777)
 	})
 
+	DescribeTable("should reject an existing directory the owner cannot fully access without changing it",
+		func(mode os.FileMode) {
+			Expect(os.Mkdir(dir, 0o700)).To(Succeed())
+			Expect(os.Chmod(dir, mode)).To(Succeed())
+
+			expectRejected(dir, "the owner needs read, write and execute permission")
+			expectMode(dir, mode)
+		},
+		Entry("not searchable", os.FileMode(0o600)),
+		Entry("not writable", os.FileMode(0o500)),
+		Entry("not readable", os.FileMode(0o300)),
+	)
+
+	It("should reject a directory accessible by others as untrusted even if the owner cannot access it", func() {
+		Expect(os.Mkdir(dir, 0o700)).To(Succeed())
+		Expect(os.Chmod(dir, 0o077)).To(Succeed())
+
+		expectRejected(dir, "must not be accessible by group or others")
+	})
+
 	It("should reject a symlink to a private directory", func() {
 		target := filepath.Join(parent, "target")
 		Expect(os.Mkdir(target, 0o700)).To(Succeed())

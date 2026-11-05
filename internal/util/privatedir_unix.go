@@ -26,8 +26,13 @@ func checkPrivate(dir string, info fs.FileInfo) error {
 		return untrustedDirError(dir, fmt.Sprintf("it is owned by uid %d instead of the current user (uid %d)", uid, os.Geteuid()))
 	}
 
-	if perm := info.Mode().Perm(); perm&0o077 != 0 {
+	perm := info.Mode().Perm()
+	if perm&0o077 != 0 {
 		return untrustedDirError(dir, fmt.Sprintf("it has mode %#o, but must not be accessible by group or others", perm))
+	}
+
+	if perm&0o700 != 0o700 {
+		return fmt.Errorf("cannot use %s: it has mode %#o, but the owner needs read, write and execute permission. Change its mode to 0700 and try again", dir, perm)
 	}
 
 	return nil
