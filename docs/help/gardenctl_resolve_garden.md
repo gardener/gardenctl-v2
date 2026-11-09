@@ -9,9 +9,9 @@ gardenctl resolve garden [flags]
 ### Options
 
 ```
-      --garden string   target the given garden cluster
-  -h, --help            help for garden
-  -o, --output string   One of 'yaml' or 'json'. (default "yaml")
+      --garden string       target the given garden cluster
+  -h, --help[=true|false]   help for garden
+  -o, --output string       One of 'yaml' or 'json'. (default "yaml")
 ```
 
 ### Options inherited from parent commands

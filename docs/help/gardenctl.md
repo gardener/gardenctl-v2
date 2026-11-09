@@ -37,7 +37,7 @@ Find more information at: https://github.com/gardener/gardenctl-v2/blob/master/R
       --alsologtostderr                     log to standard error as well as files (no effect when -logtostderr=true)
       --alsologtostderrthreshold severity   logs at or above this threshold go to stderr when -alsologtostderr=true (no effect when -logtostderr=true)
       --config string                       config file (default is ~/.garden/gardenctl-v2.yaml)
-  -h, --help                                help for gardenctl
+  -h, --help[=true|false]                   help for gardenctl
       --legacy-stderr-threshold-behavior    If true, stderrthreshold is ignored when logtostderr=true (legacy behavior). If false, stderrthreshold is honored even when logtostderr=true (default true)
       --log-backtrace-at traceLocation      when logging hits line file:N, emit a stack trace (default :0)
       --log-dir string                      If non-empty, write log files in this directory (no effect when -logtostderr=true)

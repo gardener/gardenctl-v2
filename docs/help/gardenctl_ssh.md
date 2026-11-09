@@ -53,13 +53,13 @@ gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path
       --bastion-strict-host-key-checking string   Specifies how the SSH client performs host key checking for the bastion host. Valid options are 'yes', 'no', or 'ask'. (default "ask")
       --bastion-user-known-hosts-file strings     Path to a custom known hosts file for verifying remote hosts' public keys during SSH connection to the bastion. If not provided, defaults to <temp_dir>/garden-<uid>/cache/<bastion_uid>/.ssh/known_hosts (<temp_dir>\garden\cache\<bastion_uid>\.ssh\known_hosts on Windows)
       --cidr stringArray                          CIDRs to allow access to the bastion host; if not given, your system's public IPs (v4 and v6) are auto-detected.
-  -y, --confirm-access-restriction                Bypasses the need for confirmation of any access restrictions. Set this flag only if you are fully aware of the access restrictions.
-      --control-plane                             target control plane of shoot, use together with shoot argument
+  -y, --confirm-access-restriction[=true|false]   Bypasses the need for confirmation of any access restrictions. Set this flag only if you are fully aware of the access restrictions.
+      --control-plane[=true|false]                target control plane of shoot, use together with shoot argument
       --garden string                             target the given garden cluster
-  -h, --help                                      help for ssh
-      --interactive                               Open an SSH connection instead of just providing the bastion host (only if NODE_NAME is provided). (default true)
-      --keep-bastion                              Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)
-      --no-keepalive                              Exit after the bastion host became available without keeping the bastion alive or establishing an SSH connection. Note that this flag requires the flags --interactive=false and --keep-bastion to be set
+  -h, --help[=true|false]                         help for ssh
+      --interactive[=true|false]                  Open an SSH connection instead of just providing the bastion host (only if NODE_NAME is provided). (default true)
+      --keep-bastion[=true|false]                 Do not delete immediately when gardenctl exits (Bastions will be garbage-collected after some time)
+      --no-keepalive[=true|false]                 Exit after the bastion host became available without keeping the bastion alive or establishing an SSH connection. Note that this flag requires the flags --interactive=false and --keep-bastion to be set
       --node-strict-host-key-checking string      Specifies how the SSH client performs host key checking for the shoot node. Valid options are 'yes', 'no', or 'ask'. (default "ask")
       --node-user-known-hosts-file strings        Path to a custom known hosts file for verifying remote hosts' public keys during SSH connection to the shoot node. If not provided, defaults to <garden_home_dir>/cache/<shoot_uid>/.ssh/known_hosts.
   -o, --output string                             One of 'yaml' or 'json'.
@@ -69,7 +69,7 @@ gardenctl ssh --keep-bastion --bastion-name cli-xxxxxxxx --public-key-file /path
       --seed string                               target the given seed cluster
       --shell string                              Shell to use for escaping arguments when printing out the SSH command. If not provided, it defaults to the GCTL_SHELL environment variable or bash.
       --shoot string                              target the given shoot cluster
-      --skip-availability-check                   Skip checking for SSH bastion host availability.
+      --skip-availability-check[=true|false]      Skip checking for SSH bastion host availability.
       --user string                               user is the name of the shoot cluster node ssh login username. (default "gardener")
       --wait-timeout duration                     Maximum duration to wait for the bastion to become available. (default 10m0s)
 ```

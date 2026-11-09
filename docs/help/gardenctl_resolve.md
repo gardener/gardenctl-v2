@@ -9,7 +9,7 @@ Resolve garden, seed, project or shoot for the current target
 ### Options
 
 ```
-  -h, --help   help for resolve
+  -h, --help[=true|false]   help for resolve
 ```
 
 ### Options inherited from parent commands

@@ -9,9 +9,9 @@ gardenctl version [flags]
 ### Options
 
 ```
-  -h, --help            help for version
-  -o, --output string   One of 'yaml' or 'json'.
-      --short           If true, print just the version number.
+  -h, --help[=true|false]    help for version
+  -o, --output string        One of 'yaml' or 'json'.
+      --short[=true|false]   If true, print just the version number.
 ```
 
 ### Options inherited from parent commands
