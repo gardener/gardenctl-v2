@@ -23,7 +23,7 @@ func SetBastionAvailabilityChecker(f func(hostname string, port string, privateK
 	bastionAvailabilityChecker = f
 }
 
-func SetTempFileCreator(f func() (*os.File, error)) {
+func SetTempFileCreator(f func(dir string) (*os.File, error)) {
 	tempFileCreator = f
 }
 

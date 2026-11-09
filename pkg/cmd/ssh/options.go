@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	corev1beta1helper "github.com/gardener/gardener/pkg/api/core/v1beta1/helper"
@@ -95,9 +96,9 @@ var (
 	// rsaKeyBits is the number of bits to use for RSA key generation.
 	rsaKeyBits = 3072
 
-	// tempFileCreator creates and opens a temporary file.
-	tempFileCreator = func() (*os.File, error) {
-		return os.CreateTemp(os.TempDir(), "gctlv2*")
+	// tempFileCreator creates and opens a temporary file in dir.
+	tempFileCreator = func(dir string) (*os.File, error) {
+		return os.CreateTemp(dir, "gctlv2*")
 	}
 
 	// bastionAvailabilityChecker returns nil if the given hostname allows incoming
@@ -162,7 +163,7 @@ var (
 	// createSignalChannel returns a channel which receives OS signals.
 	createSignalChannel = func() chan os.Signal {
 		signalChan := make(chan os.Signal, 1)
-		signal.Notify(signalChan, os.Interrupt)
+		signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 
 		return signalChan
 	}
@@ -252,8 +253,8 @@ type SSHOptions struct {
 	// sshPrivateKeyBytes stores the private key content (if provided).
 	sshPrivateKeyBytes []byte
 
-	// GeneratedSSHKeys is true if the public and private SSH keys have been generated
-	// instead of being provided by the user. This will then be used for the cleanup.
+	// GeneratedSSHKeys is true if the public and private SSH keys are generated
+	// instead of being provided by the user.
 	GeneratedSSHKeys bool
 
 	// WaitTimeout is the maximum time to wait for a bastion to become ready.
@@ -362,17 +363,9 @@ func (o *SSHOptions) Complete(f util.Factory, cmd *cobra.Command, args []string)
 	}
 
 	if len(o.SSHPublicKeyFile) == 0 {
-		privateKeyFile, publicKeyFile, err := createSSHKeypair("", "")
-		if err != nil {
-			return fmt.Errorf("failed to generate SSH keypair: %w", err)
-		}
-
-		o.SSHPublicKeyFile = publicKeyFile
-		o.SSHPrivateKeyFile = privateKeyFile
+		// The keypair is written in Run, once the cleanup that removes it is registered.
 		o.GeneratedSSHKeys = true
-	}
-
-	if len(o.SSHPrivateKeyFile) == 0 {
+	} else if len(o.SSHPrivateKeyFile) == 0 {
 		count, err := countSSHAgentSigners()
 		if err != nil {
 			return fmt.Errorf("failed to check SSH agent status: %w", err)
@@ -546,6 +539,15 @@ func (o *SSHOptions) Validate() error {
 
 	o.NodeUserKnownHostsFiles = nodeUserKnownHostsFiles
 
+	if o.GeneratedSSHKeys {
+		return nil
+	}
+
+	return o.loadSSHKeys()
+}
+
+// loadSSHKeys reads and validates the SSH public key file and, if set, the SSH private key file.
+func (o *SSHOptions) loadSSHKeys() error {
 	content, err := os.ReadFile(o.SSHPublicKeyFile.String())
 	if err != nil {
 		return fmt.Errorf("invalid SSH public key file: %w", err)
@@ -643,10 +645,6 @@ func createSSHKeypair(tempDir string, keyName string) (PrivateKeyFile, PublicKey
 	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create public key: %w", err)
-	}
-
-	if tempDir == "" {
-		tempDir = os.TempDir()
 	}
 
 	sshPrivateKeyFile := PrivateKeyFile(filepath.Join(tempDir, keyName))
@@ -774,18 +772,6 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		return err
 	}
 
-	// save the keys into temporary files that we try to clean up when exiting
-	var nodePrivateKeyFiles []PrivateKeyFile
-
-	for _, pk := range nodePrivateKeys {
-		filename, err := writeToTemporaryFile(pk)
-		if err != nil {
-			return err
-		}
-
-		nodePrivateKeyFiles = append(nodePrivateKeyFiles, PrivateKeyFile(filename))
-	}
-
 	shootClient, err := manager.ShootClient(ctx, currentTarget)
 	if err != nil {
 		return err
@@ -819,6 +805,11 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		Name:      o.BastionName,
 	}
 
+	keysDir, err := os.MkdirTemp(manager.SessionDir(), "ssh-keys-")
+	if err != nil {
+		return fmt.Errorf("failed to create directory for SSH keys: %w", err)
+	}
+
 	// allow to cancel at any time, but with us still performing the cleanup
 	signalChan := createSignalChannel()
 
@@ -834,8 +825,32 @@ func (o *SSHOptions) Run(f util.Factory) error {
 		cancel()
 	}()
 
+	var nodePrivateKeyFiles []PrivateKeyFile
+
 	// do not use `ctx`, as it might be cancelled already when running the cleanup
-	defer cleanup(f.Context(), o, gardenClient.RuntimeClient(), bastionKey, nodePrivateKeyFiles)
+	defer func() {
+		cleanup(f.Context(), o, gardenClient.RuntimeClient(), bastionKey, keysDir, nodePrivateKeyFiles)
+	}()
+
+	if o.GeneratedSSHKeys {
+		o.SSHPrivateKeyFile, o.SSHPublicKeyFile, err = createSSHKeypair(keysDir, "")
+		if err != nil {
+			return fmt.Errorf("failed to generate SSH keypair: %w", err)
+		}
+
+		if err := o.loadSSHKeys(); err != nil {
+			return err
+		}
+	}
+
+	for _, pk := range nodePrivateKeys {
+		filename, err := writeToTemporaryFile(keysDir, pk)
+		if err != nil {
+			return err
+		}
+
+		nodePrivateKeyFiles = append(nodePrivateKeyFiles, PrivateKeyFile(filename))
+	}
 
 	bastion, err := createOrPatchBastion(ctx, gardenClient.RuntimeClient(), bastionKey, shoot, o.sshPublicKeyBytes, policies)
 	if err != nil {
@@ -1056,11 +1071,17 @@ func printTargetInformation(logger klog.Logger, t target.Target) {
 	logger.Info("Preparing SSH access", "target", target, "garden", t.GardenName())
 }
 
-func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bastionKey client.ObjectKey, nodePrivateKeyFiles []PrivateKeyFile) {
+func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bastionKey client.ObjectKey, keysDir string, nodePrivateKeyFiles []PrivateKeyFile) {
 	logger := klog.FromContext(ctx)
 
 	if !o.KeepBastion {
 		logger.Info("Cleaning up")
+
+		// The node private keys are not used on the bastion, but they are removed only
+		// together with it, because the printed SSH command needs them to reach the nodes.
+		if err := os.RemoveAll(keysDir); err != nil {
+			logger.Error(err, "Failed to delete SSH keys", "path", keysDir)
+		}
 
 		bastion := &operationsv1alpha1.Bastion{
 			ObjectMeta: metav1.ObjectMeta{
@@ -1070,25 +1091,6 @@ func cleanup(ctx context.Context, o *SSHOptions, gardenClient client.Client, bas
 		}
 		if err := gardenClient.Delete(ctx, bastion); client.IgnoreNotFound(err) != nil {
 			logger.Error(err, "Failed to delete bastion.", "bastion", klog.KObj(bastion))
-		}
-
-		if o.GeneratedSSHKeys {
-			if err := os.Remove(o.SSHPublicKeyFile.String()); err != nil {
-				logger.Error(err, "Failed to delete SSH public key file", "path", o.SSHPublicKeyFile)
-			}
-
-			if err := os.Remove(o.SSHPrivateKeyFile.String()); err != nil {
-				logger.Error(err, "Failed to delete SSH private key file", "path", o.SSHPrivateKeyFile)
-			}
-		}
-
-		// though technically not used _on_ the bastion itself, without
-		// these files remaining, the user would not be able to use the SSH
-		// command we provided to connect to the shoot nodes
-		for _, filename := range nodePrivateKeyFiles {
-			if err := os.Remove(filename.String()); err != nil {
-				logger.Error(err, "Failed to delete node private key", "path", filename)
-			}
 		}
 	} else {
 		logger.Info("Keeping bastion", "bastion", klog.KRef(bastionKey.Namespace, bastionKey.Name))
@@ -1448,8 +1450,8 @@ func validateSSHPublicKey(publicKey []byte) error {
 	return nil
 }
 
-func writeToTemporaryFile(key []byte) (string, error) {
-	f, err := tempFileCreator()
+func writeToTemporaryFile(dir string, key []byte) (string, error) {
+	f, err := tempFileCreator(dir)
 	if err != nil {
 		return "", err
 	}

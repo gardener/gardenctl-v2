@@ -46,6 +46,9 @@ type Factory struct {
 	// GardenTempDirectory is the base directory for temporary data.
 	GardenTempDirectory string
 
+	// SessionDirectory is the session directory of the created manager. Defaults to os.TempDir().
+	SessionDirectory string
+
 	// SessionID is the session identifier for this factory instance.
 	SessionID string
 
@@ -90,7 +93,10 @@ func (f *Factory) Manager() (target.Manager, error) {
 		return f.ManagerImpl, nil
 	}
 
-	sessionDir := os.TempDir()
+	sessionDir := f.SessionDirectory
+	if sessionDir == "" {
+		sessionDir = os.TempDir()
+	}
 
 	return target.NewManager(f.Config, f.TargetProviderImpl, f.ClientProviderImpl, sessionDir, f.KubeconfigAccessLevel)
 }

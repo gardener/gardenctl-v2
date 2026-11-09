@@ -181,6 +181,7 @@ var _ = Describe("SSH Command", func() {
 		signalChan                      chan os.Signal
 		gardenHomeDir                   string
 		gardenTempDir                   string
+		sessionDir                      string
 	)
 
 	BeforeEach(func() {
@@ -194,8 +195,10 @@ var _ = Describe("SSH Command", func() {
 		})
 
 		// put the node SSH key into a known location
-		ssh.SetTempFileCreator(func() (*os.File, error) {
-			f, err := os.CreateTemp(os.TempDir(), "gctlv2*")
+		nodePrivateKeyFile = ""
+
+		ssh.SetTempFileCreator(func(dir string) (*os.File, error) {
+			f, err := os.CreateTemp(dir, "gctlv2*")
 			Expect(err).ToNot(HaveOccurred())
 
 			nodePrivateKeyFile = f.Name()
@@ -371,6 +374,11 @@ var _ = Describe("SSH Command", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		factory.GardenTempDirectory = gardenTempDir
+
+		sessionDir = filepath.Join(gardenTempDir, "sessions", factory.SessionID)
+		Expect(os.MkdirAll(sessionDir, 0o700)).To(Succeed())
+
+		factory.SessionDirectory = sessionDir
 	})
 
 	AfterEach(func() {
@@ -512,6 +520,80 @@ var _ = Describe("SSH Command", func() {
 
 			_, err = os.Stat(options.SSHPrivateKeyFile.String())
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("should write the SSH keys to a private directory below the session directory and remove it afterwards", func() {
+			options := ssh.NewSSHOptions(streams)
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
+
+			expectMode := func(path string, mode os.FileMode) {
+				GinkgoHelper()
+
+				if runtime.GOOS == "windows" {
+					return
+				}
+
+				info, err := os.Stat(path)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(info.Mode().Perm()).To(Equal(mode))
+			}
+
+			var keysDir string
+
+			ssh.SetExecSSHCommand(func(ctx context.Context, args []string, ioStreams util.IOStreams) error {
+				defer func() {
+					signalChan <- os.Interrupt
+				}()
+
+				keysDir = filepath.Dir(nodePrivateKeyFile)
+				Expect(filepath.Dir(keysDir)).To(Equal(sessionDir))
+				Expect(filepath.Dir(options.SSHPrivateKeyFile.String())).To(Equal(keysDir))
+				Expect(filepath.Dir(options.SSHPublicKeyFile.String())).To(Equal(keysDir))
+
+				expectMode(keysDir, 0o700)
+				expectMode(nodePrivateKeyFile, 0o600)
+				expectMode(options.SSHPrivateKeyFile.String(), 0o600)
+
+				return nil
+			})
+
+			Expect(cmd.RunE(cmd, []string{testNode.Name})).To(Succeed())
+
+			Expect(keysDir).NotTo(BeEmpty())
+			Expect(keysDir).NotTo(BeAnExistingFile())
+		})
+
+		It("should remove the SSH keys if the bastion does not become ready", func() {
+			options := ssh.NewSSHOptions(streams)
+			options.WaitTimeout = 500 * time.Millisecond
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			Expect(cmd.RunE(cmd, []string{testNode.Name})).To(MatchError(ContainSubstring("timed out waiting for the bastion")))
+
+			Expect(nodePrivateKeyFile).NotTo(BeEmpty())
+			Expect(filepath.Dir(filepath.Dir(nodePrivateKeyFile))).To(Equal(sessionDir))
+			Expect(filepath.Dir(nodePrivateKeyFile)).NotTo(BeAnExistingFile())
+		})
+
+		It("should keep the SSH keys below the session directory if the bastion is kept", func() {
+			options := ssh.NewSSHOptions(streams)
+			options.NoKeepalive = true
+			options.KeepBastion = true
+			options.Interactive = false
+
+			cmd := ssh.NewCmdSSH(factory, options)
+
+			go waitForBastionThenSetBastionReady(ctx, gardenClient, bastionName, *testProject.Spec.Namespace, bastionHostname, bastionIP)
+
+			Expect(cmd.RunE(cmd, nil)).To(Succeed())
+
+			keysDir := filepath.Dir(nodePrivateKeyFile)
+			Expect(filepath.Dir(keysDir)).To(Equal(sessionDir))
+			Expect(nodePrivateKeyFile).To(BeARegularFile())
+			Expect(filepath.Dir(options.SSHPrivateKeyFile.String())).To(Equal(keysDir))
+			Expect(options.SSHPrivateKeyFile.String()).To(BeARegularFile())
 		})
 
 		It("should connect to a node of the backing shoot when control-plane target flags select a shoot control plane", func() {
@@ -906,6 +988,9 @@ var _ = Describe("SSH Command", func() {
 			Expect(gardenClient.Patch(ctx, testShoot, client.MergeFrom(testShootBase))).To(Succeed())
 
 			Expect(cmd.RunE(cmd, nil)).To(MatchError("node SSH access disabled, SSH not allowed"))
+
+			Expect(options.SSHPrivateKeyFile).To(BeEmpty())
+			Expect(os.ReadDir(sessionDir)).To(BeEmpty())
 		})
 
 		It("should use custom known hosts files when provided", func() {
@@ -1067,22 +1152,17 @@ var _ = Describe("SSH Options", func() {
 			factory = internalfake.NewFakeFactory(nil, nil, nil, nil)
 		})
 
-		AfterEach(func() {
-			Expect(os.Remove(o.SSHPublicKeyFile.String())).To(Succeed())
-			Expect(os.Remove(o.SSHPrivateKeyFile.String())).To(Succeed())
-		})
-
 		It("should complete node name", func() {
 			Expect(o.Complete(factory, nil, []string{"my-node"})).To(Succeed())
 
 			Expect(o.NodeName).To(Equal("my-node"))
 		})
 
-		It("should complete public and private key", func() {
+		It("should mark the keypair as generated without writing it", func() {
 			Expect(o.Complete(factory, nil, nil)).To(Succeed())
 
-			Expect(o.SSHPublicKeyFile).NotTo(BeEmpty())
-			Expect(o.SSHPrivateKeyFile).NotTo(BeEmpty())
+			Expect(o.SSHPublicKeyFile).To(BeEmpty())
+			Expect(o.SSHPrivateKeyFile).To(BeEmpty())
 			Expect(o.GeneratedSSHKeys).To(BeTrue())
 		})
 
@@ -1190,6 +1270,15 @@ var _ = Describe("SSH Options", func() {
 			o.CIDRs = []string{"8.8.8.8/32"}
 
 			Expect(o.Validate()).NotTo(Succeed())
+		})
+
+		It("should not require a public SSH key file if the keypair is generated", func() {
+			o := ssh.NewSSHOptions(streams)
+			o.CIDRs = []string{"8.8.8.8/32"}
+			o.Shell = "bash"
+			o.GeneratedSSHKeys = true
+
+			Expect(o.Validate()).To(Succeed())
 		})
 
 		It("should require a valid public SSH key file", func() {
