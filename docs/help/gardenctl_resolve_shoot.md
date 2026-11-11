@@ -30,13 +30,13 @@ gardenctl resolve shoot --garden mygarden --project myproject --shoot myshoot
 ### Options
 
 ```
-      --control-plane    target control plane of shoot, use together with shoot argument
-      --garden string    target the given garden cluster
-  -h, --help             help for shoot
-  -o, --output string    One of 'yaml' or 'json'. (default "yaml")
-      --project string   target the given project
-      --seed string      target the given seed cluster
-      --shoot string     target the given shoot cluster
+      --control-plane[=true|false]   target control plane of shoot, use together with shoot argument
+      --garden string                target the given garden cluster
+  -h, --help[=true|false]            help for shoot
+  -o, --output string                One of 'yaml' or 'json'. (default "yaml")
+      --project string               target the given project
+      --seed string                  target the given seed cluster
+      --shoot string                 target the given shoot cluster
 ```
 
 ### Options inherited from parent commands

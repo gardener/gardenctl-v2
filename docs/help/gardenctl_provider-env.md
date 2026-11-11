@@ -47,11 +47,11 @@ gardenctl provider-env [flags]
 ### Options
 
 ```
-  -y, --confirm-access-restriction                    Confirm any access restrictions. Set this flag only if you are completely aware of the access restrictions.
-      --control-plane                                 target control plane of shoot, use together with shoot argument
-  -f, --force                                         Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.
+  -y, --confirm-access-restriction[=true|false]       Confirm any access restrictions. Set this flag only if you are completely aware of the access restrictions.
+      --control-plane[=true|false]                    target control plane of shoot, use together with shoot argument
+  -f, --force[=true|false]                            Deprecated. Use --confirm-access-restriction instead. Generate the script even if there are access restrictions to be confirmed.
       --garden string                                 target the given garden cluster
-  -h, --help                                          help for provider-env
+  -h, --help[=true|false]                             help for provider-env
       --openstack-allowed-patterns stringArray        Additional allowed patterns for OpenStack credential fields in JSON format.
                                                       Note: Only the 'authURL' field is supported for OpenStack pattern validation.
                                                       Each pattern should be a JSON object with fields like:
@@ -80,7 +80,7 @@ gardenctl provider-env [flags]
                                                       For example:
                                                       "aud=https://example.com"
                                                       The URI is parsed and host and path are set accordingly. These are merged with defaults and configuration.
-  -u, --unset                                         Generate the script to unset the cloud provider CLI environment variables and logout.
+  -u, --unset[=true|false]                            Generate the script to unset the cloud provider CLI environment variables and logout.
       --workload-identity-token-expiration duration   Requested expiration for workload identity tokens. The server may enforce a maximum. (default 1h0m0s)
 ```
 

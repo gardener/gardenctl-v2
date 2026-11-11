@@ -16,8 +16,8 @@ gardenctl config view
 ### Options
 
 ```
-  -h, --help            help for view
-  -o, --output string   One of 'yaml' or 'json'.
+  -h, --help[=true|false]   help for view
+  -o, --output string       One of 'yaml' or 'json'.
 ```
 
 ### Options inherited from parent commands

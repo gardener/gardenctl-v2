@@ -56,10 +56,10 @@ gardenctl rc zsh [flags]
 ### Options
 
 ```
-  -h, --help            help for zsh
-      --no-completion   The startup script should not setup completion
-      --no-kubeconfig   The startup script should not modify the KUBECONFIG environment variable
-  -p, --prefix string   The prefix used for aliases and functions (default "g")
+  -h, --help[=true|false]            help for zsh
+      --no-completion[=true|false]   The startup script should not setup completion
+      --no-kubeconfig[=true|false]   The startup script should not modify the KUBECONFIG environment variable
+  -p, --prefix string                The prefix used for aliases and functions (default "g")
 ```
 
 ### Options inherited from parent commands

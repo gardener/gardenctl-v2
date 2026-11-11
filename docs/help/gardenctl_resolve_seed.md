@@ -9,12 +9,12 @@ gardenctl resolve seed [flags]
 ### Options
 
 ```
-      --garden string    target the given garden cluster
-  -h, --help             help for seed
-  -o, --output string    One of 'yaml' or 'json'. (default "yaml")
-      --project string   target the given project
-      --seed string      target the given seed cluster
-      --shoot string     target the given shoot cluster
+      --garden string       target the given garden cluster
+  -h, --help[=true|false]   help for seed
+  -o, --output string       One of 'yaml' or 'json'. (default "yaml")
+      --project string      target the given project
+      --seed string         target the given seed cluster
+      --shoot string        target the given shoot cluster
 ```
 
 ### Options inherited from parent commands
