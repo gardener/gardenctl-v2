@@ -235,5 +235,5 @@ func (f *FactoryImpl) GetSessionID() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("environment variable %s is required. Use \"gardenctl help\" for more information about the requirements of gardenctl", envSessionID)
+	return "", fmt.Errorf("environment variable %s is required. Run \"source <(gardenctl rc <shell>)\" to configure your shell automatically", envSessionID)
 }

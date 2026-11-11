@@ -180,7 +180,7 @@ var _ = Describe("Factory", func() {
 
 						_, err := factory.GetSessionID()
 						Expect(err).To(HaveOccurred())
-						Expect(err.Error()).To(ContainSubstring("environment variable GCTL_SESSION_ID is required"))
+						Expect(err).To(MatchError("environment variable GCTL_SESSION_ID is required. Run \"source <(gardenctl rc <shell>)\" to configure your shell automatically"))
 					},
 					Entry("invalid TERM_SESSION_ID without UUID", testCase{
 						name:          "invalid without UUID",
@@ -211,7 +211,7 @@ var _ = Describe("Factory", func() {
 			It("should return an error", func() {
 				_, err := factory.GetSessionID()
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("environment variable GCTL_SESSION_ID is required"))
+				Expect(err).To(MatchError("environment variable GCTL_SESSION_ID is required. Run \"source <(gardenctl rc <shell>)\" to configure your shell automatically"))
 			})
 		})
 
