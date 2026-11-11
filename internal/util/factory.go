@@ -235,5 +235,5 @@ func (f *FactoryImpl) GetSessionID() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("no shell session ID found: set %s or provide a valid %s. To configure your shell automatically, see \"gardenctl rc --help\"", envSessionID, envTermSessionID)
+	return "", fmt.Errorf("environment variable %s is required. Run \"source <(gardenctl rc <shell>)\" to configure your shell automatically", envSessionID)
 }
