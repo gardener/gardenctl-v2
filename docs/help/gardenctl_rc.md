@@ -13,7 +13,7 @@ See each sub-command's help for details on how to use the generated shell startu
 ### Options
 
 ```
-  -h, --help   help for rc
+  -h, --help[=true|false]   help for rc
 ```
 
 ### Options inherited from parent commands

@@ -16,7 +16,7 @@ gardenctl config delete-garden my-garden
 ### Options
 
 ```
-  -h, --help   help for delete-garden
+  -h, --help[=true|false]   help for delete-garden
 ```
 
 ### Options inherited from parent commands

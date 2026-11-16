@@ -16,10 +16,10 @@ Note: --access-level only has an effect when linkKubeconfig is false. In symlink
 
 ```
       --access-level string   Override the default kubeconfig access level when targeting shoots or seeds. One of "admin", "viewer", "auto".
-      --admin                 shorthand for --access-level=admin
-  -h, --help                  help for kubectl-env
-  -u, --unset                 Generate the script to unset the KUBECONFIG environment variable for 
-      --viewer                shorthand for --access-level=viewer
+      --admin[=true|false]    shorthand for --access-level=admin
+  -h, --help[=true|false]     help for kubectl-env
+  -u, --unset[=true|false]    Generate the script to unset the KUBECONFIG environment variable for 
+      --viewer[=true|false]   shorthand for --access-level=viewer
 ```
 
 ### Options inherited from parent commands
