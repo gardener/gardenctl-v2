@@ -12,6 +12,7 @@ path = [
   "logo/**",
   "**.tmpl",
   "**/mocks/**.go",
+  "internal/client/garden/testdata/openssl-seed-login.json",
   "pkg/env/testdata/**/**.fish",
   "pkg/env/testdata/**/**.bash",
   "pkg/env/testdata/**/**.pwsh",

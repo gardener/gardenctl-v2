@@ -73,13 +73,11 @@ type Client interface {
 	ListSeeds(ctx context.Context, opts ...client.ListOption) (*gardencorev1beta1.SeedList, error)
 	// GetSeedClientConfig returns the client config for a seed.
 	//
-	// For managed seeds, accessLevel is honored (the call is delegated to
-	// GetShootClientConfig).
-	//
-	// For non-managed seeds the kubeconfig comes from a static <name>.login
-	// Secret; an explicit "viewer" accessLevel returns an error since gardenctl
-	// cannot guarantee the privileges of a static kubeconfig. Any other value
-	// (empty, "admin", "auto") returns the static kubeconfig as-is.
+	// Managed seeds use the backing shoot's kubeconfig at the requested access level.
+	// For non-managed seeds, "admin", "auto", and an unspecified access level all
+	// return the same signed kubeconfig from the <name>.login Secret. The seed
+	// cluster determines the permissions of those credentials. Requesting "viewer"
+	// returns an error because gardenctl cannot guarantee read-only access.
 	GetSeedClientConfig(ctx context.Context, name string, accessLevel config.KubeconfigAccessLevel) (clientcmd.ClientConfig, error)
 
 	// GetShoot returns a Gardener shoot resource in a namespace by name
@@ -154,15 +152,36 @@ type clientImpl struct {
 
 	// name is a unique identifier of this Garden client
 	name string
+
+	// seedKubeconfigPublicKeys contains the trusted public keys used to
+	// verify kubeconfigs for non-managed seeds.
+	seedKubeconfigPublicKeys config.SeedKubeconfigPublicKeys
+}
+
+// ClientOption configures a Garden client.
+type ClientOption func(*clientImpl)
+
+// WithSeedKubeconfigPublicKeys configures the trusted public keys used to
+// verify kubeconfigs for non-managed seeds.
+func WithSeedKubeconfigPublicKeys(publicKeys config.SeedKubeconfigPublicKeys) ClientOption {
+	return func(client *clientImpl) {
+		client.seedKubeconfigPublicKeys = publicKeys
+	}
 }
 
 // NewClient returns a new garden Client.
-func NewClient(config clientcmd.ClientConfig, client client.Client, name string) Client {
-	return &clientImpl{
+func NewClient(config clientcmd.ClientConfig, client client.Client, name string, opts ...ClientOption) Client {
+	gardenClient := &clientImpl{
 		config: config,
 		c:      client,
 		name:   name,
 	}
+
+	for _, opt := range opts {
+		opt(gardenClient)
+	}
+
+	return gardenClient
 }
 
 // validateObjectMetadata performs a basic sanity check on the object's metadata.
@@ -621,11 +640,7 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string, acces
 	logger := klog.FromContext(ctx)
 
 	shoot, err := g.GetShootOfManagedSeed(ctx, name)
-	if client.IgnoreNotFound(err) != nil {
-		return nil, err
-	}
-
-	if !apierrors.IsNotFound(err) {
+	if err == nil {
 		logger.V(1).Info("using referred shoot of managed seed",
 			"shoot", klog.KRef(corev1beta1constants.GardenNamespace, shoot.Name),
 			"seed", name)
@@ -633,50 +648,29 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string, acces
 		return g.GetShootClientConfig(ctx, corev1beta1constants.GardenNamespace, shoot.Name, accessLevel)
 	}
 
-	// Non-managed seed: kubeconfig comes from a static <name>.login Secret, so
-	// gardenlogin's access-level mechanism is not available on this path. We
-	// reject only an explicit "viewer" request - the user asked for read-only
-	// and we cannot deliver it, so silently returning the static kubeconfig
-	// would be a privilege surprise. "auto" semantically means "try admin,
-	// fall back to viewer", so falling through here matches its documented
-	// behavior. Note that gardenctl cannot determine the actual privileges
-	// the static kubeconfig grants - they depend on the cluster's RBAC.
-	if accessLevel == config.KubeconfigAccessLevelViewer {
-		return nil, fmt.Errorf("seed %q is not a managed seed; gardenlogin's access-level mechanism is unavailable for static seed-login kubeconfigs. "+
-			"Re-run without %q (or with --access-level=%s) to use the static kubeconfig as-is",
-			name, accessLevel, config.KubeconfigAccessLevelAuto)
+	if !apierrors.IsNotFound(err) {
+		return nil, err
 	}
 
-	key := types.NamespacedName{Name: name}
+	if accessLevel == config.KubeconfigAccessLevelViewer {
+		return nil, fmt.Errorf("seed %q is not a managed seed and its static kubeconfig cannot guarantee viewer access. To use its configured privileges, pass --access-level=auto", name)
+	}
 
 	secret, err := g.GetSecret(ctx, corev1beta1constants.GardenNamespace, name+".login")
 	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return nil, err
-		}
-
-		// fallback to deprecated .oidc secret
-		var oidcErr error
-
-		secret, oidcErr = g.GetSecret(ctx, corev1beta1constants.GardenNamespace, name+".oidc")
-		if oidcErr != nil {
-			return nil, fmt.Errorf("failed to get kubeconfig for seed %v: %w", key, err) // use original not-found error as cause and ignore error of fallback
-		}
-
-		klog.FromContext(ctx).Info("Using deprecated secret to obtain seed kubeconfig", "secret", klog.KRef(corev1beta1constants.GardenNamespace, name+".oidc"))
+		return nil, fmt.Errorf("failed to get kubeconfig for seed %q: %w", name, err)
 	}
 
-	value, ok := secret.Data["kubeconfig"]
-	if !ok {
-		return nil, fmt.Errorf("invalid kubeconfig secret for seed %v", key)
+	if err := verifySeedKubeconfigSignature(name, secret.Data, g.seedKubeconfigPublicKeys); err != nil {
+		return nil, fmt.Errorf("failed to verify static kubeconfig for seed %q: %w", name, err)
 	}
 
-	config, err := clientcmd.NewClientConfigFromBytes(value)
+	clientConfig, err := clientcmd.NewClientConfigFromBytes(secret.Data["kubeconfig"])
 	if err != nil {
-		return nil, fmt.Errorf("failed to deserialize kubeconfig for seed %v: %w", key, err)
+		return nil, fmt.Errorf("failed to deserialize kubeconfig for seed %q: %w", name, err)
 	}
 
-	return config, nil
+	return clientConfig, nil
 }
 
 func (g *clientImpl) GetCloudProfile(ctx context.Context, ref gardencorev1beta1.CloudProfileReference, namespace string) (*CloudProfileUnion, error) {

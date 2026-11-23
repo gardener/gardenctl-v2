@@ -26,7 +26,7 @@ var _ = Describe("Config Command", func() {
 			cmd = cmdconfig.NewCmdConfig(factory, streams)
 		})
 
-		It("should have 4 subcommands", func() {
+		It("registers the configuration subcommands", func() {
 			Expect(cmd.Use).To(Equal("config"))
 
 			subCommands := []string{}
@@ -34,7 +34,7 @@ var _ = Describe("Config Command", func() {
 				subCommands = append(subCommands, c.Name())
 			}
 
-			Expect(subCommands).To(Equal([]string{"delete-garden", "set-garden", "set-openstack-authurl", "view"}))
+			Expect(subCommands).To(Equal([]string{"add-seed-key", "delete-garden", "set-garden", "set-openstack-authurl", "view"}))
 		})
 
 		Describe("Execute Subcommands", func() {

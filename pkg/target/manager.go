@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	internalclient "github.com/gardener/gardenctl-v2/internal/client"
@@ -156,7 +157,12 @@ func newGardenClient(name string, config *config.Config, provider internalclient
 		return nil, err
 	}
 
-	return clientgarden.NewClient(clientConfig, client, garden.Name), nil
+	return clientgarden.NewClient(
+		clientConfig,
+		client,
+		garden.Name,
+		clientgarden.WithSeedKubeconfigPublicKeys(garden.SeedKubeconfigPublicKeys),
+	), nil
 }
 
 // NewManager returns a new manager. flagAccessLevel is the value of the global
@@ -955,15 +961,7 @@ func (m *managerImpl) updateTarget(ctx context.Context, target Target) (Target, 
 
 func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.ClientConfig, error) {
 	if t.ControlPlane() {
-		scope, _, err := m.scopeForTarget(ctx, t)
-		if err != nil {
-			return nil, err
-		}
-
-		// GetSeedClientConfig handles the managed/non-managed split: managed
-		// seeds honor accessLevel; non-managed seeds return the static
-		// kubeconfig (and reject an explicit "viewer" request).
-		accessLevel := m.resolveAccessLevel(t, scope)
+		accessLevel := m.resolveAccessLevel(t, AccessScopeSeeds)
 
 		return m.getClientConfig(t, func(client clientgarden.Client) (clientcmd.ClientConfig, error) {
 			shoot, err := client.FindShoot(ctx, t.WithControlPlane(false).AsListOption())
@@ -971,7 +969,8 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 				return nil, err
 			}
 
-			if shoot.Spec.SeedName == nil || *shoot.Spec.SeedName == "" {
+			seedName := ptr.Deref(shoot.Spec.SeedName, "")
+			if seedName == "" {
 				return nil, fmt.Errorf("no seed assigned to shoot %s/%s", shoot.Namespace, shoot.Name)
 			}
 
@@ -979,7 +978,7 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 				return nil, fmt.Errorf("no technicalID has been assigned to the shoot %q yet", t.ShootName())
 			}
 
-			clientConfig, err := client.GetSeedClientConfig(ctx, *shoot.Spec.SeedName, accessLevel)
+			clientConfig, err := client.GetSeedClientConfig(ctx, seedName, accessLevel)
 			if err != nil {
 				return nil, err
 			}
@@ -1007,12 +1006,7 @@ func (m *managerImpl) ClientConfig(ctx context.Context, t Target) (clientcmd.Cli
 	}
 
 	if t.SeedName() != "" {
-		scope, _, err := m.scopeForTarget(ctx, t)
-		if err != nil {
-			return nil, err
-		}
-
-		accessLevel := m.resolveAccessLevel(t, scope)
+		accessLevel := m.resolveAccessLevel(t, AccessScopeSeeds)
 
 		return m.getClientConfig(t, func(client clientgarden.Client) (clientcmd.ClientConfig, error) {
 			return client.GetSeedClientConfig(ctx, t.SeedName(), accessLevel)

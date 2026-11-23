@@ -1,0 +1,14 @@
+{
+  "apiVersion": "v1",
+  "kind": "Secret",
+  "metadata": {
+    "namespace": "garden",
+    "name": "seed.login",
+    "uid": "00000000-0000-0000-0000-000000000000"
+  },
+  "data": {
+    "kubeconfig": "YXBpVmVyc2lvbjogdjEKa2luZDogQ29uZmlnCmNsdXN0ZXJzOgotIG5hbWU6IHNlZWQKICBjbHVzdGVyOgogICAgc2VydmVyOiBodHRwczovL3NlZWQuZXhhbXBsZS5pbnZhbGlkCmNvbnRleHRzOgotIG5hbWU6IHNlZWQKICBjb250ZXh0OgogICAgY2x1c3Rlcjogc2VlZAogICAgdXNlcjogZGV2ZWxvcGVyCnVzZXJzOgotIG5hbWU6IGRldmVsb3BlcgogIHVzZXI6IHt9CmN1cnJlbnQtY29udGV4dDogc2VlZAo=",
+    "kubeconfig-signing-manifest": "ewogICJhcGlWZXJzaW9uIjogImdhcmRlbmN0bC5nYXJkZW5lci5jbG91ZC92MWFscGhhMSIsCiAgImtpbmQiOiAiU2VlZEt1YmVjb25maWdTaWduYXR1cmUiLAogICJzZWVkTmFtZSI6ICJzZWVkIiwKICAia3ViZWNvbmZpZ0hhc2giOiAic2hhMjU2OjE1ZGY3YzM2Y2I1Y2YwYTk2OWU2NGI5ZGUwOWJkZmRmMzYyZDM1OGZkZmY1MzIxZjUwNGMyZTM5ZmI0NDU1YzUiCn0K",
+    "kubeconfig-signature": "MEYCIQC3GIkHQrk+gNmAVjQtOCnkZWukj0KPZej2bv2OgG9OwgIhAMMwTHXRecVIPR4YXdr2bu6of4LYRAL+vDnd6UjVx9Tt"
+  }
+}

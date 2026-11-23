@@ -158,19 +158,10 @@ var _ = Describe("Target Manager", func() {
 			},
 		}
 
-		testSeedKubeconfig, err := fake.NewConfigData("test-seed")
-		Expect(err).ToNot(HaveOccurred())
+		var err error
 
-		seedKubeconfigSecret = &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-seed.login",
-				Namespace: "garden",
-				UID:       "00000000-0000-0000-0000-000000000000",
-			},
-			Data: map[string][]byte{
-				"kubeconfig": testSeedKubeconfig,
-			},
-		}
+		seedKubeconfigSecret, cfg.Gardens[0].SeedKubeconfigPublicKeys, err = fake.NewSignedSeedKubeconfigSecret("test-seed")
+		Expect(err).ToNot(HaveOccurred())
 
 		seed = &gardencorev1beta1.Seed{
 			ObjectMeta: metav1.ObjectMeta{
@@ -1145,6 +1136,15 @@ var _ = Describe("Target Manager", func() {
 				clientConfig, err := manager.ClientConfig(ctx, t)
 				Expect(err).NotTo(HaveOccurred())
 				assertClientConfig(clientConfig, seed.Name, "default")
+			})
+
+			It("uses only the public keys configured for the targeted Garden", func() {
+				// Both entries reach the same fake cluster. Only the original Garden trusts its key.
+				cfg.Gardens = append(cfg.Gardens, config.Garden{Name: "other-garden", Kubeconfig: gardenKubeconfig})
+				otherTarget := target.NewTarget("other-garden", "", seed.Name, "")
+
+				_, err := manager.ClientConfig(ctx, otherTarget)
+				Expect(err).To(MatchError(ContainSubstring("no trusted keys configured")))
 			})
 		})
 

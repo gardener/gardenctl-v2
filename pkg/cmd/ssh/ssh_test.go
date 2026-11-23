@@ -278,19 +278,10 @@ var _ = Describe("SSH Command", func() {
 
 		testShootKeypair := newShootSSHKeypairSecret(testShoot.Name, *testProject.Spec.Namespace)
 
-		testSeedKubeconfig, err := internalfake.NewConfigData("test-seed")
-		Expect(err).ToNot(HaveOccurred())
+		var err error
 
-		seedKubeconfigSecret = &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-seed.login",
-				Namespace: "garden",
-				UID:       "00000000-0000-0000-0000-000000000000",
-			},
-			Data: map[string][]byte{
-				"kubeconfig": testSeedKubeconfig,
-			},
-		}
+		seedKubeconfigSecret, cfg.Gardens[0].SeedKubeconfigPublicKeys, err = internalfake.NewSignedSeedKubeconfigSecret("test-seed")
+		Expect(err).ToNot(HaveOccurred())
 
 		caConfigMap := newShootCAConfigMap(testShoot.Name, testShoot.Namespace)
 

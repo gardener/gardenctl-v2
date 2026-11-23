@@ -41,6 +41,7 @@ The loading order follows these rules:
 ### SEE ALSO
 
 * [gardenctl](gardenctl.md)	 - Gardenctl is a utility to interact with Gardener installations
+* [gardenctl config add-seed-key](gardenctl_config_add-seed-key.md)	 - Add a trusted seed kubeconfig signing key for a Garden
 * [gardenctl config delete-garden](gardenctl_config_delete-garden.md)	 - Delete the specified garden from the gardenctl configuration
 * [gardenctl config set-garden](gardenctl_config_set-garden.md)	 - Modify or add a garden to the gardenctl configuration
 * [gardenctl config set-openstack-authurl](gardenctl_config_set-openstack-authurl.md)	 - Configure allowed OpenStack auth URLs

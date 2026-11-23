@@ -88,12 +88,17 @@ This command will create or update a garden with the provided identity and kubec
 gardens:
   - identity: landscape-dev # Unique identity of the garden cluster. See cluster-identity ConfigMap in kube-system namespace of the garden cluster
     kubeconfig: ~/relative/path/to/kubeconfig.yaml
-# name: my-name # An alternative, unique garden name for targeting
-# context: different-context # Overrides the current-context of the garden cluster kubeconfig
-# patterns: ~ # List of regex patterns for pattern targeting
-# kubeconfigAccessLevelDefaults: # Default access level requested per target scope
-#   shoots: viewer              # admin | viewer | auto (empty = gardenlogin's default)
-#   seeds: admin                # admin | viewer | auto (empty = gardenlogin's default)
+    # name: my-name # An alternative, unique garden name for targeting
+    # context: different-context # Overrides the current-context of the garden cluster kubeconfig
+    # patterns: ~ # List of regex patterns for pattern targeting
+    # kubeconfigAccessLevelDefaults: # Default access level requested per target scope
+    #   shoots: viewer              # admin | viewer | auto (empty = gardenlogin's default)
+    #   seeds: admin                # admin | viewer | auto (empty = gardenlogin's default)
+    # seedKubeconfigPublicKeys: # Trusted ECDSA P-256 public keys for seed kubeconfig verification
+    #   - |
+    #     -----BEGIN PUBLIC KEY-----
+    #     <public key from your landscape administrator>
+    #     -----END PUBLIC KEY-----
 ```
 
 > [!NOTE]
@@ -103,6 +108,10 @@ gardens:
 ### Kubeconfig Access Level
 
 `gardenctl` can request admin/viewer/auto kubeconfigs from `gardenlogin` per target scope (shoots, seeds), with per-garden defaults and per-invocation overrides via `--access-level` / `--admin` / `--viewer`. See [docs/config/access-level.md](docs/config/access-level.md) for the full reference.
+
+### Seed Kubeconfig Signatures
+
+For non-managed seeds, gardenctl verifies the kubeconfig signature before loading the kubeconfig from the login Secret. Obtain the public key from your landscape administrator and add it with `gardenctl config add-seed-key landscape-dev --file public-key.pem`. For signing, publishing, and key rotation, see [Seed kubeconfig signatures](docs/config/seed-kubeconfig-signatures.md).
 
 ### Config Path Overwrite
 

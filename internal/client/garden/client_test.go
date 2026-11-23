@@ -8,11 +8,16 @@ package garden_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/asn1"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -175,78 +180,257 @@ var _ = Describe("Client", func() {
 	})
 
 	Describe("GetSeedClientConfig", func() {
+		const seedName = "seed-2"
+
+		var (
+			trustedKeys     config.SeedKubeconfigPublicKeys
+			loginSecret     *corev1.Secret
+			localGardenName string
+		)
+
+		loadSeed := func(name string, level config.KubeconfigAccessLevel) (clientcmd.ClientConfig, error) {
+			client := clientgarden.NewClient(nil, fake.NewClientWithObjects(loginSecret), localGardenName,
+				clientgarden.WithSeedKubeconfigPublicKeys(trustedKeys))
+
+			return client.GetSeedClientConfig(ctx, name, level)
+		}
+
 		BeforeEach(func() {
 			ctx = context.Background()
+			localGardenName = gardenName
 
-			seed1Kubeconfig, err := fake.NewConfigData("seed-1")
+			var err error
+
+			loginSecret, trustedKeys, err = fake.NewSignedSeedKubeconfigSecret(seedName)
 			Expect(err).NotTo(HaveOccurred())
-
-			seed2Kubeconfig, err := fake.NewConfigData("seed-2")
-			Expect(err).NotTo(HaveOccurred())
-
-			oidcSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "seed-1.oidc",
-					Namespace: "garden",
-					UID:       "00000000-0000-0000-0000-000000000000",
-				},
-				Data: map[string][]byte{
-					"kubeconfig": seed1Kubeconfig,
-				},
-			}
-			loginSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "seed-2.login",
-					Namespace: "garden",
-					UID:       "00000000-0000-0000-0000-000000000000",
-				},
-				Data: map[string][]byte{
-					"kubeconfig": seed2Kubeconfig,
-				},
-			}
-			gardenClient = clientgarden.NewClient(
-				nil,
-				fake.NewClientWithObjects(oidcSecret, loginSecret),
-				gardenName,
-			)
 		})
 
-		DescribeTable("when the secret exists", func(seedName string) {
-			clientConfig, err := gardenClient.GetSeedClientConfig(ctx, seedName, "")
+		It("loads a login Secret signed by OpenSSL", func() {
+			// This fixed fixture is independent of the Go test signer and pins the published wire format.
+			const publicKey = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZaw+eCE8ttLg9lxQtatgD7S9Mwcd
+6UNheMRfnzBp33LjtKiTY7tB/WAK4r5G1vmLjvYOrkq0zJ2CVQjTW5/vnQ==
+-----END PUBLIC KEY-----
+`
+
+			data, err := os.ReadFile("testdata/openssl-seed-login.json")
+			Expect(err).NotTo(HaveOccurred())
+
+			loginSecret = &corev1.Secret{}
+			Expect(json.Unmarshal(data, loginSecret)).To(Succeed())
+
+			trustedKeys = config.SeedKubeconfigPublicKeys{publicKey}
+
+			clientConfig, err := loadSeed("seed", "")
 			Expect(err).NotTo(HaveOccurred())
 
 			rawConfig, err := clientConfig.RawConfig()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(rawConfig.CurrentContext).To(Equal(seedName))
-		},
-			Entry("and the secretName has suffix .oidc", "seed-1"),
-			Entry("and the secretName has suffix .login", "seed-2"),
-		)
-
-		Context("when the secret does not exist", func() {
-			It("it should fail with not found error", func() {
-				_, err := gardenClient.GetSeedClientConfig(ctx, "seed-3", "")
-				Expect(err).To(HaveOccurred())
-				Expect(apierrors.IsNotFound(err)).To(BeTrue())
-			})
+			Expect(rawConfig.CurrentContext).To(Equal("seed"))
 		})
 
-		DescribeTable("rejects only viewer for non-managed seeds (the user asked for read-only and we cannot deliver it)",
-			func(level config.KubeconfigAccessLevel) {
-				_, err := gardenClient.GetSeedClientConfig(ctx, "seed-1", level)
-				Expect(err).To(MatchError(ContainSubstring("not a managed seed")))
-			},
-			Entry("viewer", config.KubeconfigAccessLevelViewer),
-		)
+		It("accepts a trusted signature when the local Garden identity is renamed", func() {
+			localGardenName = "another-local-garden-identity"
 
-		DescribeTable("permits admin, auto, or empty access level for non-managed seeds (auto falls back to admin per its documented semantics)",
+			_, err := loadSeed(seedName, "")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("ignores a signed kubeconfig in a deprecated .oidc Secret", func() {
+			loginSecret.Name = seedName + ".oidc"
+
+			_, err := loadSeed(seedName, "")
+			Expect(apierrors.IsNotFound(err)).To(BeTrue())
+		})
+
+		It("propagates a managed seed lookup error even when a signed login Secret exists", func() {
+			managedSeed := &seedmanagementv1alpha1.ManagedSeed{
+				ObjectMeta: metav1.ObjectMeta{Name: seedName, Namespace: "garden", UID: loginSecret.UID},
+			}
+			client := clientgarden.NewClient(nil, fake.NewClientWithObjects(managedSeed, loginSecret), gardenName,
+				clientgarden.WithSeedKubeconfigPublicKeys(trustedKeys))
+
+			_, err := client.GetSeedClientConfig(ctx, seedName, "")
+			Expect(err).To(MatchError(ContainSubstring("no shoot referenced for managed seed")))
+		})
+
+		It("returns a not-found error for a missing login Secret", func() {
+			_, err := loadSeed("seed-3", "")
+			Expect(apierrors.IsNotFound(err)).To(BeTrue())
+		})
+
+		It("rejects viewer access for a non-managed seed", func() {
+			_, err := loadSeed(seedName, config.KubeconfigAccessLevelViewer)
+			Expect(err).To(MatchError(ContainSubstring("not a managed seed")))
+		})
+
+		DescribeTable("loads the signed static kubeconfig at the supported access levels",
 			func(level config.KubeconfigAccessLevel) {
-				_, err := gardenClient.GetSeedClientConfig(ctx, "seed-1", level)
+				_, err := loadSeed(seedName, level)
 				Expect(err).NotTo(HaveOccurred())
 			},
-			Entry("empty (delegate to gardenlogin's default)", config.KubeconfigAccessLevel("")),
+			Entry("unspecified", config.KubeconfigAccessLevel("")),
 			Entry("admin", config.KubeconfigAccessLevelAdmin),
 			Entry("auto", config.KubeconfigAccessLevelAuto),
+		)
+
+		It("rejects a kubeconfig modified after the manifest was signed", func() {
+			loginSecret.Data["kubeconfig"] = append(loginSecret.Data["kubeconfig"], '\n')
+
+			_, err := loadSeed(seedName, "")
+			Expect(err).To(MatchError(ContainSubstring("kubeconfig hash does not match the signed manifest")))
+		})
+
+		It("rejects a manifest modified after it was signed", func() {
+			key := clientgarden.SeedKubeconfigManifestDataKey
+			loginSecret.Data[key] = append(loginSecret.Data[key], ' ')
+
+			_, err := loadSeed(seedName, "")
+			Expect(err).To(MatchError(ContainSubstring("ECDSA P-256 signature verification failed")))
+		})
+
+		It("rejects a valid signature bound to a different seed", func() {
+			loginSecret.Name = "another-seed.login"
+
+			_, err := loadSeed("another-seed", "")
+			Expect(err).To(MatchError(ContainSubstring("seed name does not match")))
+		})
+
+		It("rejects a truncated signature", func() {
+			loginSecret.Data[clientgarden.SeedKubeconfigSignatureDataKey] = []byte{1}
+
+			_, err := loadSeed(seedName, "")
+			Expect(err).To(MatchError(ContainSubstring("ECDSA P-256 signature verification failed")))
+		})
+
+		It("rejects a valid signature encoded in raw JOSE format", func() {
+			key := clientgarden.SeedKubeconfigSignatureDataKey
+
+			var signature struct{ R, S *big.Int }
+
+			_, err := asn1.Unmarshal(loginSecret.Data[key], &signature)
+			Expect(err).NotTo(HaveOccurred())
+
+			raw := make([]byte, 64)
+			signature.R.FillBytes(raw[:32])
+			signature.S.FillBytes(raw[32:])
+			loginSecret.Data[key] = raw
+
+			_, err = loadSeed(seedName, "")
+			Expect(err).To(MatchError(ContainSubstring("ECDSA P-256 signature verification failed")))
+		})
+
+		DescribeTable("rejects malformed or ambiguous manifests", func(manifest, message string) {
+			loginSecret.Data[clientgarden.SeedKubeconfigManifestDataKey] = []byte(manifest)
+
+			var err error
+
+			trustedKeys, err = fake.SignSeedKubeconfigManifest(loginSecret)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = loadSeed(seedName, "")
+			Expect(err).To(MatchError(ContainSubstring(message)))
+		},
+			Entry("obsolete key ID", `{"signingKeyID":"operator"}`, `unknown field "signingKeyID"`),
+			Entry("trailing JSON", `{} {}`, "failed to decode signing manifest"),
+			Entry("unknown field", `{"extra":true}`, `unknown field "extra"`),
+			Entry("incorrect field casing", `{"SeedName":"seed"}`, `unknown field "SeedName"`),
+			Entry("duplicate field", `{"seedName":"a","seedName":"b"}`, `duplicate field "seedName"`),
+		)
+
+		updateSignedField := func(field, value string) {
+			GinkgoHelper()
+
+			dataKey := clientgarden.SeedKubeconfigManifestDataKey
+
+			var manifest map[string]string
+			Expect(json.Unmarshal(loginSecret.Data[dataKey], &manifest)).To(Succeed())
+			manifest[field] = value
+
+			var err error
+
+			loginSecret.Data[dataKey], err = json.Marshal(manifest)
+			Expect(err).NotTo(HaveOccurred())
+			trustedKeys, err = fake.SignSeedKubeconfigManifest(loginSecret)
+			Expect(err).NotTo(HaveOccurred())
+		}
+
+		DescribeTable("rejects unsupported signed manifests", func(field, value string) {
+			updateSignedField(field, value)
+
+			_, err := loadSeed(seedName, "")
+			Expect(err).To(MatchError(ContainSubstring("unsupported signing manifest " + field)))
+		},
+			Entry("unknown API version", "apiVersion", "example.org/v2"),
+			Entry("unknown kind", "kind", "OtherSignature"),
+		)
+
+		It("rejects a correctly signed kubeconfig with malformed YAML", func() {
+			kubeconfig := []byte("apiVersion: v1\nkind: Config\nclusters: [")
+			loginSecret.Data["kubeconfig"] = kubeconfig
+			updateSignedField("kubeconfigHash", fmt.Sprintf("sha256:%x", sha256.Sum256(kubeconfig)))
+
+			_, err := loadSeed(seedName, "")
+			Expect(err).To(MatchError(ContainSubstring("failed to deserialize kubeconfig for seed")))
+		})
+
+		It("loads the active context of a signed kubeconfig despite an unused cluster with a missing CA file", func() {
+			rawConfig := fake.NewTokenConfig(seedName)
+			rawConfig.Clusters["unused"] = &clientcmdapi.Cluster{
+				Server:               "https://unused.example.invalid",
+				CertificateAuthority: filepath.Join(GinkgoT().TempDir(), "missing-ca.pem"),
+			}
+
+			kubeconfig, err := clientcmd.Write(*rawConfig)
+			Expect(err).NotTo(HaveOccurred())
+
+			loginSecret.Data["kubeconfig"] = kubeconfig
+			updateSignedField("kubeconfigHash", fmt.Sprintf("sha256:%x", sha256.Sum256(kubeconfig)))
+
+			clientConfig, err := loadSeed(seedName, "")
+			Expect(err).NotTo(HaveOccurred())
+			restConfig, err := clientConfig.ClientConfig()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(restConfig.Host).To(Equal(rawConfig.Clusters["cluster"].Server))
+		})
+
+		It("accepts either signing key during rotation and rejects a retired key", func() {
+			oldSecret := loginSecret.DeepCopy()
+			oldKeys := trustedKeys
+			newKeys, err := fake.SignSeedKubeconfigManifest(loginSecret)
+			Expect(err).NotTo(HaveOccurred())
+
+			trustedKeys = append(oldKeys, newKeys...)
+			_, err = loadSeed(seedName, "")
+			Expect(err).NotTo(HaveOccurred())
+
+			loginSecret = oldSecret
+			_, err = loadSeed(seedName, "")
+			Expect(err).NotTo(HaveOccurred())
+
+			trustedKeys = newKeys
+			_, err = loadSeed(seedName, "")
+			Expect(err).To(MatchError(ContainSubstring("ECDSA P-256 signature verification failed")))
+		})
+
+		It("explains how to configure a missing trust key", func() {
+			trustedKeys = nil
+
+			_, err := loadSeed(seedName, "")
+			Expect(err).To(MatchError(ContainSubstring("seedKubeconfigPublicKeys")))
+			Expect(err).To(MatchError(ContainSubstring("docs/config/seed-kubeconfig-signatures.md")))
+		})
+
+		DescribeTable("rejects a Secret with a missing data key",
+			func(missingDataKey string) {
+				delete(loginSecret.Data, missingDataKey)
+
+				_, err := loadSeed(seedName, "")
+				Expect(err).To(MatchError(ContainSubstring(fmt.Sprintf("missing data key %q", missingDataKey))))
+			},
+			Entry("kubeconfig", "kubeconfig"),
+			Entry("manifest", clientgarden.SeedKubeconfigManifestDataKey),
+			Entry("signature", clientgarden.SeedKubeconfigSignatureDataKey),
 		)
 	})
 
