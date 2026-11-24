@@ -1097,6 +1097,13 @@ var _ = Describe("Target Manager", func() {
 				Expect(err).NotTo(HaveOccurred())
 				assertClientConfig(clientConfig, *prod1GoldenShoot.Spec.SeedName, prod1GoldenShoot.Status.TechnicalID)
 			})
+
+			It("requires a trusted key when the control plane runs on a non-managed seed", func() {
+				cfg.Gardens[0].SeedKubeconfigPublicKeys = nil
+
+				_, err := manager.ClientConfig(ctx, t)
+				Expect(err).To(MatchError(ContainSubstring("no trusted keys configured")))
+			})
 		})
 
 		Context("when shoot is targeted", func() {

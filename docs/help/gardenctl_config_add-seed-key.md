@@ -9,6 +9,10 @@ Run 'gardenctl config view' to find the Garden's identity or alias.
 Use --file for a PEM file or --key for the full PEM block with line breaks.
 Adding the same key again succeeds without changing the configuration.
 
+Add a key only after confirming with the landscape administrator that it is theirs.
+The holder of the matching private key decides which kubeconfig gardenctl loads for the Garden's non-managed seeds,
+including the commands that kubeconfig runs on your machine to authenticate.
+
 ```
 gardenctl config add-seed-key GARDEN (--file PUBLIC_KEY.pem | --key PEM) [flags]
 ```

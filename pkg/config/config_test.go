@@ -602,6 +602,26 @@ provider:
 			Expect(newConfig(keys).Validate()).To(MatchError(ContainSubstring("expected an ECDSA public key")))
 		})
 
+		It("rejects a P-256 key encoded with explicit curve parameters", func() {
+			// Written by LibreSSL 3.3.6 with "openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:prime256v1".
+			const explicitParameters = `-----BEGIN PUBLIC KEY-----
+MIIBSzCCAQMGByqGSM49AgEwgfcCAQEwLAYHKoZIzj0BAQIhAP////8AAAABAAAA
+AAAAAAAAAAAA////////////////MFsEIP////8AAAABAAAAAAAAAAAAAAAA////
+///////////8BCBaxjXYqjqT57PrvVV2mIa8ZR0GsMxTsPY7zjw+J9JgSwMVAMSd
+NgiG5wSTamZ44ROdJreBn36QBEEEaxfR8uEsQkf4vOblY6RA8ncDfYEt6zOg9KE5
+RdiYwpZP40Li/hp/m47n60p8D54WK84zV2sxXs7LtkBoN79R9QIhAP////8AAAAA
+//////////+85vqtpxeehPO5ysL8YyVRAgEBA0IABKlutUB0GFzECMBoL4xFUKEp
+eSmQRtKvGRarf3Pw0xYGNQTPeAUTp5ne7SuSraRBl0GZUhJDJkorWq2ivactdiU=
+-----END PUBLIC KEY-----
+`
+
+			keys := config.SeedKubeconfigPublicKeys{explicitParameters}
+			Expect(newConfig(keys).Validate()).To(MatchError(And(
+				ContainSubstring("invalid SubjectPublicKeyInfo"),
+				ContainSubstring("identifies its curve by name"),
+			)))
+		})
+
 		It("rejects a malformed PEM block followed by a valid public key in the same entry", func() {
 			const malformedBlock = "-----BEGIN PUBLIC KEY-----\n!\n-----END PUBLIC KEY-----\n"
 

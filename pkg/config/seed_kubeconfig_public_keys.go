@@ -91,7 +91,7 @@ func decodeSeedKubeconfigPublicKey(encodedPublicKey string) (*ecdsa.PublicKey, e
 
 	parsed, err := x509.ParsePKIXPublicKey(der)
 	if err != nil {
-		return nil, fmt.Errorf("invalid SubjectPublicKeyInfo: %w", err)
+		return nil, fmt.Errorf("invalid SubjectPublicKeyInfo: %w. Expected an ECDSA P-256 public key that identifies its curve by name", err)
 	}
 
 	key, ok := parsed.(*ecdsa.PublicKey)

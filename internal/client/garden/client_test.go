@@ -289,6 +289,20 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZaw+eCE8ttLg9lxQtatgD7S9Mwcd
 			Expect(err).To(MatchError(ContainSubstring("ECDSA P-256 signature verification failed")))
 		})
 
+		It("verifies the signature before decoding the manifest", func() {
+			loginSecret.Data[clientgarden.SeedKubeconfigManifestDataKey] = []byte("{")
+
+			_, err := loadSeed(seedName, "")
+			Expect(err).To(MatchError(ContainSubstring("ECDSA P-256 signature verification failed")))
+		})
+
+		It("compares the kubeconfig hash before parsing the kubeconfig", func() {
+			loginSecret.Data["kubeconfig"] = []byte("apiVersion: v1\nkind: Config\nclusters: [")
+
+			_, err := loadSeed(seedName, "")
+			Expect(err).To(MatchError(ContainSubstring("kubeconfig hash does not match the signed manifest")))
+		})
+
 		It("rejects a valid signature bound to a different seed", func() {
 			loginSecret.Name = "another-seed.login"
 
