@@ -111,7 +111,7 @@ gardens:
 
 ### Seed Kubeconfig Signatures
 
-For non-managed seeds, gardenctl verifies the kubeconfig signature before loading the kubeconfig from the login Secret. Obtain the public key from your landscape administrator and add it with `gardenctl config add-seed-key landscape-dev --file public-key.pem`. For signing, publishing, and key rotation, see [Seed kubeconfig signatures](docs/config/seed-kubeconfig-signatures.md).
+For non-managed seeds, gardenctl verifies the kubeconfig signature before loading the kubeconfig from the login Secret. Obtain the public key from your landscape administrator and add it with `gardenctl config add-seed-key landscape-dev --file public-key.pem`. For signing and publishing, see [Seed kubeconfig signatures](docs/config/seed-kubeconfig-signatures.md).
 
 ### Config Path Overwrite
 

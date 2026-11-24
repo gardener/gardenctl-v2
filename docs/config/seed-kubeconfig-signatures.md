@@ -68,7 +68,7 @@ openssl dgst -sha256 -verify public-key.pem -signature manifest.sig manifest.jso
 
 ## Publish and verify the Secret
 
-Give the publishing pipeline the three files below. Deploy them together as the `<seed>.login` Secret in the `garden` namespace of the virtual Garden, preserving the exact file bytes.
+Give the publishing pipeline the three files below. Deploy them together as the `<seed>.login` Secret in the `garden` namespace of the virtual Garden, preserving the exact file bytes. Re-sign and publish whenever an approved kubeconfig changes.
 
 | Secret data key | Content after Kubernetes base64 decoding |
 |---|---|
@@ -82,10 +82,4 @@ Verify from a client configured with the trusted public key.
 gardenctl kubeconfig --garden landscape-dev --seed seed-a --access-level=auto >/dev/null
 ```
 
-## Rotate signing keys
-
-Re-sign and publish whenever an approved kubeconfig changes. To rotate keys, add the new public key alongside the old one, publish Secrets signed with the new key, then remove the old key from each client's `seedKubeconfigPublicKeys` list.
-
-A signature has no expiry date. Every kubeconfig signed for a seed stays acceptable for that seed while clients trust the key that signed it, even after a newer one was published. To withdraw a signed kubeconfig, for example after replacing the cluster CA it contains, rotate the signing key. A client stops accepting the kubeconfig once the old key is removed from its list. Shells that loaded it before keep using it until they are refreshed.
-
-Refresh affected shells to load the newly verified kubeconfig. In default symlink mode, repeat the `gardenctl target` command for the current target. With `linkKubeconfig: false`, run `gardenctl kubectl-env` again and apply its output in the shell.
+Signatures have no expiry. Gardenctl accepts older kubeconfigs for a seed while their signing key remains trusted, even after a newer kubeconfig is published. Existing shells keep using their loaded kubeconfig until the session is refreshed.
