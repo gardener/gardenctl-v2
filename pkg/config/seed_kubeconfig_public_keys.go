@@ -21,12 +21,8 @@ import (
 // SeedKubeconfigPublicKeys lists the PEM-encoded ECDSA P-256 keys trusted by a Garden.
 type SeedKubeconfigPublicKeys []string
 
-// UnmarshalJSON decodes the key list and gives a migration hint for named keys.
+// UnmarshalJSON decodes the key list and reports the expected format on error.
 func (keys *SeedKubeconfigPublicKeys) UnmarshalJSON(data []byte) error {
-	if bytes.HasPrefix(bytes.TrimSpace(data), []byte("{")) {
-		return errors.New("seedKubeconfigPublicKeys must be a YAML list of PEM public keys. Replace each named entry such as 'operator: |' with '- |'")
-	}
-
 	var decoded []string
 
 	if err := json.Unmarshal(data, &decoded); err != nil {

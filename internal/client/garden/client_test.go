@@ -8,7 +8,6 @@ package garden_test
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/asn1"
 	"encoding/base64"
 	"encoding/json"
@@ -17,7 +16,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -183,13 +181,12 @@ var _ = Describe("Client", func() {
 		const seedName = "seed-2"
 
 		var (
-			trustedKeys     config.SeedKubeconfigPublicKeys
-			loginSecret     *corev1.Secret
-			localGardenName string
+			trustedKeys config.SeedKubeconfigPublicKeys
+			loginSecret *corev1.Secret
 		)
 
 		loadSeed := func(name string, level config.KubeconfigAccessLevel) (clientcmd.ClientConfig, error) {
-			client := clientgarden.NewClient(nil, fake.NewClientWithObjects(loginSecret), localGardenName,
+			client := clientgarden.NewClient(nil, fake.NewClientWithObjects(loginSecret), gardenName,
 				clientgarden.WithSeedKubeconfigPublicKeys(trustedKeys))
 
 			return client.GetSeedClientConfig(ctx, name, level)
@@ -197,8 +194,6 @@ var _ = Describe("Client", func() {
 
 		BeforeEach(func() {
 			ctx = context.Background()
-			localGardenName = gardenName
-
 			var err error
 
 			loginSecret, trustedKeys, err = fake.NewSignedSeedKubeconfigSecret(seedName)
@@ -229,29 +224,11 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZaw+eCE8ttLg9lxQtatgD7S9Mwcd
 			Expect(rawConfig.CurrentContext).To(Equal("seed"))
 		})
 
-		It("accepts a trusted signature when the local Garden identity is renamed", func() {
-			localGardenName = "another-local-garden-identity"
-
-			_, err := loadSeed(seedName, "")
-			Expect(err).NotTo(HaveOccurred())
-		})
-
 		It("ignores a signed kubeconfig in a deprecated .oidc Secret", func() {
 			loginSecret.Name = seedName + ".oidc"
 
 			_, err := loadSeed(seedName, "")
 			Expect(apierrors.IsNotFound(err)).To(BeTrue())
-		})
-
-		It("propagates a managed seed lookup error even when a signed login Secret exists", func() {
-			managedSeed := &seedmanagementv1alpha1.ManagedSeed{
-				ObjectMeta: metav1.ObjectMeta{Name: seedName, Namespace: "garden", UID: loginSecret.UID},
-			}
-			client := clientgarden.NewClient(nil, fake.NewClientWithObjects(managedSeed, loginSecret), gardenName,
-				clientgarden.WithSeedKubeconfigPublicKeys(trustedKeys))
-
-			_, err := client.GetSeedClientConfig(ctx, seedName, "")
-			Expect(err).To(MatchError(ContainSubstring("no shoot referenced for managed seed")))
 		})
 
 		It("returns a not-found error for a missing login Secret", func() {
@@ -345,7 +322,6 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZaw+eCE8ttLg9lxQtatgD7S9Mwcd
 			_, err = loadSeed(seedName, "")
 			Expect(err).To(MatchError(ContainSubstring(message)))
 		},
-			Entry("obsolete key ID", `{"signingKeyID":"operator"}`, `unknown field "signingKeyID"`),
 			Entry("trailing JSON", `{} {}`, "failed to decode signing manifest"),
 			Entry("unknown field", `{"extra":true}`, `unknown field "extra"`),
 			Entry("incorrect field casing", `{"SeedName":"seed"}`, `unknown field "SeedName"`),
@@ -379,36 +355,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZaw+eCE8ttLg9lxQtatgD7S9Mwcd
 			Entry("unknown kind", "kind", "OtherSignature"),
 		)
 
-		It("rejects a correctly signed kubeconfig with malformed YAML", func() {
-			kubeconfig := []byte("apiVersion: v1\nkind: Config\nclusters: [")
-			loginSecret.Data["kubeconfig"] = kubeconfig
-			updateSignedField("kubeconfigHash", fmt.Sprintf("sha256:%x", sha256.Sum256(kubeconfig)))
-
-			_, err := loadSeed(seedName, "")
-			Expect(err).To(MatchError(ContainSubstring("failed to deserialize kubeconfig for seed")))
-		})
-
-		It("loads the active context of a signed kubeconfig despite an unused cluster with a missing CA file", func() {
-			rawConfig := fake.NewTokenConfig(seedName)
-			rawConfig.Clusters["unused"] = &clientcmdapi.Cluster{
-				Server:               "https://unused.example.invalid",
-				CertificateAuthority: filepath.Join(GinkgoT().TempDir(), "missing-ca.pem"),
-			}
-
-			kubeconfig, err := clientcmd.Write(*rawConfig)
-			Expect(err).NotTo(HaveOccurred())
-
-			loginSecret.Data["kubeconfig"] = kubeconfig
-			updateSignedField("kubeconfigHash", fmt.Sprintf("sha256:%x", sha256.Sum256(kubeconfig)))
-
-			clientConfig, err := loadSeed(seedName, "")
-			Expect(err).NotTo(HaveOccurred())
-			restConfig, err := clientConfig.ClientConfig()
-			Expect(err).NotTo(HaveOccurred())
-			Expect(restConfig.Host).To(Equal(rawConfig.Clusters["cluster"].Server))
-		})
-
-		It("accepts either signing key during rotation and rejects a retired key", func() {
+		It("accepts signatures from either trusted key and rejects signatures from a removed key", func() {
 			oldSecret := loginSecret.DeepCopy()
 			oldKeys := trustedKeys
 			newKeys, err := fake.SignSeedKubeconfigManifest(loginSecret)

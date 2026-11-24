@@ -658,21 +658,20 @@ eSmQRtKvGRarf3Pw0xYGNQTPeAUTp5ne7SuSraRBl0GZUhJDJkorWq2ivactdiU=
 			Expect(cfg.Gardens[0].SeedKubeconfigPublicKeys).To(Equal(config.SeedKubeconfigPublicKeys{validPublicKey}))
 		})
 
-		It("explains how to update a configuration with named public keys", func() {
-			filename := filepath.Join(gardenHomeDir, "named-keys.yaml")
-			cfgData := fmt.Sprintf(`gardens:
+		It("reports the expected format when the public keys are not a list", func() {
+			filename := filepath.Join(gardenHomeDir, "invalid-keys.yaml")
+			const cfgData = `gardens:
 - identity: test-garden
   kubeconfig: /path/to/kubeconfig
-  seedKubeconfigPublicKeys:
-    operator: |
-      %s
-`, strings.ReplaceAll(strings.TrimSpace(validPublicKey), "\n", "\n      "))
+  seedKubeconfigPublicKeys: public-key.pem
+`
 			Expect(os.WriteFile(filename, []byte(cfgData), 0o600)).To(Succeed())
 
 			_, err := config.LoadFromFile(filename)
-			Expect(err).To(MatchError(And(ContainSubstring(filename),
-				ContainSubstring("seedKubeconfigPublicKeys must be a YAML list"),
-				ContainSubstring("Replace each named entry such as 'operator: |' with '- |'"))))
+			Expect(err).To(MatchError(And(
+				ContainSubstring(filename),
+				ContainSubstring("seedKubeconfigPublicKeys must be a YAML list of PEM public keys"),
+			)))
 		})
 	})
 })

@@ -32,9 +32,11 @@ const (
 // SeedKubeconfigSignatureManifest binds a kubeconfig hash to a seed.
 // The signature covers the exact JSON bytes stored in SeedKubeconfigManifestDataKey.
 type SeedKubeconfigSignatureManifest struct {
-	APIVersion     string `json:"apiVersion"`
-	Kind           string `json:"kind"`
-	SeedName       string `json:"seedName"`
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
+	SeedName   string `json:"seedName"`
+
+	// KubeconfigHash is the SHA-256 digest of the exact kubeconfig bytes, formatted as "sha256:<lowercase hex>".
 	KubeconfigHash string `json:"kubeconfigHash"`
 }
 

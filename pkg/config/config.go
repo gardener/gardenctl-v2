@@ -73,8 +73,8 @@ type Garden struct {
 
 // KubeconfigAccessLevels defines per-scope default access levels for kubeconfig
 // requests in a garden. The Seeds default applies to any seed kubeconfig
-// request (managed or not); for non-managed seeds the signed static seed-login
-// kubeconfig is returned and an explicit "viewer" level is rejected by GetSeedClientConfig.
+// request. For non-managed seeds, GetSeedClientConfig rejects "viewer" from
+// either a flag or the Seeds default. Other levels use the signed static kubeconfig.
 type KubeconfigAccessLevels struct {
 	// Shoots is the default access level used when targeting a shoot.
 	// +optional
