@@ -69,12 +69,16 @@ type Garden struct {
 	// Each value is a PEM-encoded SubjectPublicKeyInfo (PUBLIC KEY).
 	// +optional
 	SeedKubeconfigPublicKeys SeedKubeconfigPublicKeys `json:"seedKubeconfigPublicKeys,omitempty"`
+	// InsecureSkipSeedKubeconfigSignatureVerification allows loading static seed kubeconfigs
+	// without signature verification. It cannot be used with SeedKubeconfigPublicKeys.
+	// +optional
+	InsecureSkipSeedKubeconfigSignatureVerification bool `json:"insecureSkipSeedKubeconfigSignatureVerification,omitempty"`
 }
 
 // KubeconfigAccessLevels defines per-scope default access levels for kubeconfig
 // requests in a garden. The Seeds default applies to any seed kubeconfig
 // request. For non-managed seeds, GetSeedClientConfig rejects "viewer" from
-// either a flag or the Seeds default. Other levels use the signed static kubeconfig.
+// either a flag or the Seeds default. Other levels use the static kubeconfig.
 type KubeconfigAccessLevels struct {
 	// Shoots is the default access level used when targeting a shoot.
 	// +optional
@@ -310,6 +314,10 @@ func (config *Config) validateGardens() error {
 
 		if err := garden.KubeconfigAccessLevelDefaults.Validate(); err != nil {
 			return fmt.Errorf("garden %q: kubeconfigAccessLevelDefaults: %w", garden.Name, err)
+		}
+
+		if garden.InsecureSkipSeedKubeconfigSignatureVerification && len(garden.SeedKubeconfigPublicKeys) > 0 {
+			return fmt.Errorf("garden %q: insecureSkipSeedKubeconfigSignatureVerification and seedKubeconfigPublicKeys are mutually exclusive", garden.Name)
 		}
 
 		if _, err := garden.SeedKubeconfigPublicKeys.Parse(); err != nil {

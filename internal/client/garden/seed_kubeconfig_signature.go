@@ -40,15 +40,27 @@ type SeedKubeconfigSignatureManifest struct {
 	KubeconfigHash string `json:"kubeconfigHash"`
 }
 
-func verifySeedKubeconfigSignature(seedName string, data map[string][]byte, publicKeys config.SeedKubeconfigPublicKeys) error {
-	for _, key := range []string{"kubeconfig", SeedKubeconfigManifestDataKey, SeedKubeconfigSignatureDataKey} {
+func (g *clientImpl) verifySeedKubeconfig(seedName string, data map[string][]byte) error {
+	if _, ok := data["kubeconfig"]; !ok {
+		return errors.New(`missing data key "kubeconfig"`)
+	}
+
+	if g.insecureSkipSeedKubeconfigSignatureVerification && len(g.seedKubeconfigPublicKeys) > 0 {
+		return errors.New("insecureSkipSeedKubeconfigSignatureVerification and seedKubeconfigPublicKeys are mutually exclusive")
+	}
+
+	if g.insecureSkipSeedKubeconfigSignatureVerification {
+		return nil
+	}
+
+	for _, key := range []string{SeedKubeconfigManifestDataKey, SeedKubeconfigSignatureDataKey} {
 		if _, ok := data[key]; !ok {
 			return fmt.Errorf("missing data key %q", key)
 		}
 	}
 
 	manifestData := data[SeedKubeconfigManifestDataKey]
-	if err := verifyManifestSignature(manifestData, data[SeedKubeconfigSignatureDataKey], publicKeys); err != nil {
+	if err := verifyManifestSignature(manifestData, data[SeedKubeconfigSignatureDataKey], g.seedKubeconfigPublicKeys); err != nil {
 		return err
 	}
 

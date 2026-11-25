@@ -162,6 +162,7 @@ func newGardenClient(name string, config *config.Config, provider internalclient
 		client,
 		garden.Name,
 		clientgarden.WithSeedKubeconfigPublicKeys(garden.SeedKubeconfigPublicKeys),
+		clientgarden.WithInsecureSkipSeedKubeconfigSignatureVerification(garden.InsecureSkipSeedKubeconfigSignatureVerification),
 	), nil
 }
 

@@ -61,7 +61,7 @@ The "shoot that backs a managed seed" case is the non-obvious one: such a shoot 
 ## What the access level does *not* apply to
 
 - The **garden cluster itself** - gardenctl uses your own kubeconfig as configured. There is no API to "downgrade" those credentials; if you want viewer-only access to the garden, point gardenctl at a kubeconfig whose underlying RBAC is read-only.
-- **Non-managed seeds** use the signed static `<seed>.login` Secret. Its credentials determine the access granted by the cluster. Gardenctl rejects `viewer` from either a flag or the `seeds` default because it cannot guarantee read-only access. With `admin`, `auto`, or no access level set, gardenctl returns the verified kubeconfig. See [Seed kubeconfig signatures](seed-kubeconfig-signatures.md).
+- **Non-managed seeds** use the static kubeconfig in the `<seed>.login` Secret. Its credentials determine the access granted by the cluster. Gardenctl rejects `viewer` from either a flag or the `seeds` default because it cannot guarantee read-only access. With `admin`, `auto`, or no access level set, gardenctl returns the static kubeconfig after verifying its signature by default. See [Seed kubeconfig signatures](seed-kubeconfig-signatures.md).
 
 ## Verifying which access level is in use
 

@@ -75,7 +75,7 @@ type Client interface {
 	//
 	// Managed seeds use the backing shoot's kubeconfig at the requested access level.
 	// For non-managed seeds, "admin", "auto", and an unspecified access level all
-	// return the same signed kubeconfig from the <name>.login Secret. The seed
+	// return the same static kubeconfig from the <name>.login Secret. The seed
 	// cluster determines the permissions of those credentials. Requesting "viewer"
 	// returns an error because gardenctl cannot guarantee read-only access.
 	GetSeedClientConfig(ctx context.Context, name string, accessLevel config.KubeconfigAccessLevel) (clientcmd.ClientConfig, error)
@@ -156,6 +156,8 @@ type clientImpl struct {
 	// seedKubeconfigPublicKeys contains the trusted public keys used to
 	// verify kubeconfigs for non-managed seeds.
 	seedKubeconfigPublicKeys config.SeedKubeconfigPublicKeys
+
+	insecureSkipSeedKubeconfigSignatureVerification bool
 }
 
 // ClientOption configures a Garden client.
@@ -166,6 +168,13 @@ type ClientOption func(*clientImpl)
 func WithSeedKubeconfigPublicKeys(publicKeys config.SeedKubeconfigPublicKeys) ClientOption {
 	return func(client *clientImpl) {
 		client.seedKubeconfigPublicKeys = publicKeys
+	}
+}
+
+// WithInsecureSkipSeedKubeconfigSignatureVerification sets whether to skip signature verification for this Garden.
+func WithInsecureSkipSeedKubeconfigSignatureVerification(skip bool) ClientOption {
+	return func(client *clientImpl) {
+		client.insecureSkipSeedKubeconfigSignatureVerification = skip
 	}
 }
 
@@ -661,7 +670,7 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string, acces
 		return nil, fmt.Errorf("failed to get kubeconfig for seed %q: %w", name, err)
 	}
 
-	if err := verifySeedKubeconfigSignature(name, secret.Data, g.seedKubeconfigPublicKeys); err != nil {
+	if err := g.verifySeedKubeconfig(name, secret.Data); err != nil {
 		return nil, fmt.Errorf("failed to verify static kubeconfig for seed %q: %w", name, err)
 	}
 

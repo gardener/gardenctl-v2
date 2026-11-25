@@ -581,6 +581,13 @@ provider:
 			}
 		}
 
+		It("rejects an opt-out combined with trusted keys in the same Garden", func() {
+			cfg := newConfig(config.SeedKubeconfigPublicKeys{validPublicKey})
+			cfg.Gardens[0].InsecureSkipSeedKubeconfigSignatureVerification = true
+
+			Expect(cfg.Validate()).To(MatchError(`garden "g1": insecureSkipSeedKubeconfigSignatureVerification and seedKubeconfigPublicKeys are mutually exclusive`))
+		})
+
 		It("reports the index of a malformed key in the list", func() {
 			keys := config.SeedKubeconfigPublicKeys{validPublicKey, "invalid"}
 			Expect(newConfig(keys).Validate()).To(MatchError(ContainSubstring("invalid public key at index 1")))
@@ -660,6 +667,7 @@ eSmQRtKvGRarf3Pw0xYGNQTPeAUTp5ne7SuSraRBl0GZUhJDJkorWq2ivactdiU=
 
 		It("reports the expected format when the public keys are not a list", func() {
 			filename := filepath.Join(gardenHomeDir, "invalid-keys.yaml")
+
 			const cfgData = `gardens:
 - identity: test-garden
   kubeconfig: /path/to/kubeconfig

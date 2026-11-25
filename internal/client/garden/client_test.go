@@ -194,6 +194,7 @@ var _ = Describe("Client", func() {
 
 		BeforeEach(func() {
 			ctx = context.Background()
+
 			var err error
 
 			loginSecret, trustedKeys, err = fake.NewSignedSeedKubeconfigSecret(seedName)

@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	internalclient "github.com/gardener/gardenctl-v2/internal/client"
+	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
 	"github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
@@ -1152,6 +1153,29 @@ var _ = Describe("Target Manager", func() {
 
 				_, err := manager.ClientConfig(ctx, otherTarget)
 				Expect(err).To(MatchError(ContainSubstring("no trusted keys configured")))
+			})
+
+			It("loads an unsigned kubeconfig only for the Garden that opted out", func() {
+				unsignedSecret := &corev1.Secret{}
+				Expect(gardenClient.Get(ctx, client.ObjectKeyFromObject(seedKubeconfigSecret), unsignedSecret)).To(Succeed())
+				delete(unsignedSecret.Data, clientgarden.SeedKubeconfigManifestDataKey)
+				delete(unsignedSecret.Data, clientgarden.SeedKubeconfigSignatureDataKey)
+				Expect(gardenClient.Update(ctx, unsignedSecret)).To(Succeed())
+
+				cfg.Gardens = append(cfg.Gardens, config.Garden{
+					Name:       "test-garden",
+					Kubeconfig: gardenKubeconfig,
+					InsecureSkipSeedKubeconfigSignatureVerification: true,
+				})
+				Expect(cfg.Validate()).To(Succeed())
+
+				unsignedTarget := target.NewTarget("test-garden", "", seed.Name, "")
+				clientConfig, err := manager.ClientConfig(ctx, unsignedTarget)
+				Expect(err).NotTo(HaveOccurred())
+				assertClientConfig(clientConfig, seed.Name, "default")
+
+				_, err = manager.ClientConfig(ctx, t)
+				Expect(err).To(MatchError(ContainSubstring("missing data key")))
 			})
 		})
 

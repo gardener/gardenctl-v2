@@ -56,6 +56,10 @@ gardenctl config add-seed-key landscape-dev --key '-----BEGIN PUBLIC KEY-----
 				return fmt.Errorf("%w. Check the identities and aliases under gardens in %q, or add the Garden with 'gardenctl config set-garden'", err, cfg.Filename)
 			}
 
+			if garden.InsecureSkipSeedKubeconfigSignatureVerification {
+				return fmt.Errorf("garden %q has seed kubeconfig signature verification disabled. Remove insecureSkipSeedKubeconfigSignatureVerification before adding a key", garden.Name)
+			}
+
 			publicKey := inlineKey
 
 			if cmd.Flags().Changed("file") {

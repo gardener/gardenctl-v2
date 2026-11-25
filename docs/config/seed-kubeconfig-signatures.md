@@ -1,6 +1,6 @@
 # Seed kubeconfig signatures
 
-For a non-managed seed, gardenctl loads the kubeconfig from the `garden/<seed>.login` Secret in the virtual Garden. It verifies the kubeconfig signature before parsing the kubeconfig. Managed seeds use the shoot kubeconfig flow.
+For a non-managed seed, gardenctl loads the kubeconfig from the `garden/<seed>.login` Secret in the virtual Garden. By default, it verifies the signature before parsing the kubeconfig. Managed seeds use the shoot kubeconfig flow.
 
 ## Configure a trusted public key
 
@@ -34,6 +34,22 @@ gardens:
         <public key from your landscape administrator>
         -----END PUBLIC KEY-----
 ```
+
+## Opt out for a Garden
+
+Use `insecureSkipSeedKubeconfigSignatureVerification: true` in the local Garden entry for environments where signing is unnecessary, such as a test environment, or where signing is unavailable or the landscape administrator has chosen to operate without it.
+
+> [!CAUTION]
+> This disables protection against kubeconfig manipulation. Anyone who can modify the seed login Secret can replace the kubeconfig gardenctl loads.
+
+```yaml
+gardens:
+  - identity: landscape-test
+    kubeconfig: /path/to/garden-kubeconfig.yaml
+    insecureSkipSeedKubeconfigSignatureVerification: true
+```
+
+Choose either trusted `seedKubeconfigPublicKeys` or the opt-out for each Garden. Gardenctl rejects a configuration that enables both. With the opt-out, the `<seed>.login` Secret only needs the `kubeconfig` data entry.
 
 ## Sign a kubeconfig
 

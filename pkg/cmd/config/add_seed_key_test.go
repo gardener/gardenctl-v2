@@ -77,6 +77,18 @@ var _ = Describe("config add-seed-key", func() {
 		Expect(os.ReadFile(cfg.Filename)).To(Equal(original))
 	})
 
+	It("rejects adding a key to a Garden that opted out of signature verification", func() {
+		cfg.Gardens[0].InsecureSkipSeedKubeconfigSignatureVerification = true
+		Expect(cfg.Save()).To(Succeed())
+
+		_, keys, err := fake.NewSignedSeedKubeconfigSecret("seed-a")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(run("dev", "--key", keys[0])).To(MatchError(ContainSubstring("Remove insecureSkipSeedKubeconfigSignatureVerification before adding a key")))
+
+		Expect(cfg.Gardens[0].SeedKubeconfigPublicKeys).To(BeEmpty())
+		assertConfigHasBeenSaved(cfg)
+	})
+
 	It("shows help without loading the configuration", func() {
 		cmd := cmdconfig.NewCmdConfig(factory, streams)
 		cmd.SetOut(out)
