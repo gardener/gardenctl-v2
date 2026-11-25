@@ -679,6 +679,10 @@ func (g *clientImpl) GetSeedClientConfig(ctx context.Context, name string, acces
 		return nil, fmt.Errorf("failed to deserialize kubeconfig for seed %q: %w", name, err)
 	}
 
+	if g.insecureSkipSeedKubeconfigSignatureVerification {
+		klog.Warningf("Loaded kubeconfig for seed %q in Garden %q without signature verification because insecureSkipSeedKubeconfigSignatureVerification is enabled", name, g.name)
+	}
+
 	return clientConfig, nil
 }
 

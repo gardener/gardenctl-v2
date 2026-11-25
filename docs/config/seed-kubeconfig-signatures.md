@@ -49,7 +49,7 @@ gardens:
     insecureSkipSeedKubeconfigSignatureVerification: true
 ```
 
-Choose either trusted `seedKubeconfigPublicKeys` or the opt-out for each Garden. Gardenctl rejects a configuration that enables both. With the opt-out, the `<seed>.login` Secret only needs the `kubeconfig` data entry.
+Choose either trusted `seedKubeconfigPublicKeys` or the opt-out for each Garden. Gardenctl rejects a configuration that enables both. With the opt-out, the `<seed>.login` Secret only needs the `kubeconfig` data entry, and gardenctl warns when it loads the kubeconfig without verifying it.
 
 ## Sign a kubeconfig
 
@@ -98,4 +98,6 @@ Verify from a client configured with the trusted public key.
 gardenctl kubeconfig --garden landscape-dev --seed seed-a --access-level=auto >/dev/null
 ```
 
-Signatures have no expiry. Gardenctl accepts older kubeconfigs for a seed while their signing key remains trusted, even after a newer kubeconfig is published. Existing shells keep using their loaded kubeconfig until the session is refreshed.
+Signatures have no expiry. Gardenctl accepts older kubeconfigs for a seed while their signing key remains trusted, even after a newer kubeconfig is published.
+
+To retire a signing key, re-sign and publish the affected Secrets with another trusted key before removing the old public key from each client's `seedKubeconfigPublicKeys`. Refresh existing shells by repeating `gardenctl target` for the current target in default symlink mode or by reapplying `gardenctl kubectl-env` output with `linkKubeconfig: false`.

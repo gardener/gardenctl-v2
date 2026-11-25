@@ -232,6 +232,21 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZaw+eCE8ttLg9lxQtatgD7S9Mwcd
 			Expect(apierrors.IsNotFound(err)).To(BeTrue())
 		})
 
+		It("propagates a managed seed lookup error when signature verification is disabled", func() {
+			managedSeed := &seedmanagementv1alpha1.ManagedSeed{
+				ObjectMeta: metav1.ObjectMeta{Name: seedName, Namespace: "garden", UID: loginSecret.UID},
+			}
+			delete(loginSecret.Data, clientgarden.SeedKubeconfigManifestDataKey)
+			delete(loginSecret.Data, clientgarden.SeedKubeconfigSignatureDataKey)
+
+			client := clientgarden.NewClient(nil, fake.NewClientWithObjects(managedSeed, loginSecret), gardenName,
+				clientgarden.WithInsecureSkipSeedKubeconfigSignatureVerification(true))
+
+			clientConfig, err := client.GetSeedClientConfig(ctx, seedName, "")
+			Expect(err).To(MatchError(ContainSubstring("no shoot referenced for managed seed")))
+			Expect(clientConfig).To(BeNil())
+		})
+
 		It("returns a not-found error for a missing login Secret", func() {
 			_, err := loadSeed("seed-3", "")
 			Expect(apierrors.IsNotFound(err)).To(BeTrue())
@@ -381,6 +396,20 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZaw+eCE8ttLg9lxQtatgD7S9Mwcd
 			_, err := loadSeed(seedName, "")
 			Expect(err).To(MatchError(ContainSubstring("seedKubeconfigPublicKeys")))
 			Expect(err).To(MatchError(ContainSubstring("docs/config/seed-kubeconfig-signatures.md")))
+		})
+
+		It("rejects an unsigned kubeconfig when the Garden has neither trusted keys nor the opt-out", func() {
+			trustedKeys = nil
+
+			delete(loginSecret.Data, clientgarden.SeedKubeconfigManifestDataKey)
+			delete(loginSecret.Data, clientgarden.SeedKubeconfigSignatureDataKey)
+
+			clientConfig, err := loadSeed(seedName, "")
+			Expect(err).To(MatchError(And(
+				ContainSubstring(`missing data key "kubeconfig-signing-manifest"`),
+				ContainSubstring("https://github.com/gardener/gardenctl-v2/blob/master/docs/config/seed-kubeconfig-signatures.md"),
+			)))
+			Expect(clientConfig).To(BeNil())
 		})
 
 		DescribeTable("rejects a Secret with a missing data key",

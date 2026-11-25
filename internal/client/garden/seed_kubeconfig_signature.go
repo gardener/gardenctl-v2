@@ -27,6 +27,8 @@ const (
 	SeedKubeconfigSignatureAPIVersion = "gardenctl.gardener.cloud/v1alpha1"
 	// SeedKubeconfigSignatureKind identifies a seed kubeconfig signature manifest.
 	SeedKubeconfigSignatureKind = "SeedKubeconfigSignature"
+
+	seedKubeconfigSignaturesDocURL = "https://github.com/gardener/gardenctl-v2/blob/master/docs/config/seed-kubeconfig-signatures.md"
 )
 
 // SeedKubeconfigSignatureManifest binds a kubeconfig hash to a seed.
@@ -55,7 +57,7 @@ func (g *clientImpl) verifySeedKubeconfig(seedName string, data map[string][]byt
 
 	for _, key := range []string{SeedKubeconfigManifestDataKey, SeedKubeconfigSignatureDataKey} {
 		if _, ok := data[key]; !ok {
-			return fmt.Errorf("missing data key %q", key)
+			return fmt.Errorf("missing data key %q. See %s for seed kubeconfig signing and configuration", key, seedKubeconfigSignaturesDocURL)
 		}
 	}
 
@@ -97,7 +99,7 @@ func (g *clientImpl) verifySeedKubeconfig(seedName string, data map[string][]byt
 
 func verifyManifestSignature(manifest, signature []byte, trustedKeys config.SeedKubeconfigPublicKeys) error {
 	if len(trustedKeys) == 0 {
-		return errors.New("no trusted keys configured: set seedKubeconfigPublicKeys as described in docs/config/seed-kubeconfig-signatures.md")
+		return fmt.Errorf("no trusted keys configured. Set seedKubeconfigPublicKeys as described in %s", seedKubeconfigSignaturesDocURL)
 	}
 
 	keys, err := trustedKeys.Parse()
