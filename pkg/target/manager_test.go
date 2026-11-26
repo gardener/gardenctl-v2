@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	internalclient "github.com/gardener/gardenctl-v2/internal/client"
+	clientgarden "github.com/gardener/gardenctl-v2/internal/client/garden"
 	clientmocks "github.com/gardener/gardenctl-v2/internal/client/mocks"
 	"github.com/gardener/gardenctl-v2/internal/fake"
 	"github.com/gardener/gardenctl-v2/pkg/ac"
@@ -158,19 +159,10 @@ var _ = Describe("Target Manager", func() {
 			},
 		}
 
-		testSeedKubeconfig, err := fake.NewConfigData("test-seed")
-		Expect(err).ToNot(HaveOccurred())
+		var err error
 
-		seedKubeconfigSecret = &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-seed.login",
-				Namespace: "garden",
-				UID:       "00000000-0000-0000-0000-000000000000",
-			},
-			Data: map[string][]byte{
-				"kubeconfig": testSeedKubeconfig,
-			},
-		}
+		seedKubeconfigSecret, cfg.Gardens[0].SeedKubeconfigPublicKeys, err = fake.NewSignedSeedKubeconfigSecret("test-seed")
+		Expect(err).ToNot(HaveOccurred())
 
 		seed = &gardencorev1beta1.Seed{
 			ObjectMeta: metav1.ObjectMeta{
@@ -1106,6 +1098,13 @@ var _ = Describe("Target Manager", func() {
 				Expect(err).NotTo(HaveOccurred())
 				assertClientConfig(clientConfig, *prod1GoldenShoot.Spec.SeedName, prod1GoldenShoot.Status.TechnicalID)
 			})
+
+			It("requires a trusted key when the control plane runs on a non-managed seed", func() {
+				cfg.Gardens[0].SeedKubeconfigPublicKeys = nil
+
+				_, err := manager.ClientConfig(ctx, t)
+				Expect(err).To(MatchError(ContainSubstring("no trusted keys configured")))
+			})
 		})
 
 		Context("when shoot is targeted", func() {
@@ -1145,6 +1144,38 @@ var _ = Describe("Target Manager", func() {
 				clientConfig, err := manager.ClientConfig(ctx, t)
 				Expect(err).NotTo(HaveOccurred())
 				assertClientConfig(clientConfig, seed.Name, "default")
+			})
+
+			It("uses only the public keys configured for the targeted Garden", func() {
+				// Both entries reach the same fake cluster. Only the original Garden trusts its key.
+				cfg.Gardens = append(cfg.Gardens, config.Garden{Name: "other-garden", Kubeconfig: gardenKubeconfig})
+				otherTarget := target.NewTarget("other-garden", "", seed.Name, "")
+
+				_, err := manager.ClientConfig(ctx, otherTarget)
+				Expect(err).To(MatchError(ContainSubstring("no trusted keys configured")))
+			})
+
+			It("loads an unsigned kubeconfig only for the Garden that opted out", func() {
+				unsignedSecret := &corev1.Secret{}
+				Expect(gardenClient.Get(ctx, client.ObjectKeyFromObject(seedKubeconfigSecret), unsignedSecret)).To(Succeed())
+				delete(unsignedSecret.Data, clientgarden.SeedKubeconfigManifestDataKey)
+				delete(unsignedSecret.Data, clientgarden.SeedKubeconfigSignatureDataKey)
+				Expect(gardenClient.Update(ctx, unsignedSecret)).To(Succeed())
+
+				cfg.Gardens = append(cfg.Gardens, config.Garden{
+					Name:       "test-garden",
+					Kubeconfig: gardenKubeconfig,
+					InsecureSkipSeedKubeconfigSignatureVerification: true,
+				})
+				Expect(cfg.Validate()).To(Succeed())
+
+				unsignedTarget := target.NewTarget("test-garden", "", seed.Name, "")
+				clientConfig, err := manager.ClientConfig(ctx, unsignedTarget)
+				Expect(err).NotTo(HaveOccurred())
+				assertClientConfig(clientConfig, seed.Name, "default")
+
+				_, err = manager.ClientConfig(ctx, t)
+				Expect(err).To(MatchError(ContainSubstring("missing data key")))
 			})
 		})
 

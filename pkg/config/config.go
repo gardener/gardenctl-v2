@@ -60,16 +60,25 @@ type Garden struct {
 	// +optional
 	AccessRestrictions []ac.AccessRestriction `json:"accessRestrictions,omitempty"`
 	// KubeconfigAccessLevelDefaults sets the default access level requested per
-	// target scope when no --access-level flag is provided. Each
-	// sub-field defaults to "admin" when empty.
+	// target scope when no --access-level flag is provided. An empty value
+	// delegates to gardenlogin for kubeconfigs it provides.
 	// +optional
 	KubeconfigAccessLevelDefaults *KubeconfigAccessLevels `json:"kubeconfigAccessLevelDefaults,omitempty"`
+	// SeedKubeconfigPublicKeys contains trusted ECDSA P-256 public keys used to
+	// verify kubeconfigs for non-managed seeds.
+	// Each value is a PEM-encoded SubjectPublicKeyInfo (PUBLIC KEY).
+	// +optional
+	SeedKubeconfigPublicKeys SeedKubeconfigPublicKeys `json:"seedKubeconfigPublicKeys,omitempty"`
+	// InsecureSkipSeedKubeconfigSignatureVerification allows loading static seed kubeconfigs
+	// without signature verification. It cannot be used with SeedKubeconfigPublicKeys.
+	// +optional
+	InsecureSkipSeedKubeconfigSignatureVerification bool `json:"insecureSkipSeedKubeconfigSignatureVerification,omitempty"`
 }
 
 // KubeconfigAccessLevels defines per-scope default access levels for kubeconfig
 // requests in a garden. The Seeds default applies to any seed kubeconfig
-// request (managed or not); for non-managed seeds the static seed-login secret
-// is returned and an explicit "viewer" level is rejected by GetSeedClientConfig.
+// request. For non-managed seeds, GetSeedClientConfig rejects "viewer" from
+// either a flag or the Seeds default. Other levels use the static kubeconfig.
 type KubeconfigAccessLevels struct {
 	// Shoots is the default access level used when targeting a shoot.
 	// +optional
@@ -210,7 +219,7 @@ func LoadFromFile(filename string) (*Config, error) {
 		}
 
 		if err = yaml.Unmarshal(buf, config); err != nil {
-			return nil, fmt.Errorf("failed to decode as YAML: %w", err)
+			return nil, fmt.Errorf("failed to decode configuration file %q as YAML: %w", filename, err)
 		}
 
 		// be nice and handle ~ in paths
@@ -274,7 +283,13 @@ func (o *OpenStackConfig) Validate() error {
 
 // validateGardens checks the config for valid garden names and ambiguous definitions.
 func (config *Config) validateGardens() error {
-	seen := make(map[string]bool, len(config.Gardens))
+	nameCounts := make(map[string]int, len(config.Gardens))
+	recordName := func(name string) {
+		nameCounts[name]++
+		if nameCounts[name] == 2 {
+			klog.Warningf("identity and alias should be unique but %q was found multiple times in gardenctl configuration", name)
+		}
+	}
 
 	for i := range config.Gardens {
 		garden := config.Gardens[i]
@@ -287,31 +302,26 @@ func (config *Config) validateGardens() error {
 			return fmt.Errorf("invalid garden name %q: %w", garden.Name, err)
 		}
 
-		if garden.Alias != "" {
+		recordName(garden.Name)
+
+		if garden.Alias != "" && garden.Alias != garden.Name {
 			if err := ValidateGardenName(garden.Alias); err != nil {
 				return fmt.Errorf("invalid garden alias %q for garden %q: %w", garden.Alias, garden.Name, err)
 			}
-		}
 
-		if logged, ok := seen[garden.Name]; ok && !logged {
-			klog.Warningf("identity and alias should be unique but %q was found multiple times in gardenctl configuration", garden.Name)
-			seen[garden.Name] = true
-		} else if !ok {
-			seen[garden.Name] = false
-		}
-
-		if garden.Alias != "" && garden.Alias != garden.Name {
-			if logged, ok := seen[garden.Alias]; ok && !logged {
-				klog.Warningf("identity and alias should be unique but %q was found multiple times in gardenctl configuration", garden.Alias)
-
-				seen[garden.Alias] = true
-			} else if !ok {
-				seen[garden.Alias] = false
-			}
+			recordName(garden.Alias)
 		}
 
 		if err := garden.KubeconfigAccessLevelDefaults.Validate(); err != nil {
 			return fmt.Errorf("garden %q: kubeconfigAccessLevelDefaults: %w", garden.Name, err)
+		}
+
+		if garden.InsecureSkipSeedKubeconfigSignatureVerification && len(garden.SeedKubeconfigPublicKeys) > 0 {
+			return fmt.Errorf("garden %q: insecureSkipSeedKubeconfigSignatureVerification and seedKubeconfigPublicKeys are mutually exclusive", garden.Name)
+		}
+
+		if _, err := garden.SeedKubeconfigPublicKeys.Parse(); err != nil {
+			return fmt.Errorf("garden %q: seedKubeconfigPublicKeys: %w", garden.Name, err)
 		}
 	}
 

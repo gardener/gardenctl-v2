@@ -7,9 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package config_test
 
 import (
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -544,6 +551,135 @@ provider:
 				},
 			}
 			Expect(cfg.Validate()).To(Succeed())
+		})
+	})
+
+	Describe("Garden.SeedKubeconfigPublicKeys validation via Config.Validate", func() {
+		var validPublicKey string
+
+		encodePublicKey := func(key any) string {
+			der, err := x509.MarshalPKIXPublicKey(key)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+			return string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der}))
+		}
+
+		BeforeEach(func() {
+			key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			Expect(err).NotTo(HaveOccurred())
+
+			validPublicKey = encodePublicKey(&key.PublicKey)
+		})
+
+		newConfig := func(publicKeys config.SeedKubeconfigPublicKeys) *config.Config {
+			return &config.Config{
+				Gardens: []config.Garden{{
+					Name:                     "g1",
+					Kubeconfig:               "kubeconfig",
+					SeedKubeconfigPublicKeys: publicKeys,
+				}},
+			}
+		}
+
+		It("rejects an opt-out combined with trusted keys in the same Garden", func() {
+			cfg := newConfig(config.SeedKubeconfigPublicKeys{validPublicKey})
+			cfg.Gardens[0].InsecureSkipSeedKubeconfigSignatureVerification = true
+
+			Expect(cfg.Validate()).To(MatchError(`garden "g1": insecureSkipSeedKubeconfigSignatureVerification and seedKubeconfigPublicKeys are mutually exclusive`))
+		})
+
+		It("reports the index of a malformed key in the list", func() {
+			keys := config.SeedKubeconfigPublicKeys{validPublicKey, "invalid"}
+			Expect(newConfig(keys).Validate()).To(MatchError(ContainSubstring("invalid public key at index 1")))
+		})
+
+		It("rejects other ECDSA curves", func() {
+			key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+			Expect(err).NotTo(HaveOccurred())
+
+			keys := config.SeedKubeconfigPublicKeys{encodePublicKey(&key.PublicKey)}
+			Expect(newConfig(keys).Validate()).To(MatchError(ContainSubstring("expected an ECDSA P-256 public key")))
+		})
+
+		It("rejects a public key for another algorithm", func() {
+			key, _, err := ed25519.GenerateKey(rand.Reader)
+			Expect(err).NotTo(HaveOccurred())
+
+			keys := config.SeedKubeconfigPublicKeys{encodePublicKey(key)}
+			Expect(newConfig(keys).Validate()).To(MatchError(ContainSubstring("expected an ECDSA public key")))
+		})
+
+		It("rejects a P-256 key encoded with explicit curve parameters", func() {
+			// Written by LibreSSL 3.3.6 with "openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:prime256v1".
+			const explicitParameters = `-----BEGIN PUBLIC KEY-----
+MIIBSzCCAQMGByqGSM49AgEwgfcCAQEwLAYHKoZIzj0BAQIhAP////8AAAABAAAA
+AAAAAAAAAAAA////////////////MFsEIP////8AAAABAAAAAAAAAAAAAAAA////
+///////////8BCBaxjXYqjqT57PrvVV2mIa8ZR0GsMxTsPY7zjw+J9JgSwMVAMSd
+NgiG5wSTamZ44ROdJreBn36QBEEEaxfR8uEsQkf4vOblY6RA8ncDfYEt6zOg9KE5
+RdiYwpZP40Li/hp/m47n60p8D54WK84zV2sxXs7LtkBoN79R9QIhAP////8AAAAA
+//////////+85vqtpxeehPO5ysL8YyVRAgEBA0IABKlutUB0GFzECMBoL4xFUKEp
+eSmQRtKvGRarf3Pw0xYGNQTPeAUTp5ne7SuSraRBl0GZUhJDJkorWq2ivactdiU=
+-----END PUBLIC KEY-----
+`
+
+			keys := config.SeedKubeconfigPublicKeys{explicitParameters}
+			Expect(newConfig(keys).Validate()).To(MatchError(And(
+				ContainSubstring("invalid SubjectPublicKeyInfo"),
+				ContainSubstring("identifies its curve by name"),
+			)))
+		})
+
+		It("rejects a malformed PEM block followed by a valid public key in the same entry", func() {
+			const malformedBlock = "-----BEGIN PUBLIC KEY-----\n!\n-----END PUBLIC KEY-----\n"
+
+			keys := config.SeedKubeconfigPublicKeys{malformedBlock + validPublicKey}
+			Expect(newConfig(keys).Validate()).To(MatchError(ContainSubstring("expected exactly one PEM block")))
+		})
+
+		DescribeTable("rejects invalid public key encodings",
+			func(encoded, expected string) {
+				keys := config.SeedKubeconfigPublicKeys{encoded}
+				Expect(newConfig(keys).Validate()).To(MatchError(ContainSubstring(expected)))
+			},
+			Entry("missing PEM envelope", "YWJjZA==", "expected a PEM PUBLIC KEY block"),
+			Entry("wrong PEM label", "-----BEGIN PRIVATE KEY-----\nAQID\n-----END PRIVATE KEY-----", "expected a PEM PUBLIC KEY block"),
+			Entry("invalid PEM body", "-----BEGIN PUBLIC KEY-----\n!\n-----END PUBLIC KEY-----", "invalid PUBLIC KEY PEM encoding"),
+			Entry("invalid DER", "-----BEGIN PUBLIC KEY-----\nAQID\n-----END PUBLIC KEY-----", "invalid SubjectPublicKeyInfo"),
+			Entry("trailing data", "-----BEGIN PUBLIC KEY-----\nAQID\n-----END PUBLIC KEY-----\nextra", "unexpected data"),
+		)
+
+		It("loads public keys from YAML", func() {
+			filename := filepath.Join(gardenHomeDir, "gardenctl-v2.yaml")
+			cfgData := fmt.Sprintf(`gardens:
+- identity: test-garden
+  kubeconfig: /path/to/kubeconfig
+  seedKubeconfigPublicKeys:
+    - |
+      %s
+`, strings.ReplaceAll(strings.TrimSpace(validPublicKey), "\n", "\n      "))
+			Expect(os.WriteFile(filename, []byte(cfgData), 0o600)).To(Succeed())
+
+			cfg, err := config.LoadFromFile(filename)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.Gardens).To(HaveLen(1))
+			Expect(cfg.Gardens[0].SeedKubeconfigPublicKeys).To(Equal(config.SeedKubeconfigPublicKeys{validPublicKey}))
+		})
+
+		It("reports the expected format when the public keys are not a list", func() {
+			filename := filepath.Join(gardenHomeDir, "invalid-keys.yaml")
+
+			const cfgData = `gardens:
+- identity: test-garden
+  kubeconfig: /path/to/kubeconfig
+  seedKubeconfigPublicKeys: public-key.pem
+`
+			Expect(os.WriteFile(filename, []byte(cfgData), 0o600)).To(Succeed())
+
+			_, err := config.LoadFromFile(filename)
+			Expect(err).To(MatchError(And(
+				ContainSubstring(filename),
+				ContainSubstring("seedKubeconfigPublicKeys must be a YAML list of PEM public keys"),
+			)))
 		})
 	})
 })

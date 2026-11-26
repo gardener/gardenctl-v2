@@ -1,6 +1,6 @@
 # Kubeconfig Access Level
 
-For shoots and seeds, `gardenctl` requests a kubeconfig from [`gardenlogin`](https://github.com/gardener/gardenlogin) with a configurable access level:
+For shoots and managed seeds, `gardenctl` requests a kubeconfig from [`gardenlogin`](https://github.com/gardener/gardenlogin) with a configurable access level:
 
 - `admin` - full cluster-admin credentials.
 - `viewer` - read-only credentials with no access to encrypted resources (e.g. Secrets).
@@ -61,7 +61,7 @@ The "shoot that backs a managed seed" case is the non-obvious one: such a shoot 
 ## What the access level does *not* apply to
 
 - The **garden cluster itself** - gardenctl uses your own kubeconfig as configured. There is no API to "downgrade" those credentials; if you want viewer-only access to the garden, point gardenctl at a kubeconfig whose underlying RBAC is read-only.
-- **Non-managed seeds** - credentials come from a static `<name>.login` Secret in the garden cluster, of unknown privilege from gardenctl's perspective. Requesting `viewer` for a non-managed seed (via flag or the `seeds` default) returns an error rather than silently producing a kubeconfig that might not actually be read-only. `admin` and `auto` fall through to the static kubeconfig as-is.
+- **Non-managed seeds** use the static kubeconfig in the `<seed>.login` Secret. Its credentials determine the access granted by the cluster. Gardenctl rejects `viewer` from either a flag or the `seeds` default because it cannot guarantee read-only access. With `admin`, `auto`, or no access level set, gardenctl returns the static kubeconfig after verifying its signature by default. See [Seed kubeconfig signatures](seed-kubeconfig-signatures.md).
 
 ## Verifying which access level is in use
 
@@ -72,7 +72,7 @@ $ gardenctl target shoot prod-cluster --access-level=viewer
 Successfully targeted shoot "prod-cluster" (access level: viewer)
 ```
 
-For an explicit check, the access level is also embedded as a `--access-level=…` argument in the produced kubeconfig's exec plugin section (omitted when `gardenctl` deferred to `gardenlogin`'s default):
+For shoots and managed seeds, look for the `--access-level=…` argument passed to the `gardenlogin` exec plugin. Gardenctl omits the argument when the plugin chooses its own default.
 
 ```bash
 gardenctl kubeconfig | grep -- '--access-level='
