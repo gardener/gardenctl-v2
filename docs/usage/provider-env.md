@@ -4,15 +4,21 @@ The `provider-env` command generates a shell script to configure cloud provider 
 
 ## Basic usage
 
-Generate and evaluate the script for your shell. Example for `bash`:
+In Bash, evaluate the generated script with `eval`.
 
 ```bash
 eval "$(gardenctl provider-env bash)"
 ```
 
+In PowerShell, pipe the script to `Invoke-Expression`. If you are targeting a cluster on native Windows, see the [Windows setup](../../README.md#windows).
+
+```powershell
+& gardenctl provider-env powershell | Invoke-Expression
+```
+
 The `gardenctl rc` aliases described in the [Recommended Shell Configuration](../../README.md#recommended-shell-configuration) provide shortcuts for these commands: `gp` for the default provider environment and `gpc` for `--control-plane`.
 
-Alternatively, you can generate the script for other shells using subcommands: `bash`, `zsh`, `fish`, `powershell`.
+The `zsh` and `fish` subcommands generate scripts for those shells.
 
 The generated script:
 - Sets provider-specific environment variables for the target
@@ -23,21 +29,6 @@ The generated script:
 > `provider-env` can resolve provider credentials for shoots and managed seeds. It cannot generate provider credentials for non-managed seeds.
 
 Ensure the respective provider CLI is installed on your system. See the `gardenctl provider-env` [help](https://github.com/gardener/gardenctl-v2/blob/master/docs/help/gardenctl_provider-env.md#synopsis) for links.
-
-## OpenStack on Windows
-
-Before using `provider-env` for OpenStack on Windows:
-
-- use WSL or PowerShell; Windows Command Prompt (`cmd.exe`) is not supported;
-- install `kubectl`, `gardenlogin`, and the OpenStack CLI in the same environment as `gardenctl`;
-- if the garden cluster kubeconfig uses OIDC authentication, install `kubelogin` in the same environment as `gardenctl`; and
-- enable Windows Developer Mode, run PowerShell as Administrator, or disable kubeconfig symlinks. Without one of these options, `gardenctl target` fails when Windows denies creation of the symbolic link.
-
-See the [Windows setup](../../README.md#windows) for configuration details. Then configure the OpenStack environment:
-
-```powershell
-& gardenctl provider-env powershell | Invoke-Expression
-```
 
 ## Overriding templates or adding custom providers
 

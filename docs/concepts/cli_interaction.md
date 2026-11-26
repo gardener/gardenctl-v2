@@ -19,11 +19,26 @@ export KUBECONFIG=$TMPDIR/garden/$GCTL_SESSION_ID/kubeconfig.yaml
 ```
 
 #### Behavior without symlink
+
+To disable the symlink persistently, add this setting to your [gardenctl configuration file](../../README.md#configuration).
+
 ```yaml
 linkKubeconfig: false
 ```
-The `target` command only changes the current target cluster of `gardenctl`, but does not download the corresponding kubeconfig file. 
-This happens only when the `kubectl-env` command is executed. If the user evaluates the generated script the `KUBECONFIG` environment variable points the downloaded kubeconfig file for the targeted cluster.
+
+To override the configuration for the current Bash or Zsh session, set the environment variable with `export`.
+
+```bash
+export GCTL_LINK_KUBECONFIG=false
+```
+
+In PowerShell, set the environment variable with `$Env:`.
+
+```powershell
+$Env:GCTL_LINK_KUBECONFIG = "false"
+```
+
+With symlinks disabled, run `kubectl-env` and evaluate its output after each target change to point `KUBECONFIG` to the kubeconfig for the newly targeted cluster.
 ![Link-Kubeconfig-2](../images/update-kubeconfig.svg)
 The generated script looks something like this:
 ```bash

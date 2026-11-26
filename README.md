@@ -24,8 +24,6 @@ Before using `gardenctl`, install the following tools and make sure they are ava
 
 If your garden cluster kubeconfig uses OIDC authentication, ensure that [kubelogin](https://github.com/int128/kubelogin#setup) is available in the same shell environment.
 
-The package-manager installations below install `gardenlogin` automatically. When installing `gardenctl` from a GitHub release, install `gardenlogin` separately.
-
 ### Install using Package Managers
 
 ```sh
@@ -74,30 +72,13 @@ sudo mv "./gardenctl_v2_${os}_${arch}" /usr/local/bin/gardenctl
 
 ### Windows
 
-On Windows, use either:
+Use PowerShell or Windows Subsystem for Linux (WSL). Windows Command Prompt (`cmd.exe`) is not supported. With WSL, install the Linux versions of the prerequisites inside WSL.
 
-- Windows Subsystem for Linux (WSL), with the Linux versions of the required tools installed inside WSL; or
-- PowerShell, with the Windows versions of the tools available on `PATH`.
+By default, `gardenctl target` maintains a symbolic link to the current kubeconfig. If Windows denies permission to create the link, `gardenctl target` returns an error.
 
-Windows Command Prompt (`cmd.exe`) is not supported.
+For native PowerShell, enable [Developer Mode](https://learn.microsoft.com/en-us/windows/advanced-settings/developer-mode) to keep the default workflow. If Developer Mode is unavailable, [disable the symlink](docs/concepts/cli_interaction.md#behavior-without-symlink) and run `& gardenctl kubectl-env powershell | Invoke-Expression` after each target change to update `KUBECONFIG`. If you have loaded the `gardenctl rc` aliases, you can use `gk` instead.
 
-By default, `gardenctl target` creates a symbolic link for the current kubeconfig. When using native Windows PowerShell, choose one of the following so that targeting can create this link:
-
-- enable Windows Developer Mode;
-- run PowerShell as Administrator; or
-- disable kubeconfig symlinks by setting `linkKubeconfig: false` in `~/.garden/gardenctl-v2.yaml`:
-
-  ```yaml
-  linkKubeconfig: false
-  ```
-
-  You can also disable them for the current PowerShell session with `$Env:GCTL_LINK_KUBECONFIG = "false"`. In this mode, evaluate the kubeconfig script after changing the target:
-
-  ```powershell
-  & gardenctl kubectl-env powershell | Invoke-Expression
-  ```
-
-If none of these options is applied, targeting fails when Windows denies creation of the symbolic link. This setup is also required before using `provider-env` with OpenStack; see the [OpenStack on Windows](docs/usage/provider-env.md#openstack-on-windows) instructions.
+Running PowerShell as Administrator also permits symlink creation and elevates every command in that shell.
 
 ## Configuration
 
@@ -133,9 +114,6 @@ gardens:
 #   shoots: viewer              # admin | viewer | auto (empty = gardenlogin's default)
 #   seeds: admin                # admin | viewer | auto (empty = gardenlogin's default)
 ```
-
-> [!NOTE]
-> The dependencies listed under [Prerequisites](#prerequisites) must be available in the shell environment where you run `gardenctl`.
 
 ### Kubeconfig Access Level
 
