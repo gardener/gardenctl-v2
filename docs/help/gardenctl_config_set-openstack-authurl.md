@@ -32,8 +32,8 @@ gardenctl config set-openstack-authurl --clear
 ### Options
 
 ```
-      --clear                     Clear all OpenStack authURL patterns from the configuration
-  -h, --help                      help for set-openstack-authurl
+      --clear[=true|false]        Clear all OpenStack authURL patterns from the configuration
+  -h, --help[=true|false]         help for set-openstack-authurl
       --uri-pattern stringArray   OpenStack auth URL to allow. May be specified multiple times. Setting URIs will replace any existing authURL patterns.
 ```
 
