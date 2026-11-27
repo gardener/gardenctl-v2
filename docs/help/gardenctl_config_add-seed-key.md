@@ -31,9 +31,9 @@ gardenctl config add-seed-key landscape-dev --key '-----BEGIN PUBLIC KEY-----
 ### Options
 
 ```
-  -f, --file string   Path to the PEM public key from your landscape administrator
-  -h, --help          help for add-seed-key
-      --key string    Full PEM public key, including line breaks
+  -f, --file string         Path to the PEM public key from your landscape administrator
+  -h, --help[=true|false]   help for add-seed-key
+      --key string          Full PEM public key, including line breaks
 ```
 
 ### Options inherited from parent commands
