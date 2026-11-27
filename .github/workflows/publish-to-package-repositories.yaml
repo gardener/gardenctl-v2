@@ -67,10 +67,10 @@ jobs:
             chocolatey-packages
           permission-contents: write
 
-      - uses: gardener/cc-utils/.github/actions/trusted-checkout@bce63f62928717a11f610ec8022af9feb497d5df # v1 # zizmor: ignore[unpinned-uses,ref-confusion] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
+      - uses: gardener/cc-utils/.github/actions/trusted-checkout@00522ef3e8504bc7be46394a239a390f112336f6 # 1.2883.0 # zizmor: ignore[unpinned-uses,ref-confusion] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
       - name: download-component-descriptor-artifact
         if: ${{ inputs.component-descriptor-artifact != '' }}
-        uses: gardener/cc-utils/.github/actions/download-artifact@bce63f62928717a11f610ec8022af9feb497d5df # v1 # zizmor: ignore[unpinned-uses,ref-confusion] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
+        uses: gardener/cc-utils/.github/actions/download-artifact@00522ef3e8504bc7be46394a239a390f112336f6 # 1.2883.0 # zizmor: ignore[unpinned-uses,ref-confusion] -- same-org action; intentionally allowed for now, planned to pin to a version in the future
         with:
           name: ${{ inputs.component-descriptor-artifact }}
           path: /tmp/cd-artifact
